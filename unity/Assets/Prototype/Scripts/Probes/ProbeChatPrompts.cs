@@ -24,22 +24,17 @@ using UnityEngine;
 // Records and streams stay in the --out folder (docs/telemetry/chat-base-2026-11-02.md reads them).
 public class ChatPromptsProbe : RowHousesProbe
 {
-    /// <summary>The most prompts one run may spend, whatever it's asked for (J-064).</summary>
     public const int MostPrompts = 8;
 
-    // Past ClaudeChat's own watchdog, which ends a run at 240 s.
     const float MostSeconds = 260f, MostReset = 10f, MostWrite = 5f, SettleSeconds = 1f, WatchOn = 3f, SlowMs = 50f, ReplayBurn = 3f, FireAtY = 12f;
     const int FireAtX = 2, FireDir = 3, HouseLook = 4, CastDir = 2, WaterSearch = 24, WaterStep = 3;
     const float CastLands = 3f;
-    // J-064: no runs past this share of the weekly limit. Each real stream says the share in its rate_limit_event.
     const double MostWeekly = 0.85, MostFiveHour = 0.60;
     const string PromptsFile = "chat-prompts.json", BareContext = "bare", NotesOff = "off", StandInNote = "- The stand-in's note.", CastsFile = "casts.jsonl", AskedFile = "asked.txt", ApiHarness = "api", LongCache = "1h";
-    // No user settings (their skills and plugins) and no slash commands. Neither reads or moves the login.
     static readonly string[] BareArguments = { "--setting-sources", "project,local", "--disable-slash-commands" };
     static readonly string[] ClaudesOwn = { "CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SESSION_ID" };
     static readonly HashSet<string> WorldTools = new() { "apply", "revert", "act", "undo_act", "set_time", "set_weather" };
 
-    // What the frames showed for one prompt, from the world and the view themselves, in ms from the send.
     sealed class Watch
     {
         public RuleSet rules;
@@ -75,7 +70,7 @@ public class ChatPromptsProbe : RowHousesProbe
         if (!knownContext || !knownHarness || !knownNotes) yield break;
         outDir = OutDir ?? Path.Combine(Application.temporaryCachePath, "chat-prompts");
         chatFolder = Path.Combine(outDir, "claude-terminal");
-        modsDirs = new[] { ChemGrid.Folders.ShippedMods, Directory.CreateDirectory(Path.Combine(chatFolder, "mods")).FullName }; // a save goes to the second
+        modsDirs = new[] { ChemGrid.Folders.ShippedMods, Directory.CreateDirectory(Path.Combine(chatFolder, "mods")).FullName };
         modsWere = ModsNow();
         if (RealClaude && !SafeToSpend()) yield break;
         Directory.CreateDirectory(Path.Combine(outDir, "raw"));
@@ -107,7 +102,6 @@ public class ChatPromptsProbe : RowHousesProbe
 
     bool Api => Harness == ApiHarness;
 
-    // The game's own loop: on a stand-in unless real money was asked for, which needs a budget file SafeToSpend has checked.
     ApiChat ApiHarnessNow()
     {
         budget = new ApiBudget(RealClaude ? BudgetFile : Path.Combine(outDir, "stand-in-budget.json"));
@@ -115,7 +109,6 @@ public class ChatPromptsProbe : RowHousesProbe
         return new ApiChat(wire, budget, string.IsNullOrEmpty(Model) ? ClaudeRun.ChatModel : Model, string.IsNullOrEmpty(PrefixTtl) ? LongCache : PrefixTtl);
     }
 
-    // The set, or the one kind asked for.
     List<JObject> Chosen()
     {
         var prompts = Set();
@@ -144,7 +137,6 @@ public class ChatPromptsProbe : RowHousesProbe
         if (!string.IsNullOrEmpty(ScreenshotDir)) yield return Replays(records);
     }
 
-    // What this run adds to claude's arguments: nothing unless asked.
     List<string> Arguments()
     {
         var more = new List<string>();
@@ -153,7 +145,6 @@ public class ChatPromptsProbe : RowHousesProbe
         return more;
     }
 
-    // The stand-in wrote down how it was started: the same as a player's, plus only what this run asked for.
     void CheckAsked()
     {
         string file = Path.Combine(outDir, AskedFile), asked = File.Exists(file) ? File.ReadAllText(file) : "";
@@ -171,7 +162,6 @@ public class ChatPromptsProbe : RowHousesProbe
         return ((JArray)JObject.Parse(File.ReadAllText(file))["prompts"]).Cast<JObject>().ToList();
     }
 
-    // The loop on its stand-in: a tool outside its list never reached the server, and the record reads as Claude Code's does.
     void CheckStandInLoop(List<(JObject prompt, JObject record)> records)
     {
         var first = records.FirstOrDefault().record;
@@ -182,7 +172,6 @@ public class ChatPromptsProbe : RowHousesProbe
         Check("the_server_turned_an_unasked_save_away", save != null && (bool?)save["ok"] == false && ((string)save["reason"] ?? "").StartsWith("Saving is the player's call", StringComparison.Ordinal), save?.ToString());
     }
 
-    // Everything that must hold before a real prompt goes. One that doesn't spends nothing.
     bool SafeToSpend()
     {
         bool outside = !string.IsNullOrEmpty(OutDir) && Path.IsPathRooted(OutDir)
@@ -203,7 +192,6 @@ public class ChatPromptsProbe : RowHousesProbe
         return Result.Checks.All(c => c.Pass);
     }
 
-    // A script standing in for claude, for the proof that spends nothing.
     string StandIn()
     {
         Directory.CreateDirectory(outDir);
@@ -213,7 +201,6 @@ public class ChatPromptsProbe : RowHousesProbe
             "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"result\":\"Done.\",\"total_cost_usd\":0.05,\"num_turns\":2,\"duration_ms\":100,\"duration_api_ms\":90,\"usage\":{\"input_tokens\":10,\"cache_creation_input_tokens\":20,\"cache_read_input_tokens\":3000,\"output_tokens\":40}}");
     }
 
-    // No mods, the weather its own, no notes and no drafts left: a prompt starts as a new game does.
     IEnumerator Fresh()
     {
         var switcher = grid.GetComponent<RuleSwitcher>();
@@ -277,7 +264,6 @@ public class ChatPromptsProbe : RowHousesProbe
         done(record);
     }
 
-    // A stand-in writes no notes: this one is what shows whether they go with the message.
     void PlantNote()
     {
         Directory.CreateDirectory(chatFolder);
@@ -286,7 +272,6 @@ public class ChatPromptsProbe : RowHousesProbe
 
     void Look(Watch watch, ChatRecorder recorder, long ms)
     {
-        // The object, not its fingerprint: a look doesn't change the fingerprint.
         if (watch.rulesMs == null && !ReferenceEquals(grid.CurrentRules, watch.rules)) watch.rulesMs = ms;
         if (watch.rowsMs == null && houses.Count != watch.rows) watch.rowsMs = ms;
         if (Busy()) watch.lastRecolourMs = ms;
@@ -305,7 +290,6 @@ public class ChatPromptsProbe : RowHousesProbe
         if (frame > SlowMs) watch.lastSlowMs = ms;
     }
 
-    // The share of a limit used, as the last stream had it; null if it hasn't said.
     double? Window(string name)
     {
         string line = rateLine;
@@ -316,8 +300,6 @@ public class ChatPromptsProbe : RowHousesProbe
 
     double? FiveHour() => Window("five_hour");
 
-    // What's true in the world once a prompt has ended, from the rules in force: chat-strict scores this
-    // over the record's patches. A spell is kept if it's fire or not in the base rules.
     JObject WorldNow()
     {
         var rules = JObject.Parse(grid.World.Rules.ToJson());
@@ -342,7 +324,6 @@ public class ChatPromptsProbe : RowHousesProbe
         };
     }
 
-    // Each material's catch and fuel, as the engine has them, with what burns only.
     static JObject Burning(JObject rules)
     {
         var burn = new JObject();
@@ -366,7 +347,7 @@ public class ChatPromptsProbe : RowHousesProbe
             }
             catch (IOException)
             {
-                return null; // still being written
+                return null;
             }
             foreach (string line in lines)
             {
@@ -377,7 +358,6 @@ public class ChatPromptsProbe : RowHousesProbe
         return null;
     }
 
-    // One line per prompt beside the records: which is which, the send's clock, the notes as they were, the watch.
     void Keep(int n, string name, long sent, JObject prompt, JObject record, Watch watch)
     {
         string notes = Path.Combine(chatFolder, ClaudeRun.NotesFile);
@@ -418,7 +398,6 @@ public class ChatPromptsProbe : RowHousesProbe
         File.AppendAllText(Path.Combine(outDir, "prompts.jsonl"), line.ToString(Formatting.None) + "\n");
     }
 
-    // Whether the run should go on. A wrong answer is a finding and it does; what would waste the next prompt doesn't.
     bool Carries(int n, JObject prompt, JObject record)
     {
         string name = $"p{n}-{(string)prompt["kind"]}", outcome = (string)record["outcome"], why = (string)record["why"] ?? "";
@@ -451,11 +430,8 @@ public class ChatPromptsProbe : RowHousesProbe
         return same && under && theModel && !signedOut && outcome is not ("failed" or "timedout" or "stopped");
     }
 
-    // Each mod file and when it was written: a model can save over one as well as add one.
     string[] ModsNow() => modsDirs.SelectMany(d => Directory.GetFiles(d)).OrderBy(f => f, StringComparer.Ordinal).Select(f => $"{f}|{File.GetLastWriteTimeUtc(f).Ticks}").ToArray();
 
-    // A mod a model saved unasked is a finding, not a fault: it goes beside the record and out of the mods.
-    // Anything else that moved in the mods folders stays there for Carries to stop on.
     void TakeSaved(string name)
     {
         var known = modsWere.Select(m => m.Substring(0, m.LastIndexOf('|'))).ToHashSet();
@@ -468,8 +444,6 @@ public class ChatPromptsProbe : RowHousesProbe
 
     const string StandInMod = "big-fireball";
 
-    // The recorded patches again, with nobody's Claude: each must apply as it stands (a record can rebuild what
-    // was done), and shows itself where a camera can see it. The fire's blue only shows on a fire.
     IEnumerator Replays(List<(JObject prompt, JObject record)> records)
     {
         var switcher = grid.GetComponent<RuleSwitcher>();
@@ -498,7 +472,6 @@ public class ChatPromptsProbe : RowHousesProbe
         }
     }
 
-    // Each run's recorded spell, cast as a player would, on open water where it should show. Spends nothing.
     IEnumerator CastThem()
     {
         chatFolder = Path.Combine(Application.temporaryCachePath, "chat-prompts", "claude-terminal");
@@ -541,7 +514,6 @@ public class ChatPromptsProbe : RowHousesProbe
         outcome["frozen"] = cells.Count(c => World.At(c.x, c.y).Frozen);
     }
 
-    // Wet cells a cast can show on, none frozen yet: an earlier cast may have left ice nearby.
     bool OpenWater(SpellDef spell, Vector2Int shore, out Vector2Int at)
     {
         for (int y = shore.y + 2; y < shore.y + WaterSearch; y += WaterStep)
@@ -556,7 +528,6 @@ public class ChatPromptsProbe : RowHousesProbe
         return false;
     }
 
-    // The spell prompt's last patch in a run's folder, and the spell it adds.
     static JObject RecordedSpell(string folder, out string id)
     {
         id = null;

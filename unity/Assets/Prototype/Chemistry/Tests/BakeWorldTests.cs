@@ -26,8 +26,6 @@ namespace Chem.Tests
                 var m = GeneratedMap.Load(BakeTests.TwoSquares(root));
                 int chunkCount = m.Gen.ChunksW * m.Gen.ChunksH;
                 string one = Path.Combine(root, "one"), four = Path.Combine(root, "four"), given = Path.Combine(root, "given"), whole = Path.Combine(root, "whole");
-                // On one thread its chunks are made on this one (Parallel.For runs a single worker inline), so this
-                // thread's allocation is the making's: the bake once made 9 MB of garbage a chunk.
                 long allocated = GC.GetAllocatedBytesForCurrentThread();
                 var watch = Stopwatch.StartNew();
                 m.Bake(one, threads: 1);
@@ -47,12 +45,9 @@ namespace Chem.Tests
                         Assert.That(File.ReadAllBytes(Path.Combine(dir, name)), Is.EqualTo(File.ReadAllBytes(Path.Combine(one, name))), $"{name} in {Path.GetFileName(dir)}");
                 }
 
-                // The files the bake once held the whole map for, as it wrote them then.
                 var (land, _) = WholeMap(m, chunks, whole);
                 foreach (string name in new[] { MapFile.CellsName, "things.json" })
                     Assert.That(File.ReadAllBytes(Path.Combine(one, name)), Is.EqualTo(File.ReadAllBytes(Path.Combine(whole, name))), name);
-                // land.json is compared by its land, not its bytes: the deflater's output fed a row at a time differs by
-                // runtime (J-088), and a generated map is known by its inputs, never its baked files.
                 int w = m.Gen.CellsW, h = m.Gen.CellsH;
                 Assert.That(LandFile.Read(File.ReadAllText(Path.Combine(one, MapFile.LandName)), w, h),
                     Is.EqualTo(LandFile.Read(File.ReadAllText(Path.Combine(whole, MapFile.LandName)), w, h)), MapFile.LandName);
@@ -64,8 +59,6 @@ namespace Chem.Tests
                 for (int i = 0; i < filled.Count; i++)
                     Assert.That(JToken.DeepEquals(baked[i], filled[i]), Is.True, $"{filled[i]["id"]}'s rows");
 
-                // Baked again over its own files, its cells.txt is left as it is (MapFile.WriteCells), and nothing of the
-                // bake's own is left beside it.
                 string cells = Path.Combine(one, MapFile.CellsName);
                 var written = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
                 File.SetLastWriteTimeUtc(cells, written);
@@ -79,10 +72,6 @@ namespace Chem.Tests
             }
         }
 
-        // ---------- the bake as it was: the whole map, then its files ----------
-
-        // cells.txt, land.json and things.json as the bake wrote them before bake-lean: every chunk's cells, land and
-        // things gathered for the whole map, then each file written whole. The land, for the water bodies.
         static (int[] land, char[] cells) WholeMap(GeneratedMap m, GeneratedChunk[] chunks, string dir)
         {
             Directory.CreateDirectory(dir);
@@ -108,7 +97,6 @@ namespace Chem.Tests
             return (land, cells);
         }
 
-        // LandFile.Write as it was: a byte at a time into the deflater, the base64 of it all in the JSON.
         static string WholeLand(int[] land, int w, int h)
         {
             using var packed = new MemoryStream();
@@ -138,8 +126,6 @@ namespace Chem.Tests
     [Category("Unit")]
     public class WaterRunsTests
     {
-        // Made-up land, a cell in two under the water (rough enough for bodies that fork and join again, U's and rings,
-        // and cells that touch only at a corner): places.json's water bodies are the flood fill's.
         [TestCase(1)]
         [TestCase(2)]
         [TestCase(3)]

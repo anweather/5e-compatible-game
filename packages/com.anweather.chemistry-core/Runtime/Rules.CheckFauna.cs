@@ -55,7 +55,6 @@ namespace Chem
                 else if (row["parts"] != null) Slots(who, row["parts"], parts);
             }
 
-            // A graft (FaunaGraft): its donors as written, then its slots as flattened, so every part and on is checked.
             void Graft(string id, JObject row, JObject species, JObject parts)
             {
                 string who = $"species {id}";
@@ -77,7 +76,6 @@ namespace Chem
                 if (d["coat"] != null && Show(d["coat"]) != "own") Errors.Add($"{who}: a donor's coat can only be own (its own coats and hair); leave it out for the row's coat");
             }
 
-            // A donor's slot lists and its [x, y, z] places.
             void DonorLists(string who, JObject d)
             {
                 foreach (var key in new[] { "take", "drop" })

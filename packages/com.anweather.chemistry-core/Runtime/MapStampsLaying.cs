@@ -7,10 +7,6 @@ namespace Chem
 {
     public static class MapStampsLaying
     {
-        /// <summary>
-        /// Lays them on a world as it's made, a canyon's trail on its floor's dry cells and a bare stamp's terrain where it
-        /// moved the land; why any was refused, by id, and a trail or bare terrain the rules haven't got.
-        /// </summary>
         public static List<string> LayInto(this MapStamps stamps, World world)
         {
             var refused = new List<string>();
@@ -29,12 +25,11 @@ namespace Chem
             return refused;
         }
 
-        // Every dry cell of open ground or standing tree the stamp moved, row by row, painted its bare terrain.
         static void Bare(World world, MapStamp s)
         {
             var stamp = s.Stamp;
             int reach = stamp.Bound;
-            var (xFrom, xTo) = world.XSpan(stamp.X - reach, stamp.X + reach); // round the seam on a world that wraps
+            var (xFrom, xTo) = world.XSpan(stamp.X - reach, stamp.X + reach);
             var (yFrom, yTo) = world.YSpan(stamp.Y - reach, stamp.Y + reach);
             for (int y = yFrom; y <= yTo; y++)
                 for (int x = xFrom; x <= xTo; x++)

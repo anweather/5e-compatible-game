@@ -1,9 +1,9 @@
+// A tree as an octahedral impostor (TreeImpostor.hlsl, docs/design/tree-impostors.md): one quad a tree, drawn
+// instanced by TreeImpostors from the atlases TreeImpostorBaker bakes. Lit by the main light (with its shadows and
+// a wrap for the leaves) and the ambient, in the air (Air.hlsl), its depth moved onto the tree's surface; it casts its shadow
+// from the light's own three views. Forward and Forward+ only.
 Shader "Prototype/TreeImpostor"
 {
-    // A tree as an octahedral impostor (TreeImpostor.hlsl, docs/design/tree-impostors.md): one quad a tree, drawn
-    // instanced by TreeImpostors from the atlases TreeImpostorBaker bakes. Lit by the main light (with its shadows and
-    // a wrap for the leaves) and the ambient, in the air (Air.hlsl), its depth moved onto the tree's surface; it casts its shadow
-    // from the light's own three views. Forward and Forward+ only.
     Properties
     {
         [NoScaleOffset] _AlbedoAtlas("Albedo atlas", 2D) = "clear" {}
@@ -39,8 +39,6 @@ Shader "Prototype/TreeImpostor"
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #pragma multi_compile_instancing
-            // Far impostors (TreeImpostors' flat material) keep the quad's own depth: no SV_Depth, so the GPU can test their
-            // depth before shading them, and a wood's trees hidden behind nearer ones cost next to nothing.
             #pragma multi_compile_local _ _IMPOSTOR_FLAT
 
             #include "TreeImpostor.hlsl"
@@ -59,7 +57,6 @@ Shader "Prototype/TreeImpostor"
                 float3 positionWS = TransformObjectToWorld(s.positionOS);
                 float3 normalWS = TransformObjectToWorldNormal(s.normalOS);
             #if defined(_IMPOSTOR_FLAT)
-                // Far impostors stand past the sun's shadow distance: no shadow map to read.
                 Light light = GetMainLight();
                 float shadow = 1.0;
             #else
@@ -69,8 +66,6 @@ Shader "Prototype/TreeImpostor"
                 float ndl = saturate((dot(normalWS, light.direction) + _Wrap) / (1.0 + _Wrap));
                 float3 viewWS = normalize(GetCameraPositionWS() - positionWS);
                 float through = pow(saturate(dot(viewWS, -light.direction)), 4.0) * _Translucency;
-                // Not light.distanceAttenuation: for a directional light that's unity_LightData.z, per renderer, which an
-                // instanced draw (RenderMeshInstanced) leaves 0.
                 float3 lit = light.color * ((ndl + through) * shadow);
                 float3 colour = s.albedo * (SampleSH(normalWS) + lit);
                 if (_Debug > 0.5 && _Debug < 1.5) colour = lit;

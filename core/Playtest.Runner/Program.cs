@@ -34,7 +34,6 @@ namespace Playtest.Runner
                 case "run": return PlaytestRun.Run(paths, options);
                 case "compare": return Compare.Run(args.Length > 1 ? args[1] : null, args.Length > 2 ? args[2] : null);
                 case "build":
-                    // J-018: built for a release candidate when asked (main or a tag), never just because dev moved.
                     if (!options.TryGetValue("ref", out var gitRef) || gitRef == "true")
                     {
                         Console.Error.WriteLine("playtest build needs --ref <branch or tag> (the release candidate: main, or a tag)");
@@ -58,7 +57,6 @@ namespace Playtest.Runner
             return 0;
         }
 
-        /// <summary>--name value pairs and --flag switches after the command.</summary>
         public static Dictionary<string, string> Options(string[] args)
         {
             var options = new Dictionary<string, string>(StringComparer.Ordinal);

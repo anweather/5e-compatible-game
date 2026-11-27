@@ -7,7 +7,6 @@ using System.Linq;
 
 namespace Chem
 {
-    /// <summary>One tab of the spell list: its name, colour and spells, in spells.json order.</summary>
     public sealed class SpellTab
     {
         public SpellTab(string name, string color, IReadOnlyList<string> spellIds)
@@ -18,21 +17,14 @@ namespace Chem
         }
 
         public string Name { get; }
-        /// <summary>"#rrggbb".</summary>
         public string Color { get; }
-        /// <summary>Never empty.</summary>
         public IReadOnlyList<string> SpellIds { get; }
     }
 
-    /// <summary>The spell list's tabs for a rule set.</summary>
     public static class SpellList
     {
         public const string AllName = "All spells", OffWheelName = "Not on the wheel";
 
-        /// <summary>
-        /// The elements with spells, in order; a spell with no element goes in the last one, as
-        /// on the radial. Then All spells, then Not on the wheel if the radial leaves any out.
-        /// </summary>
         public static IReadOnlyList<SpellTab> From(Rules rules)
         {
             if (rules == null) throw new ArgumentNullException(nameof(rules));
@@ -53,7 +45,6 @@ namespace Chem
             return tabs;
         }
 
-        /// <summary>The first tab holding this spell, or 0.</summary>
         public static int TabOf(IReadOnlyList<SpellTab> tabs, string spellId)
         {
             for (int i = 0; i < tabs.Count; i++)

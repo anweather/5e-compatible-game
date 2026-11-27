@@ -17,10 +17,8 @@ public static class ChatSetup
     static string ownFile;
     static JObject held;
 
-    /// <summary>A test's or a probe's file in place of the player's.</summary>
     public static string TestFile { get; set; }
 
-    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options): a probe sets them.
     [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -28,12 +26,10 @@ public static class ChatSetup
         held = null;
     }
 
-    /// <summary>Works out the player's file. Called at the start.</summary>
     public static void FindFile() => ownFile ??= ChemGrid.Folders.ChatSetupFile;
 
     static string SetupFile => TestFile ?? ownFile;
 
-    /// <summary>Forgets what's held, so the next read comes from the file, as after a restart.</summary>
     public static void Reload() => held = null;
 
     static JObject Held => held ??= Load();
@@ -62,23 +58,18 @@ public static class ChatSetup
         File.Delete(fresh);
     }
 
-    /// <summary>The profile in force: the player's pick, else the API with a key to use, else Claude Code, as the chat always was.</summary>
     public static ChatProfile Chosen => ChatProfile.Of((string)Held[ProfileField]) ?? (ApiKey.InPlay ? ChatProfile.Api : ChatProfile.ClaudeCode);
 
-    /// <summary>Whether the chat goes through the API now: chosen, and with a key. With none it stays Claude Code's.</summary>
     public static bool OnApi => Chosen == ChatProfile.Api && ApiKey.InPlay;
 
-    /// <summary>The Settings screen's: picks a profile.</summary>
     public static void Choose(ChatProfile profile)
     {
         Held[ProfileField] = profile.Id;
         Store();
     }
 
-    /// <summary>The Claude Code to run: as the player gave it, or plain claude.</summary>
     public static string ProgramPath => (string)Held[PathField] ?? ChatProfile.ClaudeCode.Program;
 
-    /// <summary>The Settings screen's: sets the install to run.</summary>
     public static void SetPath(string path)
     {
         Held[PathField] = path.Trim().Trim('"');
@@ -87,13 +78,10 @@ public static class ChatSetup
 
     static JObject Variables => Held[VariablesField] as JObject ?? new JObject();
 
-    /// <summary>The variables the player listed, by name: the values stay in here, for the screen never shows them.</summary>
     public static string[] VariableNames => Variables.Properties().Select(p => p.Name).ToArray();
 
-    /// <summary>The values of what's listed, to cut from anything claude says.</summary>
     public static string[] Secrets => Variables.Properties().Select(p => (string)p.Value).Where(v => !string.IsNullOrEmpty(v)).ToArray();
 
-    /// <summary>The Settings screen's: lists a variable for Claude Code's runs.</summary>
     public static void SetVariable(string name, string value)
     {
         var variables = Variables;
@@ -102,7 +90,6 @@ public static class ChatSetup
         Store();
     }
 
-    /// <summary>The Settings screen's: takes one off the list.</summary>
     public static void RemoveVariable(string name)
     {
         var variables = Variables;
@@ -111,7 +98,6 @@ public static class ChatSetup
         Store();
     }
 
-    /// <summary>A Claude Code run's environment: what the player listed and nothing more, and never the game's own key.</summary>
     public static void Hand(IDictionary<string, string> environment)
     {
         foreach (var p in Variables.Properties()) environment[p.Name] = (string)p.Value;

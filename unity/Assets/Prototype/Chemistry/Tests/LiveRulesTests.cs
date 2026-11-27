@@ -1,3 +1,6 @@
+// Live mods: composing, checking, and switching rules on a running world. The
+// expected orders and messages first came from running the TS sandbox's composeRules
+// and validateRules on the same patches (sandbox/src/rules.ts, frozen 2026-10-31).
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -7,11 +10,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Live mods: composing, checking, and switching rules on a running world. The
-    /// expected orders and messages first came from running the TS sandbox's composeRules
-    /// and validateRules on the same patches (sandbox/src/rules.ts, frozen 2026-10-31).
-    /// </summary>
     [Category("Simulation")]
     public class LiveRulesTests
     {
@@ -19,7 +17,6 @@ namespace Chem.Tests
 
         static Rules Base => baseRules ??= Rules.Load(ChemistryTests.RulesDir());
 
-        /// <summary>A mod written with ' for " so the JSON reads cleanly in C#.</summary>
         static ModPatch Mod(string json) => ModPatch.Parse(json.Replace('\'', '"'));
 
         static Rules With(params string[] mods) => Base.WithMods(mods.Select(Mod).ToList());
@@ -34,7 +31,6 @@ namespace Chem.Tests
 
         static void Run(World w, int ticks) { for (int i = 0; i < ticks; i++) w.Step(); }
 
-        /// <summary>A grass field set alight along its west edge, so the fire is sure to take.</summary>
         static World Meadow(Rules rules, uint seed = 5)
         {
             var w = new World(rules, 40, 9, seed, "grass");
@@ -42,16 +38,11 @@ namespace Chem.Tests
             return w;
         }
 
-        /// <summary>Indexes of squares that are burning or have burned (grass burns to dirt).</summary>
         static HashSet<int> Burnt(World w) =>
             new HashSet<int>(Enumerable.Range(0, w.W * w.H).Where(i => w.CellAt(i).Fire > 0 || w.CellAt(i).T == "dirt"));
 
         const string NoSpread = "{ 'sim': { 'fire': { 'spreadChance': 0 } } }";
 
-        // ---------- composing: parity with composeRules ----------
-
-        // A view skips redrawing the world for a switch that changed no colour (ChemGrid.Announce, #181): the looks hold
-        // for a sim value and change for a look, which the shared fingerprint leaves out.
         [Test]
         public void SameLooksChangesOnlyForALook()
         {
@@ -71,7 +62,6 @@ namespace Chem.Tests
         [Test]
         public void LongSlidesModComposesLikeTheSandbox()
         {
-            // The mod from net.test.ts "a mod switched on mid-game changes the rules ...".
             var r = With(@"{ 'sim': { 'push': { 'slideCells': 7 } }, 'reactions': { 'add': [
                 { 'id': 'frost-on-grass', 'element': 'cold', 'if': { 'terrainTag': 'flammable' }, 'do': [{ 'extinguish': true }], 'log': 'Frost settles on the grass' } ] } }");
             Assert.That(Ids(r.CellRulesFor("cold")), Is.EqualTo(new[] { "frost-on-grass", "cold-cloud", "cold-fire", "cold-steam", "cold-crust", "cold-water", "cold-liquid", "cold-covered", "cold-frost" }));
@@ -146,25 +136,19 @@ namespace Chem.Tests
         [Test]
         public void EveryExamplePatchInModdingDocPassesTheChecks()
         {
-            // Mirrors the net.test.ts test of the same name.
             var md = File.ReadAllText(Path.Combine(ChemistryTests.Folders.Repo, "docs", "MODDING.md"));
             var blocks = Regex.Matches(md, "```json\r?\n([\\s\\S]*?)```").Cast<Match>().Select(m => m.Groups[1].Value).ToList();
             Assert.That(blocks.Count, Is.GreaterThanOrEqualTo(4), "found the examples");
             foreach (var b in blocks) Assert.DoesNotThrow(() => Base.WithMods(new[] { ModPatch.Parse(b) }), b);
         }
 
-        // ---------- checks: parity with validateRules, plus types and ranges ----------
-
         [Test]
         public void ABrokenModIsRefused()
         {
-            // net.test.ts "a broken mod is refused and the rules stay as they were".
             var errors = ErrorsOf("{ 'reactions': { 'add': [{ 'id': 'x', 'element': 'fire', 'do': [{ 'teleportEverything': true }] }] } }");
             Assert.That(errors, Is.EqualTo(new[] { "rule x: unknown effect \"teleportEverything\" (new verbs need code; see docs/MODDING.md)" }));
         }
 
-        // materials.json (spelled as verb groups since step 3) with every terrain and cover spelled flat,
-        // the old way (MaterialGroups.Ungroup).
         static Rules Flat()
         {
             var files = Directory.GetFiles(ChemistryTests.RulesDir(), "*.json").ToDictionary(Path.GetFileName, File.ReadAllText);
@@ -177,7 +161,6 @@ namespace Chem.Tests
         [Test]
         public void MaterialsJsonIsSpelledAsVerbGroups()
         {
-            // docs/MATERIALS.md, step 3: no terrain or cover in the committed file uses a flat verb key.
             var materials = JObject.Parse(File.ReadAllText(Path.Combine(ChemistryTests.RulesDir(), "materials.json")));
             string[] flatKeys = { "flammability", "fuel", "heat", "burnsTo", "burnLog", "fireLook", "breaksTo", "dugTo", "hardness", "soakEvery", "soakEveryWet", "waterTo", "growsTo", "growLog", "uprootsTo", "uprootLog", "burnIntensity" };
             foreach (var table in new[] { "terrain", "covers" })
@@ -193,7 +176,6 @@ namespace Chem.Tests
         [Test]
         public void MaterialsSpelledAsVerbGroupsReadTheSame()
         {
-            // docs/MATERIALS.md, step 1: the grouped spelling is an alias; nothing reads differently.
             var grouped = Base;
             var flat = Flat();
             Assert.That(grouped.Terrain.Keys, Is.EqualTo(flat.Terrain.Keys));
@@ -212,7 +194,6 @@ namespace Chem.Tests
                 Assert.That(g.Tags.OrderBy(x => x, System.StringComparer.Ordinal), Is.EqualTo(c.Tags.OrderBy(x => x, System.StringComparer.Ordinal)), id);
                 Assert.That((g.Flammability, g.Fuel, g.BurnIntensity, g.FireLook, g.Lasts), Is.EqualTo((c.Flammability, c.Fuel, c.BurnIntensity, c.FireLook, c.Lasts)), id);
             }
-            // The same world from either: a fire through grass, brambles and oil, and a soaking puddle.
             string Run(Rules r)
             {
                 var w = new World(r, 12, 8, 3, "grass");
@@ -259,7 +240,6 @@ namespace Chem.Tests
                   'addEntity': [{ 'id': 'a', 'element': 'cold', 'do': [] }] },
                 'spells': [{ 'id': 's1', 'name': '', 'level': 1, 'shape': 'blob', 'element': 'plasma', 'blurb': '' }],
                 'critters': [{ 'id': 'c1', 'name': 'C', 'glyph': 'c', 'color': '#000', 'mode': 'emit', 'element': 'plasma', 'blurb': '' }] }");
-            // validateRules' output for the same patch, in its order.
             Assert.That(errors, Is.EqualTo(new[]
             {
                 "terrain mud: burnsTo magma unknown",
@@ -307,8 +287,6 @@ namespace Chem.Tests
                 Is.EqualTo(new[] { "spell big: radius must be at least 0" }));
         }
 
-        // ---------- switching rules on a running world ----------
-
         [Test]
         public void SwitchingFireSpreadMidGameChangesBehaviourFromThatTick()
         {
@@ -332,7 +310,6 @@ namespace Chem.Tests
         {
             string Play(bool mod)
             {
-                // Each peer loads and composes on its own, as on separate machines.
                 var own = Rules.Load(ChemistryTests.RulesDir());
                 var w = Meadow(own, 3);
                 Run(w, 12);
@@ -399,8 +376,6 @@ namespace Chem.Tests
             Assert.That(w.At(1, 1).Fire, Is.EqualTo(0), "wet grass doesn't catch");
         }
 
-        // A switch passes over the cells only when one could stop fitting (#181): a narrower height range still clamps
-        // them, and a switch of something else leaves them as they were.
         [Test]
         public void ANarrowerHeightRangeStillClampsTheCells()
         {

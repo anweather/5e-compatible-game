@@ -32,8 +32,6 @@ namespace Chem.Tests
             if (root != null && Directory.Exists(root)) Directory.Delete(root, true);
         }
 
-        // Every cell along a main road's line, at every cell step, once round the torus and a little past its start again (a
-        // world on), so the walk goes over the seam.
         IEnumerable<(int x, int y)> Along(bool alongRow, int index)
         {
             var path = roads.Route(alongRow, index);
@@ -66,7 +64,6 @@ namespace Chem.Tests
             var host = Peer(hostSource);
             Assert.That(hostSource.Made, Is.LessThan(60), "loading lays nothing for the roads: only the spawn's reach is made");
             var other = Peer(Source());
-            // Along the main road from the spawn, east over the seam, a fire bolt now and then onto the road ahead.
             var path = Along(true, roads.MainRows[1]).Select(p => (x: PlanGrid.Mod(p.x, host.W), y: map.Gen.WrapCellY(p.y))).ToList();
             int from = path.FindIndex(p => p.x == 6880);
             Assert.That(from, Is.GreaterThanOrEqualTo(0));

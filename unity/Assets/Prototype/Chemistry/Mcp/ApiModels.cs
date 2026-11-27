@@ -8,24 +8,16 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem.Mcp
 {
-    /// <summary>How a key's check came out.</summary>
     public enum KeyAnswer
     {
-        /// <summary>It works, and it can use a model the game can run.</summary>
         Good,
-        /// <summary>It works, but it can use none of the models the game can run.</summary>
         NoModels,
-        /// <summary>The API turned it down.</summary>
         Refused,
-        /// <summary>Nothing answered: no network, or the API couldn't be reached.</summary>
         Unreached,
-        /// <summary>The API answered, but with no list to read.</summary>
         Failed,
-        /// <summary>It was never sent: it can't be a key, or a saved one can't be read.</summary>
         NotSent,
     }
 
-    /// <summary>A key's check: how it came out, what to tell the player, and the models to pick from.</summary>
     public sealed class KeyCheck
     {
         public KeyAnswer Answer;
@@ -33,10 +25,8 @@ namespace Chem.Mcp
         public IReadOnlyList<string> Models = System.Array.Empty<string>();
     }
 
-    /// <summary>What asks the API which models a key can use.</summary>
     public interface IKeyLister
     {
-        /// <summary>Blocks until it knows, so never on the main thread.</summary>
         KeyCheck Models(string key, System.Threading.CancellationToken token);
     }
 
@@ -47,17 +37,13 @@ namespace Chem.Mcp
             Offline = "Couldn't reach Anthropic. Check your connection and try again.", Later = "Anthropic couldn't check that key just now. Try again in a moment.",
             NotAKey = "That doesn't look like a key.";
 
-        /// <summary>Whether this could go in a header at all: no spaces, no line breaks, nothing that isn't plain ASCII.</summary>
         public static bool LooksLikeKey(string key) =>
             !string.IsNullOrEmpty(key) && key.All(c => c > ' ' && c < 127);
 
-        /// <summary>A key that was never sent.</summary>
         public static KeyCheck NotSent(string says = NotAKey) => new KeyCheck { Answer = KeyAnswer.NotSent, Says = says };
 
-        /// <summary>Nothing answered.</summary>
         public static KeyCheck Unreached() => new KeyCheck { Answer = KeyAnswer.Unreached, Says = Offline };
 
-        /// <summary>The API's answer to GET /v1/models.</summary>
         public static KeyCheck Read(int status, string body)
         {
             if (status == 401) return new KeyCheck { Answer = KeyAnswer.Refused, Says = Turned };
@@ -69,7 +55,6 @@ namespace Chem.Mcp
                 : new KeyCheck { Answer = KeyAnswer.Good, Says = Works, Models = usable };
         }
 
-        // The ids in the answer, in its order; false if it isn't a list of models.
         static bool TryList(string body, out List<string> ids)
         {
             ids = new List<string>();

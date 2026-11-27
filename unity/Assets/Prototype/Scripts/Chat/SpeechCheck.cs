@@ -19,7 +19,6 @@ public class SpeechCheck : MonoBehaviour
     public const string CheckFlag = "-speech-check";
     const float DefaultSeconds = 4f, IdleSeconds = 1f, MostWaitForKey = 10f, MostEnd = 120f, ShowResult = 4f;
 
-    /// <summary>Frame times over a stretch, in ms.</summary>
     public sealed class Frames
     {
         readonly List<float> ms = new();
@@ -31,7 +30,6 @@ public class SpeechCheck : MonoBehaviour
         public override string ToString() => $"mean {Mean:0.0} ms, worst {Worst:0.0} ms over {Count}";
     }
 
-    /// <summary>What one check heard, how long it took, and the frames meanwhile.</summary>
     public sealed class Result
     {
         public string Source, Transcriber, Ended = "no end", Text = "";
@@ -44,7 +42,6 @@ public class SpeechCheck : MonoBehaviour
             $"{Transcriber} from {Source}: {Ended}, {VoiceTrace.Words(Text)}, {Heard:0.0} s of sound; open {OpenMs:0} ms, record {RecordMs:0} ms, transcribe {TranscribeMs:0} ms, total {TotalMs:0} ms; frames idle {Idle}, transcribing {Busy}";
     }
 
-    /// <summary>What the check is doing, for the screen.</summary>
     public static string Showing { get; private set; }
 
     float seconds;
@@ -61,7 +58,6 @@ public class SpeechCheck : MonoBehaviour
         check.seconds = Mathf.Max(1f, seconds);
     }
 
-    /// <summary>The chosen adapter if it's a transcriber, otherwise the stub; null where neither may run.</summary>
     public static TranscribedSpeech Chosen()
     {
         var made = SpeechChoice.Make();
@@ -100,7 +96,6 @@ public class SpeechCheck : MonoBehaviour
         GUI.Box(new Rect(40, 40, Screen.width - 80, 160), Showing, style);
     }
 
-    /// <summary>One hold of these seconds (0 for a WAV file, which is all there at once) through this adapter, after a key press if asked, into result.</summary>
     public static IEnumerator Run(TranscribedSpeech speech, float seconds, bool waitForKey, Result result)
     {
         result.Source = speech.Source;

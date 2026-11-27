@@ -12,10 +12,8 @@ public static class WindowsSpeechSettings
     const string Online = @"Software\Microsoft\Speech_OneCore\Settings\OnlineSpeechPrivacy";
     const string Where = "Settings > Privacy & security > ";
 
-    /// <summary>What the player is told when online speech recognition is off.</summary>
     public const string OnlineSpeechOff = "Voice needs Windows' online speech recognition: turn it on in " + Where + "Speech.";
 
-    /// <summary>The settings as Windows holds them; null where it has none.</summary>
     public readonly struct Values
     {
         public readonly string MicForPc, MicForApps, MicForDesktopApps;
@@ -33,7 +31,6 @@ public static class WindowsSpeechSettings
             $"microphone for the PC {MicForPc ?? "unset"}, for apps {MicForApps ?? "unset"}, for desktop apps {MicForDesktopApps ?? "unset"}, online speech {(OnlineSpeech?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "unset")}";
     }
 
-    /// <summary>What to tell the player about these settings, or null if none is off.</summary>
     public static string Problem(Values v)
     {
         if (Off(v.MicForPc)) return $"Windows has the microphone off for this PC: turn on {Where}Microphone > Microphone access.";
@@ -49,7 +46,6 @@ public static class WindowsSpeechSettings
     static readonly UIntPtr CurrentUser = (UIntPtr)0x80000001u, LocalMachine = (UIntPtr)0x80000002u;
     const uint AnyString = 0x2, Dword = 0x10;
 
-    /// <summary>This PC's settings, from the registry. Cheap: four reads.</summary>
     public static Values Read() => new(
         Text(LocalMachine, Mic), Text(CurrentUser, Mic), Text(CurrentUser, Mic + @"\NonPackaged"), Number(CurrentUser, Online, "HasAccepted"));
 

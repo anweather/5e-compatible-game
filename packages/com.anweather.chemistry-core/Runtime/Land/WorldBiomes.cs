@@ -16,21 +16,16 @@ namespace Chem
         const long One = BiomeMath.One;
         const int Square = WorldPlan.SquareCells;
 
-        // The altitude each band stands for (Q16), sea to peaks: mountains' range (0.68 and up) is high ground and peaks,
-        // the lowland biomes' (under 0.3 to 0.5) low land, temperate's (0.25 to 0.68) the hills.
         static readonly long[] BandAltitude = { 6554, 14418, 29491, 47186, 58982 };
-        // A biome's altitude reaches this far past its lowest and highest bands' (0.1).
         const long BandMargin = 6554;
         const long IceAltitude = 62259, DuneAltitude = 9830;
-        /// <summary>The low band's altitude: land cools with height above it.</summary>
         internal const long LowAltitude = 14418;
 
         readonly int gridW, gridH;
         readonly bool wrapX;
-        readonly long[] altitude; // per square, Q16
-        readonly long[] cold;     // per row, Q16
-        readonly (long lo, long hi)[] rowAltitude; // per biomes.json row: the altitudes of its templates' bands, or (−1, −1)
-        /// <summary>How much of the temperature is latitude's, Q16 (the plan's Latitude input).</summary>
+        readonly long[] altitude;
+        readonly long[] cold;
+        readonly (long lo, long hi)[] rowAltitude;
         internal readonly long Latitude;
         internal readonly PlacedSketch Sketch;
 
@@ -60,10 +55,6 @@ namespace Chem
             if (plan.Inputs.Sketch != null) Sketch = new PlacedSketch(plan.Inputs.Sketch, table, plan.Seed, g.W, g.H, g.WrapX);
         }
 
-        /// <summary>
-        /// The biome field of a plan's world: <paramref name="biomes"/>' rows and settings, the plan's seed, repeating round
-        /// a world that wraps, read from the plan's latitude, bands and sketch.
-        /// </summary>
         public static BiomeField Field(BiomeTable biomes, WorldPlan plan)
         {
             var g = plan.Grid;
@@ -82,7 +73,6 @@ namespace Chem
                 Layout = new int[g.W, g.H],
             };
             t.Rows.AddRange(biomes.Rows);
-            // The one anchor left: the pinned valley's own biome, so the land round it meets it in kind.
             for (int x = 0; x < g.W; x++)
                 for (int y = 0; y < g.H; y++) t.Layout[x, y] = -1;
             var lib = plan.Library;
@@ -91,26 +81,18 @@ namespace Chem
             return new BiomeField(t, plan.Seed, new WorldBiomes(plan, t));
         }
 
-        /// <summary>The plan cell of a field point (Q16 cells, y north), as Q16 plan cells (y south).</summary>
         internal (long x, long y) PlanPoint(long xq, long yq) => (xq, (long)gridH * Square * One - yq);
 
         static long Altitude(int band) => BandAltitude[Math.Max(0, Math.Min(BandAltitude.Length - 1, band))];
 
-        /// <summary>The altitudes biomes.json row <paramref name="row"/> stands at (its templates' bands), or (−1, −1) for any.</summary>
         internal (long lo, long hi) AltitudeOf(int row) => row < 0 ? (-1L, -1L) : rowAltitude[row];
 
-        /// <summary>The plan row (y south) of a field row (y north).</summary>
         internal int PlanRow(int fy) => gridH * Square - 1 - fy;
 
-        /// <summary>The bands' altitude at a plan point (Q16 cells, y south), between world square centres.</summary>
         internal long Altitude(long xq, long yq) => Between(xq, yq, altitude, gridW);
 
-        /// <summary>Latitude's coldness at a plan point, 0 desert to 1 ice, between row centres.</summary>
         internal long Cold(long xq, long yq) => Between(xq, yq, cold, 0);
 
-        // Bilinear between the four world square centres round a point, round the seam where the world wraps, held at the
-        // edge rows and columns where it doesn't. The values are per square (a row <paramref name="stride"/> long) or, with
-        // a stride of 0, per row; an array, not a lambda, so a point allocates nothing.
         long Between(long xq, long yq, long[] values, int stride)
         {
             long u = xq / Square - One / 2, v = yq / Square - One / 2;

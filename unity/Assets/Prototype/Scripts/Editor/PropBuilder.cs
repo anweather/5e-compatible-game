@@ -21,7 +21,6 @@ public static class PropBuilder
 
     static readonly string[] Kinds = { EntityIds.Barrel, EntityIds.Crate, EntityIds.Boulder };
 
-    /// <summary>Builds (or rebuilds) one prefab per prop kind.</summary>
     public static List<ThingSpawner.KindPrefab> BuildPrefabs()
     {
         var flames = EditorAssets.LoadPrefab(PackPaths.FireFx + "/TinyFlames.prefab");
@@ -42,10 +41,6 @@ public static class PropBuilder
         return built;
     }
 
-    /// <summary>
-    /// The generic prefab for a mod's new kind: a unit box that draws nothing, scaled to the
-    /// body ThingBodies dresses it in. It keeps a Renderer, for what PhysicsProp reads of its size.
-    /// </summary>
     public static PhysicsProp Dressed(string kind)
     {
         var box = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -53,7 +48,6 @@ public static class PropBuilder
         return Make(box, kind);
     }
 
-    /// <summary>Makes <paramref name="go"/> a physics prop of <paramref name="kind"/> (rules/entities.json or rules/items.json), networked.</summary>
     public static PhysicsProp Make(GameObject go, string kind)
     {
         go.name = kind;
@@ -66,20 +60,16 @@ public static class PropBuilder
         return prop;
     }
 
-    /// <summary>Saves <paramref name="go"/> as the prefab for <paramref name="kind"/> and removes it from the scene.</summary>
     public static ThingSpawner.KindPrefab Save(GameObject go, string kind)
     {
         var path = $"{ThingsFolder}/{kind}.prefab";
         EditorAssets.EnsureFolderFor(path);
-        // A network prefab must have the same id on every machine (StableNetworkIds).
         StableNetworkIds.PrepareAsset(path);
         PrefabUtility.SaveAsPrefabAsset(go, path);
         Object.DestroyImmediate(go);
         return new ThingSpawner.KindPrefab { kind = kind, prefab = StableNetworkIds.PinPrefab(path) };
     }
 
-    // Host-simulated online: server-authoritative transform, interpolated on clients. It never
-    // changes parent through Netcode (a carried item rides in a hand by our own code, solo too).
     static void Network(GameObject go)
     {
         var networkObject = go.AddComponent<NetworkObject>();
@@ -92,7 +82,6 @@ public static class PropBuilder
         go.AddComponent<NetProp>();
     }
 
-    // Greybox shapes: a wooden crate, an upright oil drum, a round grey boulder.
     static GameObject Shape(string kind)
     {
         switch (kind)
@@ -101,7 +90,6 @@ public static class PropBuilder
             {
                 var drum = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
                 drum.transform.localScale = new Vector3(0.7f, 0.5f, 0.7f);
-                // The cylinder's own collider is a capsule, which won't stand up; a convex mesh will.
                 Object.DestroyImmediate(drum.GetComponent<Collider>());
                 drum.AddComponent<MeshCollider>().convex = true;
                 AddFeet(drum, new Vector3(0.2f, 0.5f - FootRadius + FootProud, 0.2f));
@@ -126,12 +114,8 @@ public static class PropBuilder
         }
     }
 
-    // PhysX can catch a flat face sliding over an edge between triangles or colliders (an
-    // "internal edge"), stopping a sliding crate dead. So a crate or barrel stands on small
-    // spheres at its corners, just proud of its faces: spheres glide over edges.
     const float FootRadius = 0.06f, FootProud = 0.02f;
 
-    /// <summary>Eight sphere colliders at (±x, ±y, ±z) from the centre, in metres.</summary>
     static void AddFeet(GameObject go, Vector3 corner)
     {
         var scale = go.transform.localScale;
@@ -140,7 +124,6 @@ public static class PropBuilder
         {
             var sign = new Vector3((i & 1) == 0 ? -1f : 1f, (i & 2) == 0 ? -1f : 1f, (i & 4) == 0 ? -1f : 1f);
             var foot = go.AddComponent<SphereCollider>();
-            // Sphere colliders scale their radius by the largest axis of the object's scale.
             foot.radius = FootRadius / largest;
             foot.center = new Vector3(sign.x * corner.x / scale.x, sign.y * corner.y / scale.y, sign.z * corner.z / scale.z);
         }

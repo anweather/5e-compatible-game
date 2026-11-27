@@ -14,10 +14,8 @@ namespace Chem
 {
     public static class BuildingsShown
     {
-        /// <summary>What an opening's "lamp" says for no light.</summary>
         public const string LampOff = "off";
 
-        /// <summary>Whether <paramref name="lamp"/> is a lamp's colour, "#rrggbb", or "off".</summary>
         public static bool IsLamp(JToken lamp)
         {
             if (lamp?.Type != JTokenType.String) return false;
@@ -25,11 +23,6 @@ namespace Chem
             return s == LampOff || (s.Length == 7 && s[0] == '#' && s.Skip(1).All(Uri.IsHexDigit));
         }
 
-        /// <summary>
-        /// What <paramref name="patch"/>'s buildings say that the view won't draw, a phrase each, in the patch's order.
-        /// <paramref name="composed"/> is the tables with the patch on (its styles resolve the rows); <paramref name="shipped"/>
-        /// the base rules' tables, whose "drawn" lists, roof shapes and details are what the view knows.
-        /// </summary>
         public static IReadOnlyList<string> Unseen(JObject patch, BuildingTables composed, BuildingTables shipped)
         {
             var said = new List<string>();
@@ -47,7 +40,6 @@ namespace Chem
             return said;
         }
 
-        /// <summary>validate's and apply's line for what won't show, or "" if everything will.</summary>
         public static string Note(IReadOnlyList<string> unseen) =>
             unseen.Count == 0 ? "" :
             "\nWon't show: nothing in the game draws " + string.Join("; ", unseen) +
@@ -87,7 +79,7 @@ namespace Chem
             {
                 string shape = (string)r.Value["shape"] ?? "gable";
                 var takes = shipped.Row("roofs", shape)?["look"]?["takes"];
-                if (takes == null) continue; // a new shape is named with its table row
+                if (takes == null) continue;
                 Extra(said, $"{who}'s roof {r.Name}", r.Value, new JArray(takes.Append("shape")), $"a {shape} roof");
             }
             int k = 0;
@@ -105,7 +97,6 @@ namespace Chem
             }
         }
 
-        // The fields of <paramref name="given"/> outside <paramref name="reads"/>, as one phrase.
         static void Extra(List<string> said, string where, JToken given, JToken reads, string what)
         {
             if (!(given is JObject fields) || !(reads is JArray list)) return;

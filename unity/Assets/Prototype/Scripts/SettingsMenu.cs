@@ -6,9 +6,7 @@ using UnityEngine;
 // the mouse and − / + buttons the controller's highlight reaches. Starts itself.
 public class SettingsMenu : MonoBehaviour
 {
-    /// <summary>The Sound page's id in the Esc menu.</summary>
     public const string SoundPage = "sound";
-    /// <summary>The Shake and rumble page's id in the Esc menu.</summary>
     public const string FeelPage = "feel";
     const int SectionOrder = 500;
     const float Step = 0.1f;
@@ -66,7 +64,6 @@ public class SettingsMenu : MonoBehaviour
         GUILayout.Label(GameFeel.Shake > 0f ? "Punchy at 100%." : "Off: the camera stays still and the pad stays quiet.", label);
     }
 
-    // A name and percentage over a slider, between − and + buttons.
     void Row(string name, Func<float> get, Action<float> set)
     {
         GUILayout.Space(6);

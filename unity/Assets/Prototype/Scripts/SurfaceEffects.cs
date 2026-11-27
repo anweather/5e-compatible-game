@@ -35,8 +35,6 @@ public class SurfaceEffects : MonoBehaviour
     public ChemGrid grid;
     [Tooltip("How quickly the wizard regains control on slippery ground (higher = less slide).")]
     public float slipperyGrip = 1.2f;
-    // Wading slows a little at the water's edge and more the deeper it gets, never as much as swimming: 0.55 everywhere
-    // was far too slow in the shallows (playtest 2026-11-08, B4).
     [Tooltip("Speed multiplier wading at the water's edge (in water at least wadingDepth units deep).")]
     public float shallowWadingSpeed = 0.92f;
     [Tooltip("Speed multiplier wading in water nearly deep enough to swim (swimDepth over the feet).")]
@@ -44,7 +42,6 @@ public class SurfaceEffects : MonoBehaviour
     public int wadingDepth = 2;
     [Tooltip("Highest ledge the wizard steps up without jumping: a little over one step of the grid.")]
     public float climbStep = 0.55f;
-    // 0.45 was too slow once walking got faster (Andrew, 2026-10-27).
     [Tooltip("Speed multiplier while swimming.")]
     public float swimmingSpeed = 0.65f;
     [Tooltip("Water this deep over the wizard's feet (metres) floats it; it floats with its feet this far down.")]
@@ -56,12 +53,9 @@ public class SurfaceEffects : MonoBehaviour
     [Tooltip("How fast a dive sinks, and how fast letting go swims back up (metres a second).")]
     public float diveSpeed = 1.6f, riseSpeed = 2f;
 
-    // Afloat until the water under the feet is shallower than this (metres), so a wave doesn't flicker it.
     static readonly int GroundedId = Animator.StringToHash("Grounded"), FreeFallId = Animator.StringToHash("FreeFall"), JumpId = Animator.StringToHash("Jump");
     const float StopSwimming = 1.1f, KickTime = 0.8f, Buoyancy = 4f, BobHeight = 0.04f;
-    // Feet this far over a cell's surface are on something built over it (the bridge), not on the cell.
     const float AboveSurface = 1f;
-    // The head's height up the wizard's capsule (a share of its height), and how far under ice the top of the head stays.
     const float HeadAt = 0.9f, IceGap = 0.15f;
 
     CharacterController body;
@@ -69,7 +63,6 @@ public class SurfaceEffects : MonoBehaviour
     FieldInfo moveSpeed, sprintSpeed, gravity, fall, moveInput, sprintInput, analogInput;
     Animator animator;
     float baseMove, baseSprint, baseGravity, wizardMove, wizardSprint;
-    // Where the wizard stood after this script last ran, and after everything had moved it last frame.
     Vector3 lastPosition, settled;
     Vector3 momentum;
     bool wasSlipping, wasWading, swimming;
@@ -80,68 +73,48 @@ public class SurfaceEffects : MonoBehaviour
     float slowUntil, slowFactor = 1f, appliedSpeed = 1f;
     Vitals vitals;
     PlayerControls controls;
-    // Thorns underfoot (Spike Growth): the cover's speed, and how far the wizard has walked through them since the last cut.
     float thornSpeed = 1f, thornsWalked;
-    // In charged water since the charge came (one shock a strike, not one a frame).
     bool shocked;
 
-    /// <summary>True while the wizard walks on thorns (a spiky cover): slowed, and cut every square walked.</summary>
     public bool InThorns { get; private set; }
 
-    // The ground underfoot's speed (mud: 0.5; 1 for most), and how long the wizard has stood on hot metal since its last burn.
     float groundSpeed = 1f, onHotMetal;
 
-    /// <summary>True while heavy ground (mud) slows the wizard.</summary>
     public bool InMud { get; private set; }
 
-    /// <summary>True while the wizard stands on hot metal, burning.</summary>
     public bool OnHotMetal { get; private set; }
 
-    /// <summary>True while a spell has the wizard slowed.</summary>
     public bool Slowed => Time.time < slowUntil;
 
-    /// <summary>What the cast meter leaves of the wizard's speed (World.MoveFactorOf); SpellCaster sets it.</summary>
     public float CastFactor { get; set; } = 1f;
 
-    /// <summary>True while the wizard is afloat in deep water.</summary>
     public bool Swimming => swimming;
 
-    /// <summary>True while the wizard dives (the dive held while swimming).</summary>
     public bool Diving { get; private set; }
 
-    /// <summary>Holds the dive as the button does (the probe and the playtest bot).</summary>
     public bool HoldDive { get; set; }
 
-    /// <summary>True while the wizard's head is under water (or under ice).</summary>
     public bool HeadUnder { get; private set; }
 
-    /// <summary>Just out of the water: the dive's button doesn't turn into a dodge roll on the bank.</summary>
     public bool JustClimbedOut => Time.time < leftWaterAt + ClimbOutSeconds;
 
-    /// <summary>True while the water over the swimming wizard is frozen: it can't come up.</summary>
     public bool UnderIce { get; private set; }
 
-    /// <summary>How many times the wizard has come onto slick ground at speed and skidded (the probe).</summary>
     public int Skids { get; private set; }
 
-    /// <summary>Kicks up out of the water, if swimming (what jump does afloat).</summary>
     public void Kick() => kick = swimming;
 
-    // Jump, from PlayerInput's messages: the controller drops a jump made off the ground, so it's
-    // caught here as it comes in.
     void OnJump(InputValue value)
     {
         if (value.isPressed) Kick();
     }
 
-    /// <summary>Slows the wizard to <paramref name="factor"/> of its speed for a while (the stronger slow wins while both last).</summary>
     public void Slow(float factor, float seconds)
     {
         if (!Slowed || factor < slowFactor) slowFactor = factor;
         slowUntil = Mathf.Max(slowUntil, Time.time + seconds);
     }
 
-    /// <summary>The speeds wading, swimming and slows scale (the controller's MoveSpeed and SprintSpeed): an animal's, while shapeshifted.</summary>
     public void SetBaseSpeeds(float move, float sprint)
     {
         if (moveSpeed == null) return;
@@ -150,10 +123,6 @@ public class SurfaceEffects : MonoBehaviour
         ApplySpeed();
     }
 
-    /// <summary>
-    /// The player's speed stat (PlayerStats.Speed, WizardStats sets it): times every base speed, the wizard's own
-    /// and an animal's, with wading, slows and casting on top.
-    /// </summary>
     public float SpeedStat
     {
         get => speedStat;
@@ -173,10 +142,8 @@ public class SurfaceEffects : MonoBehaviour
         sprintSpeed.SetValue(controller, baseSprint * speedStat * appliedSpeed);
     }
 
-    /// <summary>Back to the wizard's own speeds.</summary>
     public void RestoreBaseSpeeds() => SetBaseSpeeds(wizardMove, wizardSprint);
 
-    /// <summary>The wizard's own speeds, walking and sprinting (before any shape, wading or slow).</summary>
     public (float move, float sprint) WizardSpeeds => (wizardMove, wizardSprint);
 
     void Awake()
@@ -214,8 +181,6 @@ public class SurfaceEffects : MonoBehaviour
         momentum = Vector3.zero;
     }
 
-    // After the roll, a knock and the river (which run after this script): the controller's own step
-    // next frame is what's gone on from here.
     void LateUpdate() => settled = transform.position;
 
     void Update()
@@ -223,8 +188,6 @@ public class SurfaceEffects : MonoBehaviour
         if (grid == null || grid.World == null || !body.enabled) return;
         var cell = grid.CellAt(transform.position);
         var c = grid.World.At(cell.x, cell.y);
-        // The cell's water (or its ground, dry): on the bridge over the river the wizard stands well
-        // above it, out of its water and off its ice.
         float surface = grid.WaterSurfaceY(cell.x, cell.y);
         bool above = transform.position.y > surface + AboveSurface;
         bool slippery = c != null && !above && body.isGrounded && grid.World.IsSlippery(c);
@@ -243,12 +206,6 @@ public class SurfaceEffects : MonoBehaviour
         lastPosition = transform.position;
     }
 
-    // On slippery ground the wizard keeps the momentum it came with: it eases toward the way the player
-    // wants to go (Glide) at slipperyGrip, so it's slow to turn and to stop, and keeps its speed going on.
-    // The controller's own step this frame is taken back and the glide made as one move, so the
-    // controller's velocity, which sets its next frame's speed, is the glide's. (Correcting its step with
-    // a second move left it measuring only the correction, so it started again from a crawl each frame
-    // and ice slowed the wizard down: GitHub #12.)
     void Slide(bool slippery)
     {
         float dt = Mathf.Max(Time.deltaTime, 1e-4f);
@@ -261,7 +218,6 @@ public class SurfaceEffects : MonoBehaviour
             wasSlipping = false;
             return;
         }
-        // A skid starts as the wizard comes onto slick ground at speed (once a log line, cut with the narration lines: 5f4815fd).
         if (!wasSlipping && momentum.sqrMagnitude > 1f) Skids++;
         wasSlipping = true;
         momentum = Glide(momentum, Wanted(moved), slipperyGrip, dt);
@@ -270,16 +226,9 @@ public class SurfaceEffects : MonoBehaviour
         body.Move(momentum * dt + Vector3.up * step.y);
     }
 
-    /// <summary>
-    /// The momentum on slippery ground after <paramref name="dt"/> seconds: eased toward the
-    /// <paramref name="wanted"/> velocity at <paramref name="grip"/> (the share of the difference left
-    /// falls by e each 1/grip seconds, whatever the frame rate), never faster than the faster of the two.
-    /// </summary>
     public static Vector3 Glide(Vector3 momentum, Vector3 wanted, float grip, float dt) =>
         Vector3.Lerp(momentum, wanted, 1f - Mathf.Exp(-Mathf.Max(grip, 0f) * Mathf.Max(dt, 0f)));
 
-    // The velocity the player asks for: the controller's way, at its walk or sprint speed (the move
-    // stick's tilt for a pad), or none with the stick and keys let go.
     Vector3 Wanted(Vector3 moved)
     {
         if (moveSpeed == null || inputs == null || moveInput == null) return moved / Mathf.Max(Time.deltaTime, 1e-4f);
@@ -291,10 +240,6 @@ public class SurfaceEffects : MonoBehaviour
         return moved.normalized * (speed * tilt);
     }
 
-    // Thorns underfoot (the cover, or null off them): they slow the wizard to the cover's speed and,
-    // like the SRD's Spike Growth, cut it for every square (cellSize metres) it walks through them,
-    // with the cover's damage dice. Health is the wizard's own (Vitals), not shared state, so the
-    // dice are Unity's, not the world's.
     void Thorns(CoverDef thorns)
     {
         if (thorns == null)
@@ -314,11 +259,6 @@ public class SurfaceEffects : MonoBehaviour
         if (vitals != null && thorns.Damage.Length == 2) vitals.Hurt(Roll(thorns.Damage));
     }
 
-    // The ground underfoot (its cell, or null off it: afloat, in the air, on the bridge): heavy ground
-    // (mud) and snow slow the wizard to their speed (World.WalkSpeed), not while it slides on anything
-    // slippery laid over them (Frost's glaze keeps its speed), and hot metal burns it 1 fire damage every
-    // sim.burnDamageEvery ticks' worth of seconds while it stands there, the raiders' rate
-    // (World.Hazards). Health is the wizard's own (Vitals), so the timing is Unity's, not the world's.
     void Ground(Cell c)
     {
         var world = grid.World;
@@ -339,7 +279,7 @@ public class SurfaceEffects : MonoBehaviour
         if (!OnHotMetal)
         {
             EventLog.Add("The hot metal burns you");
-            onHotMetal = every; // the first touch burns at once
+            onHotMetal = every;
         }
         OnHotMetal = true;
         onHotMetal += Time.deltaTime;
@@ -348,8 +288,6 @@ public class SurfaceEffects : MonoBehaviour
         if (vitals != null) vitals.TakeDamage(1f);
     }
 
-    // Freshly charged water round the wizard's feet: one shock a strike, wet so twice the zap, and a jolt.
-    // Health is the wizard's own (Vitals), as with the thorns.
     void Shock(bool charged)
     {
         if (charged && !shocked)
@@ -368,13 +306,10 @@ public class SurfaceEffects : MonoBehaviour
         return total;
     }
 
-    /// <summary>How deep the water over the wizard's feet is while wading (metres), 0 out of it (the probe).</summary>
     public float WadeDepth { get; private set; }
 
-    /// <summary>The speed multiplier wading this deep: a little at the edge, more toward swimming depth.</summary>
     public float WadingFactor(float depth) => Mathf.Lerp(shallowWadingSpeed, wadingSpeed, Mathf.InverseLerp(0f, swimDepth, depth));
 
-    // Wading, thorns, heavy ground, a spell's slow and casting, together.
     void SetSpeed(bool wading)
     {
         if (moveSpeed == null) return;
@@ -389,9 +324,6 @@ public class SurfaceEffects : MonoBehaviour
         ApplySpeed();
     }
 
-    // Afloat in water deeper than the wizard's chest (unfrozen): held at the surface with a
-    // gentle bob, until the ground under it rises (walking out) or it kicks up out of the water.
-    // The sea's waves under the wizard (0 off the sea: the lake and the river lie still).
     float Swell(Vector2Int cell)
     {
         var ocean = Ocean.Instance;
@@ -404,7 +336,6 @@ public class SurfaceEffects : MonoBehaviour
     void Swim(Cell c, Vector2Int cell)
     {
         if (gravity == null || fall == null) return;
-        // Ice is walked on; only a swimmer already in the water stays in it under the ice.
         bool iced = c != null && c.Frozen;
         float depth = c != null && c.Water > 0 && (!iced || swimming) ? grid.WaterSurfaceY(cell.x, cell.y) - transform.position.y : 0f;
         bool afloat = Time.time >= kickedUntil && depth > (swimming ? StopSwimming : swimDepth);
@@ -416,8 +347,6 @@ public class SurfaceEffects : MonoBehaviour
 
         Float(depth, cell);
         if (!kick) return;
-        // A kick up out of the water, with gravity back on so it lands on a bank or falls back in;
-        // not from under the water or the ice.
         kick = false;
         if (HeadUnder || UnderIce) return;
         kickedUntil = Time.time + KickTime;
@@ -426,11 +355,6 @@ public class SurfaceEffects : MonoBehaviour
         if (animator != null) animator.SetBool(JumpId, true);
     }
 
-    // Rise or sink toward floating height through the controller's own fall speed (gravity is off),
-    // so its move each frame stays one move and its run speed isn't disturbed. At sea it rides the
-    // swell (Ocean.WaveOffset); whether it swims at all is still judged on the calm level. A dive
-    // sinks instead, and from under the water it swims back up at riseSpeed; ice over it keeps the
-    // top of its head under the ice.
     void Float(float depth, Vector2Int cell)
     {
         float y = transform.position.y;
@@ -443,8 +367,6 @@ public class SurfaceEffects : MonoBehaviour
         animator.SetBool(JumpId, false);
     }
 
-    // The head under the water (a cell's drawn water or the sea over it, or ice over a swimmer):
-    // the wizard holds its breath, and drowns once it runs out (Vitals).
     void Breathe(float surface)
     {
         var head = transform.position + Vector3.up * ((body.center.y + body.height * (HeadAt - 0.5f)) * transform.lossyScale.y);
@@ -452,7 +374,6 @@ public class SurfaceEffects : MonoBehaviour
         if (vitals != null) vitals.Breathe(HeadUnder, Time.deltaTime);
     }
 
-    /// <summary>Thrown straight up at this speed (a Geyser's jet), out of the water if afloat.</summary>
     public void Toss(float speed)
     {
         if (fall == null) return;
@@ -462,7 +383,6 @@ public class SurfaceEffects : MonoBehaviour
         if (animator != null) animator.SetBool(JumpId, true);
     }
 
-    // Walking into vines on what stands ahead climbs them, up over the top.
     void Climb(Vector2Int cell)
     {
         if (fall == null || ((int)body.collisionFlags & (int)CollisionFlags.Sides) == 0) return;

@@ -10,14 +10,10 @@ using UnityEngine;
 public class DragonClipProbe : ClipProbe
 {
     const int ShortWarning = 48, ShortTurn = 12, QuickSpeed = 30, QuickChunks = 4;
-    // When the first shot gives way to the dive, and how long is filmed of the first pass.
     const float CrossingSeconds = 7f, FirstPassSeconds = 2.2f;
-    // How far along the middle pass filming picks up, in cells, and how long each shot of it runs.
     const int PickUpAt = 140;
     const float ChaseSeconds = 2.8f, AheadSeconds = 2.2f, CloseSeconds = 2.6f;
-    // How quickly a following camera catches the dragon up (1/s).
     const float Follow = 3f;
-    // A wider lens for the crossing, to have the land and the dragon high over it in one frame.
     const float CrossingLens = 1.5f;
 
     DragonView view;
@@ -73,7 +69,6 @@ public class DragonClipProbe : ClipProbe
         Check("no_console_errors", Result.Console.ErrorCount == 0, $"{Result.Console.ErrorCount} errors");
     }
 
-    // A place in the valley by where it is along the flight's passes and across them.
     Vector3 Cell(float along, float across, float lift)
     {
         var o = grid.CellCenter(0, 0);
@@ -86,7 +81,6 @@ public class DragonClipProbe : ClipProbe
     float Length => flight.AlongX ? World.W : World.H;
     float Wide => flight.AlongX ? World.H : World.W;
 
-    // Across the valley from high over its side, land below the horizon and the crossing above it.
     IEnumerator TheCrossing()
     {
         var lens = Camera.main;
@@ -97,7 +91,6 @@ public class DragonClipProbe : ClipProbe
         lens.fieldOfView = was;
     }
 
-    // Beside the first pass's start, watching it come down over the sea and in on the line.
     IEnumerator TheDive()
     {
         var (line, back) = World.PassLine(flight, 0);
@@ -120,20 +113,16 @@ public class DragonClipProbe : ClipProbe
         return breathStarted < 0f ? 0f : FilmedSeconds - breathStarted;
     }
 
-    // From a fixed place, turned toward the dragon as far as a fixed look allows.
     void Glance(Vector3 eye, Vector3 at)
     {
         followed = Vector3.Lerp(followed, view.ShownAt, 1f - Mathf.Exp(-Time.deltaTime * Follow));
         Cut(eye, Vector3.Lerp(at, followed, 0.35f));
     }
 
-    // Behind it and to one side, the wall of fire ahead of it.
     IEnumerator Chase() => Following(ChaseSeconds, (at, way, side) => (at - way * 190f + side * 40f + Vector3.up * 105f, at + way * 90f + Vector3.down * 35f));
 
-    // Ahead of it and off to the side, looking back at it through the wall.
     IEnumerator Ahead() => Following(AheadSeconds, (at, way, side) => (at + way * 230f - side * 110f + Vector3.up * 85f, at + Vector3.down * 25f));
 
-    // Just ahead of the wall, the flames filling the frame under the dragon.
     IEnumerator Close() => Following(CloseSeconds, (at, way, side) => (AboveGround(at + way * 170f + side * 30f + Vector3.up * 14f), at + Vector3.down * 8f));
 
     Vector3 AboveGround(Vector3 eye) => new(eye.x, Mathf.Max(eye.y, grid.GroundAt(eye) + 60f), eye.z);

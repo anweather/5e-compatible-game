@@ -11,7 +11,6 @@ using UnityEngine;
 // runs through the real server and the loop; then the key's text is looked for everywhere it mustn't be.
 public class ApiKeyProbe : ProbeScenario
 {
-    // A run stopped before its end leaves the log hooked, and with the domain reload off the hook outlives the run.
     protected override void OnDestroy()
     {
         Application.logMessageReceived -= Heard;
@@ -94,7 +93,6 @@ public class ApiKeyProbe : ProbeScenario
         }
     }
 
-    // The Settings page drawn for real, so a layout that throws shows in the console's check.
     IEnumerator ShowSetup(string label)
     {
         int drawn = ClaudeSetupSettings.Drawn;
@@ -106,7 +104,6 @@ public class ApiKeyProbe : ProbeScenario
         yield return null;
     }
 
-    // Everything a message leaves behind, the console, the process's environment and a save.
     void CheckNowhere(string folder)
     {
         var files = Directory.GetFiles(folder, "*", SearchOption.AllDirectories).Where(f => f != ApiKey.TestFile).ToList();

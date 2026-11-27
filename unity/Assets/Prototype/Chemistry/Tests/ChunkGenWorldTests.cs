@@ -12,8 +12,6 @@ namespace Chem.Tests
     {
 #pragma warning restore S1215
 
-        // The nine's heights, a pixel for every three cells: sea blue by depth, land green to brown to white by height,
-        // shaded from the north-west; rivers and lakes light blue, roads brown, the valley's edge drawn.
         static void PictureOf(string dir, BakeReport r)
         {
             string folder = Environment.GetEnvironmentVariable("CHUNK_GEN_PNG_OUT");
@@ -39,7 +37,6 @@ namespace Chem.Tests
                     else if (v >= ChunkGen.SeaLevel && cell == '#') col = (130, 125, 120);
                     WorldPlanPicture.Put(rgb, y * w + x, col, Math.Max(-60, Math.Min(60, shade * 6)));
                 }
-            // The squares' borders, faintly.
             for (int y = 0; y < h; y++)
                 for (int x = 0; x < w; x++)
                     if ((x * scale) % ChunkGen.Square < scale || (y * scale) % ChunkGen.Square < scale)
@@ -63,9 +60,6 @@ namespace Chem.Tests
                 PictureOf(dir, report);
                 Assert.That(MapCheck.Errors(dir), Is.Empty);
                 var map = MapFile.Load(dir);
-                // This folder is away from the map's own, as a build's bake is (the player's data), and the pinned map
-                // can't be found from there: the bake says the full detail the pinned map gave it (#183: the nine's ground
-                // was the valley's 257 samples a chunk on a layout of 65, and a build's world was never made).
                 var own = MapFile.Load(ChunkGenTests.Nine.MapDir);
                 Assert.That(own.FullDetail, Is.EqualTo((3, 2, 5, 4)), "the valley's full detail, where its square is (terrain rows count from the south)");
                 Assert.That(map.FullDetail, Is.EqualTo(own.FullDetail), "a bake away from the map's folder draws the chunks its map does");
@@ -76,18 +70,14 @@ namespace Chem.Tests
                 Assert.That(rows[map.Spawn.y][map.Spawn.x], Is.EqualTo('@'), "the valley's spawn, moved with it");
                 Assert.That(rows.Sum(r => r.Count(ch => ch == '@')), Is.EqualTo(1));
                 foreach (string name in GeneratedMap.Baked) Assert.That(File.Exists(Path.Combine(dir, name)), name);
-                // A spawn place a square, named for it, at its spawn; the valley's the map's start.
                 var spawns = WorldPlaces.Load(dir).All.Where(p => p.Kind == "spawn").ToList();
                 TestContext.Out.WriteLine("BAKE spawns: " + string.Join(", ", spawns.Select(p => $"{p.Name} {p.Middle}")));
                 Assert.That(spawns.Select(p => p.Middle), Is.EquivalentTo(ChunkGenTests.Nine.Gen.Spawns.Select(s => (s.X, s.Y))));
                 Assert.That(spawns.Select(p => p.Name).Distinct().Count(), Is.EqualTo(9));
                 var start = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(Path.Combine(dir, WorldPlaces.FileName)))["places"].Single(p => (bool?)p["start"] == true);
                 Assert.That(spawns.Single(p => p.Id == (string)start["id"]).Middle, Is.EqualTo(map.Spawn), "the valley's spawn is the map's start");
-                // The rows the valley's buildings stand on are where the valley is now.
                 var hold = WorldBuildings.Load(dir);
                 Assert.That(hold, Is.Not.Null);
-                // A build's bake is kept while it's of these inputs and this format; an older one (it has no "format",
-                // and its map.json none of the pinned map's full detail) is made again.
                 Assert.That(MapBake.EnsureBakedInto(ChunkGenTests.NineDir, dir), Is.False, "a bake of these inputs in this format is kept");
                 File.Copy(Path.Combine(ChunkGenTests.NineDir, MapFile.FileName), Path.Combine(dir, MapFile.FileName), true);
                 var note = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(Path.Combine(dir, GeneratedMap.BakeName)));
@@ -104,7 +94,6 @@ namespace Chem.Tests
             }
         }
 
-        // One world square's cells at a pixel a cell, by their Legend character: roads and paths are the dirt lines.
         static void CellsOf(string folder, char[] cells, int width, int sx, int sy, string name)
         {
             int n = ChunkGen.Square;

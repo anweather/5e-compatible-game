@@ -9,19 +9,15 @@ namespace Chem
 {
     public sealed partial class World
     {
-        // The flashes of the last HistoryTicks ticks, for a view that steps several ticks in one frame. Not world state.
         readonly List<(int x, int y, int push, int tick)> flashHistory = new List<(int x, int y, int push, int tick)>();
 
-        // A storm cloud's strikes of the last HistoryTicks ticks, for the view's bolts. Not world state.
         readonly List<(int x, int y, int tick)> shedStrikes = new List<(int x, int y, int tick)>();
 
-        /// <summary>Cells a storm cloud struck after <paramref name="tick"/> (within the last 600 ticks), oldest first.</summary>
         public IEnumerable<(int x, int y, int tick)> ShedStrikesSince(int tick)
         {
             foreach (var s in shedStrikes) if (s.tick > tick) yield return s;
         }
 
-        /// <summary>Cells that flashed after <paramref name="tick"/> (within the last 600 ticks), oldest first: where, the shove, the tick.</summary>
         public IEnumerable<(int x, int y, int push, int tick)> FlashesSince(int tick)
         {
             foreach (var f in flashHistory) if (f.tick > tick) yield return f;
@@ -29,12 +25,6 @@ namespace Chem
 
         FlashDef FlashOf(Cell c) => c.Gas != null && Rules.Gases.TryGetValue(c.Gas, out var g) ? g.Flash : null;
 
-        /// <summary>
-        /// Fire has met a gas that flashes at (x, y): the whole cloud joined to it goes up at once and is used up.
-        /// Each of its cells burns for a moment at the flash's fire, and the fire reaches what's there through the
-        /// rules like any other, and a raider there is shoved away from where it caught (ShoveRaider). Shoving props is the
-        /// view's (FlashesSince).
-        /// </summary>
         void FlashGas(int x, int y)
         {
             var first = FlashOf(At(x, y));

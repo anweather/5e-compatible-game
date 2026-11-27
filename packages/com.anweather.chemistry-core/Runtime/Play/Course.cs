@@ -19,7 +19,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>The course's blocks of cells (Village.cs's CellRect), written [x0, y0, x1, y1] with the corners inclusive.</summary>
     static class CourseRect
     {
         internal static CellRect Parse(JToken t, string what)
@@ -34,44 +33,35 @@ namespace Chem
         internal static string W(int n) => n.ToString(CultureInfo.InvariantCulture);
     }
 
-    /// <summary>An area that allows only some elements or spells: anything else cast into it fizzles.</summary>
     public sealed class SpellZone
     {
         public string Id, Name;
         public CellRect Area;
-        /// <summary>Elements allowed: a spell is, if a combo of only these elements casts it.</summary>
         public IReadOnlyList<string> Elements = Array.Empty<string>();
-        /// <summary>Spells allowed by id, whatever their elements (Misty Step has none).</summary>
         public IReadOnlyList<string> Spells = Array.Empty<string>();
     }
 
-    /// <summary>One booth of the course: its zone (its area and what it allows) and the cell a wizard downed past it gets up on.</summary>
     public sealed class CourseBooth
     {
         public SpellZone Zone;
         public int CheckX, CheckY;
     }
 
-    /// <summary>world/gauntlet.json: the course's area, its gate, its booths in order and its bell.</summary>
     public sealed class CourseLayout
     {
         public const string FileName = MapFile.CourseName;
 
         public string Name;
-        /// <summary>Downed inside this, a wizard on a run gets up at its last checkpoint.</summary>
         public CellRect Area, Gate, Bell;
-        /// <summary>Where a wizard downed before the first booth gets up: the gate's middle.</summary>
         public int StartX, StartY;
         public IReadOnlyList<CourseBooth> Booths = Array.Empty<CourseBooth>();
 
-        /// <summary>The course in world/gauntlet.json, or null without the file.</summary>
         public static CourseLayout Load(string worldDir)
         {
             string path = Path.Combine(worldDir, FileName);
             return File.Exists(path) ? FromJson(File.ReadAllText(path)) : null;
         }
 
-        /// <summary>The course in the file's text. Throws <see cref="FormatException"/> for one that can't be read.</summary>
         public static CourseLayout FromJson(string json)
         {
             var o = JObject.Parse(json);
@@ -104,10 +94,8 @@ namespace Chem
             };
         }
 
-        /// <summary>The booths' zones, in order.</summary>
         public IEnumerable<SpellZone> Zones() => Booths.Select(b => b.Zone);
 
-        /// <summary>What's wrong with the course against these rules: elements and spells the rules don't know, pieces outside its area.</summary>
         public IEnumerable<string> Check(Rules rules)
         {
             foreach (var z in Zones())
@@ -121,7 +109,6 @@ namespace Chem
         }
     }
 
-    /// <summary>A player stands on a cell (the view sends one as its wizard steps onto a new cell inside the course).</summary>
     public readonly struct CourseCommand
     {
         public CourseCommand(string player, int x, int y)
@@ -136,10 +123,6 @@ namespace Chem
         public int Y { get; }
     }
 
-    /// <summary>
-    /// One player's run: the last checkpoint reached (-1 the gate), the tick the clock started (-1 when it isn't
-    /// running), the best time and the last, in ticks (0 for none yet).
-    /// </summary>
     public sealed class CourseRun
     {
         public string Player;

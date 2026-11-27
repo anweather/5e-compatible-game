@@ -25,7 +25,6 @@ public class CreatureIndividualTests
         return output.Take(shown).ToArray();
     }
 
-    // The segments an individual shows: its parts but for unchosen options and what hangs from them.
     static int Showing(CreatureBody b, uint individual)
     {
         var hidden = new bool[b.Parts.Length];

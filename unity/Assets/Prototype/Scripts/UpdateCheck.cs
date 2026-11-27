@@ -15,7 +15,6 @@ public class UpdateCheck : MonoBehaviour
 
     static bool checkedThisLaunch;
 
-    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -24,10 +23,8 @@ public class UpdateCheck : MonoBehaviour
 
     static UpdateCheck instance;
 
-    /// <summary>The newer release, once the check has found one; null otherwise.</summary>
     public static BuildVersion.Release Available { get; private set; }
 
-    /// <summary>What the check concluded, for the log and tests: "checking", "up to date", "newer: X", "failed: ...".</summary>
     public static string Result { get; private set; } = "not run";
 
     GUIStyle hint, updating;
@@ -37,7 +34,7 @@ public class UpdateCheck : MonoBehaviour
     static void Create()
     {
         if (checkedThisLaunch || instance != null) return;
-        if (!Application.isEditor && Debug.isDebugBuild) return; // development builds are ours, not players'
+        if (!Application.isEditor && Debug.isDebugBuild) return;
         checkedThisLaunch = true;
         var go = new GameObject("Update check");
         DontDestroyOnLoad(go);
@@ -45,7 +42,6 @@ public class UpdateCheck : MonoBehaviour
         instance.StartCoroutine(SelfUpdate.Installed ? CheckInstalled() : Check(BuildVersion.ReleasesApi));
     }
 
-    // A Velopack install asks Velopack, which can then download and apply what it finds.
     static IEnumerator CheckInstalled()
     {
         Result = "checking";
@@ -67,7 +63,6 @@ public class UpdateCheck : MonoBehaviour
         if (version != null && SelfUpdate.AutoUpdate) _ = SelfUpdate.DownloadAndRestart();
     }
 
-    /// <summary>Runs the check again against a URL (the real API or a test server); for tests in the Editor.</summary>
     public static void RunAgain(string url)
     {
         if (instance == null)
@@ -97,7 +92,6 @@ public class UpdateCheck : MonoBehaviour
         Conclude(request.downloadHandler.text);
     }
 
-    /// <summary>Reads a releases response the way the check does (also for tests with made-up JSON).</summary>
     public static void Conclude(string releasesJson)
     {
         Available = BuildVersion.NewestRelease(releasesJson, Application.version);
@@ -107,7 +101,6 @@ public class UpdateCheck : MonoBehaviour
             : $"Update check: alpha {Available.Version} is out: {Available.Url}");
     }
 
-    /// <summary>Opens the newer release's page in the browser.</summary>
     public static void OpenDownloadPage() => Application.OpenURL(Available?.Url ?? BuildVersion.ReleasesPage);
 
     void OnGUI()
@@ -116,7 +109,6 @@ public class UpdateCheck : MonoBehaviour
         if (Available == null) return;
         if (SelfUpdate.Progress >= 0)
         {
-            // Updating in place: say so over everything until the game restarts.
             GUI.depth = -200;
             updating ??= new GUIStyle(GUI.skin.box) { fontSize = 22, richText = true, alignment = TextAnchor.MiddleCenter };
             GUI.Box(new Rect(HudScale.Width / 2f - 260f, HudScale.Height / 2f - 40f, 520f, 80f),

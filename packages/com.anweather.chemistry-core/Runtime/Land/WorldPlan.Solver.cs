@@ -12,7 +12,6 @@ namespace Chem
 {
     internal sealed class PlanSolver
     {
-        /// <summary>The coldness (Q16, 0 desert to 1 ice) each anchor biome likes best; the paper's LAT_PEAK.</summary>
         static readonly Dictionary<string, long> LatitudePeak = new Dictionary<string, long>(StringComparer.Ordinal)
         {
             ["salt-flat"] = 0,
@@ -24,7 +23,6 @@ namespace Chem
             ["tundra"] = BiomeMath.One * 88 / 100,
         };
 
-        /// <summary>How near (Chebyshev, in squares) two copies of one template may not stand.</summary>
         internal const int RepeatGap = 3;
 
         readonly WorldPlan plan;
@@ -37,7 +35,6 @@ namespace Chem
         bool[] col;
         Dictionary<string, int> used = new Dictionary<string, int>(StringComparer.Ordinal);
         readonly List<int> fillers = new List<int>();
-        // Forced squares no turn of whose template fits their band and coast.
         readonly HashSet<int> unfit = new HashSet<int>();
         readonly Stack<Frame> stack = new Stack<Frame>();
         int steps, picks, backtracks;
@@ -98,11 +95,8 @@ namespace Chem
             }
         }
 
-        // A forced square's "filler", or a filler's own id: the square takes its band's.
         bool IsFiller(string template) => template == ForcedSquare.Filler || lib.Templates.Exists(t => t.Id == template && t.Filler);
 
-        // The held squares (a pinned block's) are settled before anything else, as their own plan has them, so the
-        // squares round them meet them and no copy of their templates stands within 3 of them.
         void Hold()
         {
             for (int i = 0; i < n; i++)
@@ -113,8 +107,6 @@ namespace Chem
             }
         }
 
-        // An option fits a square's coast: a side facing the sea must be one the template lets face it, and only a river
-        // flowing out may cross it; a side facing off the edge of the world carries nothing.
         bool Fits(SquareOption o, int i, SquareCoast c)
         {
             if (o.Sea) return true;
@@ -158,11 +150,6 @@ namespace Chem
             plan.Backtracks = backtracks;
         }
 
-        // Each must-have takes a square before the roll: of the squares in the map that could still take a template whose
-        // village comes out as it (not the valley, a wall or the sea), in a seeded order, the first that collapses to one of
-        // those templates (its own seeded roll among them) leaving every square something. Where none does, the first
-        // takes it anyway and the squares left with nothing take their band's filler, as a solve past its budget does. A
-        // must-have's square is settled before the first pick, so nothing backtracks it.
         void PlaceMusts()
         {
             var musts = plan.Inputs.Musts;
@@ -207,12 +194,10 @@ namespace Chem
             }
         }
 
-        // A seeded weighted roll among square x's options that make the landmark, apart from the solve's own rolls.
         int MustPick(int x, string landmark, PlanRng roll) => Roll(x, Array.FindAll(dom[x], o => Makes(o, landmark)), roll);
 
         bool Makes(int o, string landmark) => !lib.Options[o].Sea && plan.VillageLandmarkOf(lib.Options[o].Template) == landmark;
 
-        // The templates that hold a must-have, and their bands, for a miss's reason.
         string Holders(string landmark)
         {
             var ts = new List<string>();
@@ -231,8 +216,6 @@ namespace Chem
             return op.Sea ? SquareLibrary.SeaSide : op.Sig[s];
         }
 
-        // Prunes outward from the queue; returns a square left with nothing, or -1. With allowFill, such a square takes
-        // its band's filler instead.
         int Propagate(List<int> queue, bool allowFill)
         {
             var inQ = new bool[n];
@@ -303,8 +286,6 @@ namespace Chem
             int row = plan.BiomeCounts?[x] != null && t.Biome != null ? lib.Biomes.IndexOf(t.Biome) : -1;
             if (row >= 0)
             {
-                // The world's biome field says what the land is; a template of the biome it puts under more of the square
-                // weighs more (the paper's 0.02 + 4 × the share drawn as the template's biome).
                 const long one = BiomeMath.One;
                 long fit = one / 50 + 4 * one * plan.BiomeCounts[x][row] / (WorldPlan.ChunksPerSquare * WorldPlan.ChunksPerSquare);
                 w = w * fit / one;

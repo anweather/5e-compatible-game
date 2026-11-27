@@ -1,7 +1,7 @@
+// The game's sounds, by name: the entries of the SoundBank (SoundBankBuilder's recipe).
 using Chem;
 using UnityEngine;
 
-/// <summary>The game's sounds, by name: the entries of the SoundBank (SoundBankBuilder's recipe).</summary>
 public static class SoundIds
 {
     public const string Cast = "cast";
@@ -12,7 +12,6 @@ public static class SoundIds
     public const string Zap = "zap";
     public const string Gust = "gust";
     public const string Thunder = "thunder";
-    /// <summary>A strike right overhead (ThunderClap): made new for each one, not in the bank.</summary>
     public const string ThunderClap = "thunderclap";
     public const string Earth = "earth";
     public const string Arcane = "arcane";
@@ -28,28 +27,17 @@ public static class SoundIds
     public const string Roar = "roar";
 }
 
-// Where the game's sound effects come from and how they play: which sound a
-// spell makes when it's cast and when it lands, and 3D sounds at a point.
-// Presentation only: every machine plays what it sees, so online players hear
-// each other's spells. Clips come from the SoundBank (recordings and
-// procedural sounds, mastered to sit together in the mix), one of a sound's
-// variations at random; a sound the bank lacks (no bank built yet) falls back
-// to ProceduralSounds.
 public static class GameSounds
 {
     static readonly System.Collections.Generic.Dictionary<string, AudioClip> made = new();
 
-    /// <summary>The sound of a spell leaving the hand (Gust of Wind is all whoosh already).</summary>
     public static string CastOf(SpellDef spell) =>
         spell != null && spell.Element == "air" ? null : SoundIds.Cast;
 
-    /// <summary>The sound where a spell takes effect: by its element, else by what it does.</summary>
     public static string LandingOf(SpellDef spell)
     {
         if (spell == null) return null;
-        // A strike from the sky (Thunder Strike) is silent as the sky marks it: its thunder comes with the bolt (ThunderClap).
         if (spell.Delay > 0 && spell.Then == "thunder") return null;
-        // Earth Spires rumble as they come up out of the ground (SpireRise).
         if (spell.Jagged > 0) return SoundIds.Earth;
         switch (spell.Element)
         {
@@ -66,7 +54,6 @@ public static class GameSounds
         return spell.Effect == "teleport" ? SoundIds.Blink : SoundIds.Arcane;
     }
 
-    /// <summary>A clip for the sound: a bank variation if there is one, else the procedural stand-in.</summary>
     public static AudioClip Clip(string sound)
     {
         if (sound == null) return null;
@@ -74,7 +61,6 @@ public static class GameSounds
         return clip != null ? clip : Fallback(sound);
     }
 
-    // Made once: the casting sounds are played often, and with no bank each would be a new clip.
     static AudioClip Fallback(string sound)
     {
         if (made.TryGetValue(sound, out var clip) && clip != null) return clip;
@@ -114,11 +100,8 @@ public static class GameSounds
         _ => ProceduralSounds.Shimmer,
     };
 
-    /// <summary>Plays the sound once at a point in the world, with a little pitch variety.</summary>
-    /// <summary>A one-shot sound played here, for a probe to hear.</summary>
     public static event System.Action<string, Vector3> Played;
 
-    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -139,10 +122,6 @@ public static class GameSounds
         Object.Destroy(go, clip.length / Mathf.Max(0.5f, source.pitch) + 0.1f);
     }
 
-    /// <summary>
-    /// A clip made for this one moment (a ThunderClap) played at a point, loud: it carries far and is mostly heard as
-    /// if close, <paramref name="spread"/> of it placed in the world.
-    /// </summary>
     public static void PlayMade(string sound, AudioClip clip, Vector3 at, float volume, float spread)
     {
         if (clip == null) return;
@@ -159,7 +138,6 @@ public static class GameSounds
         Object.Destroy(clip, clip.length + 1f);
     }
 
-    /// <summary>A looping 3D source (a fire burning), stopped until it's played.</summary>
     public static AudioSource Loop(string sound, Transform parent, float volume)
     {
         var clip = Clip(sound);
@@ -167,12 +145,10 @@ public static class GameSounds
         Configure(source, clip, volume);
         source.loop = true;
         source.playOnAwake = false;
-        // Not all fires in step: each loop starts at its own place.
         if (clip != null) source.time = Random.Range(0f, clip.length * 0.9f);
         return source;
     }
 
-    // Fully 3D, audible across the yard, fading over tens of metres.
     static void Configure(AudioSource source, AudioClip clip, float volume)
     {
         source.clip = clip;

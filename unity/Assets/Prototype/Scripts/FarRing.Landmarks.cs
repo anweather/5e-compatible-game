@@ -13,11 +13,8 @@ using UnityEngine;
 // so it's its true size wherever it meets the land. All view: nothing shared reads it.
 public sealed partial class FarRing
 {
-    // A far mesh stands this much wider and taller than its row, so it covers its own stamp in a known chunk's coarse land.
     const float CoverRadius = 1.02f, CoverMetres = 1f;
-    // How far below the ground at it a far mesh's foot reaches (m), so it never floats on a slope.
     const float SinkMetres = 8f;
-    // Visibility is worked out a few times a second: the camera crosses a chunk in seconds.
     const float LandmarkEvery = 0.25f;
 
     readonly List<(FarLandmark landmark, GameObject go)> landmarks = new();
@@ -26,20 +23,12 @@ public sealed partial class FarRing
     static readonly int SeenMetresId = Shader.PropertyToID("_SeenMetres"), FadeMetresId = Shader.PropertyToID("_FadeMetres"), StretchId = Shader.PropertyToID("_Stretch"), NotchId = Shader.PropertyToID("_Notch"),
         TopId = Shader.PropertyToID("_Top"), StretchFromId = Shader.PropertyToID("_FarStretchFrom"), StretchToId = Shader.PropertyToID("_FarStretchTo");
 
-    /// <summary>
-    /// Where a far landmark starts to take its horizon.json "far" look (its stretch and its rim's notch), in metres from the
-    /// eye: as far as its own chunk can be from the eye's when it's still a chunk terrain (a Chebyshev sight + 1 chunks on a
-    /// diagonal), so it's drawn at its true size whenever it gives way to the land and never pops.
-    /// </summary>
     float StretchFrom => (sight + 1) * chunkMetres * 1.4142f;
 
-    /// <summary>Over how many chunks past StretchFrom the far look comes in whole.</summary>
     public const float StretchOverChunks = 3f;
 
-    /// <summary>How many far landmarks are drawn now (the probe and the clip read it).</summary>
     public int LandmarksShown { get; private set; }
 
-    /// <summary>Every far landmark: what it is, where its foot stands, and whether it's drawn now.</summary>
     public IEnumerable<(FarLandmark landmark, Vector3 foot, bool shown)> Landmarks
     {
         get
@@ -48,10 +37,8 @@ public sealed partial class FarRing
         }
     }
 
-    /// <summary>Whether the far ring is up: the map read, the haze set, the sea plane and the landmarks made.</summary>
     public bool IsReady => ring != null;
 
-    /// <summary>How many known chunks are drawn as meshes now.</summary>
     public int KnownDrawn => drawn.Count;
 
     void MakeLandmarks(Loaded loaded)
@@ -62,14 +49,12 @@ public sealed partial class FarRing
             var f = loaded.Far.All[n];
             var look = loaded.Looks.TryGetValue(f.Type, out var lk) ? lk : FarMeshes.FarLook.Plain;
             float top = f.Height + CoverMetres, ground = loaded.Ground[n];
-            // The apron runs down to just under the water, where the sea plane is.
             var data = FarMeshes.Landmark(f.Type, f.Shape, f.Radius * CoverRadius, top, SinkMetres, look.Apron, ground - land.WaterLevel + 1f);
             var go = new GameObject($"Far {f.Type}{(f.Name != null ? " " + f.Name : "")}");
             go.transform.SetParent(transform, false);
             var (x, z) = l.CellCenter(f.X, f.Y);
             go.transform.position = new Vector3(x, ground, z);
             var mesh = data.ToMesh(go.name);
-            // FarLand.shader stretches it up to look.Stretch times its height, so it's culled by that.
             var b = mesh.bounds;
             b.Encapsulate(new Vector3(b.center.x, top * look.Stretch, b.center.z));
             mesh.bounds = b;
@@ -106,26 +91,12 @@ public sealed partial class FarRing
         LandmarksShown = shown;
     }
 
-    /// <summary>How far the camera sees on a generated map (m): the sea plane to the horizon, as the yard's builder means it to.</summary>
     public const float SeeMetres = 15000f;
 
-    /// <summary>
-    /// How far everything on the Default layer still drew before the far ring's haze set it (m), as the follow camera's old
-    /// far plane of 500 m let it: the cells' dressing is a GameObject a cell over the whole map, which drawn to the horizon
-    /// cost 45 ms a frame. Now the layer stops where the haze hides it (HazeHides, ~730 m on the nine), and the Resident
-    /// Drawer's small-mesh cull (MaterialCache) still drops a brush sphere about 500 m off.
-    /// </summary>
     public const float NearMetres = 500f;
 
-    /// <summary>The layer the far ring draws on, so the Default layer's cull distance doesn't reach it ("Ignore Raycast":
-    /// nothing here has a collider).</summary>
     public const int Layer = 2;
 
-    // The player's follow camera comes from the Starter Assets with a far plane of 500 m, which cut the known ring and the
-    // landmarks off; on a generated map the cameras (and Cinemachine's lenses, which override them) see to the horizon,
-    // and the Default layer stops where the haze hides it (HazeHides). The cut is flat, a plane at that depth like the
-    // camera's far plane, as URP's fog is by depth: a sphere stopped things at the edges of the view before the haze had
-    // them. Checked a few times a second, so a camera made later (online, a cut) gets it too, and a new known dial moves it.
     void SeeFar(Camera cam)
     {
         float cut = HazeMetres > 0f ? HazeHides : NearMetres;

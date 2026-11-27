@@ -19,7 +19,6 @@ public class NetworkIdTests
     const string NetWizard = "Assets/Prototype/Prefabs/NetWizard.prefab";
     const string Yard = "Assets/Prototype/Scenes/ChemistryYard.unity";
 
-    // Generated per machine, so their ids come from StableNetworkIds.
     static readonly Dictionary<string, uint> GeneratedHashes = new()
     {
         [Things + "barrel.prefab"] = 3056903041,
@@ -38,14 +37,12 @@ public class NetworkIdTests
         [Things + "dressed-item.prefab"] = 2115073409,
     };
 
-    // In git, so its ids are too; a change here means the tracked prefab's were rewritten.
     const uint NetWizardHash = 1156921532;
     const uint ChemGridHash = 506209271;
 
     [Test]
     public void StableIdsComeFromThePathAlone()
     {
-        // The same on every machine: worked out from the path, nothing else.
         Assert.AreEqual("27917d84d841818a65434665781b7cea", StableNetworkIds.GuidFor(Things + "barrel.prefab"));
         Assert.AreEqual(9091701210552913752L, StableNetworkIds.FileIdFor(Things + "barrel.prefab"));
         Assert.AreEqual(7881862778351988262L, StableNetworkIds.FileIdFor(Yard, "ChemGrid"));

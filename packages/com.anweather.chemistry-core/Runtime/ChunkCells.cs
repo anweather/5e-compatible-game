@@ -7,18 +7,12 @@ using System.Collections.Generic;
 
 namespace Chem
 {
-    /// <summary>
-    /// A value a cell over a w × h map, held a chunk at a time and only for the chunks a write reached: the rest read as
-    /// default. Reads by world cell, as the map-sized array it stands for was read.
-    /// </summary>
     internal sealed class ChunkCells<T> where T : struct
     {
         readonly int w, h, across, down;
         readonly bool wrapX, wrapY;
         readonly T[][] byChunk;
 
-        // wrapX: the map wraps east-west (World.WrapX, a whole number of chunks wide), so an x past the seam folds; wrapY,
-        // north-south too (a torus, World.WrapY), so a y past the south seam folds.
         public ChunkCells(int w, int h, bool wrapX = false, bool wrapY = false)
         {
             this.w = w;
@@ -41,7 +35,6 @@ namespace Chem
             return cy * across + cx;
         }
 
-        /// <summary>The value at a cell on the map: default where nothing was written.</summary>
         public T this[int x, int y]
         {
             get
@@ -51,7 +44,6 @@ namespace Chem
             }
         }
 
-        /// <summary>The value at a cell on the map, to write: its chunk's array is made at the first write.</summary>
         public ref T Cell(int x, int y)
         {
             ref var a = ref byChunk[ChunkIndex(x, y)];
@@ -59,7 +51,6 @@ namespace Chem
             return ref a[Local(x, y)];
         }
 
-        /// <summary>The chunks a write reached.</summary>
         public int ChunkCount
         {
             get
@@ -70,10 +61,8 @@ namespace Chem
             }
         }
 
-        /// <summary>What it holds, for a value of <paramref name="size"/> bytes: its chunk arrays and the index of them.</summary>
         public long Bytes(int size) => 24 + 8L * byChunk.Length + ChunkCount * (24 + (long)size * Chunks.Area);
 
-        /// <summary>The cells whose value isn't default, row by row.</summary>
         public IEnumerable<(int x, int y)> Cells()
         {
             var cmp = EqualityComparer<T>.Default;

@@ -32,56 +32,33 @@ public class CastBeats : MonoBehaviour
     [Tooltip("Every pose and timing. The builder sets it; without it, the defaults in CastFeel.")]
     public CastFeel feel;
 
-    /// <summary>A beat has started on this wizard, on this machine's screen.</summary>
     public event Action<Beat> BeatChanged;
-    /// <summary>The hands have got there: met, in a Slam, or thrust home, in a Release.</summary>
     public event Action<Beat> Struck;
-    /// <summary>A held cast has reached this charge level (from 2).</summary>
     public event Action<int> ChargeLevel;
 
-    /// <summary>The beat now.</summary>
     public Beat Now { get; private set; }
-    /// <summary>How long it has been playing (s), by the frame's clock.</summary>
     public float InBeat { get; private set; }
-    /// <summary>This is the wizard this machine plays.</summary>
     public bool IsLocal => net == null || net.IsOwner;
-    /// <summary>The charge of the cast in hand: while held the level so far, once fired what it went off at.</summary>
     public int Charge { get; private set; } = 1;
-    /// <summary>Where the spell is going, from its announcement (Release on).</summary>
     public Vector3 AimPoint { get; private set; }
-    /// <summary>The spell last announced for this wizard.</summary>
     public string Spell { get; private set; }
-    /// <summary>The elements of the cast in hand, in order; null for none.</summary>
     public (string first, string second) Elements => (first, second);
-    /// <summary>This cast is uncharged, so far as anyone can know: its slam and thrust are the tap's. A hold, a slam on the way to a charge and anything after one never are.</summary>
     public bool Tap => tap;
-    /// <summary>This cast is a hand's tap (World.Hands: let go inside tapTicks), so its wind-up is played quick.</summary>
     public bool HandTap => handTap;
-    /// <summary>The pose of the beat now.</summary>
     public CastFeel.BeatPose Pose => feel.Of(Now, tap);
-    /// <summary>A beat is posing the body; CastPose stands aside.</summary>
     public bool Driving => Now != Beat.Neutral && PoseOn;
-    /// <summary>The hands are in a cast, not yet handing the arms back to the animation: a punch waits.</summary>
     public bool HandsBusy => Driving && Now is not (Beat.Recovery or Beat.Fizzle);
-    /// <summary>Off, the beats still run and the elements still show but the body is left to CastPose (the probe's "before").</summary>
     public bool PoseOn { get; set; } = true;
 
-    /// <summary>The casting sounds (CastSounds), for the probe.</summary>
     public CastSounds Sounds => sounds;
-    /// <summary>This spell is the cast in the hands, so its thrust will carry its sound; one from the radial has neither.</summary>
     public bool InHands(string spell) => SoundsOn && (firedSpell == spell || Now is Beat.First or Beat.Second or Beat.WindUp or Beat.Slam or Beat.Charge);
-    /// <summary>Off, a cast has only the old whoosh (the clip's "before").</summary>
     public bool SoundsOn { get; set; } = true;
 
-    /// <summary>In a hit-stop: this body and the camera stand still, the game runs on.</summary>
     public bool Stopped => stopLeft > 0f;
-    /// <summary>How many hit-stops this wizard has had, for the probe.</summary>
     public int Stops { get; private set; }
 
-    /// <summary>Where the hands were last put, for the probe.</summary>
     public (Vector3 right, Vector3 left) HandTargets { get; private set; }
 
-    /// <summary>What a pose is made of; what's on the body at any moment is a blend of two.</summary>
     public struct Blend
     {
         public Vector3 right, left, fingers, palm;
@@ -115,11 +92,7 @@ public class CastBeats : MonoBehaviour
     Blend from, body;
     string first, second;
     LookTint firstTint, secondTint;
-    // The core fired this spell, and the announcement of one: they arrive in either order.
     string firedSpell, announcedSpell;
-    // The cast as the last whole tick left it. A tick in slices (World.StepSome) can clear a cast
-    // a frame or two before it says it fired, so what's in the core mid-tick isn't read; the beats
-    // go on from this, as a peer catching up can be mid-tick at the end of every frame.
     CastFacts whole;
     float firedAt, announcedAt, thrustAt, kick;
     bool struck, standing, tap, handTap;
@@ -147,13 +120,8 @@ public class CastBeats : MonoBehaviour
 
     void OnDestroy() => orbs?.Destroy();
 
-    /// <summary>The colour of the orb in a hand (0 right, 1 left), for the probe.</summary>
     public Color OrbColor(int hand) => orbs.OrbColor(hand);
 
-    /// <summary>
-    /// A cast was announced for this wizard: its spell, where it's going, and how long until it
-    /// leaves the hands. Only a cast the core fired for this wizard thrusts (not one from the radial).
-    /// </summary>
     public void Announce(string spell, Vector3 at, float leavesIn)
     {
         announcedSpell = spell;
@@ -163,10 +131,6 @@ public class CastBeats : MonoBehaviour
         Spell = spell;
     }
 
-    /// <summary>
-    /// Stands this body and the camera still for a moment, then runs <paramref name="after"/>.
-    /// A view of this machine's own: the Animator and the beat's clock, never the game's time.
-    /// </summary>
     public void HitStop(float seconds, Action after)
     {
         if (seconds <= 0f || !IsLocal) return;
@@ -178,7 +142,6 @@ public class CastBeats : MonoBehaviour
         Stops++;
     }
 
-    // The beat's time this frame: none in a hit-stop.
     float BeatTime()
     {
         if (!Stopped) return Time.deltaTime;
@@ -215,8 +178,6 @@ public class CastBeats : MonoBehaviour
         Read(heard.World);
     }
 
-    // Each cast once, on a tick or in the frame after one finished from outside (World.FinishTick),
-    // which tells no one: a cast that left the core unheard would read as dropped, a fizzle.
     void HearFired(World world)
     {
         string player = Player;
@@ -229,7 +190,6 @@ public class CastBeats : MonoBehaviour
         }
     }
 
-    /// <summary>Whose wizard this is, in the core.</summary>
     public string Player => net != null && net.IsSpawned ? net.CastPlayer : SpellCaster.SoloPlayer;
 
     void LateUpdate()
@@ -250,7 +210,6 @@ public class CastBeats : MonoBehaviour
         sounds.Tick();
     }
 
-    // Before the beat can move on: a thrust can follow the slam in the frame the hands meet.
     void Strike()
     {
         if (struck || Now is not (Beat.Slam or Beat.Release) || InBeat < Pose.seconds) return;
@@ -259,7 +218,6 @@ public class CastBeats : MonoBehaviour
         if (IsLocal) CastImpact.Struck(this, Now);
     }
 
-    // Works out the beat from the cast.
     void Step(World world)
     {
         if (!world.TickInProgress)
@@ -274,10 +232,8 @@ public class CastBeats : MonoBehaviour
         if (next != Now) Enter(next);
     }
 
-    // How fast the beat's clock runs: a hand tap's wind-up has only the tick before its slam.
     float Rate => handTap && Now == Beat.WindUp && feel.handTapWindUpSeconds > 0f ? Mathf.Max(1f, feel.windUp.seconds / feel.handTapWindUpSeconds) : 1f;
 
-    /// <summary>A hand's tap under way: one of the hands let go inside tapTicks and the cast's meter is the tap's (a charging other hand's is longer).</summary>
     public static bool IsHandTap(World world, string player, PlayerCast cast)
     {
         int tapTicks = world.Rules.Sim.Hold.Hands.TapTicks;
@@ -288,7 +244,6 @@ public class CastBeats : MonoBehaviour
         return false;
     }
 
-    // Only between ticks.
     void Read(World world)
     {
         var cast = caster.Replaying ? null : world.CastOf(Player);
@@ -300,7 +255,6 @@ public class CastBeats : MonoBehaviour
         string spell = caster.SpellOf(cast);
         firstTint = caster.OrbTint(first, spell);
         secondTint = caster.OrbTint(second, spell);
-        // The hands' own charges: the cast's mirror shows the longest meter, which a tapping hand can be while the other charges.
         if (firedSpell == null) Level(world.HandsOf(Player).Casting ? SpellCaster.HeldHandCharge(world, Player) : world.HeldCharge(cast));
     }
 
@@ -346,7 +300,6 @@ public class CastBeats : MonoBehaviour
         if (IsLocal) CastImpact.Began(this, beat);
     }
 
-    // Lays the pose on the bones: the body, then the hands on it.
     void Lay()
     {
         var forward = transform.forward;

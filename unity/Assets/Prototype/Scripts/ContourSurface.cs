@@ -10,16 +10,10 @@ using UnityEngine.Rendering;
 // gets; this turns the contour into a Unity mesh under the grid.
 public sealed class ContourSurface
 {
-    /// <summary>
-    /// What an owner gives each point of a surface all at once, from cells it read once for the build
-    /// (CellWaterMesh's tiles), in place of a delegate per attribute and per cell (#70).
-    /// </summary>
     public interface IPoints
     {
-        /// <summary>Whether the points have a flow and foam (uv1, uv2).</summary>
         bool Flows { get; }
 
-        /// <summary>A point's height, colour and flow, as the delegates Build takes would give them.</summary>
         void Point(float gx, float gy, float value, out float height, out Color color, out Vector4 flow);
     }
 
@@ -35,14 +29,9 @@ public sealed class ContourSurface
     readonly float uvMetres;
     readonly bool tiled;
 
-    // Profiler markers: one set for a tile of a tiled surface (water, ice, slicks, glow, lava), one for a surface drawn
-    // whole ("Film": none is now). The 865-1040 ms Contour.Film.Outline frames on the nine's forestload (#197) were the
-    // lava's one mesh round every lava and ember cell, before #188 tiled it; the slicks were in tiles already.
     static readonly Unity.Profiling.ProfilerMarker TileOutline = new("Contour.Tile.Outline"), TilePoints = new("Contour.Tile.Points"), TileUpload = new("Contour.Tile.Upload"),
         FilmOutline = new("Contour.Film.Outline"), FilmPoints = new("Contour.Film.Points"), FilmUpload = new("Contour.Film.Upload");
 
-    /// <param name="uvMetres">Metres per texture repeat (UVs are world x, z over this).</param>
-    /// <param name="tiled">Draw one tile of a bigger surface (CellContour.Tiled): from the centre of the box's first cell to the centre of the cell past its last.</param>
     public ContourSurface(ChemGrid grid, string name, Material material, ContourSpec spec, float uvMetres, bool tiled = false)
     {
         this.grid = grid;
@@ -59,18 +48,8 @@ public sealed class ContourSurface
         r.shadowCastingMode = ShadowCastingMode.Off;
     }
 
-    /// <summary>True when the last Build drew nothing.</summary>
     public bool Empty => shape.Triangles.Count == 0;
 
-    /// <summary>
-    /// Rebuilds the mesh around cells (x0, y0)..(x1, y1): <paramref name="value"/> per cell (1 in,
-    /// 0 out, see CellContour), <paramref name="height"/> and <paramref name="color"/> per point
-    /// (grid units; the colour also gets the point's blended value, for fading the edge);
-    /// <paramref name="wobble"/> optionally calms the outline's wobble per cell (see CellContour.Build);
-    /// <paramref name="flow"/> optionally gives each point the water's flow (x, z in m/s, into uv1),
-    /// its foam (z, into uv2.x) and how much it wears its colour's rgb (w, into uv2.y; 0 for water),
-    /// from its blended value too.
-    /// </summary>
     public void Build(RectInt cells, System.Func<int, int, float> value, System.Func<float, float, float> height,
         System.Func<float, float, float, Color> color, System.Func<int, int, float> wobble = null,
         System.Func<float, float, float, Vector4> flow = null)
@@ -82,7 +61,6 @@ public sealed class ContourSurface
         Upload(flow != null);
     }
 
-    /// <summary>The same, with each point's height, colour and flow from <paramref name="points"/>.</summary>
     public void Build(RectInt cells, System.Func<int, int, float> value, IPoints points, System.Func<int, int, float> wobble = null)
     {
         Outline(cells, value, wobble);
@@ -92,10 +70,8 @@ public sealed class ContourSurface
         Upload(points.Flows);
     }
 
-    /// <summary>How long the last build took over its points, in Stopwatch ticks (for a check's timing).</summary>
     public long PointsTicks { get; private set; }
 
-    /// <summary>The last build's vertices.</summary>
     public int Vertices => vertices.Count;
 
     string Count => tiled ? "tile" : "film";
@@ -135,10 +111,6 @@ public sealed class ContourSurface
         if (PerfCounts.On) CountSame(Count);
     }
 
-    /// <summary>
-    /// For a check: whether the last build's points (positions, colours, uvs, flows, foams) and
-    /// triangles are, bit for bit, those of <paramref name="other"/>'s last build.
-    /// </summary>
     public bool SamePointsAs(ContourSurface other)
     {
         if (vertices.Count != other.vertices.Count || flows.Count != other.flows.Count || shape.Triangles.Count != other.shape.Triangles.Count) return false;
@@ -160,7 +132,6 @@ public sealed class ContourSurface
 
     static bool Bits(float a, float b) => System.BitConverter.SingleToInt32Bits(a) == System.BitConverter.SingleToInt32Bits(b);
 
-    // For a performance pass: whether this build drew what the last did (a redraw that changed nothing).
     long lastPicture;
 
     void CountSame(string count)
@@ -182,8 +153,6 @@ public sealed class ContourSurface
 
     void Attributes(IPoints points)
     {
-        // Each point at the copy of its place nearest the camera (on a world that wraps): measured from cell (0, 0) as
-        // its coordinates put it, since that cell's own nearest copy can be a world away from these.
         var origin = grid.CellCenterUnwrapped(0, 0);
         float size = grid.cellSize;
         bool withFlow = points.Flows;
@@ -218,20 +187,13 @@ public sealed class ContourSurface
         }
     }
 
-    /// <summary>A point in grid units (cell (x, y) spans x..x+1, y..y+1) on the world's ground plane (y 0).</summary>
     public Vector3 Flat(float gx, float gy) => FlatOn(grid, gx, gy);
 
-    /// <summary>The same, for a caller with no surface to hand.</summary>
     public static Vector3 FlatOn(ChemGrid grid, float gx, float gy) => ViewWrap.Near(Flat(grid.CellCenterUnwrapped(0, 0), grid.cellSize, gx, gy));
 
-    /// <summary>The same, from cell (0, 0)'s centre and the cells' size, for a caller placing many points.</summary>
     public static Vector3 Flat(Vector3 origin, float cellSize, float gx, float gy) =>
         new(origin.x + (gx - 0.5f) * cellSize, 0f, origin.z - (gy - 0.5f) * cellSize);
 
-    /// <summary>
-    /// A value blended between cell centres around a point (grid units), from the cells that
-    /// have one; <paramref name="fallback"/> if none of the four around it does.
-    /// </summary>
     public static float BlendAround(float gx, float gy, System.Func<int, int, float?> at, float fallback)
     {
         float bx = gx - 0.5f, by = gy - 0.5f;
@@ -251,20 +213,9 @@ public sealed class ContourSurface
         return weight > 0f ? sum / weight : fallback;
     }
 
-    /// <summary>
-    /// BlendAround over values read once: cell (x, y)'s at kept[(y - y0) * width + x - x0], NaN for
-    /// none. The same sums in the same order, so the same value bit for bit; the four cells round the
-    /// point must be in the kept box (InKept).
-    /// </summary>
     public static float BlendKept(float[] kept, int x0, int y0, int width, float gx, float gy, float fallback) =>
         BlendKept(kept, (x0, y0, width), (gx, gy), fallback, (null, null), out _);
 
-    /// <summary>
-    /// The same, and with <paramref name="alsoX"/> and <paramref name="alsoY"/> (kept the same way,
-    /// every cell having one) blended at the same point too, into <paramref name="also"/> (0 without
-    /// them): one pass for a point's top and flow, each sum as BlendAround makes it.
-    /// </summary>
-    // Its sums stay in one body, as BlendAround's are: split into calls, Mono could round a step that it keeps here.
 #pragma warning disable S3776
     public static float BlendKept(float[] kept, (int x0, int y0, int width) box, (float x, float y) at, float fallback,
         (float[] x, float[] y) flows, out Vector2 also)
@@ -297,7 +248,6 @@ public sealed class ContourSurface
     }
 #pragma warning restore S3776
 
-    /// <summary>Whether the four cells BlendKept reads round a point are in a kept box of <paramref name="width"/> × <paramref name="height"/> cells from (x0, y0).</summary>
     public static bool InKept(int x0, int y0, int width, int height, float gx, float gy)
     {
         int x = Mathf.FloorToInt(gx - 0.5f), y = Mathf.FloorToInt(gy - 0.5f);

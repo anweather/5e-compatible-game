@@ -10,7 +10,6 @@ using Chem.Mcp;
 // the probe's tap and what the chat shows. The player sees a reply's words when the block ends, as with Claude Code.
 public sealed class ApiChat : IChatHarness
 {
-    /// <summary>How long one message may run before it's stopped, as with Claude Code.</summary>
     const int MostSeconds = 240;
 
     readonly ConcurrentQueue<(ClaudeSaid said, string text)> heard = new();
@@ -30,7 +29,6 @@ public sealed class ApiChat : IChatHarness
 
     public bool Busy => busy;
 
-    /// <summary>The model it asks for.</summary>
     public string Model => model;
 
     public bool Take(out (ClaudeSaid said, string text) line)
@@ -53,7 +51,6 @@ public sealed class ApiChat : IChatHarness
         return true;
     }
 
-    // On its own thread: every line the loop says, then how it ended.
     void Follow(string message, string folder, string url, ChatRecorder recorder, Func<long> clock, CancellationTokenSource stop)
     {
         using var watchdog = new Timer(_ =>

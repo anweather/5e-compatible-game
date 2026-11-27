@@ -1,20 +1,13 @@
+// Chunked cell storage and the active-chunk set (docs/WORLD_STREAMING.md, part 1).
 using System;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Chunked cell storage and the active-chunk set (docs/WORLD_STREAMING.md, part 1).
-    /// </summary>
     [Category("Simulation")]
     public class ChunkTests
     {
-        // ---------- the store's order (core-guards) ----------
-
-        // The World's chunks remade in its store in another order, as a world that made them as they were wanted, in an
-        // order of its own, would hold them: every pass over all the chunks must walk them by row then column instead
-        // (World.ChunksInOrder). The store is private and its chunks internal, so this reaches it by reflection.
         static void MadeInAnotherOrder(World w)
         {
             const System.Reflection.BindingFlags own = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
@@ -27,11 +20,6 @@ namespace Chem.Tests
             typeof(World).GetField("sortedChunks", own).SetValue(w, null);
         }
 
-        /// <summary>
-        /// Two peers whose stores hold the same chunks in different orders: the same script (fires, frost, earth), chunks
-        /// let go and taken back, a rule switch that unfits the inactive ones, packing, and the dragon's reset, with the
-        /// same CellHash every tick.
-        /// </summary>
         [Test]
         public void ChunksMadeInAnotherOrderRunTheSame()
         {
@@ -65,7 +53,6 @@ namespace Chem.Tests
 
         static void Run(World w, int ticks) { for (int i = 0; i < ticks; i++) w.Step(); }
 
-        /// <summary>Two chunks side by side (x 0..63 and 64..127) of grass.</summary>
         static World TwoChunks(string fill = "grass", uint seed = 5) => new World(R, 2 * Chunks.Size, 40, seed, fill);
 
         static bool Any(World w, int x0, int x1, Func<Cell, bool> test)
@@ -78,11 +65,6 @@ namespace Chem.Tests
 
         static bool Burnt(Cell c) => c.Fire > 0 || c.T == "dirt";
 
-
-        /// <summary>
-        /// A valley-sized meadow (4×3 chunks, the last ones partial) with water, oil, walls and
-        /// fires that cross chunk edges, plus wind, frost, lightning and earth shaping.
-        /// </summary>
         internal static World Valley(uint seed = 11)
         {
             var w = new World(R, 200, 175, seed, "grass");
@@ -111,7 +93,6 @@ namespace Chem.Tests
             for (int t = 0; t < ticks; t++) ValleyScriptTick(w, t);
         }
 
-        /// <summary>Tick t of ValleyScript: its cast for that tick, if any, then the step.</summary>
         internal static void ValleyScriptTick(World w, int t)
         {
             if (t == 20) w.Cast("gust-of-wind", 100, 64, 1);
@@ -122,21 +103,15 @@ namespace Chem.Tests
             w.Step();
         }
 
-        // ---------- all chunks active: exactly the old behaviour ----------
-
         [Test]
         public void ValleyAcrossChunksMatchesTheUnchunkedGrid()
         {
-            // Recorded with the dense grid before chunks existed (c4bbf1c); again when Move Earth
-            // began toppling the trees it heaves (one more log line: "a tree topples").
             var w = Valley();
             ValleyScript(w, 300);
             Assert.That(w.CellHash(), Is.EqualTo("5e37026c"));
             Assert.That(w.RngState, Is.EqualTo(959611202u));
             Assert.That(w.Log.Count, Is.EqualTo(37));
         }
-
-        // ---------- chunk maths and layout ----------
 
         [Test]
         public void ChunkMathFloorsNegativeCoordinates()
@@ -174,8 +149,6 @@ namespace Chem.Tests
             Assert.That(w.At(-1, 5), Is.Null);
         }
 
-        // ---------- paused chunks ----------
-
         [Test]
         public void APausedChunkStaysByteIdenticalWhileItsNeighbourBurns()
         {
@@ -211,7 +184,7 @@ namespace Chem.Tests
         [Test]
         public void WaterAndGasStopAtAPausedChunk()
         {
-            var w = TwoChunks("pit"); // ground that doesn't soak water up
+            var w = TwoChunks("pit");
             for (int y = 10; y < 20; y++) w.AddWater(63, y, 16);
             w.At(63, 30).Gas = "smoke";
             w.At(63, 30).GasAmt = 8;
@@ -241,8 +214,6 @@ namespace Chem.Tests
             Assert.That(w.At(63, 10).Height, Is.Not.EqualTo(0), "the half of the spell in the live chunk still landed");
         }
 
-        // ---------- hashes ----------
-
         [Test]
         public void ChunkHashChangesOnlyForTheChunkTouched()
         {
@@ -254,8 +225,6 @@ namespace Chem.Tests
                 Assert.That(w.ChunkHash(k.cx, k.cy) != before[k], Is.EqualTo(k == (2, 1)), $"chunk {k}");
             Assert.That(w.CellHash(), Is.Not.EqualTo(cells));
         }
-
-        // ---------- determinism ----------
 
         [Test]
         public void PausingIsDeterministicWhateverOrderChunksAreSwitchedIn()
@@ -278,12 +247,10 @@ namespace Chem.Tests
             Assert.That(a.CellHash(), Is.Not.EqualTo(Play((3, 0), (1, 1)).CellHash()), "and pausing does change the run");
         }
 
-        // ---------- cells through their chunks (docs/design/sparse-world.md) ----------
-
         [Test]
         public void CellsThroughTheirChunksAreTheWorldsOwn()
         {
-            var w = Valley(); // 200 x 175: the last column and row of chunks partial
+            var w = Valley();
             var all = w.AllCells().ToList();
             Assert.That(all.Count, Is.EqualTo(w.W * w.H));
             for (int y = 0; y < w.H; y++)
@@ -302,7 +269,7 @@ namespace Chem.Tests
             var w = Valley();
             ValleyScript(w, 40);
             var sum = Fnv1aSum.Start();
-            for (int k = 0; k < 7; k++) w.HashSlice(ref sum, k, 7); // slices that start and end inside a chunk's row
+            for (int k = 0; k < 7; k++) w.HashSlice(ref sum, k, 7);
             Assert.That(w.CloseHash(sum), Is.EqualTo(w.CellHash()));
         }
 
@@ -315,7 +282,7 @@ namespace Chem.Tests
                 var sum = Fnv1aSum.Start();
                 w.HashSlice(ref sum, 2, 5);
             }
-            for (int warm = 0; warm < 32; warm++) Slice(); // past the tiered JIT's recompiling (as LookScopeTests)
+            for (int warm = 0; warm < 32; warm++) Slice();
             long Measure(int slices)
             {
                 long before = GC.GetAllocatedBytesForCurrentThread();

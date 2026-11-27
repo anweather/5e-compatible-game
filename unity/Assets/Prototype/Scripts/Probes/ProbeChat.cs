@@ -14,11 +14,9 @@ public class ChatProbe : ProbeScenario
     const string Recording = "make the fireball bigger", RecordedMod = "big-fireball";
     const float MostWrite = 3f, MostWait = 12f, FilmTyping = 1.5f, FilmReading = 3f;
 
-    /// <summary>The name claude bills the API by, which the game never sets.</summary>
     const string ClaudeOwnKey = "ANTHROPIC_API_KEY";
     const string HeldMark = "HELD-";
 
-    /// <summary>What claude 2.1.316 really says of a model it can't use: a line of no model's, then the result.</summary>
     const string Refusal = "There's an issue with the selected model (claude-haiku-5-5). It may not exist or you may not have access to it. Run --model to pick a different model.";
     const string Rain = "make it rain", RunsFile = "runs.txt";
     const string OnlyBlock = ClaudeRun.NotesClose;
@@ -33,7 +31,7 @@ public class ChatProbe : ProbeScenario
         folder = Path.Combine(Application.temporaryCachePath, "chat-probe");
         Directory.CreateDirectory(folder);
         logged = Path.Combine(folder, "asked.txt");
-        ChemGrid.Folders.Claude.Test = Path.Combine(folder, "claude-terminal"); // a probe's own, with no notes.md
+        ChemGrid.Folders.Claude.Test = Path.Combine(folder, "claude-terminal");
         Check("a_test_keeps_its_records_beside_its_log", ChatTelemetry.Home == PlayLog.Folder() && !ChatTelemetry.Home.EndsWith(ChatLog.RecordsFolder, System.StringComparison.Ordinal), ChatTelemetry.Home);
         otherRecords = Path.Combine(folder, "other-records");
         if (Directory.Exists(otherRecords)) Directory.Delete(otherRecords, true);
@@ -68,7 +66,6 @@ public class ChatProbe : ProbeScenario
         }
     }
 
-    // A prompt that changes something, as the real path has it: the bar, the stamp, the record and its later line.
     IEnumerator Recorded(GameChat chat)
     {
         string records = Path.Combine(folder, "records");
@@ -115,7 +112,6 @@ public class ChatProbe : ProbeScenario
         ChatTelemetry.Folder = otherRecords;
     }
 
-    // The notes reach claude in the message, quoted: what they say can't end the block or ask for a save, and the record keeps the player's words.
     IEnumerator NotesGoAhead(GameChat chat)
     {
         const string asking = "actually, make it green instead";
@@ -143,7 +139,6 @@ public class ChatProbe : ProbeScenario
 
     IEnumerator Sent(GameChat chat) => Until(chat, () => !chat.Busy && ChatTelemetry.Instance.Current == null);
 
-    // A model the account can't use (#64): one process, the game's line once, the record failed, and the rest stay as they were.
     IEnumerator ModelGone(GameChat chat)
     {
         string told = ClaudeRun.ModelUnavailable(ClaudeRun.ChatModel);
@@ -187,14 +182,12 @@ public class ChatProbe : ProbeScenario
         Check("the_red_line_" + what, last.Contains(shown + "</color>"), last);
     }
 
-    // The two lines of a real failure.
     static string[] Failure(string words) => new[]
     {
         "{\"type\":\"assistant\",\"message\":{\"id\":\"m0\",\"model\":\"<synthetic>\",\"content\":[{\"type\":\"text\",\"text\":\"" + words + "\"}]},\"error\":\"model_not_found\",\"is_api_error_message\":true,\"api_error_status\":404}",
         "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"result\":\"" + words + "\",\"terminal_reason\":\"api_error\",\"api_error_status\":404,\"total_cost_usd\":0,\"num_turns\":1}",
     };
 
-    // A stand-in that also counts how often it ran.
     string Counted(string name, string[] lines)
     {
         string runs = Path.Combine(folder, RunsFile);
@@ -210,7 +203,6 @@ public class ChatProbe : ProbeScenario
         return File.Exists(runs) ? File.ReadAllLines(runs).Length : 0;
     }
 
-    // The newest record in this probe's own folder, as it's written off the main thread.
     JObject LastRecord()
     {
         var file = Directory.Exists(otherRecords) ? Directory.GetFiles(otherRecords, "chat-log-*.jsonl").FirstOrDefault() : null;
@@ -222,20 +214,18 @@ public class ChatProbe : ProbeScenario
         }
         catch (IOException)
         {
-            return null; // still being written
+            return null;
         }
     }
 
-    // A script standing in for claude: it notes its arguments and stdin, waits a little, then prints these lines.
     string StandIn(string name, float seconds, params string[] lines) => Script(folder, logged, name, seconds, lines);
 
-    /// <summary>Writes a stand-in for claude into this folder, and says where it is.</summary>
     public static string Script(string folder, string logged, string name, float seconds, params string[] lines)
     {
         string script = Path.Combine(folder, name + ".cmd");
         var body = new System.Text.StringBuilder("@echo off\r\n");
         body.Append($"echo %* > \"{logged}\"\r\n");
-        foreach (string key in new[] { ClaudeRun.GameKey, ClaudeOwnKey }) body.Append($"if defined {key} echo {HeldMark}{key} >> \"{logged}\"\r\n"); // that it's there, never what it is
+        foreach (string key in new[] { ClaudeRun.GameKey, ClaudeOwnKey }) body.Append($"if defined {key} echo {HeldMark}{key} >> \"{logged}\"\r\n");
         body.Append($"more >> \"{logged}\"\r\n");
         if (seconds > 0f) body.Append($"ping -n {Mathf.CeilToInt(seconds) + 1} 127.0.0.1 > nul\r\n");
         foreach (string line in lines) body.Append(Echo(line));
@@ -291,7 +281,6 @@ public class ChatProbe : ProbeScenario
         Check("no_terminal_window_needed", File.Exists(Path.Combine(ChemGrid.Folders.Claude.Path, ".mcp.json")));
     }
 
-    // The Developer menu's way back to the account's model, and what a model the account can't use looks like.
     IEnumerator ModelChoice(GameChat chat)
     {
         bool had = PlayerPrefs.HasKey(GameChat.ModelKey), was = GameChat.AccountModel;

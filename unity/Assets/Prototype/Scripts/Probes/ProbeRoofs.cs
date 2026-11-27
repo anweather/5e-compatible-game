@@ -11,8 +11,6 @@ using UnityEngine;
 // Numbers and before/after pictures of both.
 public class RoofsProbe : ProbeScenario
 {
-    // The fire's pace varies: at 50 s a last log cell can still stand, or the slate be just starting down onto the burnt
-    // walls. Gives both a little longer, read as they settle.
     IEnumerator FallenIn(VillageHouse timber, float roofBefore)
     {
         for (float t = 0f; t < LateSeconds; t += 0.5f)
@@ -22,8 +20,6 @@ public class RoofsProbe : ProbeScenario
         }
     }
 
-    // Casts and waits for it to land: solo the core takes a cast as its effect lands (SpellCaster.Cast, D16), after the
-    // gesture's wind-up and the flight, and the wizard moving on or casting again meanwhile can cut it off.
     IEnumerator CastAndLand(string spell, Vector2Int at)
     {
         var cast = new CastCommand(spell, at.x, at.y, 1);
@@ -31,7 +27,6 @@ public class RoofsProbe : ProbeScenario
         yield return Wait(caster.FlightSeconds(cast) + 0.3f);
     }
 
-    // How much longer than 50 s the timber house may take to burn down and its slate to fall in.
     const float LateSeconds = 25f;
 
     protected override IEnumerator Run()
@@ -39,8 +34,6 @@ public class RoofsProbe : ProbeScenario
         yield return Switch(At(12f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " +
             "{ 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 } }");
         var houses = FindObjectsByType<VillageHouse>(FindObjectsSortMode.None);
-        // The smallest of each, by name after that: FindObjectsByType has no order, and a big timber hall's walls don't all
-        // burn in time for its slate to fall (it falls once half a building's walls are gone, ValleyChemistry.CabinWallLost).
         VillageHouse Pick(WallKind walls, RoofCover cover) => houses.Where(h => h.walls == walls && h.cover == cover)
             .OrderBy(h => Cells(h).Count).ThenBy(h => h.name, System.StringComparer.Ordinal).FirstOrDefault();
         var timber = Pick(WallKind.Timber, RoofCover.Slate);
@@ -56,12 +49,10 @@ public class RoofsProbe : ProbeScenario
         Frame(stone);
         yield return Snap("stone-thatch-before");
 
-        // The timber house: a Fire Bolt on a wall.
         var wall = Cells(timber).FirstOrDefault(c => World.At(c.x, c.y).T == TerrainIds.LogWall);
         Teleport(timber.transform.position - timber.transform.forward * 7f + Vector3.up * 0.1f);
         yield return CastAndLand(SpellIds.FireBolt, wall);
         Metric("timber_bolt_took", World.At(wall.x, wall.y).T != TerrainIds.LogWall || World.At(wall.x, wall.y).Fire > 0 ? 1 : 0);
-        // The stone house: grease beside a wall, set alight.
         var beside = Beside(stone);
         Teleport(stone.transform.position - stone.transform.forward * 7f + Vector3.up * 0.1f);
         yield return CastAndLand(SpellIds.Grease, beside);
@@ -102,7 +93,6 @@ public class RoofsProbe : ProbeScenario
 
     static Renderer Roof(VillageHouse h) => h.GetComponentsInChildren<Renderer>(true).First(r => r.name == "Roof");
 
-    // The body's vertex colours (CharNear darkens them round a fire).
     static Color[] BodyColors(VillageHouse h)
     {
         var body = h.GetComponentsInChildren<MeshFilter>(true).FirstOrDefault(f => f.name == "Body");
@@ -111,7 +101,6 @@ public class RoofsProbe : ProbeScenario
 
     System.Collections.Generic.List<Vector2Int> Cells(VillageHouse h) => HouseCells(grid, World, h);
 
-    /// <summary>A house's footprint cells: those under its box (a little grown), for the probes.</summary>
     internal static System.Collections.Generic.List<Vector2Int> HouseCells(ChemGrid grid, World world, VillageHouse h)
     {
         var box = h.GetComponent<BoxCollider>();
@@ -127,7 +116,6 @@ public class RoofsProbe : ProbeScenario
         return list;
     }
 
-    // An open cell beside the house's front wall.
     Vector2Int Beside(VillageHouse h)
     {
         var walls = Cells(h);
@@ -139,7 +127,6 @@ public class RoofsProbe : ProbeScenario
     void Frame(VillageHouse h)
     {
         var t = h.transform;
-        // High over its street, so neighbouring houses aren't in the way.
         Cut(t.position - t.forward * 10f + t.right * 4f + Vector3.up * 11f, t.position + Vector3.up * 1f);
     }
 }

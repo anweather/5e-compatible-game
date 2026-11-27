@@ -1,3 +1,8 @@
+// What each stage of a tick costs in the core, on FogTickBench's valley (65 active chunks, the
+// same seed) under clear weather, storm and fog: the tick is run a slice at a time (StepSome) and
+// each slice's time goes to the stage it ran. Not a check and not in CI (Explicit): run it by
+// name in Release and read the table, or the file STAGE_BENCH_OUT names.
+// dotnet test core/Game.Core.sln -c Release --filter "FullyQualifiedName~TickStageBench" --logger "console;verbosity=detailed"
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -8,20 +13,11 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// What each stage of a tick costs in the core, on FogTickBench's valley (65 active chunks, the
-    /// same seed) under clear weather, storm and fog: the tick is run a slice at a time (StepSome) and
-    /// each slice's time goes to the stage it ran. Not a check and not in CI (Explicit): run it by
-    /// name in Release and read the table, or the file STAGE_BENCH_OUT names.
-    /// <code>dotnet test core/Game.Core.sln -c Release --filter "FullyQualifiedName~TickStageBench" --logger "console;verbosity=detailed"</code>
-    /// </summary>
     [Explicit("a benchmark: run it by name")]
     [Category("Simulation")]
     public class TickStageBench
     {
         const int SettleTicks = 600, MeasuredTicks = 300;
-        // World.TickStageNumber: 1 burn (with the tick's start), 2 water check, 3 springs, 4 flow, 5 gas,
-        // 6 the rest (weather, raiders, defense ...), 7 timers, 8 dragon, 9 end.
         static readonly string[] Stages = { "", "burn", "check", "springs", "flow", "gas", "rest", "timers", "dragon", "end" };
         static readonly Func<bool> OneSlice = () => true;
 
@@ -53,7 +49,6 @@ namespace Chem.Tests
         [Test]
         public void EachStageUnderClearStormAndFog()
         {
-            // Twice, in case the first pass pays for the JIT: the second is the one to quote.
             var lines = new List<string>();
             for (int pass = 0; pass < 2; pass++)
                 foreach (var weather in new[] { "clear", "storm", "fog" })

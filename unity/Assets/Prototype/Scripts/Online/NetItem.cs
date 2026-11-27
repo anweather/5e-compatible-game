@@ -26,16 +26,10 @@ using UnityEngine;
 [RequireComponent(typeof(Carryable))]
 public class NetItem : NetworkBehaviour
 {
-    /// <summary>No one holds it.</summary>
     public const ulong Nobody = ulong.MaxValue;
-    // How far (m) from the item a wizard may be when the host grants a pick-up (the hand's reach plus lag).
     const float GrantReach = 4f;
-    // The most a spell may ask for (Mage Hand: 30 ft, 6 squares of 1.5 m, plus lag), so a client
-    // can't claim any reach it likes.
     const float MaxGrantReach = 12f;
-    // How often the holder sends the mote's position, per second.
     const float MoteRate = 15f;
-    // How far (in cells) from its holder the host lets a pick land: Pick.Reach, plus lag.
     const int SwingReachCells = 4;
 
     readonly NetworkVariable<ulong> holder = new(Nobody);
@@ -46,7 +40,6 @@ public class NetItem : NetworkBehaviour
     float nextMote;
 
     public bool Online => IsSpawned;
-    /// <summary>Whether its light is uncovered.</summary>
     public bool Lit => lit.Value;
 
     void Awake()
@@ -79,14 +72,12 @@ public class NetItem : NetworkBehaviour
 
     void Update()
     {
-        // The holder left the game: the host lets the item drop where it is.
         if (!IsServer || !IsSpawned || holder.Value == Nobody) return;
         if (NetworkManager.SpawnManager.SpawnedObjects.ContainsKey(holder.Value)) return;
         holder.Value = Nobody;
         Follow(Nobody);
     }
 
-    // Puts the item in the hand of the wizard with that object id (or lets it go), on this machine.
     void Follow(ulong id)
     {
         ItemHolder next = null;
@@ -101,12 +92,8 @@ public class NetItem : NetworkBehaviour
         if (next != null) next.Grant(item);
     }
 
-    // --- picking up and letting go --------------------------------------------------
-
-    /// <summary>Asks the host to put this item in the local player's hand.</summary>
     public void RequestPickUp() => PickUpRpc(GrantReach);
 
-    /// <summary>Asks the host for this item from up to <paramref name="reach"/> metres away (Mage Hand), capped at MaxGrantReach.</summary>
     public void RequestPickUp(float reach) => PickUpRpc(reach);
 
     [Rpc(SendTo.Server)]
@@ -122,7 +109,6 @@ public class NetItem : NetworkBehaviour
         if (item.Prop.FromMod) Peers.Of(item.Grid).StampFound(Peers.NameOf(checked((int)rpc.Receive.SenderClientId)), item.Prop.Thing);
     }
 
-    /// <summary>Asks the host to let go of this item at <paramref name="from"/>, moving at <paramref name="velocity"/>.</summary>
     public void RequestRelease(Vector3 from, Vector3 velocity) => ReleaseRpc(from, velocity);
 
     [Rpc(SendTo.Server)]
@@ -135,17 +121,11 @@ public class NetItem : NetworkBehaviour
         holder.Value = Nobody;
     }
 
-    // --- its light --------------------------------------------------------------------
-
-    /// <summary>Asks the host to cover or uncover its light, for everyone.</summary>
     public void RequestLit(bool on) => LitRpc(on);
 
     [Rpc(SendTo.Server)]
     void LitRpc(bool on) => lit.Value = on;
 
-    // --- the Dancing Lights mote ------------------------------------------------------------
-
-    /// <summary>Holder: where the mote is (sent a few times a second, and at once when it goes out or comes back).</summary>
     public void ShareMote(bool isOut, Vector3 at, bool now)
     {
         if (!now && Time.time < nextMote) return;
@@ -159,9 +139,6 @@ public class NetItem : NetworkBehaviour
         if (TryGetComponent<DancingLights>(out var lights)) lights.Follow(isOut, at);
     }
 
-    // --- a pick ----------------------------------------------------------------------------
-
-    /// <summary>Asks the host to swing this pick at a cell.</summary>
     public void RequestDig(Vector2Int cell) => DigRpc(cell.x, cell.y);
 
     [Rpc(SendTo.Server)]
@@ -174,9 +151,6 @@ public class NetItem : NetworkBehaviour
         pick.Swing(cell);
     }
 
-    // --- sending stones ---------------------------------------------------------------------
-
-    /// <summary>Sends a message to the player holding this stone: only their screen shows it, with a ping at <paramref name="from"/>.</summary>
     public void Whisper(ulong client, Vector3 from, string message, string sender) =>
         HeardRpc(from, new FixedString128Bytes(message), new FixedString64Bytes(sender), RpcTarget.Single(client, RpcTargetUse.Temp));
 

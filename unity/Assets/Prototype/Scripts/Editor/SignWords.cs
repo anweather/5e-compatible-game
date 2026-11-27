@@ -11,13 +11,6 @@ public static class SignWords
     const string MaterialPath = "Assets/Prototype/Generated/SignText.mat";
     static readonly Color Cream = new(0.98f, 0.94f, 0.82f);
 
-    /// <summary>
-    /// Writes <paramref name="text"/> on <paramref name="go"/>, which stands just in front of a
-    /// board's face and is turned so the reader looks along its +z. The words are made at
-    /// <paramref name="size"/> (TextMesh characterSize) and shrunk until they fit
-    /// <paramref name="width"/> by <paramref name="height"/> metres; <paramref name="longest"/>,
-    /// if given, is fitted instead (for words that change as the game runs).
-    /// </summary>
     public static TextMesh Write(GameObject go, string text, float size, float width, float height, string longest = null)
     {
         var words = go.AddComponent<TextMesh>();
@@ -44,8 +37,6 @@ public static class SignWords
         return mat;
     }
 
-    // Shrinks the words until they fit, measured in their own plane (signs turn only about the
-    // vertical, so their width is along x or z). Words not yet measured are left as made.
     static void Fit(TextMesh words, Renderer renderer, float width, float height)
     {
         var right = words.transform.right;

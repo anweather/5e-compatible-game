@@ -32,29 +32,20 @@ public class PhysicsProp : MonoBehaviour, IPushable
     [Tooltip("Speed it rises at when levitated, m/s.")]
     public float levitateRise = 1.2f;
 
-    // Linear damping: in air, in water, and while levitating (so it rises and then hovers).
     const float AirDrag = 0.05f, WaterDrag = 2.5f, HoverDrag = 1.2f;
-    // How hard the water pulls a floating prop toward the current's speed (per second).
     const float CurrentGrip = 1.5f;
-    // Angular damping in air and in water (so a floating crate settles rather than spins).
     const float AirSpin = 0.05f, WaterSpin = 1.5f;
 
     static PhysicsMaterial slick;
     static readonly Registry<PhysicsProp> registry = new();
 
-    /// <summary>Every prop in play (what FindObjectsByType found), as a new array: see Registry.</summary>
     public static PhysicsProp[] All => registry.All();
 
-    /// <summary>
-    /// The props in play that may be in the chunks between corners <paramref name="from"/> and <paramref name="to"/>: those
-    /// there, a ring of chunks around them and any prop not placed (Registry.Near). Test each one's position yourself.
-    /// </summary>
     public static PhysicsProp[] Near(Vector2Int from, Vector2Int to) => registry.Near(from, to);
 
     public PropState State { get; private set; }
 
     Rigidbody body;
-    // Its colliders (a body and the feet PropBuilder gives its prefab), and its look, for its size.
     Collider[] shapes;
     Renderer look;
     PhysicsMaterial ownMaterial;
@@ -64,30 +55,20 @@ public class PhysicsProp : MonoBehaviour, IPushable
     int lastTick;
     bool broken;
     NetProp net;
-    // Asleep with its chunk: kinematic, holding the velocity it had. Home is the chunk it was last seen in.
     bool asleep;
     Vector3 heldVelocity, heldSpin;
     Vector2Int home;
 
-    /// <summary>Online on a client: the host simulates this prop, and this copy only follows it.</summary>
     public bool Puppet => net != null && net.Puppet;
 
-    /// <summary>Its stable id from world/things.json (ThingSpawner), or None for a prop made some other way.</summary>
     public ThingId Thing => net != null ? net.Id : ThingId.None;
 
-    /// <summary>A mod added it: its first pick-up is logged (RoomCommand.Found).</summary>
     public bool FromMod => grid.World.ThingsNow.Find(Thing)?.FromMod == true;
 
-    /// <summary>Its chunk is inactive, so it's held where it is until the chunk activates.</summary>
     public bool Asleep => asleep;
 
-    /// <summary>In a hand: a body kinematic for any reason but its chunk's sleep (a puppet only follows, and is the host's to place).</summary>
     public bool Held => body.isKinematic && !asleep && !Puppet;
 
-    /// <summary>
-    /// Back where the world began it, whole and unlit, and still (the dragon's breath, ThingSpawner). Its body is moved
-    /// straight away, and it sleeps if the chunk it's now in is inactive.
-    /// </summary>
     public void BackAsBuilt(Vector3 at, Quaternion turn)
     {
         if (State != null) State = new PropState(State.Def);
@@ -154,8 +135,6 @@ public class PhysicsProp : MonoBehaviour, IPushable
         grid.WorldReset -= Wake;
     }
 
-    // --- sleeping with its chunk ----------------------------------------------------------
-
     void ChunkSwitched(ChunkSwitch s)
     {
         if (State == null || s.CX != home.x || s.CY != home.y) return;
@@ -163,11 +142,9 @@ public class PhysicsProp : MonoBehaviour, IPushable
         else Sleep();
     }
 
-    // Off the edge of the world counts as active: a prop falling off it shouldn't hang in the air.
     bool InInactiveChunk(Vector2Int chunk) =>
         grid.World.HasChunk(chunk.x, chunk.y) && !grid.IsChunkActive(chunk.x, chunk.y);
 
-    // A body already kinematic is in a hand (Carryable) or a puppet: someone else moves it.
     void Sleep()
     {
         if (asleep || Puppet || body.isKinematic) return;
@@ -178,7 +155,6 @@ public class PhysicsProp : MonoBehaviour, IPushable
         body.isKinematic = true;
     }
 
-    // Its ticks were held too, so it picks up from now rather than burning through the gap.
     void Wake()
     {
         if (!asleep) return;
@@ -190,8 +166,6 @@ public class PhysicsProp : MonoBehaviour, IPushable
         if (grid.World != null) lastTick = grid.World.Tick;
     }
 
-    // A live mod changed the rules: take this kind's new numbers (hit points, mass, what it does
-    // when it breaks), keeping the damage it has taken. A kind the new rules dropped keeps its old ones.
     void ReadRules()
     {
         var rules = grid.World.Rules;
@@ -202,13 +176,11 @@ public class PhysicsProp : MonoBehaviour, IPushable
         body.mass = item != null ? (float)item.Mass : def.Mass * Forces.KgPerMass;
     }
 
-    // Its chunk in the registry (Near), kept to the chunk it's in now: every physics step, whoever moves it.
     void Place()
     {
         if (grid != null) registry.Place(this, grid.ChunkAt(transform.position));
     }
 
-    // A disabled prop runs no FixedUpdate to keep its chunk, so Near counts it everywhere until it's enabled again.
     void OnEnable() => Place();
 
     void OnDisable() => registry.Unplace(this);
@@ -224,11 +196,9 @@ public class PhysicsProp : MonoBehaviour, IPushable
         }
         if (asleep)
         {
-            // Something else took it in hand (Carryable) and let it go: it's awake again.
             if (body.isKinematic) return;
             asleep = false;
         }
-        // Pushed or rolled into an inactive chunk: it sleeps there.
         var chunk = grid.ChunkAt(transform.position);
         if (chunk != home)
         {
@@ -245,8 +215,6 @@ public class PhysicsProp : MonoBehaviour, IPushable
         RunTicks(at, cell);
         if (flames != null) flames.transform.position = TopCentre();
     }
-
-    // --- what the cell does to it ------------------------------------------------
 
     void ReadGround(Vector2Int at, Cell cell)
     {
@@ -265,8 +233,6 @@ public class PhysicsProp : MonoBehaviour, IPushable
         if (wet) Drift();
     }
 
-    // Afloat in a current (WaterCurrents): pulled along until it moves with the water, so a crate
-    // floats down the river and the surf washes things up the beach.
     void Drift()
     {
         var currents = WaterCurrents.Instance;
@@ -285,10 +251,8 @@ public class PhysicsProp : MonoBehaviour, IPushable
         foreach (var s in shapes) s.sharedMaterial = slick ? Slick : ownMaterial;
     }
 
-    // Lift in proportion to how much of it is under the surface; floaters bob, sinkers settle slowly.
     bool Buoy(Vector2Int at)
     {
-        // Measured upright (see Start), so a tumbling crate's growing bounding box doesn't add lift.
         float bottom = transform.position.y - halfHeight;
         float under = (float)PropState.Submerged(bottom, 2f * halfHeight, grid.WaterSurfaceY(at.x, at.y));
         if (under <= 0f) return false;
@@ -296,11 +260,9 @@ public class PhysicsProp : MonoBehaviour, IPushable
         return true;
     }
 
-    // Each sim tick since the last physics step goes to the rules once.
     void RunTicks(Vector2Int at, Cell cell)
     {
         var world = grid.World;
-        // Going online starts a fresh world at tick 0 (NetChem); count from there.
         if (lastTick > world.Tick) lastTick = world.Tick;
         while (lastTick < world.Tick && !broken)
         {
@@ -320,20 +282,12 @@ public class PhysicsProp : MonoBehaviour, IPushable
 
     static bool Has(PropEvents events, PropEvents flag) => (events & flag) != 0;
 
-    // --- what spells and blasts do to it -------------------------------------------
-
-    // As fast as its rules mass says (impulse / mass), whatever its body weighs: a carried
-    // item weighs grams but flies off like the lightest crate, not like a bullet.
     public void Push(Vector3 impulse)
     {
         if (State == null || Puppet || asleep) return;
         body.AddForce(impulse / (State.Def.Mass * Forces.KgPerMass), ForceMode.VelocityChange);
     }
 
-    /// <summary>
-    /// Carried along by something rolling under it (a wave, on the host, as Push): it gets only the speed it
-    /// lacks along the way, so a prop that's already riding isn't thrown on ever faster.
-    /// </summary>
     public void Ride(Vector3 velocity)
     {
         if (State == null || Puppet || asleep) return;
@@ -342,20 +296,14 @@ public class PhysicsProp : MonoBehaviour, IPushable
         if (lacks > 0f) body.AddForce(Forces.Thrown(way) * lacks, ForceMode.VelocityChange);
     }
 
-    /// <summary>
-    /// Pushed by one wizard (a punch): only that wizard's machine knows, so online it goes to the host's
-    /// physics as a kick does (NetProp), at the same speed as Push.
-    /// </summary>
     public void Shove(Vector3 impulse)
     {
         if (net == null || !net.IsSpawned || State == null) Push(impulse);
         else net.Kick(impulse / (State.Def.Mass * Forces.KgPerMass) * body.mass);
     }
 
-    /// <summary>Floats for <paramref name="ticks"/> sim ticks, rising a little (<paramref name="rise"/> times as fast for a charged cast), then falls.</summary>
     public void Levitate(int ticks, float rise = 1f)
     {
-        // A kinematic body is in someone's hand (Carryable), or a puppet of the host's.
         if (State == null || body.isKinematic || Puppet) return;
         State.Levitate(grid.World.Tick, ticks);
         body.useGravity = false;
@@ -363,7 +311,6 @@ public class PhysicsProp : MonoBehaviour, IPushable
         EventLog.Add($"The {Label} floats up");
     }
 
-    /// <summary>Takes damage; at 0 HP it breaks (or explodes).</summary>
     public void Hurt(int amount)
     {
         if (State != null && !Puppet && State.Damage(amount)) Break(grid.CellAt(transform.position));
@@ -381,7 +328,6 @@ public class PhysicsProp : MonoBehaviour, IPushable
         else Destroy(gameObject);
     }
 
-    /// <summary>Online: it broke on the host. Hidden at once; Netcode destroys it as it despawns.</summary>
     public void Vanish()
     {
         broken = true;
@@ -395,10 +341,6 @@ public class PhysicsProp : MonoBehaviour, IPushable
         if (!Puppet) WindowPanes.Struck(grid, hit);
     }
 
-    /// <summary>
-    /// How it goes: a blast for a barrel, a spray of shards for something brittle (glass: a glow ball,
-    /// ShardBurst), a line in the log otherwise. Its cells are the chemistry's.
-    /// </summary>
     public void ShowBreak(bool exploded)
     {
         GameSounds.Play(exploded ? SoundIds.Explosion : SoundIds.Break, transform.position);
@@ -411,10 +353,6 @@ public class PhysicsProp : MonoBehaviour, IPushable
         else if (!exploded && (State == null || !State.Burning) && !(net != null && net.Burning)) EventLog.Add($"The {Label} breaks apart");
     }
 
-    /// <summary>
-    /// Whether it's brittle (its material shatters: glass), and the tint of its shards: its light's
-    /// colour for a glow ball, else white.
-    /// </summary>
     public bool Shatters(out Color tint)
     {
         tint = Color.white;
@@ -425,7 +363,6 @@ public class PhysicsProp : MonoBehaviour, IPushable
         return true;
     }
 
-    // The blast's cells go to the chemistry; its shove and its damage are physics, so they stay here.
     void Explode(Vector2Int at, ExplosionDef blast)
     {
         ChemEffects.Request(grid, ChemEffects.By(this, EffectKind.Explode, at));
@@ -434,7 +371,6 @@ public class PhysicsProp : MonoBehaviour, IPushable
         foreach (var other in Forces.InSphere<PhysicsProp>(transform.position, reach, transform)) other.Hurt(Roll(blast.Damage));
     }
 
-    // [dice, sides], as the rules write damage. Physics is local (D4), so Unity's random is fine here.
     static int Roll(int[] dice)
     {
         if (dice.Length < 2) return 0;
@@ -443,9 +379,6 @@ public class PhysicsProp : MonoBehaviour, IPushable
         return total;
     }
 
-    // --- looks ---------------------------------------------------------------------
-
-    /// <summary>Flames on or off; <paramref name="announce"/> says so in the log.</summary>
     public void ShowBurning(bool on, bool announce)
     {
         if (on == (flames != null)) return;
@@ -462,10 +395,8 @@ public class PhysicsProp : MonoBehaviour, IPushable
             flames = null;
             return;
         }
-        // Not parented: it follows the top of the prop (FixedUpdate) but doesn't tumble with it.
         flames = flamesFx != null ? Instantiate(flamesFx) : FallbackFlames();
         flames.transform.position = TopCentre();
-        // Lit by a spell in a look of its own, it burns in that look too (ChemGrid.FireTint).
         if (grid != null && grid.World != null)
         {
             var cell = grid.CellAt(transform.position);
@@ -488,7 +419,6 @@ public class PhysicsProp : MonoBehaviour, IPushable
         return cube;
     }
 
-    // Almost no friction, and the lower of the two surfaces wins, so it slides on anything.
     static PhysicsMaterial Slick
     {
         get

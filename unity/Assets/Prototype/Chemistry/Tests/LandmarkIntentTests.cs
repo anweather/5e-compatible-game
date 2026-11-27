@@ -20,7 +20,6 @@ namespace Chem.Tests
         static LandmarkIntent intent;
         internal static LandmarkIntent Village => intent ??= LandmarkIntent.Load(GameWorldDir(), "village-with-landmark");
 
-        // A site well inside a valley-sized square, off the chunk lines so things fall in more than one chunk.
         internal const int SiteX = 300, SiteY = 300;
 
         [Test]
@@ -74,7 +73,6 @@ namespace Chem.Tests
             }
         }
 
-        // The goldens, to compare between machines: the five files' texts, per form and seed.
         [TestCase("temperate", 1, 0x2f446555u), TestCase("temperate", 2, 0xf6215265u)]
         [TestCase("mountains", 1, 0x3634a466u), TestCase("mountains", 2, 0xcca4426eu)]
         [TestCase("foggy-marsh", 1, 0xdfb98014u), TestCase("foggy-marsh", 2, 0x2dc492ddu)]

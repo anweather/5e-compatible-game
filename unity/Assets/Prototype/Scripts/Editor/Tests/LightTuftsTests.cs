@@ -32,7 +32,6 @@ public class LightTuftsTests
                 Assert.That(light.triangles.Length / 3, Is.LessThanOrEqualTo(cards * 2 * segments), $"{name}: a card left heavy");
                 Assert.That(light.triangles.Length / 3, Is.LessThan(heavy.triangles.Length * 0.35f), $"{name}: not lighter");
                 Assert.That(light.vertexCount, Is.LessThan(heavy.vertexCount), $"{name}: unused vertices kept");
-                // The same vertex layout, or the grass's pipeline states differ from the recorded PSO collections.
                 Assert.That(light.GetVertexAttributes(), Is.EqualTo(heavy.GetVertexAttributes()), $"{name}: vertex layout changed");
             }
             finally
@@ -76,7 +75,6 @@ public class LightTuftsTests
             Assert.That(to, Is.LessThanOrEqualTo(MapTerrains.DetailMetres), $"{m.name}: grass still showing where the terrain stops drawing it");
             farthest = Mathf.Max(farthest, to);
         }
-        // And no further: past the fade the terrain draws tufts that show no pixel (120 m cost the nine's start 0.7 ms).
         Assert.That(MapTerrains.DetailMetres, Is.LessThanOrEqualTo(farthest), "the terrains draw grass past where it has faded out");
     }
 

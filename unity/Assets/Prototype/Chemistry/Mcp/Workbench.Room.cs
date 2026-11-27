@@ -10,25 +10,19 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem.Mcp
 {
-    /// <summary>A running game's room, as the tools see it. Called off the game's main thread.</summary>
     public interface IRoomDesk
     {
-        /// <summary>Says what the room is, as Workbench.Describe does. A mode there is refused: it was chosen when the room opened.</summary>
         string Room(string mode);
 
-        /// <summary>Sends the command on its way and waits for the room's verdict, as a sentence.</summary>
         string Decide(RoomCommand command);
 
-        /// <summary>A mod was saved to this file.</summary>
         void Saved(string path);
     }
 
     public sealed partial class Workbench
     {
-        /// <summary>The running game's room; null works on a world in memory.</summary>
         public IRoomDesk Desk { get; set; }
 
-        /// <summary>The name this MCP's own player goes by in the room: the host.</summary>
         public const string HostName = "host";
 
         StandInValley standIn;
@@ -37,7 +31,6 @@ namespace Chem.Mcp
 
         World NewRoom(ChangeMode mode)
         {
-            // Where the world files are there, the room is on a stand-in of the valley (StandInValley), so the world tools have a world.
             standIn ??= StandInValley.Load(Folders, Budgets) ?? StandInValley.None;
             World w;
             if (standIn == StandInValley.None) w = new World(Base, 64, 64, 1);
@@ -52,7 +45,6 @@ namespace Chem.Mcp
             return w;
         }
 
-        /// <summary>The room's change mode and the mods on in it. With a mode, first makes a new room in it (as a room is made).</summary>
         public string Room(string mode = null)
         {
             if (Desk != null) return Desk.Room(mode);
@@ -65,7 +57,6 @@ namespace Chem.Mcp
             return Describe(Live.Room, Live.Tick);
         }
 
-        /// <summary>A room in words: its mode, what that means, and the mods on.</summary>
         public static string Describe(RoomState room, int tick)
         {
             var sb = new StringBuilder($"{RoomPolicy.Words(room.Mode)} room, at tick {tick}; the host is {room.Host}. ");
@@ -85,13 +76,8 @@ namespace Chem.Mcp
             return sb.ToString();
         }
 
-        /// <summary>
-        /// Told of each patch going to the room, by the key apply was given (chat telemetry: apply's input is only a
-        /// draft's id, so this is the record's one source for the patch). On whichever thread the tool runs.
-        /// </summary>
         public System.Action<string, string> Applied { get; set; }
 
-        /// <summary>Switches a draft, a mod in rules/mods or patch JSON on in the room, as <paramref name="peer"/> (the host when left out).</summary>
         public string Apply(string draftOrMod, string peer = null, string title = null)
         {
             var key = Required(draftOrMod, "draft, mod or patch");
@@ -104,7 +90,6 @@ namespace Chem.Mcp
             }
             if (string.IsNullOrWhiteSpace(title)) throw new RulesToolException("A draft needs a title, the name players read in the log; apply it again with one.");
             var slug = Slug(title);
-            // Read before it goes in: after, the draft's own values are what's in force.
             string changes = Changes(draft) + NewSpellsReach(draft);
             Applied?.Invoke(key, json);
             string said = Decide(RoomCommand.Apply(PeerOf(peer), slug.Length > 0 ? slug : draft.Id, json, title.Trim()));
@@ -113,12 +98,9 @@ namespace Chem.Mcp
             return said + "\n" + changes + UnseenNote(json) + Superseded(json, draft.OnAs, PeerOf(peer));
         }
 
-        // The mod this draft switched on as, while it's on as the draft sent it; a revert ends that, and so does another
-        // mod taking the id. Null if none. Whatever else is on stays someone else's, so it can still refuse the draft.
         string OwnMod(Draft draft) =>
             draft?.OnAs != null && Now()?.Room.Mods.Exists(m => m.Id == draft.OnAs && m.Json == draft.OnJson) == true ? draft.OnAs : null;
 
-        /// <summary>What a draft does, in a sentence: each entry it holds against the rules in force.</summary>
         public string Changes(Draft draft) => "It changes " + string.Join("; ", draft.Changed.Select(c => ChangeOf(draft, c))) + ".";
 
         string NewSpellsReach(Draft draft) =>
@@ -151,7 +133,6 @@ namespace Chem.Mcp
             return EntryChange(table, id, was, Rules.MergedEntry(was, entry));
         }
 
-        // Field by field, down through groups: "burn.fuel from 8 to 4".
         static IEnumerable<string> Differences(string path, JToken was, JToken now)
         {
             if (now is JObject group && was is JObject before)
@@ -160,7 +141,6 @@ namespace Chem.Mcp
             return JToken.DeepEquals(was, now) ? Enumerable.Empty<string>() : new[] { $"{path} from {Compact(was)} to {Compact(now)}" };
         }
 
-        /// <summary>Reverts a mod on in the room (by its id, as room lists it), as <paramref name="peer"/> (the host when left out).</summary>
         public string Revert(string mod, string peer = null)
         {
             string held = StillHeld(Required(mod, "mod"));
@@ -172,14 +152,13 @@ namespace Chem.Mcp
         {
             if (Desk != null) return Desk.Decide(command);
             var verdict = Live.ApplyRoom(command);
-            Live.Step(); // in force from the next tick
+            Live.Step();
             Refresh();
             return verdict.Line + ".\n" + Room();
         }
 
         static string PeerOf(string peer) => string.IsNullOrWhiteSpace(peer) ? HostName : peer.Trim();
 
-        // Patch JSON pasted in: its title as an id, else "patch".
         static string IdOf(string json)
         {
             try
@@ -194,13 +173,10 @@ namespace Chem.Mcp
             }
         }
 
-        /// <summary>The room in memory, as the tools left it.</summary>
         public RoomState RoomNow => Live.Room;
 
-        /// <summary>The world in memory the tools act on, when no game is attached.</summary>
         public World LiveWorld => Live;
 
-        /// <summary>What LiveWorld was made from, for its save; null for a world of plain dirt.</summary>
         public IChunkSource LiveSource => standIn == StandInValley.None ? null : standIn;
     }
 }

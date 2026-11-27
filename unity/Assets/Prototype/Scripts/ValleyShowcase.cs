@@ -26,7 +26,7 @@ public class ValleyShowcase : ShowcaseScript
     IEnumerator Flyover()
     {
         Chapter("Flyover");
-        Place(16, 5);   // on the pond's west bank, ready for the trench
+        Place(16, 5);
         puppet.Face(Yard(10, 5));
         Cut(V(45f, 42f, -165f), V(28f, 0f, -20f));
         var flight = Fly(
@@ -39,10 +39,9 @@ public class ValleyShowcase : ShowcaseScript
     IEnumerator Water()
     {
         Chapter("Water");
-        // Down low on the south bank: the pond to the right, the wizard on its west bank.
         var flight = Fly(W(V(19f, 2.2f, 6.5f), V(24f, 0f, 15f), 2.5f));
         yield return new WaitUntil(() => flight.Done);
-        yield return Cast(SpellIds.EarthenTrench, 15, 5, 3, 1.5f);   // west from the bank; the pond runs in
+        yield return Cast(SpellIds.EarthenTrench, 15, 5, 3, 1.5f);
         flight = Fly(W(V(17f, 2.6f, 7.5f), V(20f, 0f, 15f), 5f));
         yield return new WaitUntil(() => flight.Done);
     }
@@ -50,13 +49,11 @@ public class ValleyShowcase : ShowcaseScript
     IEnumerator Earth()
     {
         Chapter("Earth");
-        // Up to the south-west: a Wall of Stone across the trench, north from (12, 7).
         Place(10, 6);
         var flight = Fly(W(V(10f, 6f, 5f), V(18.5f, 0.5f, 15f), 2f));
         yield return new WaitUntil(() => flight.Done);
         yield return Cast(SpellIds.WallOfStone, 12, 7, 0, 3f);
 
-        // Cut to the south-east, sun behind the camera: Move Earth under the crate by the gully.
         Place(14, 11);
         Cut(V(21f, 3.6f, 2.5f), V(14.5f, 0.8f, 6.5f));
         flight = Fly(W(V(19.5f, 3f, 3.8f), V(14.5f, 0.8f, 6.5f), 4.5f));
@@ -68,8 +65,6 @@ public class ValleyShowcase : ShowcaseScript
     IEnumerator Fire()
     {
         Chapter("Fire");
-        // Low over the meadow at the old yard's west edge, then up and back as the fire runs west
-        // into the valley's grass.
         Place(5, 13);
         var target = Yard(2, 12);
         Cut(target + V(6f, 3f, -7f), target + V(-1f, 0f, 1f));

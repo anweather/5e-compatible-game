@@ -19,10 +19,8 @@ public static class LoadedMaps
         lock (Loads) Loads.Clear();
     }
 
-    /// <summary>The generated map in this folder, loaded now or by whoever asked first (throws as GeneratedMap.Load does).</summary>
     public static GeneratedMap Get(string mapDir) => Load(mapDir).GetAwaiter().GetResult();
 
-    // The map read, and how long it took: a hills map's rivers are worked out as it's read (docs/design/alpine.md).
     static GeneratedMap Timed(string mapDir)
     {
         var timer = System.Diagnostics.Stopwatch.StartNew();
@@ -32,7 +30,6 @@ public static class LoadedMaps
         return m;
     }
 
-    /// <summary>The load of the generated map in this folder, started now if no one has asked for it yet.</summary>
     public static Task<GeneratedMap> Load(string mapDir)
     {
         string full = Path.GetFullPath(mapDir);

@@ -23,19 +23,11 @@ using UnityEngine;
 public partial class ValleyFauna : MonoBehaviour, ICreatureGround
 {
     public Material material;
-    /// <summary>Animals are kept within this distance of the camera.</summary>
     public float radius = 90f;
-    /// <summary>New animals appear at least this far away.</summary>
     public float minSpawnDistance = 35f;
-    /// <summary>Animals further than this are removed.</summary>
     public float despawnDistance = 130f;
     public int maxCreatures = 120;
-    /// <summary>Spawn attempts per second.</summary>
     public float spawnRate = 6f;
-    /// <summary>
-    /// The species' densities times this round where the wizard starts, rising to wildDensity out in
-    /// the wilds (between homeRadius and wildRadius from the start): a quiet start, more to find exploring.
-    /// </summary>
     public float homeDensity = 0.3f, wildDensity = 1.4f;
     public float homeRadius = 60f, wildRadius = 300f;
 
@@ -45,31 +37,23 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         public int species;
         public int coat;
         public CreatureState state;
-        // What sets it apart, worked out once (and again if its row changes).
         public CreatureTraits traits;
-        // The size its row gives it (RowScale): it grows or shrinks to this when the row changes (Grow).
         public float size;
-        // One of a village's folk (ValleyFauna.Folk): its village (index in folk; -1 for an animal), what
-        // it's doing, where it's going and how long it stays; the barkeep keeps to the bar.
         public int village = -1;
         public FolkTask task;
         public float2 goal;
         public float wait;
-        // A worker (the barkeep, whoever tends the well, the inn's lookout): its job, its post and which way it faces there.
         public CreatureTask job;
         public float2 post;
         public float postYaw;
-        // A spell brought it out (ValleyFauna.Summons): its place in the world's count, else -1.
         public int summon = -1;
     }
 
     static readonly ProfilerMarker UpdateMarker = new("ValleyFauna.Update"), ReadRowsMarker = new("ValleyFauna.ReadRows");
 
     readonly List<Creature> creatures = new();
-    // Every species in the rules in force (rules/fauna.json), and how many animals each has round the camera.
     readonly CreatureBodies bodies = new();
     readonly List<Vector2> fires = new();
-    // The wizards, and the species each has the shape of (-1: itself).
     readonly List<(Vector2 at, int form)> wizards = new();
     readonly CreatureAnimator animator = new();
     readonly CreatureBrain brain = new();
@@ -85,32 +69,23 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
     int nextId;
     Unity.Mathematics.Random rng = new(0x9E3779B9u);
 
-    /// <summary>How many animals are out, for the probe.</summary>
     public int Count => creatures.Count;
 
-    /// <summary>The animals drawn for their shadows alone this frame, the lens being at them (CreatureDrawer).</summary>
     public int AtLens { get; private set; }
 
-    /// <summary>How many species there are, for the probe.</summary>
     public int SpeciesCount => bodies.Count;
 
-    /// <summary>What the last reading of the rows built, and how long it took, for the probe.</summary>
     public int Rebuilt => bodies.Rebuilt;
     public double ReadRowsMs { get; private set; }
 
-    /// <summary>A species' index in the list by its id in rules/fauna.json, or -1.</summary>
     public int SpeciesIndex(string id) => bodies.IndexOf(id);
 
-    /// <summary>An animal's state (position, speed, what it's doing), for the probe.</summary>
     public CreatureState State(int index) => creatures[index].state;
 
-    /// <summary>An animal's id, the same for as long as it's out (Footprints follows each one by it).</summary>
     public int Id(int index) => creatures[index].id;
 
-    /// <summary>Where an animal is in the list now, by its id, or -1 once it's gone (others leaving shift the list).</summary>
     public int IndexOf(int id) => creatures.FindIndex(c => c.id == id);
 
-    /// <summary>Takes an animal under outside control: it keeps this heading and speed and ignores everything (the probe).</summary>
     public void Puppet(int index, float yaw, float speed)
     {
         var c = creatures[index];
@@ -119,7 +94,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         c.state.Speed = speed;
     }
 
-    /// <summary>Gives an animal a home and a leash: it goes no further from there, even running (the probe).</summary>
     public void Leash(int index, float2 home, float leash)
     {
         var c = creatures[index];
@@ -127,29 +101,18 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         c.state.Leash = leash;
     }
 
-    /// <summary>An animal's species, as its index in the list.</summary>
     public int SpeciesOf(int index) => creatures[index].species;
 
-    /// <summary>The size an animal's row gives it now, which its scale eases to after a change (the probe).</summary>
     public float RowSize(int index) => creatures[index].size;
 
-    /// <summary>An animal's colouring (one of its species' coats).</summary>
     public int Coat(int index) => creatures[index].coat;
 
-    /// <summary>What sets an animal apart, as it's drawn: its coat as worn, its hair and a graft's donors' own coats (the probe reads them).</summary>
     public CreatureTraits Traits(int index) => creatures[index].traits;
 
-    /// <summary>A species' body (by index in the list), or null; built once the rules are in.</summary>
     public CreatureBody Body(int speciesIndex) => bodies[speciesIndex];
 
-    /// <summary>A species' name in words ("Red fox"), or null.</summary>
     public string SpeciesName(int speciesIndex) => bodies[speciesIndex]?.Name;
 
-    /// <summary>
-    /// The animal <paramref name="ray"/> points at, the nearest along it within
-    /// <paramref name="maxDistance"/>, or -1. Animals have no colliders, so it is a near miss of
-    /// the ray past each body's middle, by about the body's size.
-    /// </summary>
     public int Aimed(Ray ray, float maxDistance)
     {
         int best = -1;
@@ -157,7 +120,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         for (int i = 0; i < creatures.Count; i++)
         {
             var b = bodies[creatures[i].species];
-            if (b.Habitat != Habitat.Land) continue; // a wizard's shape walks
+            if (b.Habitat != Habitat.Land) continue;
             var s = creatures[i].state;
             var middle = new Vector3(s.Position.x, s.Position.y + b.StandHeight * s.Scale, s.Position.z);
             float along = Vector3.Dot(middle - ray.origin, ray.direction);
@@ -172,14 +135,12 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
 
     static readonly Registry<ValleyFauna> registry = new();
 
-    /// <summary>The valley's animals in play (what FindAnyObjectByType found), or null: see Registry.</summary>
     public static ValleyFauna InPlay => registry.First;
 
     void Awake() => registry.Join(this);
 
     void Start()
     {
-        // A map with no animals (map.json's "off": "fauna", the hills) runs none.
         if (MapFile.Load(ChemGrid.Folders.World).IsOff("fauna"))
         {
             enabled = false;
@@ -192,8 +153,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         ReadRows();
     }
 
-    // The rules in force: at the start and at every switch, only the species whose rows changed are
-    // built again and swapped in, so the animals keep their places and seeds. A species gone takes its animals with it.
     void ReadRows()
     {
         if (grid == null || grid.CurrentRules == null) return;
@@ -201,7 +160,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         long began = System.Diagnostics.Stopwatch.GetTimestamp();
         using (ReadRowsMarker.Auto()) bodies.Refresh(grid.CurrentRules.Effective);
         ReadRowsMs = (System.Diagnostics.Stopwatch.GetTimestamp() - began) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
-        // No row changed (a switch of something else): every creature's traits and size are as they were (#181).
         if (bodies.Unchanged) return;
         counts = new int[bodies.Count];
         creatures.RemoveAll(c => bodies[c.species] == null);
@@ -246,13 +204,10 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         Grow(dt);
         RunFolk(dt, night);
         RunJobs(centre, dt, FolkGoIn(night));
-        // Everyone as they were at the start of the frame, for seeing each other.
         herd.Clear();
         foreach (var c in creatures) herd.Add(c.id, c.species, c.state, bodies[c.species]);
         using (BrainMarker.Auto())
         {
-            // Animals far off think every other frame (half of them each frame) over twice the time:
-            // nobody sees the difference out there, and it halves most of the herd's thinking.
             bool odd = (Time.frameCount & 1) == 1;
             foreach (var c in creatures)
             {
@@ -269,8 +224,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         using (DrawMarker.Auto()) Draw(cam);
     }
 
-    // Animals out when their row's size changes (set_species, a mod on or off) grow or shrink to it, most of the way
-    // in about a second (GrowRate), the same on every peer as the size comes from the row and the individual.
     void Grow(float dt)
     {
         float k = 1f - math.exp(-GrowRate * dt);
@@ -283,20 +236,15 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
 
     const float GrowRate = 3f;
 
-    // The size a species' row gives an individual: somewhere in the row's range, picked by the individual.
     static float RowScale(CreatureBody b, uint individual) =>
         math.lerp(b.Size.x, math.max(b.Size.x, b.Size.y), CreatureBody.Unit(individual, 14));
 
-    // Beyond this (40 m, squared) from the camera an animal thinks every other frame.
     const float FarThinkingSq = 40f * 40f;
     static readonly ProfilerMarker BrainMarker = new("ValleyFauna.Think"), DrawMarker = new("ValleyFauna.Draw"),
         PoseMarker = new("ValleyFauna.Pose"), SendMarker = new("ValleyFauna.Send");
 
-    // --- the ground (ICreatureGround) -----------------------------------------
-
     public float Height(float2 xz) => grid.GroundAt(new Vector3(xz.x, 0f, xz.y));
 
-    /// <summary>Water to drink from: a wet, unfrozen cell.</summary>
     public bool Water(float2 xz)
     {
         var cell = grid.CellAt(new Vector3(xz.x, 0f, xz.y));
@@ -304,7 +252,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         return c != null && c.Water > 0 && !c.Frozen;
     }
 
-    /// <summary>Dry, clear of trees, walls and thorns, and not burning.</summary>
     public bool Walkable(float2 xz)
     {
         var cell = grid.CellAt(new Vector3(xz.x, 0f, xz.y));
@@ -313,9 +260,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         return c.T != TerrainIds.Tree && c.T != TerrainIds.LogWall && c.T != TerrainIds.Pane && c.T != TerrainIds.Stone && c.T != TerrainIds.Rock && c.T != TerrainIds.Metal;
     }
 
-    // The beach and the coast (the sea and the strip inland of its shore, Ocean.Covers) are no
-    // place for the valley's wild animals (Andrew's playtest #8: deer on the beach); but a village
-    // there is its folk's, out to where they wander (as FolkPlaces reaches).
     bool OnWildCoast(float2 xz)
     {
         var ocean = Ocean.Instance;
@@ -325,7 +269,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         return true;
     }
 
-    /// <summary>How deep the water is, or under 0 where it's dry or frozen.</summary>
     public float WaterDepth(float2 xz)
     {
         var at = new Vector3(xz.x, 0f, xz.y);
@@ -334,7 +277,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         return c == null || c.Water <= 0 || c.Frozen ? -1f : grid.WaterSurfaceY(cell.x, cell.y) - grid.GroundAt(at);
     }
 
-    // Whether an animal of this body can be here.
     bool Fits(CreatureBody b, float2 xz) => b.Habitat == Habitat.Land ? Walkable(xz) : CreatureBrain.Suits(b.Habitat, WaterDepth(xz));
 
     bool NearWater(float2 xz)
@@ -349,9 +291,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         return false;
     }
 
-    // --- what animals are wary of ----------------------------------------------
-
-    // Twice a second: where the wizards are (and what shape they're in), and the fires near the camera.
     void LookAround(float2 centre)
     {
         nextLook = Time.time + 0.5f;
@@ -364,8 +303,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         fires.Clear();
         var mid = grid.CellAt(new Vector3(centre.x, 0f, centre.y));
         int reach = Mathf.CeilToInt(despawnDistance / grid.cellSize);
-        // On a map made from its source (the Wide World) a packed chunk isn't read: reading would make it on this thread,
-        // and a chunk held as it is burns nowhere.
         bool skipPacked = world.Source is IGeneratedSource;
         for (int y = mid.y - reach; y <= mid.y + reach; y += 2)
             for (int x = mid.x - reach; x <= mid.x + reach; x += 2)
@@ -380,8 +317,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
             }
     }
 
-    // The nearest danger to an animal of a species: a fire, a wizard, or a wizard in the shape of
-    // something that hunts it (a wizard in any other animal's shape is no danger).
     (float2 at, bool fire) Nearest(float2 from, int speciesIndex)
     {
         float2 best = new(1e9f, 1e9f);
@@ -402,14 +337,11 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         }
     }
 
-    /// <summary>Whether the species <paramref name="hunter"/> hunts the species <paramref name="quarry"/> (indices in the list).</summary>
     public bool Hunts(int hunter, int quarry)
     {
         var b = Body(hunter);
         return b != null && System.Array.IndexOf(b.Prey, quarry) >= 0;
     }
-
-    // --- population --------------------------------------------------------------
 
     void Despawn(float2 centre)
     {
@@ -422,11 +354,9 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         }
     }
 
-    // How full of animals the land is at a point, by its distance from where the wizard started.
     float Wildness(float2 at) =>
         math.lerp(homeDensity, wildDensity, math.smoothstep(homeRadius, wildRadius, math.distance(at, home ?? at)));
 
-    // A random spot in the ring round the camera: whichever species is furthest below its density gets a group there.
     void TrySpawn(float2 centre)
     {
         if (creatures.Count >= maxCreatures) return;
@@ -448,7 +378,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
                 best = i;
             }
         }
-        // Rare species (less than one expected nearby) turn up only some of the time.
         if (best < 0 || bestShortfall < 1f && rng.NextFloat() > bestShortfall) return;
         var group = bodies[best].Group;
         int n = rng.NextInt(math.max(1, group.x), math.max(group.x, group.y) + 1);
@@ -460,10 +389,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         counts[best] += n;
     }
 
-    // --- the villages' folk --------------------------------------------------------------
-
-    // Each village's residents (Village.residents): their species in the list (no "spawn" in their
-    // row, so the wilds never spawn them), where their square is, how far they wander.
     readonly List<(Village village, int species, float2 home)> folk = new();
 
     void FindVillages()
@@ -478,9 +403,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         }
     }
 
-    // A village's folk come out (at home, leashed to it) when someone's near and none are about,
-    // out of their doors (ValleyFauna.Folk), but not at night or in heavy rain; like the animals,
-    // they go when everyone has gone far off.
     void BringOutFolk(float2 centre, bool goIn)
     {
         for (int v = 0; v < folk.Count; v++)
@@ -498,7 +420,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         return false;
     }
 
-    // A village's folk out of its doors (or round its square if it has none), each with a plan for the day.
     void ComeOut(int v)
     {
         var (village, kind, square) = folk[v];
@@ -510,7 +431,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
                 : square + rng.NextFloat2Direction() * rng.NextFloat(2f, village.wander * 0.6f);
             if (!Walkable(p)) continue;
             var (job, post, yaw) = PostOf(n, places[v]);
-            // The same folk on every peer, each time they come out: the village's seed and their place in it.
             uint individual = math.hash(new int2(village.seed, n)) | 1u;
             int who = job != CreatureTask.None ? kind : bodies.FolkAt(kind, CreatureBody.Unit(individual, 15));
             int at = Spawn(who, new float3(p.x, Height(p), p.y), float.NaN, individual);
@@ -529,10 +449,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         }
     }
 
-    /// <summary>
-    /// Puts one animal of a species (by index in the list) at a point. Also for the probe. Its individual picks
-    /// its size, coat and the rest; 0 gives it a new one, and folk bring their own, so every peer has the same folk.
-    /// </summary>
     public int Spawn(int speciesIndex, float3 position, float yaw = float.NaN, uint individual = 0u)
     {
         var b = bodies[speciesIndex];
@@ -560,11 +476,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         return creatures.Count - 1;
     }
 
-    // --- drawing -------------------------------------------------------------------
-
-    // Poses the animals the lens can see, or whose shadows it can, into one list of segments and draws them all as
-    // instances of a unit capsule. Posing is most of an animal's cost (its feet are set on the ground, leg by leg), and
-    // most of the herd round the camera is behind it or off to the side: those only think.
     void Draw(Camera cam)
     {
         int total = 0;
@@ -595,6 +506,5 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
 
     readonly CreatureView view = new();
 
-    /// <summary>The animals posed and drawn last frame: those in view, or whose shadows may be (the probe).</summary>
     public int Posed { get; private set; }
 }

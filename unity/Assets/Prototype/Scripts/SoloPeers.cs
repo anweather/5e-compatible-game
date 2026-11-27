@@ -18,56 +18,45 @@ public sealed class SoloPeers : IPeers
 
     public void RequestCast(CastCommand command, int delayTicks, Vector3 from)
     {
-        // Solo sends nothing: the caller runs it on its own world.
     }
 
     public void RequestCombo(ComboCommand command)
     {
-        // Solo sends nothing: the caller runs it on its own world.
     }
 
     public void RequestRoom(RoomCommand command)
     {
-        // Solo sends nothing: the caller runs it on its own world.
     }
 
     public void RequestStrike(Vector2Int cell)
     {
-        // Solo sends nothing: the caller runs it on its own world.
     }
 
     public void RequestSwing(Vector2Int cell)
     {
-        // Solo sends nothing: the caller runs it on its own world.
     }
 
     public void StampEffect(EffectCommand effect)
     {
-        // Solo sends nothing: the caller runs it on its own world.
     }
 
     public void RequestDefense(DefenseCommand command)
     {
-        // Solo sends nothing: the caller runs it on its own world.
     }
 
     public void RequestStrikeCommand(StrikeCommand command)
     {
-        // Solo sends nothing: the caller runs it on its own world.
     }
 
     public void StampFound(string peer, ThingId thing)
     {
-        // Solo sends nothing: the caller runs it on its own world.
     }
 
     public void SummonDragon()
     {
-        // Solo sends nothing: the caller runs it on its own world.
     }
 
     public void StampReset()
     {
-        // Solo sends nothing: the caller runs it on its own world.
     }
 }

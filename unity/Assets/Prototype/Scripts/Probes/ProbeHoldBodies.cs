@@ -38,7 +38,6 @@ public class HoldBodiesProbe : ProbeScenario
         return p;
     }
 
-    // The raiders' road (the map's hold.json road) as cells, nearest the heart first.
     List<(int x, int y)> Road()
     {
         var site = Core.HoldSite;
@@ -49,7 +48,6 @@ public class HoldBodiesProbe : ProbeScenario
             .OrderBy(c => System.Math.Abs(c.X - hx) + System.Math.Abs(c.Y - hy)).ThenBy(c => c.Y).ThenBy(c => c.X).ToList();
     }
 
-    // The nearest any worker is to the road now, in cells, wherever the clock and a run have put them.
     int NearestWorker(ValleyFauna fauna, HashSet<(int x, int y)> road, out string who)
     {
         int nearest = int.MaxValue;
@@ -66,7 +64,6 @@ public class HoldBodiesProbe : ProbeScenario
         return nearest;
     }
 
-    // No wave walks in on its own while the probe stages its own, and the keep stands.
     void HoldTheWaves()
     {
         Core.Hold.ToSpawn = 0;
@@ -97,7 +94,6 @@ public class HoldBodiesProbe : ProbeScenario
         var homed = Enumerable.Range(0, fauna.Jobs.Workers.Count).Where(i => fauna.Jobs.Workers[i].HasHome).ToList();
         yield return null;
         Check("the_workers_head_home", homed.Count > 0 && homed.All(fauna.KeptHome), $"{homed.Count(fauna.KeptHome)} of {homed.Count}");
-        // They walk it, so let the clock run on quickly till they're off it.
         Time.timeScale = Hurry;
         float waited = 0f;
         string who;
@@ -125,7 +121,6 @@ public class HoldBodiesProbe : ProbeScenario
         }
     }
 
-    // Down the road from over the castle's gate: no one on it.
     IEnumerator EmptyRoad(List<(int x, int y)> road)
     {
         var near = Ground(road[Mathf.Min(18, road.Count - 1)]);
@@ -139,14 +134,12 @@ public class HoldBodiesProbe : ProbeScenario
         if (film != null) film.Keeping = false;
     }
 
-    // A mixed wave put on the road a way down, coming up it, then at the crystal.
     IEnumerator TheWave(DefenseField field, List<(int x, int y)> road, WorldHold site)
     {
         var put = new List<Raider>();
         int from = Mathf.Min(road.Count - 1, 34);
         for (int k = 0; k < Mixed.Length; k++)
         {
-            // The slow bear starts nearest, the bison furthest back.
             int at = Mathf.Clamp(from - (Mixed[k] == RaiderIds.BarrowBear ? 9 : 0) + k * 2, 0, road.Count - 1);
             var cell = road[at];
             var r = Core.SpawnRaider(Mixed[k], cell.x, cell.y, Core.Rules.Entity(Mixed[k]).Hp * 40);
@@ -179,14 +172,12 @@ public class HoldBodiesProbe : ProbeScenario
             yield return null;
         }
         Check("they_strike_the_crystal", Core.Hold.Health < before, $"keep {Core.Hold.Health}");
-        // Most of them at it before the shot.
         for (float t = 0f; t < 40f && Core.Raiders.Count(r => System.Math.Abs(r.X - hx) + System.Math.Abs(r.Y - hy) <= 3) < 5; t += Time.deltaTime)
         {
             Core.Hold.NextWave = Core.Tick + Core.Rules.Sim.Hold.WaveTicks;
             yield return null;
         }
         Metric("at_the_crystal", Core.Raiders.Count(r => System.Math.Abs(r.X - hx) + System.Math.Abs(r.Y - hy) <= 3));
-        // From behind the crystal, out at the way they come in: the keep's walls hide them from anywhere else.
         var crowd = Core.Raiders.Where(r => System.Math.Abs(r.X - hx) + System.Math.Abs(r.Y - hy) <= 8).Select(r => Ground((r.X, r.Y))).ToList();
         var mid = crowd.Count > 0 ? crowd.Aggregate(Vector3.zero, (a, b) => a + b) / crowd.Count : heart + toward;
         var inward = new Vector3(heart.x - mid.x, 0f, heart.z - mid.z).normalized;

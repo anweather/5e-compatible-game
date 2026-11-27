@@ -12,7 +12,6 @@ namespace Chem.Mcp
     {
         const string PartsTable = FaunaTables.PartsKey;
 
-        // list fauna: the name, how it's built and whether it comes out on its own.
         List<string> SpeciesLines()
         {
             var fauna = InForce.Fauna;
@@ -26,7 +25,6 @@ namespace Chem.Mcp
             }).ToList();
         }
 
-        // list parts: each part's role, its length, and who wears it.
         List<string> PartLines()
         {
             var fauna = InForce.Fauna;
@@ -47,7 +45,6 @@ namespace Chem.Mcp
             }).ToList();
         }
 
-        // describe fauna: the body in words, then each slot flattened, then what a variant takes from its body.
         string SpeciesNote(string id, Draft draft)
         {
             var fauna = (draft == null ? InForce : RulesWith(draft.Patch.ToString())).Fauna;
@@ -82,7 +79,6 @@ namespace Chem.Mcp
             return $"- {name}: {slot.Part} ({limb.Part.Role}), {on}{extra}; from {BodyShape.Metres(limb.Start)} to {BodyShape.Metres(limb.End)}";
         }
 
-        // describe parts: the segments and every slot that hangs it.
         string PartNote(string id)
         {
             var fauna = InForce.Fauna;

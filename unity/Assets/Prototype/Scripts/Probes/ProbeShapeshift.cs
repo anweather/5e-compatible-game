@@ -43,7 +43,6 @@ public class ShapeshiftProbe : ProbeScenario
         yield return KnockedBack();
     }
 
-    // The meadow of the fauna probe's parade; a deer 8 m north, held still, facing the wizard.
     IEnumerator PutADeerInFront()
     {
         var home = V(27f, 0f, 26f);
@@ -58,7 +57,6 @@ public class ShapeshiftProbe : ProbeScenario
         yield return null;
     }
 
-    // Aimed at as the crosshair does (from the eyes to the deer's middle), then cast.
     IEnumerator ShiftIntoTheDeer()
     {
         var ray = RayAtDeer();
@@ -73,7 +71,6 @@ public class ShapeshiftProbe : ProbeScenario
         yield return Wait(1f);
     }
 
-    // From the wizard's eyes to the held deer's middle (straight ahead if it's gone).
     Ray RayAtDeer()
     {
         var eye = wizard.transform.position + Vector3.up * 1.6f;
@@ -82,7 +79,6 @@ public class ShapeshiftProbe : ProbeScenario
         return new Ray(eye, deerAt - eye);
     }
 
-    // An animal's index now (ValleyFauna's list shifts as animals far off are removed), or -1.
     int Index(int id)
     {
         for (int i = 0; i < fauna.Count; i++)
@@ -107,7 +103,6 @@ public class ShapeshiftProbe : ProbeScenario
             $"move {move:0.0} sprint {sprint:0.0} (deer {expected.move:0.0} / {expected.sprint:0.0}; wizard {wizardMove:0.0} / {wizardSprint:0.0})");
     }
 
-    // Walking: it moves, and the deer's gait runs.
     IEnumerator WalkAsADeer()
     {
         var before = wizard.transform.position;
@@ -137,7 +132,6 @@ public class ShapeshiftProbe : ProbeScenario
         Check("casting_refused", !cast && ConsoleSaid("can't cast", mark), string.Join(" / ", ConsoleSince(mark).Take(3)));
     }
 
-    // A deer 6 m away takes it for one of its own (an unshifted wizard this close makes one bolt: the fauna probe).
     IEnumerator ADeerCloseBy()
     {
         var w = wizard.transform.position;
@@ -155,13 +149,11 @@ public class ShapeshiftProbe : ProbeScenario
             Check("deer_stays", drifted < 5f && s.Mode != Punchy.Fauna.CreatureMode.Flee, $"{drifted:0.0} m in 3 s ({s.Mode})");
         }
 
-        // The picture: the wizard as a deer beside a deer.
         Cut(w + new Vector3(3f, 1.4f, -4.5f), w + new Vector3(3f, 0.6f, 0f));
         yield return Wait(0.5f);
         Shot("deer");
     }
 
-    // A hand's button changes back (Q, the left hand's throw; Z was the Fire key before the hands): its own model and speeds.
     IEnumerator ChangeBack()
     {
         yield return EndOnThe<Keyboard>("Shift keys", d => InputSystem.QueueStateEvent(d, new KeyboardState(Key.Q)), d => InputSystem.QueueStateEvent(d, new KeyboardState()));
@@ -181,14 +173,12 @@ public class ShapeshiftProbe : ProbeScenario
             $"shifted {shape.Shifted}, model shown {shown}, move {move:0.0} sprint {sprint:0.0}, capsule {wizard.GetComponent<CharacterController>().height:0.00} m");
     }
 
-    // A cast button pressed through the wizard's own controls, on a virtual device.
     IEnumerator EndOnThe<T>(string name, System.Action<T> press, System.Action<T> release) where T : InputDevice
     {
         var controls = caster.controls;
         bool wasOn = controls.enabled, casterWasOn = caster.enabled;
         controls.enabled = true;
         caster.enabled = true;
-        // Keys count with the Game view unfocused (a probe run from the CLI, the PC locked) and the Editor behind, as the hands probe's.
         var editorKeys = InputSystem.settings.editorInputBehaviorInPlayMode;
         InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
         InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
@@ -206,7 +196,6 @@ public class ShapeshiftProbe : ProbeScenario
         caster.enabled = casterWasOn;
     }
 
-    // Shifted again, a heavy blow knocks it back into itself.
     IEnumerator KnockedBack()
     {
         shape.Aim(spell, RayAtDeer(), out var cell);

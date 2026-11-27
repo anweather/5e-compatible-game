@@ -15,23 +15,18 @@ public sealed class ApiWire : IChatWire, IKeyLister
 {
     const string Host = "api.anthropic.com", Address = "https://" + Host + "/v1/messages", Version = "2026-10-21", Json = "application/json", DataLine = "data: ";
 
-    /// <summary>Where a key's models are asked for.</summary>
     public const string ModelsAddress = "https://" + Host + "/v1/models?limit=1000";
 
     static readonly HttpClientHandler Handler = new() { AllowAutoRedirect = false };
 
-    // Each message's whole run is bounded by its watchdog, not by this client.
     static readonly HttpClient Client = new(Handler) { Timeout = Timeout.InfiniteTimeSpan };
 
-    /// <summary>Whether a redirect would be followed, for a test: it must not be.</summary>
     public static bool FollowsRedirects => Handler.AllowAutoRedirect;
 
-    /// <summary>Whether a key is there to use. Says no more than that. Opens a saved key, so not on the main thread in play.</summary>
     public static bool HasKey => !string.IsNullOrEmpty(Key);
 
     static string Key => ApiKey.Current;
 
-    /// <summary>A request carrying a key: the one place one is put on the wire, and only ever to the API, over HTTPS.</summary>
     public static HttpRequestMessage Signed(HttpMethod method, string address, string key)
     {
         var request = new HttpRequestMessage(method, address);
@@ -45,7 +40,6 @@ public sealed class ApiWire : IChatWire, IKeyLister
         return request;
     }
 
-    /// <summary>Which models this key can use, off the main thread: free, and the check that it works at all.</summary>
     public KeyCheck Models(string key, CancellationToken token)
     {
         try
@@ -105,7 +99,7 @@ public sealed class ApiWire : IChatWire, IKeyLister
     {
         using var body = response.Content.ReadAsStreamAsync().GetAwaiter().GetResult();
         using var reader = new StreamReader(body, Encoding.UTF8);
-        using var closing = stop.Register(response.Dispose); // a blocked read wakes when the stream goes
+        using var closing = stop.Register(response.Dispose);
         try
         {
             string line;
@@ -119,7 +113,6 @@ public sealed class ApiWire : IChatWire, IKeyLister
         }
     }
 
-    // A sentence for a failure, never the words that would make the chat ask a player to sign in to Claude.
     static string Plain(int status, string answer, string key)
     {
         if (status == 401) return "The API turned this key down.";
@@ -131,7 +124,6 @@ public sealed class ApiWire : IChatWire, IKeyLister
         }
         catch (Newtonsoft.Json.JsonException)
         {
-            // Not the API's own error body, so only the status says anything.
         }
         return ClaudeRun.Without($"The API answered {status}{(message == null ? "" : ": " + message)}.", key);
     }

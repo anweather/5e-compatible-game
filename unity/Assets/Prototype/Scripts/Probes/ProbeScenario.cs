@@ -15,44 +15,27 @@ public abstract class ProbeScenario : ShowcaseScript
 {
     const float SettleSeconds = 1f, MostDrawWaitSeconds = 30f;
     const int MaxErrorsKept = 20;
-    /// <summary>Bytes a call that counts as none: half the smallest object there is. Stray allocations in a frame came to 0.6 at most.</summary>
     protected const float MostGarbage = 8f;
-    // The long edge of a shot's review copy (.claude/skills/screenshot-budget).
     const int ReviewEdge = 480;
 
     public ProbeResult Result { get; } = new ProbeResult();
-    /// <summary>A folder to save screenshots in, or null for none. Set before Start.</summary>
     public string ScreenshotDir { get; set; }
-    /// <summary>How long a timed scenario (perf) runs. Set before Start.</summary>
     public float Seconds { get; set; } = 10f;
-    /// <summary>chatprompts only: spend real prompts on the signed-in Claude. Off, a stand-in answers. Set before Start.</summary>
     public bool RealClaude { get; set; }
-    /// <summary>chatprompts only: how many of the set to send; 0 for all of it, and never over its cap. Set before Start.</summary>
     public int Prompts { get; set; }
-    /// <summary>chatprompts only: the folder for this run's records and raw streams. Set before Start.</summary>
     public string OutDir { get; set; }
-    /// <summary>chatprompts only: the model to ask claude for; empty leaves it to the account, as the game does. Set before Start.</summary>
     public string Model { get; set; }
-    /// <summary>chatprompts only: "bare" starts claude without the player's own skills, plugins and commands; empty, as the game does. Set before Start.</summary>
     public string Context { get; set; }
-    /// <summary>chatprompts only: send just the prompt of this kind. Set before Start.</summary>
     public string OnlyKind { get; set; }
-    /// <summary>chatprompts only: earlier runs' folders, comma-separated, to cast their spells from their records, spending nothing. Set before Start.</summary>
     public string Replay { get; set; }
-    /// <summary>chatprompts only: more arguments for claude, split on semicolons, for this run alone (a short system prompt, an effort). Set before Start.</summary>
     public string Also { get; set; }
-    /// <summary>chatprompts only: the prompts file in docs/telemetry to send in place of the fixed set. Set before Start.</summary>
     public string SetFile { get; set; }
-    /// <summary>chatprompts only: "off" leaves notes.md out of the message; empty, as the game does. Set before Start.</summary>
     public string Notes { get; set; }
 
-    /// <summary>chatprompts only: api answers with the game's own loop in place of Claude Code.</summary>
     public string Harness { get; set; }
 
-    /// <summary>chatprompts only: the file holding the API's running total; real money won't start without one.</summary>
     public string BudgetFile { get; set; }
 
-    /// <summary>chatprompts only: how long the API loop's prefix stays cached, 1h or 5m.</summary>
     public string PrefixTtl { get; set; }
 
     readonly List<float> frameMs = new();
@@ -62,7 +45,6 @@ public abstract class ProbeScenario : ShowcaseScript
     float measureStarted;
     int tickAtStart;
 
-    /// <summary>The scenario itself, run once the scene has settled; frames are measured while it runs.</summary>
     protected abstract IEnumerator Run();
 
     void Awake() => Application.logMessageReceived += OnLog;
@@ -77,7 +59,6 @@ public abstract class ProbeScenario : ShowcaseScript
     protected override IEnumerator Play()
     {
         yield return Wait(SettleSeconds);
-        // The world's far chunks draw a few a frame after it's built (ChemGrid.RenderAll): a scenario starts on all of it.
         for (float waited = 0f; grid.ChunksLeftToDraw > 0 && waited < MostDrawWaitSeconds; waited += Time.unscaledDeltaTime) yield return null;
         tickAtStart = grid.World.Tick;
         measureStarted = Time.realtimeSinceStartup;
@@ -86,7 +67,6 @@ public abstract class ProbeScenario : ShowcaseScript
         measuring = false;
         Check("fell", !fall.Fell, $"deepest under the ground {fall.Deepest:0.0} m");
         Summarise();
-        // A screenshot is written at the end of the frame it was asked for.
         yield return null;
         yield return null;
     }
@@ -114,23 +94,16 @@ public abstract class ProbeScenario : ShowcaseScript
         Result.Console.Errors.Add(firstFrame != null ? $"{type}: {message} (at {firstFrame})" : $"{type}: {message}");
     }
 
-    /// <summary>
-    /// Unity's own QuickSearch throwing as it indexes after a start or a reload (docs/perf/notes-2026-10-31-mac.md):
-    /// its stack runs through UnityEditor.Search with no frame of ours, so it says nothing about the game.
-    /// </summary>
     public static bool IsUnitysQuickSearch(string stack) =>
         stack != null
         && stack.Contains("UnityEditor.Search.", System.StringComparison.Ordinal)
         && !stack.Contains("Assets/Prototype/", System.StringComparison.Ordinal);
-
-    // --- for scenarios -------------------------------------------------------------
 
     protected void Check(string name, bool pass, string detail = null) =>
         Result.Checks.Add(new ProbeCheck { Name = name, Pass = pass, Detail = detail });
 
     protected void Metric(string name, double value) => Result.Metrics[name] = System.Math.Round(value, 3);
 
-    /// <summary>Puts the wizard on a cell, on the ground (or the wall top) the grid has there.</summary>
     protected void StandOn((int x, int y) cell)
     {
         var p = grid.CellCenter(cell.x, cell.y);
@@ -138,12 +111,6 @@ public abstract class ProbeScenario : ShowcaseScript
         Teleport(p + Vector3.up * 0.05f);
     }
 
-    /// <summary>
-    /// Loads an element on the element path (World.Combos' Load: an ordered pair of elements), solo or through the host. Nothing
-    /// in the game casts this way since D16 (the hands do); the probes that test what the element path itself shows (castfeel's
-    /// beats, look's orbs, spelllookfx's first orb, the marker following the cast, online's beats on both peers) keep it alive
-    /// till they're rewritten on the hands. Held until SpellCaster.LetGo if <paramref name="held"/>. False if the core refused it.
-    /// </summary>
     protected bool LoadElement(string element, bool held = false)
     {
         var command = ComboCommand.Load(caster.CastPlayer, element, held);
@@ -153,7 +120,6 @@ public abstract class ProbeScenario : ShowcaseScript
         return true;
     }
 
-    /// <summary>Saves a screenshot of the Game view as &lt;ScreenshotDir&gt;/&lt;scenario&gt;-&lt;label&gt;.png, if asked for, and a small copy beside it as .480.png.</summary>
     protected void Shot(string label)
     {
         if (string.IsNullOrEmpty(ScreenshotDir)) return;
@@ -163,9 +129,6 @@ public abstract class ProbeScenario : ShowcaseScript
         StartCoroutine(Capture(file));
     }
 
-    // At the frame's end, the Game view: the shot, and beside it the copy with ReviewEdge on its long
-    // edge, the one the worker opens to review. Both from one picture: ScreenCapture.CaptureScreenshot
-    // wrote black alongside CaptureScreenshotAsTexture in the same frame.
     static IEnumerator Capture(string file)
     {
         yield return new WaitForEndOfFrame();
@@ -177,7 +140,6 @@ public abstract class ProbeScenario : ShowcaseScript
         SavePicture(from, file);
         float shrink = (float)ReviewEdge / Mathf.Max(width, height);
         int smallWidth = Mathf.Max(1, Mathf.RoundToInt(width * shrink)), smallHeight = Mathf.Max(1, Mathf.RoundToInt(height * shrink));
-        // Halved in steps: one bilinear blit of more than half skips pixels, and thin things break up.
         while (width > smallWidth || height > smallHeight)
         {
             (width, height) = (Mathf.Max(width / 2, smallWidth), Mathf.Max(height / 2, smallHeight));
@@ -201,8 +163,6 @@ public abstract class ProbeScenario : ShowcaseScript
         Destroy(copy);
     }
 
-    /// <summary>Runs game time at 60 frames a second however long a frame really takes, so a beat or a stop counts the same frames every run; off, the real clock.</summary>
-    /// <summary>Whether a terrain's collider stands over a point, a metre or more above its ground: a tree's trunk.</summary>
     protected static bool TreeColliderAt(Vector3 at)
     {
         foreach (var hit in Physics.RaycastAll(at + Vector3.up * 120f, Vector3.down, 200f))
@@ -212,11 +172,6 @@ public abstract class ProbeScenario : ShowcaseScript
 
     protected static void FixClock(bool on) => Time.captureDeltaTime = on ? 1f / 60f : 0f;
 
-    /// <summary>
-    /// The managed bytes a call makes, by the profiler's count of a frame's allocations: the least of some frames with the
-    /// calls, less the least of some without, over the calls. Negative if the count isn't working. GC.GetAllocatedBytesForCurrentThread
-    /// reads 0 in Unity, and the heap's size moves in blocks: Unity's threads move it at any moment, and 7 KB made in a round doesn't.
-    /// </summary>
     protected static IEnumerator GarbagePerCall(System.Action call, int times, System.Action<float> measured)
     {
         const int Frames = 8, Calibration = 16 * 1024;
@@ -238,26 +193,20 @@ public abstract class ProbeScenario : ShowcaseScript
         measured(counting ? (float)System.Math.Max(0L, with - without) / times : -1f);
     }
 
-    /// <summary>The controller's debug layout, for a scenario that drives the radial's buttons.</summary>
     protected void RadialPad() => wizard.GetComponent<PlayerControls>().ElementPad = false;
 
     protected int BurningCells() => World.AllCells().Count(c => c.Fire > 0);
 
-    /// <summary>How many console lines there have been so far, to pass to ConsoleSaid later.</summary>
     protected int ConsoleMark => consoleLines.Count;
 
-    /// <summary>The console lines since <paramref name="mark"/>.</summary>
     protected IEnumerable<string> ConsoleSince(int mark) => consoleLines.Skip(mark);
 
-    /// <summary>Whether a console line since <paramref name="mark"/> contains <paramref name="text"/> (EventLog writes there).</summary>
     protected bool ConsoleSaid(string text, int mark) =>
         consoleLines.Skip(mark).Any(l => l.Contains(text, System.StringComparison.Ordinal));
 
-    /// <summary>The chemistry log's lines (World.Log) written or repeated since a tick.</summary>
     protected IEnumerable<string> LogSince(int tick) =>
         World.Log.Where(e => e.Tick >= tick).Select(e => e.Text);
 
-    /// <summary>Selects the spell on the bar (SpellCaster.Select) and casts it at a yard cell, then waits.</summary>
     protected IEnumerator CastFromBar(string spellId, int x, int y, int dir, float wait)
     {
         Check($"bar_has_{spellId}", caster.Select(spellId));
@@ -267,7 +216,6 @@ public abstract class ProbeScenario : ShowcaseScript
         yield return Wait(wait);
     }
 
-    /// <summary>The camera at a cell, this high over its ground, looking at another cell this high over its own.</summary>
     protected void Look(int x, int y, float up, int atX, int atY, float atUp)
     {
         var from = grid.CellCenter(x, y);
@@ -275,7 +223,6 @@ public abstract class ProbeScenario : ShowcaseScript
         Cut(new Vector3(from.x, grid.GroundAt(from) + up, from.z), new Vector3(to.x, grid.GroundAt(to) + atUp, to.z));
     }
 
-    /// <summary>Walks the wizard toward a yard cell for at most <paramref name="seconds"/> of game time.</summary>
     protected IEnumerator WalkFor(int x, int y, float seconds)
     {
         var walk = puppet.WalkTo(Yard(x, y));
@@ -283,7 +230,6 @@ public abstract class ProbeScenario : ShowcaseScript
         puppet.Move(Vector2.zero);
     }
 
-    /// <summary>The dry, open cell outside the yard nearest its middle with lake water two cells south.</summary>
     protected bool FindShore(out Vector2Int shore)
     {
         var yard = grid.yardCells;
@@ -305,7 +251,6 @@ public abstract class ProbeScenario : ShowcaseScript
         return best < float.MaxValue;
     }
 
-    /// <summary>The cells a spell would touch, from yard coordinates, in world cells.</summary>
     protected List<(int x, int y)> SpellCells(string spellId, int x, int y, int dir)
     {
         var cell = grid.YardCell(x, y);
@@ -335,7 +280,6 @@ public abstract class ProbeScenario : ShowcaseScript
     }
 }
 
-/// <summary>What a probe scenario found. The editor writes it as JSON (snake_case keys).</summary>
 public sealed class ProbeResult
 {
     public string Scenario { get; set; }
@@ -355,7 +299,6 @@ public sealed class ProbeCheck
     public string Detail { get; set; }
 }
 
-/// <summary>Frame times over the scenario, in Editor Play mode (not a player build: the Editor's own drawing is in them).</summary>
 public sealed class ProbeFrames
 {
     public string Source { get; } = "editor_play_mode";
@@ -372,7 +315,6 @@ public sealed class ProbeChem
     public int TickEnd { get; set; }
     public int Ticks => TickEnd - TickStart;
     public int BurningCells { get; set; }
-    /// <summary>World.LogAppended at the end: chemistry log lines since the world was built.</summary>
     public int LogLines { get; set; }
 }
 
@@ -380,7 +322,6 @@ public sealed class ProbeConsole
 {
     public int ErrorCount { get; set; }
     public int WarningCount { get; set; }
-    /// <summary>Errors of Unity's own QuickSearch, left out of ErrorCount.</summary>
     public int IgnoredCount { get; set; }
     public List<string> Errors { get; } = new();
 }

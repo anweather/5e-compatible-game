@@ -37,7 +37,6 @@ public sealed class CastOrbs
         }
     }
 
-    // Motes that start out around the hand and fall in to it.
     static ParticleSystem NewMotes(Transform owner)
     {
         var host = new GameObject("Cast motes");
@@ -74,10 +73,8 @@ public sealed class CastOrbs
         return ps;
     }
 
-    /// <summary>The colour the orb in a hand (0 right, 1 left) is drawn in, for the probe.</summary>
     public Color OrbColor(int i) => materials[i].GetColor("_BaseColor");
 
-    /// <summary>Each frame: which element, if any, is being drawn in to each hand, each in its tint.</summary>
     public void Motes(string right, string left, LookTint rightTint = default, LookTint leftTint = default)
     {
         if (pose == null) return;
@@ -102,10 +99,6 @@ public sealed class CastOrbs
         motes[i].Play(true);
     }
 
-    /// <summary>
-    /// Each frame, after the hands are placed: what's loaded (null for an empty hand) at
-    /// <paramref name="size"/> times the usual, <paramref name="merge"/> of the way between the hands, each in its tint.
-    /// </summary>
     public void Show(string first, string second, float size, float merge, LookTint firstTint = default, LookTint secondTint = default)
     {
         if (pose == null) return;
@@ -115,7 +108,6 @@ public sealed class CastOrbs
         Hold(1, second, Vector3.Lerp(left, middle, merge), size, secondTint);
     }
 
-    /// <summary>The dropped elements go out at the hands.</summary>
     public void Fizzle(string first, string second, LookTint firstTint = default, LookTint secondTint = default)
     {
         if (pose == null) return;

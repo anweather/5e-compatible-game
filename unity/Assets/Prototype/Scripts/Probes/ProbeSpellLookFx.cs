@@ -25,11 +25,9 @@ public class SpellLookFxProbe : LooksModProbe
     int scenes;
     float side = -1f;
 
-    /// <summary>Which side of the casts the camera stands, as Frame chose.</summary>
     protected float Side => side;
 
     string calmSim;
-    // What a stage in the look looks like: blue, but for the Fireball that chose green among blue fire.
     System.Func<Color, bool> inLook = IsBlue;
     Color firstOrb;
 
@@ -103,9 +101,6 @@ public class SpellLookFxProbe : LooksModProbe
         if (Filming) yield return EndFilm();
     }
 
-    // Only the element's colour moves: a spell that chose none follows it, one that chose keeps its own (J-052).
-    // set_look on an element also colours each of its spells with a colour of their own unless spells is false (the
-    // chat-model finding, docs/telemetry/chat-model-2026-11-02.md): the probe asks for the element alone, as J-052 is about.
     IEnumerator FollowsTheElement(Vector2Int at, Vector2Int other)
     {
         string fingerprint = grid.CurrentRules.Effective.Fingerprint;
@@ -150,17 +145,14 @@ public class SpellLookFxProbe : LooksModProbe
 
     static bool IsGreen(Color c) => c.g > c.r && c.g > c.b;
 
-    // Noon, clear, no fire spreading, as a mod of the probe's own: on top of what's on, as the room's change drops it.
     protected IEnumerator Calm()
     {
-        // Once: the hour in it is worked out from the clock, and the same mod keeps the same fingerprint.
         calmSim ??= At(12f);
         var calm = new ActiveMod("probe-calm", "{ 'patch': { 'sim': { " + calmSim + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 } }, 'fire': { 'spreadChance': 0 } } } }");
         grid.QueueRules(grid.CurrentRules.WithMods(grid.CurrentRules.Mods.Where(m => m.Id != calm.Id).Append(calm)));
         yield return Wait(0.5f);
     }
 
-    // One change (set_spell, or the tool named) in a new draft and an apply with a title, as a player's Claude would: over HTTP, the game's only door.
     protected IEnumerator ThroughMcp(string change, string title, string tool = "set_spell")
     {
         var written = RoomMcpProbe.Post(RoomMcpProbe.Tool(tool, change));
@@ -175,7 +167,6 @@ public class SpellLookFxProbe : LooksModProbe
         yield return Wait(0.6f);
     }
 
-    // The wizard to the west of a spot, looking at it, the camera side on to take in both.
     protected void Frame(Vector2Int at)
     {
         var point = grid.CellCenter(at.x, at.y);
@@ -184,7 +175,6 @@ public class SpellLookFxProbe : LooksModProbe
         stand.y = grid.GroundAt(stand) + 0.1f;
         wizard.transform.position = stand;
         puppet.Face(point);
-        // A tree's own trunk can stand where the camera would: from whichever side has fewer.
         side = Trees(at, -1) <= Trees(at, 1) ? -1f : 1f;
         Wide(at);
     }
@@ -205,7 +195,6 @@ public class SpellLookFxProbe : LooksModProbe
         Cut(mid + V(0f, 5f, side * 15f), mid + V(0f, 1.4f, 0f));
     }
 
-    // Close on the hands, for the orbs.
     void Close()
     {
         var hands = wizard.transform.position + Vector3.up * 1.2f + wizard.transform.forward * 0.3f;
@@ -225,7 +214,6 @@ public class SpellLookFxProbe : LooksModProbe
         yield return Wait(0.35f);
     }
 
-    // A Fireball cast and in the look at the cast's every stage, or not; the first orb, before there's a spell, is its element's.
     IEnumerator Fireball(Vector2Int at, string name, bool blue, bool elementMoved = false)
     {
         var beats = wizard.GetComponent<CastBeats>();
@@ -292,11 +280,9 @@ public class SpellLookFxProbe : LooksModProbe
         if (!Filming) Shot(label);
     }
 
-    // A check that a stage shows the look exactly when it should.
     void Stage(string name, string stage, bool blueNow, bool blue, string detail) =>
         Check($"{name}_{stage}_{(blue ? "in_the_look" : "as_authored")}", blueNow == blue, detail);
 
-    // How many of a show's materials are drawn turned.
     protected static int Shader(GameObject show) =>
         show.GetComponentsInChildren<ParticleSystemRenderer>(true).SelectMany(r => r.sharedMaterials).Count(m => m != null && m.shader.name == LookShader);
 
@@ -326,8 +312,6 @@ public class SpellLookFxProbe : LooksModProbe
     System.Collections.Generic.IEnumerable<float> Embers(Vector2Int at) =>
         Around(at).Where(c => World.At(c.x, c.y).Cover == CoverIds.Embers).Select(c => grid.EmberTurnOn(c.x, c.y));
 
-    // A fire spreading from a blue cell burns blue, though the spell never touched that cell: lit beside the
-    // fire by hand here, as the rules' spread is off so the fire area stays the blast's.
     void Spreads(Vector2Int at)
     {
         var burning = Around(at).Where(c => World.At(c.x, c.y).Fire > 0).ToList();
@@ -351,7 +335,6 @@ public class SpellLookFxProbe : LooksModProbe
         Check("spread_keeps_the_look", grid.FireTint(x, y).Any, $"cell ({x}, {y})");
     }
 
-    // A Fireball in the mod's look, left burning.
     IEnumerator Burning(Vector2Int at)
     {
         SpellVisuals.LastImpact = null;

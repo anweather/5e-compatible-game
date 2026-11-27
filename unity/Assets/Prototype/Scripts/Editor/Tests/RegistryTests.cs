@@ -26,13 +26,11 @@ public class RegistryTests
         Registries.ForgetAll();
     }
 
-    /// <summary>A type with a registry: how to make one, and how its registry answers.</summary>
     public sealed class Kind
     {
         public string Name;
         public Func<GameObject, Component> Make;
         public Func<Component[]> All;
-        /// <summary>ExecuteAlways: Unity runs its Awake in edit mode too.</summary>
         public bool WakesInEditMode;
 
         public override string ToString() => Name;
@@ -166,8 +164,6 @@ public class RegistryTests
         Assert.That(kind.All(), Is.EqualTo(new[] { a, c }));
     }
 
-    // --- the chunk index (Registry.Place, Near; PhysicsProp.Near) ---
-
     [Test]
     public void NearReadsTheChunksAskedForTheRingAroundAndTheLooseOnes()
     {
@@ -206,8 +202,6 @@ public class RegistryTests
     [Test]
     public void ManyJoinAndLeaveInLinearTime()
     {
-        // Thousands of props join in Awake and leave in OnDestroy as chunks load and unload: each of Join, Place,
-        // Unplace and Leave must be O(1), or loading n of them costs O(n^2) (with lists, 20,000 took seconds).
         const int n = 20000;
         var registry = new Registry<BoxCollider>();
         var members = new BoxCollider[n];

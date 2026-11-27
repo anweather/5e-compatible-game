@@ -15,7 +15,6 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-/** A glob as a RegExp over repo-relative posix paths: * stays in a folder, ** crosses them, ? is one character. */
 export function globRe(glob) {
   let re = "";
   for (let i = 0; i < glob.length; i++) {
@@ -34,7 +33,6 @@ const attr = (tag, name) => (tag.match(new RegExp(`\\b${name}="([^"]*)"`)) || []
 const tags = (xml, name) => [...xml.replace(/<!--[\s\S]*?-->/g, "").matchAll(new RegExp(`<${name}\\b[^>]*>`, "g"))].map(m => m[0]);
 const norm = p => posix.normalize(p.replace(/\\/g, "/"));
 
-/** Every file under root a pattern could match, read from disk (for check). */
 function filesFor(root, pattern) {
   const fixed = pattern.split("/");
   const cut = fixed.findIndex(p => /[*?]/.test(p));
@@ -50,7 +48,6 @@ function filesFor(root, pattern) {
   return out;
 }
 
-/** The repo's map: modules, the props items, the projects with their compiles and references. */
 export function load(root = join(here, "..", "..")) {
   const map = JSON.parse(readFileSync(join(root, "tools/workers/modules.json"), "utf8"));
   const propsPath = "core/Chem.Tests.props";
@@ -60,11 +57,9 @@ export function load(root = join(here, "..", "..")) {
   for (const m of props.matchAll(/<(\w+)>([^<]*)<\/\1>/g)) vars[m[1]] = m[2].replace(/\$\((\w+)\)/g, (_, v) => vars[v] ?? "");
   const expand = (s, dir) => s.split(";").map(x => x.trim()).filter(Boolean).map(x => {
     if (x.startsWith("@(")) return x;
-    // A path that starts from a property ($(ChemTests), $(MSBuildThisFileDirectory)) is from the repo's root already.
     const v = x.replace(/\$\((\w+)\)/g, (_, k) => vars[k] ?? "");
     return norm(x.startsWith("$(") ? v : posix.join(dir, v));
   });
-  // Items: name -> [{ include: [patterns or @(x)], remove: [...] }]
   const items = {};
   for (const tag of tags(props, "ChemTests\\w+")) {
     const name = tag.match(/<(\w+)/)[1];
@@ -109,10 +104,6 @@ export function load(root = join(here, "..", "..")) {
   return { root, map, modules, projects, items, inItem, compiledBy, problems, smoke: map.smoke ?? "TestCategory=Unit" };
 }
 
-/**
- * Every project that references p, directly or through others, and p. A project in stop (a module's "stop") is reached
- * but not followed: what references it only through it isn't added (those get the smoke).
- */
 export function withDependents(m, start, stop = []) {
   const out = new Set(start);
   let grew = true;
@@ -129,7 +120,6 @@ export function moduleOf(m, file) {
   return m.modules.find(mod => mod.res.some(r => r.test(file)) || (mod.props && m.inItem(mod.props, file)));
 }
 
-/** What a set of changed files runs: { mode, run, smoke, why, modules, node }. derive: false for check (the map alone). */
 export function choose(m, files, { derive = true } = {}) {
   const tests = Object.keys(m.projects).filter(p => m.projects[p].test).sort();
   const why = [], seen = new Map();
@@ -162,7 +152,6 @@ export function choose(m, files, { derive = true } = {}) {
   return { mode: "some", run: [...run].sort(), smoke: tests.filter(t => !run.has(t)), why, modules: [...seen.keys()], node };
 }
 
-/** Whether dev's new commits (theirs) reach what this landing tested (ours): a shared module or test project, or either running everything. */
 export function overlap(m, ours, theirs) {
   const a = choose(m, ours), b = choose(m, theirs);
   if (a.all) return { rerun: true, why: "this landing ran everything" };
@@ -175,10 +164,6 @@ export function overlap(m, ours, theirs) {
   return { rerun: false, why: `dev's new commits (${b.modules.join(", ") || "nothing"}) share no tested module with this landing (${a.modules.join(", ")})` };
 }
 
-/**
- * Problems with the map: each file a project compiles must, by the map alone, run that project (or its test dependents,
- * cut where the file's module stops: its "stop" projects' dependents get the smoke, by the map's choice).
- */
 export function check(m) {
   const problems = [...m.problems];
   if (problems.length) return problems;
@@ -195,7 +180,6 @@ export function check(m) {
       }
     }
   }
-  // Each Chemistry test file lands in exactly one item, and so in one project (Sim is what's left).
   for (const f of filesFor(m.root, "unity/Assets/Prototype/Chemistry/Tests/*.cs")) {
     const inside = Object.keys(m.items).filter(i => m.inItem(i, f));
     if (inside.length !== 1) problems.push(`${f} is in ${inside.length} of the props' item lists (${inside.join(", ")})`);

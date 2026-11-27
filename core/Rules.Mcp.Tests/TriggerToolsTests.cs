@@ -1,10 +1,10 @@
+// add_trigger and the walk in simulate (docs/design/events-and-placing.md 2c, 5): "a meteor at every step I take".
 using System.Linq;
 using Chem.Mcp;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>add_trigger and the walk in simulate (docs/design/events-and-placing.md 2c, 5): "a meteor at every step I take".</summary>
     [Category("Simulation")]
     public class TriggerToolsTests
     {
@@ -69,8 +69,6 @@ namespace Chem.Tests
             Assert.That(b.Validate(DraftIn(said)).Select(p => p.Message), Has.Some.Contains("level 7 at most"));
         }
 
-        // The rules MCP knows the player at the keyboard as their peer name ("Player 1"); their stands come in as
-        // "solo" alone and as "p<client>" online (SpellCaster.CastPlayer). The default who matches either.
         static World SteppedBy(Workbench b, string draft, string player)
         {
             var w = new World(b.InForce.WithMods(new[] { ModPatch.Parse(b.DraftOf(draft).Patch.ToString()) }), 64, 64, 5, "grass");

@@ -29,7 +29,6 @@ public class HoldBarricades : MonoBehaviour
     readonly HashSet<int> standing = new();
     readonly HashSet<int> now = new();
 
-    /// <summary>The cells drawn as barricades now, and those of them charred: for the probe.</summary>
     public int Drawn => Shown(sound) + Shown(burning);
     public int Charred => Shown(burning);
 
@@ -128,7 +127,6 @@ public class HoldBarricades : MonoBehaviour
         Dress(burning, "Barricade burnt", Burnt);
     }
 
-    // Not under the grid: a reset takes everything there.
     static void Dress(Batch b, string name, Color color)
     {
         var go = new GameObject(name);

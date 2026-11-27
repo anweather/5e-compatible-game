@@ -9,10 +9,6 @@ using System.Linq;
 
 namespace Chem
 {
-    /// <summary>
-    /// One more area a pad reaches over, in world cells, corners inclusive: its bank, whether its face is a crag, and whether
-    /// it's cleared of the map's trees (the view's: open ground to stand on).
-    /// </summary>
     public readonly struct PadArea
     {
         public readonly int X0, Y0, X1, Y1, Bank;
@@ -36,14 +32,9 @@ namespace Chem
     {
         const int Scale = 16;
 
-        /// <summary>What the pad adds to the land at each cell it moves, in land units, for a row on these cells.</summary>
         public static List<(int x, int y, int by)> Of(IReadOnlyCollection<(int x, int y)> cells, int margin, int bank, Func<int, int, int> land, Func<int, int, bool> inBounds)
             => Of(cells, margin, bank, land, inBounds, Array.Empty<PadArea>()).laid;
 
-        /// <summary>
-        /// The pad over the row's cells and over more areas at the same height: what it adds at each cell, as earth (laid)
-        /// and, on the banks of the areas whose face is a crag, as rock (crag). A cell takes the most any of them keeps of it.
-        /// </summary>
         public static (List<(int x, int y, int by)> laid, List<(int x, int y, int by)> crag) Of(IReadOnlyCollection<(int x, int y)> cells, int margin, int bank,
             Func<int, int, int> land, Func<int, int, bool> inBounds, IReadOnlyList<PadArea> more)
         {
@@ -75,7 +66,6 @@ namespace Chem
             return (laid, crag);
         }
 
-        // How much of the pad's height a cell takes, out of Scale squared: all of it on the pad, none at the bank's foot.
         static int Kept(int d, int bank)
         {
             if (d <= 0) return Scale * Scale;

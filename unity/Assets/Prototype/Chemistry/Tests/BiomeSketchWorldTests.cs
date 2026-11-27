@@ -22,7 +22,6 @@ namespace Chem.Tests
             ["ashlands"] = (86, 64, 60),
         };
 
-        // The biome at every step-th cell, sea and wall rows painted over, the world square grid in faint lines.
         static int BiomeMap(GeneratedMap map, string file, int step)
         {
             string folder = Environment.GetEnvironmentVariable("BIOME_PNG_OUT");
@@ -39,7 +38,7 @@ namespace Chem.Tests
                     (int, int, int) col;
                     if (gen.Plan.Wall[square] != 0) col = gen.Plan.Wall[square] == 1 ? (236, 244, 250) : (222, 190, 120);
                     else if (gen.LandAt(cx, cy) < ChunkGen.SeaLevel) col = (40, 84, 150);
-                    else if (gen.IsPinned(cx / ChunkGen.Size, cy / ChunkGen.Size)) col = (30, 96, 40); // the valley, its own map
+                    else if (gen.IsPinned(cx / ChunkGen.Size, cy / ChunkGen.Size)) col = (30, 96, 40);
                     else
                     {
                         var (r, g, b) = Colours.TryGetValue(gen.BiomeAt(cx, cy), out var bc) ? bc : ((byte)255, (byte)0, (byte)255);

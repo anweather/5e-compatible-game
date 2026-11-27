@@ -1,3 +1,4 @@
+// What the tools themselves tell a model, whichever harness it's in, and who may save (docs/telemetry/chat-context-2026-11-02.md, J-064).
 using System;
 using System.IO;
 using System.Linq;
@@ -8,7 +9,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>What the tools themselves tell a model, whichever harness it's in, and who may save (docs/telemetry/chat-context-2026-11-02.md, J-064).</summary>
     [Category("Simulation")]
     public class ChatKnowledgeTests
     {
@@ -22,7 +22,6 @@ namespace Chem.Tests
 
         static Rules With(Workbench b, Draft d) => b.Base.WithMods(new[] { ModPatch.Parse(d.Patch.ToString()) });
 
-        // A player's data folder in Temp, with their mods folder made, where a save goes.
         static void InATempFolder(Action<GameFolders> act)
         {
             string data = Path.Combine(Path.GetTempPath(), "chem-save-" + Guid.NewGuid().ToString("N"));
@@ -37,8 +36,6 @@ namespace Chem.Tests
                 Directory.Delete(data, true);
             }
         }
-
-        // ---------- an element's colour ----------
 
         [Test]
         public void OneCallColoursAnElementAndAllItsSpells()
@@ -111,8 +108,6 @@ namespace Chem.Tests
             StringAssert.Contains("\"color\"", one.Brief());
         }
 
-        // ---------- simulate before apply ----------
-
         [Test]
         public void ValidateAsksForASimulateOnlyWhenTheWorldBehavesDifferently()
         {
@@ -121,8 +116,6 @@ namespace Chem.Tests
             Assert.That(b.SimulateNote(b.SetLook(null, "grass", "color", "[0.1, 0.1, 0.1]", null, out _).Id), Is.Empty);
             Assert.That(b.SimulateNote(b.SetLook(null, "fire", "color", Blue, "element", out _).Id), Is.Empty);
         }
-
-        // ---------- who may save ----------
 
         [TestCase("save that as a mod", true)]
         [TestCase("Save it", true)]
@@ -173,7 +166,6 @@ namespace Chem.Tests
                 var b = NewBench(folders);
                 var d = b.SetSpell(null, "fireball", "radius", "3");
                 b.Apply(d.Id, null, "Wide fireball");
-                // Each chat message is a new process that knows no draft ids, and may be a new server too: the room remembers.
                 var later = new RulesTools(b);
                 b.Refresh();
                 string said = later.Save("wide-fireball", "Wide fireball", "A wider Fireball.");
@@ -190,13 +182,10 @@ namespace Chem.Tests
             StringAssert.Contains("no draft", Assert.Throws<RulesToolException>(() => b.Save("d99", "x", "y")).Message);
         }
 
-        // ---------- where the words go ----------
-
         [Test]
         public void TheInstructionsStayShortAsEveryPromptWritesThem() =>
             Assert.That(RulesTools.Instructions, Has.Length.LessThan(1000));
 
-        // Claude Code cuts an MCP tool's description at 2,048 characters.
         [Test]
         public void NoToolsDescriptionIsLongEnoughToBeCut()
         {

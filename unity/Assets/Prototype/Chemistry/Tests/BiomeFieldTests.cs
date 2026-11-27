@@ -101,7 +101,6 @@ namespace Chem.Tests
         public void TheBlendIsGradualAcrossABorder()
         {
             var f = new BiomeField(Table);
-            // Walking east along a row, a biome's weight never jumps by more than a slice of the blend per cell.
             for (int y = 100; y < 1700; y += 160)
             {
                 var last = f.At(0, y);
@@ -123,7 +122,6 @@ namespace Chem.Tests
             return s;
         }
 
-        // How much of each square each biome holds, by the dominant biome on a grid.
         static Dictionary<int, double> Shares(BiomeField f, int sx, int sy)
         {
             var count = new Dictionary<int, int>();
@@ -147,7 +145,6 @@ namespace Chem.Tests
                 {
                     var shares = Shares(f, sx, sy);
                     int anchor = Table.Layout[sx, sy];
-                    // Two squares can share an anchor (grassland, mountains): what counts is that it leads in each.
                     var top = shares.OrderByDescending(p => p.Value).First();
                     Assert.That(Id(top.Key), Is.EqualTo(Id(anchor)), $"seed {seed}, square ({sx}, {sy}): " +
                         string.Join(", ", shares.OrderByDescending(p => p.Value).Select(p => $"{Id(p.Key)} {p.Value:P0}")));
@@ -179,7 +176,6 @@ namespace Chem.Tests
         {
             var json = File.ReadAllText(TablePath);
             var before = new BiomeField(BiomeTable.Parse(json));
-            // Sonoran on: every region keeps its biome or becomes Sonoran, never a third one.
             var more = BiomeTable.Parse(json);
             more.Rows[more.IndexOf("sonoran")].On = true;
             var after = new BiomeField(more);
@@ -211,7 +207,6 @@ namespace Chem.Tests
             Assert.That(again, Is.EqualTo(chunk));
         }
 
-        // FNV-1a over the weights on a grid across the nine squares and a little beyond.
         static uint GridHash(BiomeField f, int step, int blend = 0)
         {
             uint h = 2166136261u;
@@ -251,9 +246,6 @@ namespace Chem.Tests
             return s.ToString();
         }
 
-        // The goldens: run on the PC and the Mac, the same numbers, or the field isn't lockstep-safe. The regions'
-        // biomes as letters (a temperate, b grassland, c mountains, d tundra, e salt-flat, f foggy-marsh, g ashlands),
-        // then the surface blend on a 9-cell grid and the shape blend on a 27-cell grid over the nine squares.
         [TestCase(1337, "ceegacd/beeadaa/bedcgea/befbcdf/fbabedb/fbaffdc/afaabbd/", 0x2a5244fbu, 0x2e80f00du)]
         [TestCase(7, "caacbbe/dccafbe/cddcgee/dcfbcbe/dcabeca/dccccad/accgcab/", 0x5002e0a0u, 0xf2965e36u)]
         [TestCase(1, "edceddg/aaaabca/cbdcgae/bbfbcbe/acabecb/eccaacc/gecacgg/", 0x0623647eu, 0x8895c7d6u)]
@@ -265,15 +257,12 @@ namespace Chem.Tests
             Assert.That(got, Is.EqualTo((regions, surface, shape)));
         }
 
-        // Andrew's "How quickly can we generate on demand?": one chunk's weights, and roughly what land from biomes adds
-        // (four biomes' five-octave relief per cell). Explicit: a timing, not a check. Run in Release:
-        //   dotnet test core -c Release --filter "FullyQualifiedName~BiomeFieldTiming"
         [Test, Explicit]
         public void BiomeFieldTiming()
         {
             var f = new BiomeField(Table);
             var w = new BiomeBlend[64 * 64];
-            for (int i = 0; i < 20; i++) f.Chunk(i, i, w); // warm up
+            for (int i = 0; i < 20; i++) f.Chunk(i, i, w);
             var chunk = new List<double>();
             var land = new List<double>();
             var sw = new Stopwatch();

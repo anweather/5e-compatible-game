@@ -14,15 +14,12 @@ namespace Chem
     {
         readonly Dictionary<string, Theme> themes = new Dictionary<string, Theme>();
 
-        /// <summary>The looks a theme may paint, and what each says (world/looks.json).</summary>
         public IReadOnlyDictionary<string, JObject> Looks { get; }
 
-        /// <summary>The playable themes (no mix-ins), by id.</summary>
         public IReadOnlyDictionary<string, Theme> Themes => themes;
 
         ThemeRegistry(Dictionary<string, JObject> looks) => Looks = looks;
 
-        /// <summary>Loads the themes under a world/ folder; throws with every problem found.</summary>
         public static ThemeRegistry Load(string worldDir)
         {
             var looksJson = JObject.Parse(File.ReadAllText(Path.Combine(worldDir, "looks.json")));

@@ -7,10 +7,6 @@ public static class Aiming
 {
     static readonly RaycastHit[] Hits = new RaycastHit[16];
 
-    /// <summary>
-    /// With mouse-look or a gamepad, through the crosshair at the screen centre; with a free
-    /// cursor (e.g. after Esc in the Editor), where it points.
-    /// </summary>
     public static Ray Ray(PlayerControls controls)
     {
         bool centre = Cursor.lockState == CursorLockMode.Locked || (controls != null && controls.UsingGamepad) || Mouse.current == null;
@@ -18,10 +14,6 @@ public static class Aiming
         return Camera.main.ScreenPointToRay(aimAt);
     }
 
-    /// <summary>
-    /// The nearest hit that isn't <paramref name="self"/> or its children (what it holds): the
-    /// over-the-shoulder crosshair often passes through the wizard's own collider first.
-    /// </summary>
     public static bool PastSelf(Ray ray, Transform self, out RaycastHit nearest, float maxDistance = 200f)
     {
         nearest = default;

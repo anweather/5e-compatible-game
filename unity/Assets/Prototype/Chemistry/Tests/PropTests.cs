@@ -1,12 +1,10 @@
+// The rules side of the Unity physics props: entities.json, a barrel's blast
+// (World.Explode, a port of explode's cell part) and PropState's ticks.
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The rules side of the Unity physics props: entities.json, a barrel's blast
-    /// (World.Explode, a port of explode's cell part) and PropState's ticks.
-    /// </summary>
     [Category("Unit")]
     public class PropTests
     {
@@ -16,7 +14,6 @@ namespace Chem.Tests
         static EntityDef Barrel => R.Entity("barrel");
         static EntityDef Boulder => R.Entity("boulder");
 
-        /// <summary>A 7x7 dirt room ringed by bedrock.</summary>
         static World Room() => ChemistryTests.Room(7, 7);
 
         static int Burning(World w) => w.AllCells().Count(c => c.Fire > 0);
@@ -98,8 +95,6 @@ namespace Chem.Tests
         [Test]
         public void ATimberCrateCatchesSlowlyThenBurnsDown()
         {
-            // A crate is timber (entities.json material): it catches after 1/flammability ticks in fire
-            // (0.15: seven) and burns as long as timber's fuel.
             var crate = new PropState(Crate);
             var fire = new Cell("dirt") { Fire = 2 };
             for (int t = 1; t < 7; t++) Assert.That(crate.Step(fire, t, 3), Is.EqualTo(PropEvents.None), $"not yet at tick {t}");
@@ -111,7 +106,6 @@ namespace Chem.Tests
                 var events = crate.Step(fire, ++tick, 3);
                 if ((events & PropEvents.Burned) != 0) burns++;
             }
-            // Timber's fuel over its 6 HP: a hit point every 23 ticks, so it burns about as long as its fuel.
             Assert.That(tick, Is.InRange(130, 150), "it burns about as long as timber's fuel");
             Assert.That(burns, Is.EqualTo(6));
         }

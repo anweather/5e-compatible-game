@@ -8,7 +8,6 @@ namespace Chem.Mcp
 {
     public sealed partial class Workbench
     {
-        /// <summary>Runs a scenario for some ticks on the rules in force with the patch on, then without it, and compares.</summary>
         public string Simulate(string draftOrMod, string scenario, int? ticks = null, bool? walk = null)
         {
             var (with, without) = SimulateRuns(draftOrMod, scenario, ticks, walk);
@@ -26,7 +25,6 @@ namespace Chem.Mcp
                 $"With the mod:\n{Simulator.Describe(with, min)}\n\nWithout it:\n{Simulator.Describe(without, min)}\n\n{verdict} {cost}";
         }
 
-        /// <summary>validate's last line for a patch that changes how the world behaves, and not only how it looks: a model that passes it reads the line.</summary>
         public string SimulateNote(string draftOrMod) =>
             ChangesBehaviour(ModPatch.Parse(PatchJson(draftOrMod)).Json)
                 ? "\nThat only says it's legal. This changes how the world behaves, so run simulate on it once (fire-on-grass for what burns, flood for water, storm for lightning, walk for a trigger on steps) to see it goes the way the player meant, then apply. It shows the direction, not a multiple: \"twice as fast\" is the field doubled, so don't retune it to fit the numbers."
@@ -36,7 +34,6 @@ namespace Chem.Mcp
             patch["reactions"] != null || patch["sim"] != null || patch[TriggersTable] != null
             || MaterialKinds.Any(kind => (patch[kind] as JObject)?.Properties().Any(p => !SameButLook(EntryIn(Raw, kind, p.Name), p.Value)) == true);
 
-        // A patch names only the fields it changes, so what it leaves out stays. A look changes nothing the world does.
         static bool SameButLook(JToken was, JToken now)
         {
             if (was == null) return false;
@@ -44,10 +41,6 @@ namespace Chem.Mcp
             return fields.Properties().All(p => p.Name == "look" || SameButLook(was[p.Name], p.Value));
         }
 
-        /// <summary>
-        /// The two runs (with the patch, without it), for simulate and the tests. A draft with a trigger on steps walks a
-        /// loop unless <paramref name="walk"/> says not; the walker is the trigger's player, and the scenario then defaults to the walk alone.
-        /// </summary>
         public (SimRun with, SimRun without) SimulateRuns(string draftOrMod, string scenario, int? ticks = null, bool? walk = null)
         {
             bool walking = walk ?? HasStepTrigger(ModPatch.Parse(PatchJson(draftOrMod)).Json);
@@ -59,7 +52,6 @@ namespace Chem.Mcp
             int n = ticks ?? (int)Budgets.Number("simulate.defaultTicks", 300);
             if (n < 1 || n > max) throw new RulesToolException($"Simulate runs 1 to {max} ticks, not {n}.");
             var rules = RulesWith(PatchJson(draftOrMod));
-            // Without it first, so warming up the runtime doesn't count against the mod.
             string walker = !walking ? null : rules.TriggersOn(TriggerEvent.Step).Concat(rules.TriggersOn(TriggerEvent.Tick)).Select(t => t.Who).FirstOrDefault(p => p != TriggerDef.Each) ?? "Walker";
             var without = Simulator.Run(InForce, scenario, n, walker);
             return (Simulator.Run(rules, scenario, n, walker), without);

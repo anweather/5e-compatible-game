@@ -8,7 +8,6 @@ public static class CreatureMesher
 {
     static Color Rgb(float r, float g, float b) => new(r, g, b, 0f);
 
-    /// <summary>A gull with its wings at <paramref name="flap"/> (-1 down, 0 level, 1 up).</summary>
     public static Mesh Gull(float flap)
     {
         var kit = new MeshKit { Occlusion = 0f };
@@ -20,7 +19,6 @@ public static class CreatureMesher
         kit.Box(new Vector3(0f, 0.04f, 0.3f), new Vector3(0.1f, 0.1f, 0.1f), white);
         kit.Box(new Vector3(0f, 0.03f, 0.39f), new Vector3(0.025f, 0.025f, 0.09f), Rgb(0.95f, 0.75f, 0.2f));
         kit.Box(new Vector3(0f, 0f, -0.36f), new Vector3(0.12f, 0.02f, 0.12f), white);
-        // Each wing in two parts, bending at the wrist; flap raises or lowers the whole wing.
         for (int side = -1; side <= 1; side += 2)
         {
             float lift = flap * 0.35f;
@@ -33,7 +31,6 @@ public static class CreatureMesher
         return kit.ToMesh("Gull");
     }
 
-    /// <summary>A crab with its legs in step <paramref name="step"/> (0 or 1).</summary>
     public static Mesh Crab(int step)
     {
         var kit = new MeshKit { Occlusion = 0f };
@@ -43,7 +40,6 @@ public static class CreatureMesher
         kit.Box(new Vector3(0f, 0.085f, 0f), new Vector3(0.13f, 0.02f, 0.09f), shell * 1.1f);
         for (int side = -1; side <= 1; side += 2)
         {
-            // Eyes on stalks, and a claw each side out front.
             kit.Box(new Vector3(side * 0.03f, 0.11f, 0.06f), new Vector3(0.015f, 0.04f, 0.015f), Rgb(0.1f, 0.1f, 0.1f));
             kit.Box(new Vector3(side * 0.11f, 0.05f, 0.11f), new Vector3(0.06f, 0.04f, 0.07f), shell);
             for (int k = 0; k < 3; k++)
@@ -56,7 +52,6 @@ public static class CreatureMesher
         return kit.ToMesh("Crab");
     }
 
-    /// <summary>A small fish with its tail swung to <paramref name="swing"/> (-1 to 1).</summary>
     public static Mesh Fish(float swing, Color body)
     {
         var kit = new MeshKit { Occlusion = 0f };

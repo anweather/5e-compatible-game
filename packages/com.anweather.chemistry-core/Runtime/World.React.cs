@@ -8,16 +8,10 @@ namespace Chem
 {
     public sealed partial class World
     {
-        /// <summary>
-        /// Applies one element to one cell (applyElement in the TS). dir -1 means no direction.
-        /// direct: cast on purpose; indirect reactions (spreading) log only notable rules.
-        /// </summary>
         public void Apply(int x, int y, string element, int power = 1, int dir = -1, bool direct = true)
         {
-            // A paused chunk doesn't react (World.Chunks.cs).
             var c = LocateActive(x, y, out var ch, out int i);
             if (c == null) return;
-            // A spell's fire (or a fresh fire from any direct source) starts at full strength.
             if (direct && element == "fire") ch.FireGeneration[i] = 0;
             if (element == "fire") FlashGas(x, y);
             string beforeCover = CoverName(c), beforeTerrain = TerrainOf(c).Name.ToLowerInvariant();
@@ -33,7 +27,6 @@ namespace Chem
                 }
                 if (rule.Stop) break;
             }
-            // Then whatever stands there (a raider: Play/RaiderSystem.cs).
             ReachRaider(x, y, element, direct);
         }
 
@@ -43,7 +36,6 @@ namespace Chem
             if (raider != null) RaiderSystem.ApplyRaiderElement(raider, element, direct);
         }
 
-        /// <summary>A raise effect (a pillar): the cell becomes that terrain, unless a raider stands there.</summary>
         bool RaiseUp(int x, int y, Cell c, string terrain)
         {
             if (RaiderAt(x, y) != null) return false;
@@ -54,10 +46,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>
-        /// A dissolve effect (react.ts dissolve): the cell's cover or terrain, if <paramref name="element"/>
-        /// is what dissolves it, is eaten away into what it leaves (a cover can leave none).
-        /// </summary>
         bool Dissolve(Cell c, string what, string element)
         {
             if (what == "cover")
@@ -72,17 +60,12 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A shatter effect (react.ts struck): true if the hit cracked or shattered something.</summary>
         bool Struck(int x, int y, Cell c)
         {
             int was = c.Cracked;
             return Shatter(x, y) || c.Cracked != was;
         }
 
-        /// <summary>
-        /// A scour effect (react.ts scour): a cover that scours is stripped; else the terrain becomes its scoursTo (rusted
-        /// metal back to metal, a log wall worn thin); else raised ground that wears is worn down a step.
-        /// </summary>
         bool Scour(int x, int y, Cell c)
         {
             if (c.Cover != null && CoverHasTag(c, "scourable"))
@@ -101,7 +84,6 @@ namespace Chem
             return t.ScourWears && c.Height > 0 && Reshape(x, y, -1, null, int.MaxValue);
         }
 
-        /// <summary>A pushCover effect (react.ts pushCover): a floating cover moves a cell along dir onto open water with no cover, its slick's reach with it.</summary>
         bool PushCover(int x, int y, Cell c, int dir)
         {
             if (c.Cover == null || !Rules.Covers.TryGetValue(c.Cover, out var cv) || cv.FloatEvery <= 0) return false;
@@ -119,7 +101,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A bake effect (react.ts bake): heat turns the terrain into its bakesTo.</summary>
         bool Bake(Cell c)
         {
             var to = TerrainOf(c).BakesTo;
@@ -128,7 +109,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A meltCover effect (react.ts meltCover): heat turns the cover into its meltsTo, and its meltWater.</summary>
         bool MeltCover(Cell c)
         {
             if (c.Cover == null || !Rules.Covers.TryGetValue(c.Cover, out var cv) || cv.MeltWater <= 0) return false;
@@ -137,7 +117,6 @@ namespace Chem
             return true;
         }
 
-        // Melt water onto a cell, unless another liquid holds it (then it runs off unseen).
         void Melted(Cell c, int units)
         {
             if (!TakesWater(c)) return;
@@ -145,7 +124,6 @@ namespace Chem
             c.Liquid = 0;
         }
 
-        /// <summary>A crust effect (react.ts crust): cold crusts the terrain into its crustsTo, which grows back after crustFor ticks.</summary>
         bool Crust(Cell c)
         {
             var t = TerrainOf(c);
@@ -155,7 +133,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A thaw effect (react.ts thaw): heat thaws the terrain (an ice wall) into its thawsTo, leaving its thawWater to run off.</summary>
         bool Thaw(int x, int y, Cell c)
         {
             var t = TerrainOf(c);
@@ -180,7 +157,6 @@ namespace Chem
         bool Matches(Cell c, CellCond cond) =>
             cond == null || (MatchesCoverAndFire(c, cond) && MatchesWater(c, cond) && MatchesGround(c, cond));
 
-        /// <summary>The cover and fire half of <see cref="Matches"/>.</summary>
         static bool MatchesCoverAndFire(Cell c, CellCond cond)
         {
             if (cond.Cover != null && !(c.Cover != null && Contains(cond.Cover, c.Cover))) return false;
@@ -190,7 +166,6 @@ namespace Chem
             return !(cond.FireBelow.HasValue && c.Fire >= cond.FireBelow.Value);
         }
 
-        /// <summary>The water, ice, melt and gas part of <see cref="Matches"/>.</summary>
         bool MatchesWater(Cell c, CellCond cond)
         {
             if (cond.Water.HasValue && IsOpenWater(c) != cond.Water.Value) return false;
@@ -201,7 +176,6 @@ namespace Chem
             return !(cond.Gas != null && (cond.Gas == "any" ? c.Gas == null : c.Gas != cond.Gas));
         }
 
-        /// <summary>The terrain part of <see cref="Matches"/>: its tags, conductive, hot.</summary>
         bool MatchesGround(Cell c, CellCond cond)
         {
             if (!string.IsNullOrEmpty(cond.TerrainTag) && !HasTag(c, cond.TerrainTag)) return false;
@@ -210,11 +184,6 @@ namespace Chem
             return !(cond.Hot.HasValue && (c.Heat > 0) != cond.Hot.Value);
         }
 
-        /// <summary>
-        /// Whether a rule's "if" holds (applies in the TS): the cell matches, the element came with
-        /// at least its power, and its chance comes up, rolled last so the generator only turns
-        /// once the rule would otherwise run.
-        /// </summary>
         bool Applies(Cell c, CellCond cond, int power)
         {
             if (cond == null) return true;
@@ -223,20 +192,14 @@ namespace Chem
             return !cond.Chance.HasValue || Rand() < cond.Chance.Value;
         }
 
-        /// <summary>Lays a cover (or with null clears it); one that lasts (thorns) starts its Cell.Life.</summary>
         void PutCover(Cell c, string coverId)
         {
             c.Cover = coverId;
             if (coverId != null && Rules.Covers.TryGetValue(coverId, out var cv) && cv.Lasts > 0) c.Life = cv.Lasts;
         }
 
-        /// <summary>
-        /// The landing square of the spell being applied (Land), for a grow effect's wave: what it
-        /// grows ripens later the further it is from there. Null outside a landing.
-        /// </summary>
         (int x, int y)? waveFrom;
 
-        /// <summary>A grow effect's Cell.Life: a roll between its ticks, plus its wave per square from the landing.</summary>
         int GrowTicks(Effect eff, int x, int y)
         {
             int n = eff.TicksMin;
@@ -251,7 +214,6 @@ namespace Chem
             return false;
         }
 
-        /// <summary>Lights the cell's flammable cover at the cover's burn intensity.</summary>
         public bool IgniteCover(Cell c)
         {
             if (!CoverBurns(c)) return false;
@@ -263,7 +225,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>Lights flammable terrain or cover at the given intensity; caught at <paramref name="dryness"/> (World.Dryness), it burns that much of its fuel.</summary>
         public bool Ignite(Cell c, int intensity, double dryness = 1)
         {
             var t = TerrainOf(c);
@@ -275,10 +236,8 @@ namespace Chem
             return true;
         }
 
-        /// <summary>Fuel caught damp (soaked burns poorly, docs/MATERIALS.md): scaled by the dryness, rounded down, at least 1.</summary>
         internal static int DampFuel(int fuel, double dryness) => dryness >= 1 ? fuel : Math.Max(1, (int)Math.Floor(fuel * dryness));
 
-        /// <summary>Moves water out of a cell that just became solid.</summary>
         public void DisplaceWater(int x, int y)
         {
             var c = At(x, y);
@@ -327,11 +286,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>
-        /// Moves a cell's gas one cell along dir (pushGas: a gust carries smoke, fog and steam). A different
-        /// gas there is shoved on ahead first, so gases neither merge nor vanish; against a wall, or a
-        /// paused chunk, it stays. True if it moved.
-        /// </summary>
         bool ShoveGas(int x, int y, int dir)
         {
             var c = At(x, y);
@@ -345,11 +299,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>
-        /// Runs one of a rule's effects on the cell; true if it changed something. An effect is the
-        /// first kind it sets, tried in this order: fire and water, then the cell's material, then
-        /// terrain, gas and growth.
-        /// </summary>
         bool RunEffect(int x, int y, Cell c, Effect eff, int power, int dir, string element)
         {
             if (TryFireOrWaterEffect(x, y, c, eff, power, out bool changed)) return changed;
@@ -357,7 +306,6 @@ namespace Chem
             return RunTerrainOrAirEffect(x, y, c, eff, dir);
         }
 
-        /// <summary>Ignite, boil, melt, freeze, extinguish, condense, addWater: false if the effect is none of these.</summary>
         bool TryFireOrWaterEffect(int x, int y, Cell c, Effect eff, int power, out bool changed)
         {
             if (eff.HasIgnite) changed = eff.IgniteCover ? IgniteCover(c) : Ignite(c, eff.IgniteN, Dryness(c));
@@ -375,10 +323,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>
-        /// setCover, spreadCover, dissolve, heat, shatter, scour, pushCover, bake, meltCover, crust, thaw:
-        /// false if the effect is none of these.
-        /// </summary>
         bool TryMaterialEffect(int x, int y, Cell c, Effect eff, int dir, string element, out bool changed)
         {
             if (eff.HasSetCover) changed = LayCover(c, eff.SetCover);
@@ -400,10 +344,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>
-        /// The rest: break, setTerrain, raise, conduct, fan, pushGas, clearGas, a wind mark, gas, grow; true if it
-        /// changed something (a wind mark only marks, so it never does), false too if the effect is none of these.
-        /// </summary>
         bool RunTerrainOrAirEffect(int x, int y, Cell c, Effect eff, int dir)
         {
             if (eff.Break) return BreakWall(x, y, c);
@@ -426,7 +366,6 @@ namespace Chem
             return eff.Grow != null && GrowPlant(x, y, c, eff);
         }
 
-        /// <summary>A boil effect: a level of unfrozen water goes up as steam.</summary>
         bool BoilOff(int x, int y, Cell c, int steam)
         {
             var l = LiquidOf(c);
@@ -437,7 +376,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A melt effect: frozen water thaws.</summary>
         static bool MeltIce(Cell c)
         {
             if (!c.Frozen) return false;
@@ -445,7 +383,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A freeze effect: standing water freezes; another liquid freezes into its freezes, if it has one.</summary>
         bool FreezeWater(int x, int y, Cell c)
         {
             if (HoldsOther(c)) return Locate(x, y, out var ch, out _) != null && FreezeLiquid(ch, c);
@@ -454,7 +391,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>An extinguish effect: the fire goes out, its fuel with it.</summary>
         static bool Douse(Cell c)
         {
             if (c.Fire == 0) return false;
@@ -463,7 +399,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A condense effect: water's vapour (sim.json water.boils) thins and leaves water, unless a wall (other than a vessel) stands there.</summary>
         bool CondenseSteam(Cell c)
         {
             if (c.Gas == null || c.Gas != Rules.Sim.WaterBoils) return false;
@@ -481,7 +416,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>An addWater effect: n levels of water (or of its liquid), up to the most a cell holds; not onto another liquid.</summary>
         bool PourWater(Cell c, int n, string liquid)
         {
             int kind = liquid == null ? 0 : Rules.LiquidIndex(liquid);
@@ -490,17 +424,15 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A setCover effect.</summary>
         bool LayCover(Cell c, string coverId)
         {
             if (c.Cover == coverId) return false;
             string laid = LaidOver(c, coverId);
-            if (laid == null && coverId != null) return false; // it waits for a mix, or stops at the cap
+            if (laid == null && coverId != null) return false;
             PutCover(c, laid);
             return true;
         }
 
-        /// <summary>A spreadCover effect: the cover (alight, if the cell burns) spreads to up to n open neighbours, picked at random.</summary>
         bool SpreadCoverOut(int x, int y, Cell c, int count)
         {
             if (c.Cover == null) return false;
@@ -519,7 +451,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A heat effect: terrain that holds heat stays hot for its hotFor ticks.</summary>
         bool HeatUp(Cell c)
         {
             int hot = TerrainOf(c).HotFor;
@@ -528,7 +459,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A break effect: the terrain becomes its breaksTo.</summary>
         internal bool BreakWall(int x, int y, Cell c)
         {
             var to = TerrainOf(c).BreaksTo;
@@ -538,7 +468,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A setTerrain effect: the cell becomes that terrain, its water pushed out.</summary>
         internal bool SetTerrainTo(int x, int y, Cell c, string terrain)
         {
             if (c.T == terrain) return false;
@@ -547,7 +476,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A fan effect: the fire grows a step and spreads a cell along dir.</summary>
         bool FanFire(int x, int y, Cell c, int dir)
         {
             if (dir < 0) return false;
@@ -557,7 +485,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A clearGas effect.</summary>
         static bool ClearGas(Cell c)
         {
             if (c.Gas == null) return false;
@@ -566,10 +493,8 @@ namespace Chem
             return true;
         }
 
-        /// <summary>A grow effect: the terrain becomes what grows, ripening after GrowTicks.</summary>
         bool GrowPlant(int x, int y, Cell c, Effect eff)
         {
-            // Nothing takes root on a wall of raised earth.
             if (IsBlocking(c)) return false;
             c.T = eff.Grow;
             c.Life = GrowTicks(eff, x, y);

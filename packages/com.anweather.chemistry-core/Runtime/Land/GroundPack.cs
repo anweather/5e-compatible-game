@@ -11,7 +11,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>One tree on a chunk, as the terrain holds it: its place is 0 to 1 of the chunk.</summary>
     public struct GroundTree
     {
         public float X, Y, Z, Width, Height, Rotation;
@@ -19,43 +18,32 @@ namespace Chem
         public int Prototype;
     }
 
-    /// <summary>One chunk's ground. Heights are steps of <see cref="GroundPack.HeightSteps"/> over its range, [z, x] flat.</summary>
     public sealed class GroundChunk
     {
         public int I, J, Resolution, Texels, DetailResolution;
         public ushort[] Heights;
-        /// <summary>Paint, 0 to 255: layer by layer, each [z, x] flat.</summary>
         public byte[] Paint;
-        /// <summary>Clumps of grass: prototype by prototype, each [z, x] flat.</summary>
         public byte[] Details;
         public GroundTree[] Trees;
     }
 
-    /// <summary>A map's ground/ folder.</summary>
     public sealed class GroundPack
     {
         public const string FolderName = "ground", FileName = "ground.json";
         public const int Version = 1, HeightSteps = 32766;
         const string HeightsFile = "heights.bin", PaintFile = "paint.bin", DetailsFile = "details.bin", TreesFile = "trees.bin", ChannelFile = "channel.bin";
 
-        /// <summary>The height of a chunk's step 0 in metres, and of its top step.</summary>
         public double Bottom, Top;
-        /// <summary>What the paint layers, grass and trees are, in order, by the names of their assets.</summary>
         public string[] Layers = Array.Empty<string>(), Grasses = Array.Empty<string>(), TreeKinds = Array.Empty<string>();
         public List<GroundChunk> Chunks = new List<GroundChunk>();
-        /// <summary>The river's cells, and how far each one's ground is cut below its banks, in metres.</summary>
         public int[] ChannelCells = Array.Empty<int>();
         public float[] ChannelDepths = Array.Empty<float>();
-        /// <summary>The hash of the files the pack was baked from (MapInputs); null for a pack that doesn't say.</summary>
         public string Inputs;
 
-        /// <summary>The ground at one of a chunk's samples, in metres.</summary>
         public double Metres(GroundChunk chunk, int sx, int sz) => Bottom + (Top - Bottom) * chunk.Heights[sz * chunk.Resolution + sx] / HeightSteps;
 
-        /// <summary>Whether this map's folder has a ground pack.</summary>
         public static bool In(string worldDir) => File.Exists(Path.Combine(worldDir, FolderName, FileName));
 
-        /// <summary>Writes the pack into a map's folder, in place of any there.</summary>
         public void Save(string worldDir)
         {
             string dir = Path.Combine(worldDir, FolderName);
@@ -74,7 +62,6 @@ namespace Chem
                 ["channelCells"] = ChannelCells.Length,
             };
             if (Inputs != null) head["inputs"] = Inputs;
-            // LF on every machine: a map's hash is over its bytes, and peers on other systems must agree (MapIdentity).
             File.WriteAllText(Path.Combine(dir, FileName), head.ToString(Formatting.Indented).Replace("\r\n", "\n", StringComparison.Ordinal) + "\n");
             Pack(dir, HeightsFile, w => Chunks.ForEach(c => WriteHeights(w, c)));
             Pack(dir, PaintFile, w => Chunks.ForEach(c => w.Write(c.Paint)));
@@ -87,7 +74,6 @@ namespace Chem
             });
         }
 
-        /// <summary>The pack in a map's folder; throws if it's not there or not this version.</summary>
         public static GroundPack Load(string worldDir)
         {
             string dir = Path.Combine(worldDir, FolderName);
@@ -140,7 +126,6 @@ namespace Chem
             read(reader);
         }
 
-        // Each height as its step from the one before, low bytes then high: land is smooth, so this deflates far better.
         static void WriteHeights(BinaryWriter w, GroundChunk c)
         {
             var steps = new ushort[c.Heights.Length];
@@ -195,16 +180,13 @@ namespace Chem
         }
     }
 
-    /// <summary>Whether the ground drawn agrees with the land the core reads, on a few cells picked the same way every time.</summary>
     public static class LandCheck
     {
         public const int Cells = 64;
 
-        /// <summary>Every cell of the sample whose drawn ground is further than <paramref name="most"/> metres from its land.</summary>
         public static List<string> Disagreements(Func<int, int, float> drawn, int[] land, int w, int h, double unit, double most) =>
             Disagreements(drawn, (x, y) => land[y * w + x], w, h, unit, most);
 
-        /// <summary>The same, of land held a chunk at a time (LandChunks).</summary>
         public static List<string> Disagreements(Func<int, int, float> drawn, LandChunks land, double unit, double most) =>
             Disagreements(drawn, land.At, land.W, land.H, unit, most);
 

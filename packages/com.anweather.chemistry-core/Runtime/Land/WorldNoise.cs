@@ -11,7 +11,6 @@ namespace Chem
     {
         static double Smoothstep(double t) => t * t * (3 - 2 * t);
 
-        /// <summary>One octave, in [0, 1]. <paramref name="lattice"/> is the control-point spacing in the caller's units.</summary>
         public static double Value(int seed, int salt, double x, double y, double lattice)
         {
             double fx = x / lattice, fy = y / lattice;
@@ -27,7 +26,6 @@ namespace Chem
             return top + (bottom - top) * ty;
         }
 
-        /// <summary><paramref name="octaves"/> octaves, each at half the spacing and half the amplitude of the last. In [0, 1].</summary>
         public static double Fractal(int seed, int salt, double x, double y, double lattice, int octaves)
         {
             double sum = 0, norm = 0, amp = 1, lat = lattice;
@@ -41,9 +39,6 @@ namespace Chem
             return sum / norm;
         }
 
-        // The measured distribution of Fractal per octave count: value noise piles up round 0.5, so
-        // "cover a share of the land" can't be a raw threshold. Measured once from a fixed seed, so it
-        // is part of the generator's code, not its input.
         const int CdfSamples = 160, MaxOctaves = 8;
         static readonly Lazy<double[]>[] Cdfs = MakeCdfs();
 
@@ -71,7 +66,6 @@ namespace Chem
 
         static double[] CdfFor(int octaves) => Cdfs[Math.Max(1, Math.Min(MaxOctaves, octaves))].Value;
 
-        /// <summary>The value v such that a share <paramref name="q"/> of Fractal(octaves) samples fall below it.</summary>
         public static double Quantile(int octaves, double q)
         {
             var cdf = CdfFor(octaves);
@@ -79,7 +73,6 @@ namespace Chem
             return cdf[i];
         }
 
-        /// <summary>A Fractal(octaves) sample's rank in [0, 1]: a roughly uniform value.</summary>
         public static double ToUniform(int octaves, double v)
         {
             var cdf = CdfFor(octaves);

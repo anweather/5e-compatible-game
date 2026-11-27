@@ -10,10 +10,8 @@ using UnityEngine;
 // every machine.
 public class Pick : ItemUse
 {
-    /// <summary>How far from the wizard a swing can land, in metres.</summary>
     public const float Reach = 3f;
 
-    // How far through the arm's whip the head lands, and how hard the whip looks.
     const float LandSeconds = 0.14f, SwingHow = 0.8f;
 
     public override void Use(ItemHolder holder)
@@ -41,6 +39,5 @@ public class Pick : ItemUse
         else Swing(cell);
     }
 
-    /// <summary>The swing itself: solo at once, online on the host (NetItem).</summary>
     public void Swing(Vector2Int cell) => ChemEffects.Request(Item.Grid, ChemEffects.By(Item.Prop, EffectKind.Dig, cell));
 }

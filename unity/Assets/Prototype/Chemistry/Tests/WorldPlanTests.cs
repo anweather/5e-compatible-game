@@ -22,7 +22,6 @@ namespace Chem.Tests
 
         static SquareLibrary Lib => library ??= SquareLibrary.Load(LandmarkIntentTests.GameWorldDir());
 
-        // The valley's sides, read from its land at the borders.
         static ValleySides Valley
         {
             get
@@ -72,8 +71,6 @@ namespace Chem.Tests
         [Test]
         public void ATurnMovesASlotRoundTheSquare()
         {
-            // Slots run west to east on n and s, north to south on e and w: a quarter turn clockwise takes n's west end to
-            // e's north end, and e's north end to s's east end.
             Assert.That(Lib.TurnSide(0, 0, 1, out int a), Is.EqualTo(1));
             Assert.That(a, Is.EqualTo(0));
             Assert.That(Lib.TurnSide(1, 0, 1, out int b), Is.EqualTo(2));
@@ -161,8 +158,6 @@ namespace Chem.Tests
                 }
         }
 
-        // The nine: the 3 × 3 with the valley at its south-west. (The valley's land is hills to its west and north, so the
-        // squares beside it there are land too, but outside the nine.)
         [Test]
         public void TheNineHasNoRepeats()
         {
@@ -226,7 +221,6 @@ namespace Chem.Tests
             foreach (var p in ManyPlans())
             {
                 Assert.That(p.Roads.Count(r => r.IsMain), Is.LessThanOrEqualTo(p.Inputs.MainRoadCap), p.Inputs.Seed);
-                // A road network spans at least three world squares.
                 var on = new HashSet<int>();
                 foreach (var r in p.Roads)
                 {
@@ -274,9 +268,6 @@ namespace Chem.Tests
         [Test]
         public void EveryLandSquareHasASpawnNearItsPlaces()
         {
-            // One spawn per land square below the peaks, the valley's its own; each on land, beside a road where the square
-            // has one (but for the few whose road has no room beside it), and clear (by the plan's reckoning) of the sides, the shore, landmark
-            // sites, rivers and lakes: always in the nine, and in the bigger worlds but for a rare square with no room.
             int spawns = 0, cramped = 0, offRoad = 0;
             long far = 0;
             foreach (var p in ManyPlans())
@@ -307,8 +298,6 @@ namespace Chem.Tests
             Assert.That(offRoad * 10, Is.LessThanOrEqualTo(spawns), "a square's spawn is by its road but for a few");
         }
 
-        // A must-have (section 5): a nine asking for a volcano holds one in a square of the map, its village kept, or says why
-        // it can't; the same seed gives the same plan, and a plan asking for nothing is as it was (the goldens below).
         [Test]
         public void AMustHaveVolcanoIsPlacedWhereTheLandAllows()
         {
@@ -353,7 +342,6 @@ namespace Chem.Tests
             Assert.That(Big("again", PlanWrap.EastWest).Hash, Is.EqualTo(c.Hash));
         }
 
-        // Goldens: a change that alters a plan is made on purpose (a new WorldPlan.Version), or the goldens are re-picked.
         [TestCase("valley-1", 3, PlanWrap.None, 0xac2a0d7fu)]
         [TestCase("seed-7", 3, PlanWrap.None, 0x1c7937efu)]
         [TestCase("seed-2", 12, PlanWrap.EastWest, 0x65f27f02u)]
@@ -365,12 +353,8 @@ namespace Chem.Tests
             Assert.That(p.Hash, Is.EqualTo(expected));
         }
 
-        // About 260 ms a plan under .NET, 300-400 under Mono in the Mac's Editor alone. The best of up to three rounds, each
-        // after a settled heap, so a loaded Editor (a long suite's garbage, another job, #177) can't fail it alone, and a
-        // solve that has really grown slower fails every round. The second is .NET's, which the landing gate runs on every
-        // landing; under Mono (EditMode) it has twice that, as Mono solves slower and its runs share a busy Editor.
         [Test]
-        [NonParallelizable] // it times itself: it needs the machine to itself
+        [NonParallelizable]
         [Category("Timing")]
         public void ATwelveByTwelveTorusSolvesWellUnderASecond()
         {
@@ -391,7 +375,6 @@ namespace Chem.Tests
             Assert.That(ms, Is.LessThan(budget), $"best of the rounds {string.Join(", ", tries)} ms a plan");
         }
 
-        // Earlier tests' garbage collected before a timed round, not in the middle of it: a timing test's only use of the collector.
 #pragma warning disable S1215
         static void Settle()
         {

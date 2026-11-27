@@ -16,7 +16,6 @@ public sealed class CellThorns
     readonly MaterialCache materials;
     readonly List<Mesh> meshes = new();
 
-    /// <summary>The rules switched: what stands takes the cover's colour now.</summary>
     public void Recolour() => materials.Lit("Thorns", Thorn, 0.15f).color = grid.CoverColor(CoverIds.Thorns, Thorn);
 
     public CellThorns(ChemGrid grid, MaterialCache materials)
@@ -25,7 +24,6 @@ public sealed class CellThorns
         this.materials = materials;
     }
 
-    /// <summary>A clump of thorns on a cell's ground, under the grid.</summary>
     public GameObject Build(int x, int y, Vector3 center, float ground)
     {
         if (meshes.Count == 0) MakeMeshes();
@@ -40,11 +38,9 @@ public sealed class CellThorns
         return go;
     }
 
-    /// <summary>Moves a clump with its cell's ground.</summary>
     public static void Place(GameObject clump, Vector3 center, float ground) =>
         clump.transform.position = new Vector3(center.x, ground, center.z);
 
-    // A few clumps for a 1.5 m square: leaning spikes over woody stems lying in the grass.
     void MakeMeshes()
     {
         var kit = new MeshKit { Occlusion = 0f };
@@ -70,7 +66,6 @@ public sealed class CellThorns
         }
     }
 
-    /// <summary>Frees the meshes.</summary>
     public void Destroy()
     {
         foreach (var m in meshes) Object.Destroy(m);

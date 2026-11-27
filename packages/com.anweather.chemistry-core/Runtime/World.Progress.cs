@@ -12,21 +12,16 @@ namespace Chem
 {
     public sealed partial class World
     {
-        /// <summary>As many points as anyone needs: the dev builds' start with everything.</summary>
         public const int AllPoints = 1000000;
 
         readonly SortedDictionary<string, int> progress = new SortedDictionary<string, int>(StringComparer.Ordinal);
 
-        /// <summary>The points this player brought and has earned here; null if they brought none.</summary>
         public int? PointsOf(string player) => progress.TryGetValue(player, out int points) ? points : (int?)null;
 
-        // Whether this player's save holds nothing back: none brought, or in a moment. What it has earned, run or not.
         bool NothingHeld(string player) => !progress.ContainsKey(player) || Hold?.Moment != null;
 
-        // Whether this player can use everything now: its save holds nothing back, or no run is on.
         bool AllOpen(string player) => NothingHeld(player) || !HoldRunning;
 
-        /// <summary>The unlocks this player has, in order.</summary>
         public IEnumerable<UnlockDef> UnlocksOf(string player)
         {
             int left = PointsOf(player) ?? AllPoints;
@@ -37,8 +32,6 @@ namespace Chem
             }
         }
 
-        /// <summary>How many more points this player needs for a row: 0 if it's theirs. Rows unlock in order, so it counts those before it.
-        /// It's what the save says, run or not: outside a run the row is open all the same.</summary>
         public int PointsAway(string player, UnlockDef row)
         {
             if (NothingHeld(player)) return 0;
@@ -51,13 +44,10 @@ namespace Chem
             return 0;
         }
 
-        /// <summary>The next row this player hasn't got, or null with everything.</summary>
         public UnlockDef NextUnlock(string player) => Rules.Sim.Hold.Unlocks.FirstOrDefault(u => PointsAway(player, u) > 0);
 
-        /// <summary>The row that gives this, or null when a wizard starts with it.</summary>
         public UnlockDef UnlockGiving(Func<UnlockDef, bool> gives) => Rules.Sim.Hold.Unlocks.FirstOrDefault(gives);
 
-        // Whether a thing a row gives is this player's. What no row gives, a wizard starts with.
         bool Has(string player, Func<UnlockDef, bool> gives) =>
             AllOpen(player) || !Rules.Sim.Hold.Unlocks.Any(gives) || UnlocksOf(player).Any(gives);
 
@@ -69,7 +59,6 @@ namespace Chem
 
         public bool KitOpen(string player, string spell) => Has(player, u => u.Kit == spell);
 
-        // What a player brings: every peer hears the same points. A hand that held what isn't theirs lets go of it.
         bool BringPoints(string player, int points)
         {
             if (points < 0) return false;
@@ -78,14 +67,11 @@ namespace Chem
             return true;
         }
 
-        // As a run starts, each hand that holds what its wizard hasn't unlocked lets go of it, as when points are brought:
-        // outside the run it could hold anything.
         internal void LetGoLockedAll()
         {
             foreach (var player in progress.Keys.ToList()) LetGoLocked(player);
         }
 
-        // A hand that isn't open, or holds an element that isn't, lets go; with nothing left, the right hand holds the start's.
         void LetGoLocked(string player)
         {
             if (AllOpen(player)) return;
@@ -95,8 +81,6 @@ namespace Chem
             if (h.Holds.All(x => x == null)) h.Holds[HandsDef.Right] = HandRules.Start[HandsDef.Right];
         }
 
-        // The run's end: each wizard keeps what it earned, but a moment earns nothing.
-        // Points for the waves survived: those before the one the keep fell in, or every wave of a run won.
         internal void EarnPoints(HoldParams p, int survived)
         {
             if (Hold.Moment != null) return;
@@ -104,9 +88,6 @@ namespace Chem
                 progress[player] = (int)Math.Min(AllPoints, (long)progress[player] + (long)survived * p.PointsPerWave);
         }
 
-        // ---------- upgrades ----------
-
-        /// <summary>This wizard's place in the run, or null.</summary>
         public RunWizard RunOf(string player) => Hold != null && Hold.Wizards.TryGetValue(player, out var w) ? w : null;
 
         static uint NameRoll(string player)
@@ -119,8 +100,6 @@ namespace Chem
             return h;
         }
 
-        /// <summary>Whether this wizard can use a row with what it has unlocked: what an open hand holds, a gesture it has, and both
-        /// hands if the row needs them.</summary>
         public bool Suits(UpgradeDef u, string player)
         {
             var h = HandsOf(player);
@@ -129,7 +108,6 @@ namespace Chem
             return holds && both && (u.Gesture == HandsDef.NoGesture || GestureOpen(player, u.Gesture));
         }
 
-        // Each wizard's offer for the wave coming, by the seed, the wave and its name: only rows that suit it, so it may be fewer.
         internal void OfferUpgrades(HoldParams p)
         {
             const uint offer = 7;
@@ -152,7 +130,6 @@ namespace Chem
             return true;
         }
 
-        // The wave's here: an offer still open is picked for the wizard, by the seed.
         internal void PickForTheLate()
         {
             const uint late = 8;
@@ -169,11 +146,8 @@ namespace Chem
         static bool Touches(UpgradeDef u, string slot, int gesture) =>
             (u.Gesture == HandsDef.NoGesture || u.Gesture == gesture) && (u.Holds == null || (slot ?? "").Split('+').Contains(u.Holds));
 
-        // A number with a wizard's percents on it; a cooldown stops at a tick.
         static int WithPercent(int value, int percent) => Math.Max(1, value * Math.Max(0, 100 + percent) / 100);
 
-        // A row's own cooldown (a big spell's, Meteor's) stands in for the table's, and a tapped single rests the tap's; the
-        // upgrades trim each alike.
         int CooldownOf(string player, string holds, int gesture, bool both, bool tap, int own)
         {
             int percent = UpgradesOf(player).Where(u => Touches(u, holds, gesture)).Sum(u => u.Cooldown + (both ? u.BothCooldown : 0));
@@ -186,17 +160,13 @@ namespace Chem
         int RangeOf(string player, string holds, int gesture) =>
             WithPercent(HandRules.RangeOf(gesture), UpgradesOf(player).Where(u => Touches(u, holds, gesture)).Sum(u => u.Range));
 
-        /// <summary>What this wizard's upgrades add to its health.</summary>
         public int HealthBonusOf(string player) => UpgradesOf(player).Sum(u => u.Health);
 
-        // The percent of its damage a hand spell does for this wizard; 100 for anything else.
         int PowerOf(string player, string spell)
         {
             var (slot, gesture) = HandRules.Find(spell);
             return slot == null ? 100 : 100 + UpgradesOf(player).Where(u => Touches(u, slot, gesture)).Sum(u => u.Damage);
         }
-
-        // ---------- the checksum and the save ----------
 
         string ProgressText() => string.Concat(progress.Select(kv => $"|G{kv.Key}:{Whole(kv.Value)}"));
 

@@ -26,11 +26,8 @@ public class OccluderFade : MonoBehaviour
     [Tooltip("The wizard's see-through figure over occluders that can't be dithered.")]
     public Shader silhouette;
 
-    // Seconds to fade in or out; the most of the pattern cut; the wizard's chest above its feet (m).
     const float FadeSeconds = 0.25f, MaxCut = 0.75f, ChestHeight = 1.1f;
-    // The circle's radius against the wizard's height on screen, and its least (fraction of the screen's height).
     const float RadiusPerHeight = 0.75f, MinRadius = 0.08f, WizardHeight = 1.8f;
-    // Something has to stand this far in front of the wizard (m) to be cut, so its own feet's ground isn't.
     const float InFront = 0.6f;
 
     static readonly int DitherId = Shader.PropertyToID("_OccluderDither"), ShapeId = Shader.PropertyToID("_OccluderDitherShape");
@@ -42,19 +39,14 @@ public class OccluderFade : MonoBehaviour
     float fade;
     bool publishing;
 
-    /// <summary>The local wizard's, while it is the one keeping itself in sight.</summary>
     public static OccluderFade Local { get; private set; }
 
-    /// <summary>Whether something stands between the camera and the wizard now.</summary>
     public bool Occluded { get; private set; }
 
-    /// <summary>How far faded in, 0 (nothing in the way) to 1.</summary>
     public float Fade => fade;
 
-    /// <summary>How many renderers are on their dithered copies (DitherLit) now.</summary>
     public int Swapped => occluders != null ? occluders.Swapped : 0;
 
-    /// <summary>Whether the see-through figure is drawn now.</summary>
     public bool SilhouetteShown => figure != null && figure.Shown;
 
     void Awake()
@@ -92,7 +84,6 @@ public class OccluderFade : MonoBehaviour
         figure = new WizardSilhouette(gameObject, silhouette);
     }
 
-    // The circle round the wizard's chest on screen, its distance, and how much is cut.
     void Publish(Camera cam, float cut)
     {
         publishing = true;
@@ -104,7 +95,6 @@ public class OccluderFade : MonoBehaviour
         Shader.SetGlobalVector(ShapeId, new Vector4(Mathf.Max(MinRadius, tall * RadiusPerHeight), cam.aspect, InFront, 0f));
     }
 
-    // Not the local wizard (or no camera): nothing faded, nothing switched.
     void Stop()
     {
         fade = 0f;

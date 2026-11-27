@@ -1,7 +1,7 @@
+// A sound under way in SoundVoices. The default is none; one that has ended just stops counting.
 using System;
 using UnityEngine;
 
-/// <summary>A sound under way in SoundVoices. The default is none; one that has ended just stops counting.</summary>
 public readonly struct Voice
 {
     public readonly int Slot, Serial;
@@ -13,7 +13,6 @@ public readonly struct Voice
     }
 }
 
-/// <summary>What to play: a sound, its clip, its volume before the setting, its pitch and how far it carries (m).</summary>
 public readonly struct Cue
 {
     public readonly string Sound;
@@ -30,22 +29,10 @@ public readonly struct Cue
     }
 }
 
-// The game's pool of sound voices: a fixed set of 3D AudioSources, so playing a
-// sound makes no object and no garbage. A voice can follow a transform; when
-// they're all in use the oldest one-shot gives way, never a loop. A loop has to
-// be held every frame (Hold) or it fades out by itself: whatever stops a wizard
-// holding it (a reset, a despawn, a disabled component, a scene change) can't
-// leave it playing. Volume comes through GameVolume.Effects every frame, so the
-// slider moves sounds already going. Starts itself on first use and lasts the
-// session. There's no AudioMixer in the game yet: when the sound pass adds one,
-// its group goes on the sources in Build and nothing else changes, and
-// GameSounds.Play can move onto this pool the same way (for now only the casting
-// sounds use it).
-[DefaultExecutionOrder(210)] // after CastBeats has held its loops
+[DefaultExecutionOrder(210)]
 public class SoundVoices : MonoBehaviour
 {
     const int Count = 24;
-    /// <summary>A loop not held for this long (s) lets go.</summary>
     const float Lease = 0.25f;
     const float DefaultFade = 0.08f;
 
@@ -63,13 +50,10 @@ public class SoundVoices : MonoBehaviour
     readonly State[] voices = new State[Count];
     int serials;
 
-    /// <summary>Each sound as it starts: its name, where, its volume before the setting and its pitch (for probes).</summary>
     public static event Action<string, Vector3, float, float> Started;
 
-    // How a sound falls away over its reach: full close by, nothing at the far end.
     static readonly AnimationCurve Falloff = new(new Keyframe(0f, 1f), new Keyframe(0.12f, 1f), new Keyframe(0.3f, 0.45f), new Keyframe(0.6f, 0.14f), new Keyframe(1f, 0f));
 
-    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -77,10 +61,8 @@ public class SoundVoices : MonoBehaviour
         Started = null;
     }
 
-    /// <summary>How much of a sound of that reach gets to an ear this far away.</summary>
     public static float GainAt(float distance, float reach) => Falloff.Evaluate(distance / reach);
 
-    /// <summary>How many voices are sounding, and how many of them are loops.</summary>
     public static (int all, int loops) Sounding
     {
         get
@@ -97,13 +79,10 @@ public class SoundVoices : MonoBehaviour
         }
     }
 
-    /// <summary>Plays the clip once at a point, or at <paramref name="at"/> from <paramref name="follow"/> and with it. Beyond its reach of the listener it isn't played.</summary>
     public static Voice Play(in Cue cue, Vector3 at, Transform follow = null) => Start(cue, at, follow, false, 0f, 0f);
 
-    /// <summary>Starts the clip looping from <paramref name="startAt"/> (s), fading in, on <paramref name="follow"/>. Hold it every frame, or it stops.</summary>
     public static Voice Loop(in Cue cue, Vector3 offset, Transform follow, float fadeIn, float startAt = 0f) => Start(cue, offset, follow, true, fadeIn, startAt);
 
-    /// <summary>Keeps a loop going, gliding to this volume and pitch. False if it's gone.</summary>
     public static bool Hold(Voice voice, float volume, float pitch, float glideSeconds)
     {
         if (!Live(voice)) return false;
@@ -116,17 +95,14 @@ public class SoundVoices : MonoBehaviour
         return true;
     }
 
-    /// <summary>Fades a voice out and frees it.</summary>
     public static void Stop(Voice voice, float seconds = DefaultFade)
     {
         if (!Live(voice)) return;
         instance.voices[voice.Slot].gainStep = -1f / Mathf.Max(0.01f, seconds);
     }
 
-    /// <summary>The voice is still sounding, and not on its way out.</summary>
     public static bool Playing(Voice voice) => Live(voice) && instance.voices[voice.Slot].gainStep >= 0f;
 
-    /// <summary>The pitch a voice has now, and its volume after the setting; for the probe.</summary>
     public static (float pitch, float volume) Now(Voice voice)
     {
         if (!Live(voice)) return (0f, 0f);
@@ -134,7 +110,6 @@ public class SoundVoices : MonoBehaviour
         return (v.source.pitch, v.source.volume);
     }
 
-    /// <summary>Stops everything at once.</summary>
     public static void StopAll()
     {
         if (instance == null) return;
@@ -200,7 +175,6 @@ public class SoundVoices : MonoBehaviour
         }
     }
 
-    // A free voice, else the oldest one-shot's; -1 if they're all loops.
     int TakeSlot()
     {
         int oldest = -1;

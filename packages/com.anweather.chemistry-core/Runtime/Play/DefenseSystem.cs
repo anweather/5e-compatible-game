@@ -16,13 +16,11 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>The defense field's waves (World.DefenseSystem).</summary>
     public sealed class DefenseSystem
     {
         const int Unreached = WayField.Unreached;
 
         readonly World world;
-        // The cost field's scratch, the world's (shared with the Hold's ways).
         readonly WayField ways;
 
         internal DefenseSystem(World world)
@@ -31,22 +29,15 @@ namespace Chem
             ways = world.Ways;
         }
 
-        /// <summary>The defense field's waves, or null before anyone started them.</summary>
         public DefenseState State { get; private set; }
 
-        /// <summary>Raiders still to beat in the wave under way: on the board and still to come.</summary>
         public int Left => State == null ? 0 : world.RaiderSystem.List.Count + State.ToSpawn;
 
-        /// <summary>How many raiders a wave brings: First, and Growth more for each wave after.</summary>
         public static int WaveSize(DefenseParams p, int wave) => p.First + p.Growth * (wave - 1);
 
-        /// <summary>
-        /// Runs a defense command (startDefense in the TS): Start begins wave 1 with full lives (again,
-        /// after a win or a loss), unless waves are already coming. Between ticks, like a cast.
-        /// </summary>
         public void Apply(DefenseCommand command)
         {
-            world.FinishTick(); // commands land between whole ticks (StepSome)
+            world.FinishTick();
             if (command.Kind != DefenseKind.Start) return;
             if (State != null && State.Phase == DefensePhase.Running)
             {
@@ -76,7 +67,6 @@ namespace Chem
             world.AddLog($"Wave 1 of {p.Waves} is coming! Hold the flag", LogKind.Notable);
         }
 
-        /// <summary>One tick of the waves: the next raider through the gate, every raider's step, the next wave.</summary>
         internal void Tick()
         {
             var d = State;
@@ -98,7 +88,7 @@ namespace Chem
                 return;
             }
             var r = world.SpawnRaider(kind, d.GateX, d.GateY, def.Hp + p.HpPerWave * (d.Wave - 1));
-            if (r == null) return; // the gate is crowded: next tick
+            if (r == null) return;
             r.Wait = PaceOf(def) - 1;
             d.ToSpawn--;
             d.Spawned++;
@@ -127,7 +117,6 @@ namespace Chem
             }
         }
 
-        // One raider's step: to the neighbour with the cheapest way on (battering it if it's a wall).
         void Advance(DefenseState d, DefenseParams p, Raider r)
         {
             int dir = BestStep(d, p, r.X, r.Y);
@@ -142,7 +131,7 @@ namespace Chem
                 r.Wait = p.BatterTicks;
                 return;
             }
-            if (world.RaiderAt(nx, ny) != null) return; // wait for the one ahead
+            if (world.RaiderAt(nx, ny) != null) return;
             bool rough = Rough(p, world.At(r.X, r.Y), to);
             r.X = world.FoldX(nx);
             r.Y = world.FoldY(ny);
@@ -179,13 +168,6 @@ namespace Chem
             world.AddLog($"Wave {d.Wave} of {p.Waves} is coming!", LogKind.Notable);
         }
 
-        // ---------- the way to the flag ----------
-
-        /// <summary>
-        /// The cost of stepping from one square onto a neighbour: -1 if it can't be done (blocking
-        /// terrain), WallCost onto a raised wall (to batter), RoughCost into deep water or up or down
-        /// more than a step, else 1.
-        /// </summary>
         int StepCost(DefenseParams p, Cell from, Cell to)
         {
             if (to == null) return -1;
@@ -197,7 +179,6 @@ namespace Chem
         internal bool Rough(DefenseParams p, Cell from, Cell to) =>
             world.DrownDepth(to) >= p.DeepWater || Math.Abs(world.ElevationUnits(to) - world.ElevationUnits(from)) > world.Rules.Sim.WaterUnitsPerStep;
 
-        /// <summary>The cheapest way to the flag from every square of the field (Unreached where there is none).</summary>
         void CostField(DefenseState d, DefenseParams p)
         {
             int w = d.X1 - d.X0 + 1, n = w * (d.Y1 - d.Y0 + 1);
@@ -215,7 +196,6 @@ namespace Chem
             }
         }
 
-        // Every neighbour of a settled square gets the cheaper of its cost so far and the way through here.
         void Relax(DefenseState d, DefenseParams p, int x, int y, int cost, int n)
         {
             var here = world.At(x, y);
@@ -223,7 +203,6 @@ namespace Chem
             {
                 int nx = x + World.DirX(dir), ny = y + World.DirY(dir);
                 if (!WayField.InField(d, nx, ny)) continue;
-                // What it costs to step from the neighbour onto this square.
                 int step = StepCost(p, world.At(nx, ny), here);
                 if (step < 0) continue;
                 int ni = WayField.Index(d, nx, ny), total = cost + step;
@@ -233,7 +212,6 @@ namespace Chem
             }
         }
 
-        /// <summary>The way (0..3) a raider at (x, y) steps toward the flag, or -1 to stay (no way, or it's there).</summary>
         int BestStep(DefenseState d, DefenseParams p, int x, int y)
         {
             if (!WayField.InField(d, x, y) || ways.Cost[WayField.Index(d, x, y)] == Unreached) return -1;
@@ -254,7 +232,6 @@ namespace Chem
             return best;
         }
 
-        /// <summary>The cheapest way's cost from a square to the flag, as last worked out, or -1 off the field or with no way.</summary>
         public int PathCostAt(int x, int y)
         {
             var d = State;
@@ -263,18 +240,8 @@ namespace Chem
             return c == Unreached ? -1 : c;
         }
 
-        // ---------- hashes ----------
-
-        /// <summary>
-        /// A fingerprint (FNV-1a) of the defense: the waves' state and every raider. Shared with the
-        /// sandbox's golden (defenseText in sandbox/src/defense.ts) and part of the netcode checksum.
-        /// </summary>
         public string Hash() => Fnv1a.Hash(Text());
 
-        /// <summary>
-        /// The defense as text: "phase/wave/lives/toSpawn/nextSpawn/spawned|" and then each raider as
-        /// "id,kind,x,y,hp,wait,burning,wet,frozen,snagged;", or "-" before any.
-        /// </summary>
         public string Text()
         {
             var d = State;
@@ -288,11 +255,8 @@ namespace Chem
                 sb.Append(r.Id.ToString(inv)).Append(',').Append(r.Kind).Append(',').Append(r.X.ToString(inv)).Append(',').Append(r.Y.ToString(inv)).Append(',')
                   .Append(r.Hp.ToString(inv)).Append(',').Append(r.Wait.ToString(inv));
                 foreach (var s in HashedStatuses) sb.Append(',').Append(r.StatusOf(s).ToString(inv));
-                // Thrown (a Geyser's jet) joins only while it lasts, so older defenses hash as they did.
                 if (r.StatusOf(World.ThrownStatus) > 0) sb.Append(",t").Append(r.StatusOf(World.ThrownStatus).ToString(inv));
-                // Downed by the dragon's breath, the same.
                 if (r.StatusOf(World.DownedStatus) > 0) sb.Append(",d").Append(r.StatusOf(World.DownedStatus).ToString(inv));
-                // Shoved by casts (RaiderSystem.CastShove), the same.
                 if (r.StatusOf(World.ShovedStatus) > 0) sb.Append(",s").Append(r.StatusOf(World.ShovedStatus).ToString(inv));
                 sb.Append(';');
             }
@@ -301,9 +265,6 @@ namespace Chem
 
         static readonly string[] HashedStatuses = { "burning", "wet", "frozen", "snagged" };
 
-        // ---------- the save ----------
-
-        // The waves into a save ("defense"), null before anyone started them; the raiders are the world's.
         internal JToken Save() => State == null ? JValue.CreateNull() : new JObject
         {
             ["phase"] = (int)State.Phase,

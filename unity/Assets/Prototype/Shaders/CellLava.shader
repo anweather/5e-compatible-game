@@ -1,10 +1,10 @@
+// Lava on the ground (CellLavaMesh): plates of dark crust with glowing cracks between them, the
+// cracks crawling slowly. No textures: the plates are a Voronoi pattern in world space. Vertex red
+// is how hot it is (1 molten, wide bright cracks; 0 cooled, closed and dark); vertex alpha fades
+// the edge; vertex green turns the glow round the wheel, 1 a whole turn (a spell's embers in its
+// look: LookTint). The glow runs past 1, so it blooms.
 Shader "Prototype/CellLava"
 {
-    // Lava on the ground (CellLavaMesh): plates of dark crust with glowing cracks between them, the
-    // cracks crawling slowly. No textures: the plates are a Voronoi pattern in world space. Vertex red
-    // is how hot it is (1 molten, wide bright cracks; 0 cooled, closed and dark); vertex alpha fades
-    // the edge; vertex green turns the glow round the wheel, 1 a whole turn (a spell's embers in its
-    // look: LookTint). The glow runs past 1, so it blooms.
     Properties { }
     SubShader
     {
@@ -58,7 +58,6 @@ Shader "Prototype/CellLava"
                 return frac(sin(p) * 43758.5453);
             }
 
-            // How far a point is from the nearest edge between Voronoi cells, about 0 to 0.5.
             float EdgeDistance(float2 p, float time)
             {
                 float2 cell = floor(p), f = frac(p), nearest = 0.0;

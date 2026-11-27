@@ -29,7 +29,6 @@ public static class CreatureSheet
         public bool Water(float2 xz) => false;
     }
 
-    // How big a body is, to fit it to its place: its torso, or its longest chain of segments.
     static float Extent(CreatureBody b)
     {
         float longest = math.max(b.BodyLength, b.StandHeight * 2f);
@@ -42,7 +41,6 @@ public static class CreatureSheet
         return longest;
     }
 
-    /// <summary>Draws the bodies, in order, to a PNG at <paramref name="path"/>.</summary>
     public static void Write(IReadOnlyList<CreatureBody> bodies, string path)
     {
         if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;

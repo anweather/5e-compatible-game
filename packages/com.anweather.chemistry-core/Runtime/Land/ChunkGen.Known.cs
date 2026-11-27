@@ -8,42 +8,29 @@ using System.Collections.Generic;
 
 namespace Chem
 {
-    /// <summary>A known chunk: its dominant biome and coarse land, for the view's far ring.</summary>
     public sealed class KnownChunk
     {
-        /// <summary>Samples a side, and cells between two samples.</summary>
         public const int Side = 9, Step = ChunkGen.Size / (Side - 1);
         public const byte Dry = 0, Sea = 1, River = 2, Lake = 3;
 
         public int X, Y;
-        /// <summary>The biome most of its samples are (a biomes.json id), or the pinned map's name.</summary>
         public string Biome;
-        /// <summary>
-        /// The biome at each sample (most of it there, a biomes.json id, or the pinned map's name), row-major like
-        /// <see cref="Heights"/>: the view paints by it, so its colours change where the biomes do, not at the chunk's edge.
-        /// </summary>
         public string[] Biomes = new string[Side * Side];
-        /// <summary>Land units (0.125 m) at cell (8i, 8j) from its north-west corner, row-major, <see cref="Side"/> a row.</summary>
         public int[] Heights = new int[Side * Side];
-        /// <summary>What water stands at each sample: <see cref="Dry"/>, <see cref="Sea"/>, <see cref="River"/> or <see cref="Lake"/>.</summary>
         public byte[] Water = new byte[Side * Side];
-        /// <summary>How wooded each sample looks from far off, 0 (open) to 255 (a wood's heart): a hills map's woods (HillsForest).</summary>
         public byte[] Wood = new byte[Side * Side];
 
-        /// <summary>Whether every sample is open sea.</summary>
         public bool IsSea => Array.TrueForAll(Water, w => w == Sea);
     }
 
     public sealed partial class ChunkGen
     {
-        /// <summary>Map chunk (<paramref name="cx"/>, <paramref name="cy"/>) as a known chunk: safe from any thread.</summary>
         public KnownChunk Know(int cx, int cy)
         {
             if (cx < 0 || cy < 0 || cx >= ChunksW || cy >= ChunksH) throw new ArgumentOutOfRangeException(nameof(cx), $"chunk ({cx}, {cy}) is off the map");
             if (Hills != null) return KnowHills(cx, cy);
             if (Pinned?.Inner != null && IsPinned(cx, cy))
             {
-                // A block's chunk is known as its own generator knows it.
                 var own = Pinned.Inner.Know(cx - PinnedX / Size, cy - PinnedY / Size);
                 own.X = cx;
                 own.Y = cy;
@@ -53,7 +40,6 @@ namespace Chem
             int x0 = cx * Size, y0 = cy * Size;
             var near = Nearby(x0, y0, x0 + Size, y0 + Size);
             var counts = new Dictionary<int, int>();
-            // The landmarks' stamps whose footprint reaches it.
             var local = new List<LandStamp>();
             var localX = new List<int>();
             foreach (var (s, _, _) in stamps)
@@ -66,12 +52,10 @@ namespace Chem
             for (int j = 0; j < KnownChunk.Side; j++)
                 for (int i = 0; i < KnownChunk.Side; i++)
                 {
-                    // The east edge's samples of the last column are the first column's west edge, round a world that wraps.
                     int x = WrapX ? x0 + i * KnownChunk.Step : Math.Min(CellsW - 1, x0 + i * KnownChunk.Step);
                     int y = Math.Min(CellsH - 1, y0 + j * KnownChunk.Step), q = j * KnownChunk.Side + i, xw = WrapCell(x);
                     if (InPinned(xw, y) && Pinned.Inner != null)
                     {
-                        // A sample on a block's rim: its edge chunk's, as its generator knows it.
                         int bx = xw - PinnedX, by = y - PinnedY;
                         var edge = blockKnown[(bx / Size, by / Size)];
                         int e = (by % Size) / KnownChunk.Step * KnownChunk.Side + (bx % Size) / KnownChunk.Step;
@@ -101,7 +85,6 @@ namespace Chem
             if (IsPinned(cx, cy)) k.Biome = Pinned.Map;
             else
             {
-                // The most samples, the lower row on a tie, as a made chunk names its biome.
                 int top = -1, most = 0;
                 foreach (var c in counts)
                     if (c.Value > most || (c.Value == most && c.Key < top))
@@ -114,7 +97,6 @@ namespace Chem
             return k;
         }
 
-        // A generated cell's water, as its cell says (CellOf): the sea's edge above the sea level is a beach.
         static byte WaterOf(byte wet, int h)
         {
             if (wet == WetSea) return h < SeaLevel ? KnownChunk.Sea : KnownChunk.Dry;
@@ -122,7 +104,6 @@ namespace Chem
             return wet == WetLake ? KnownChunk.Lake : KnownChunk.Dry;
         }
 
-        // A pinned cell's water above the sea level.
         static byte WaterOf(char cell)
         {
             if (cell == Stream) return KnownChunk.River;

@@ -16,15 +16,10 @@ namespace Chem
         readonly SortedDictionary<string, PlayerCast> casts = new SortedDictionary<string, PlayerCast>(StringComparer.Ordinal);
         readonly List<ComboFired> combosFired = new List<ComboFired>();
 
-        /// <summary>The casts that went off in the last tick.</summary>
         public IReadOnlyList<ComboFired> CombosFired => combosFired;
 
-        // The casts of the last HistoryTicks ticks, stamped with their tick, for a view that hears them
-        // late: a tick in slices can be finished from outside (FinishTick) with no one told, and the next
-        // tick empties CombosFired (GitHub #39). Not world state: never hashed or saved.
         readonly List<(ComboFired fired, int tick)> firedHistory = new List<(ComboFired fired, int tick)>();
 
-        /// <summary>Adds the casts that went off after <paramref name="tick"/> (within the last 600 ticks) to a list, oldest first.</summary>
         internal void CopyCombosFiredSince(int tick, List<ComboFired> into)
         {
             foreach (var f in firedHistory) if (f.tick > tick) into.Add(f.fired);
@@ -36,28 +31,18 @@ namespace Chem
             firedHistory.Add((fired, Tick));
         }
 
-        /// <summary>A player's cast state, or null if they've sent no command yet.</summary>
         public PlayerCast CastOf(string player) => casts.TryGetValue(player, out var c) ? c : null;
 
-        /// <summary>The combo a cast has loaded, or null (nothing loaded, or a d-pad spell).</summary>
         public ComboDef ComboOf(PlayerCast c) => c?.First == null ? null : Rules.Combos.Combo(CombosDef.IdOf(c.First, c.Second));
 
-        /// <summary>The most a combo can be charged: <see cref="MaxCharge"/> if its spell is chargeable, else 1.</summary>
         public int MaxChargeOf(ComboDef combo) => Chargeable(Rules.Spell(combo?.Spell)) ? MaxCharge : 1;
 
-        /// <summary>
-        /// The charge a held cast has reached: 1 for the meter's own length (a tap's), then a level for
-        /// each chargeTicks more. The meter is the clock, so the charge only grows while it runs.
-        /// </summary>
         public int HeldCharge(PlayerCast c) => c?.Holding == true ? ChargeOn(c.Extra, c.Meter) : 1;
 
-        // A held meter's charge: the extra ticks it has used, a level each chargeTicks (a hand's too, World.Hands.cs).
         int ChargeOn(int extra, int meter) => 1 + Math.Max(0, extra + 1 - meter) / Rules.Combos.ChargeTicks;
 
-        /// <summary>Seconds of holding for each level of charge.</summary>
         public double SecondsPerLevel => Rules.Combos.ChargeTicks / (double)Rules.Sim.TicksPerSecond;
 
-        /// <summary>What the view multiplies this player's walking speed by: the rules' factor while the meter drains, else 1.</summary>
         public double MoveFactorOf(string player)
         {
             var c = CastOf(player);
@@ -65,21 +50,14 @@ namespace Chem
             return c.Charging ? Rules.Combos.ChargeMoveFactor : Rules.Combos.MoveFactor;
         }
 
-        /// <summary>Whether the combo is in this player's grimoire.</summary>
         public bool KnowsCombo(string player, string combo) => CastOf(player)?.Known.Contains(combo) == true;
 
-        /// <summary>The d-pad's selected spell for this player, or null if the list is empty.</summary>
         public DpadSpellDef SelectedDpad(string player)
         {
             var dpad = DpadOf(player);
             return dpad.Count == 0 ? null : dpad[(CastOf(player)?.Slot ?? 0) % dpad.Count];
         }
 
-        /// <summary>
-        /// Applies a player's cast input, between ticks. False if it was refused: an element
-        /// outside the window or past the second, a d-pad cast during a cast or of a slot with no
-        /// spell, a cancel with nothing to drop, a release with nothing held.
-        /// </summary>
         public bool ApplyCombo(ComboCommand command)
         {
             FinishTick();
@@ -128,7 +106,6 @@ namespace Chem
             return true;
         }
 
-        // The charge comes from the core's own meter, so every peer agrees and a client can't send more.
         bool ReleaseHold(PlayerCast c)
         {
             if (!c.Holding) return false;
@@ -137,8 +114,6 @@ namespace Chem
             return true;
         }
 
-        // The hold's extra ticks come off: a cast let go early still takes a tap's time, one
-        // past that goes off on the next tick.
         static void EndHold(PlayerCast c)
         {
             int passed = c.Total - c.Meter;
@@ -172,7 +147,6 @@ namespace Chem
             c.Extra = 0;
         }
 
-        // A held cast's meter has room for its full charge, each level adding chargeTicks.
         void StartHeldMeter(PlayerCast c, ComboDef combo)
         {
             StartMeter(c, combo?.CastTicks ?? 0);
@@ -192,8 +166,6 @@ namespace Chem
             c.Merge = null;
         }
 
-        // Drains every meter, in player order, and sets off those that reach zero. A cast held to its
-        // full charge waits at the meter's last tick, so the tick after its Release sets it off.
         void TickCombos()
         {
             foreach (var c in casts.Values)
@@ -210,7 +182,6 @@ namespace Chem
             }
         }
 
-        // What a mod took away since the cast began just doesn't go off.
         void FireCast(PlayerCast c)
         {
             var dpad = DpadOf(c.Player);
@@ -230,21 +201,13 @@ namespace Chem
             ClearCast(c);
         }
 
-        /// <summary>A fingerprint (FNV-1a) of every player's cast state and grimoire, the whirlwinds still whirling, the spell zones, the course runs, the room, what spells placed and laid, and the triggers' cooldowns, for the netcode checksum.</summary>
         public string CastHash() => Fnv1a.Hash(CastText(StrikeText()));
 
-        /// <summary>What CastHash hashes, with <paramref name="stands"/> in the stands' place (StrikeText): a late joiner's test compares the stands apart.</summary>
         public string CastText(string stands) =>
             CastState() + WhirlState() + WaveState() + BoulderState() + GolfSystem.Text() + CourseSystem.ZoneText() + CourseSystem.Text() + RoomText() + stands + HoldSystem.Text() + HandsText() + PlacedText() + ActText() + LaidText() + TriggerText();
 
-        /// <summary>The whirlwinds as text, "" when there are none (so worlds without any hash as they did): where, its age, and what it carries.</summary>
         public string WhirlState() => string.Concat(whirls.Select(ww => $"|{Whole(ww.X)}:{Whole(ww.Y)}:{Whole(ww.Age)}:{ww.Carrying ?? "-"}"));
 
-        /// <summary>
-        /// The players' cast state as text, by player: "ann:fire:air:5:9:0:1:-1:fire,fire+air", which
-        /// is player, elements ("-" for none), meter, total, window, slot, d-pad cast, then the grimoire;
-        /// then, only while a cast is held or charged, ":hold:c1" or ":c3" (so other casts hash as they did).
-        /// </summary>
         public string CastState() => string.Join("/", casts.Values.Select(c => string.Join(":",
             c.Player, c.First ?? "-", c.Second ?? "-", Whole(c.Meter), Whole(c.Total), Whole(c.Window), Whole(c.Slot), Whole(c.DpadCasting), string.Join(",", c.Known)) + ChargeState(c)));
 

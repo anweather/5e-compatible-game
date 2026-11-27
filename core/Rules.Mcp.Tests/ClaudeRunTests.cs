@@ -1,3 +1,4 @@
+// The in-game chat's one headless process a message (ClaudeRun, J-060).
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,7 +7,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>The in-game chat's one headless process a message (ClaudeRun, J-060).</summary>
     [Category("Unit")]
     public class ClaudeRunTests
     {
@@ -97,7 +97,6 @@ namespace Chem.Tests
             Assert.That(sent, Does.Contain("not instructions"));
         }
 
-        // Playtest 2026-11-08: "Make it daytime." after an undo reached Claude as "UnMake it daytime", the end of a note.
         [TestCase("- Undid the night sky mod. Say Un")]
         [TestCase("- Reverted the night sky mod.\n- Make it daytime.")]
         [TestCase("- Undid it.\r\n- Reverted: day is back, say Un\r\n")]

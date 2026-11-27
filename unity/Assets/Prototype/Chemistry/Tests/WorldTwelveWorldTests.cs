@@ -26,14 +26,11 @@ namespace Chem.Tests
             Assert.That((map.W, map.H), Is.EqualTo((m.Gen.CellsW, m.Gen.CellsH)));
             Assert.That(map.Spawn, Is.EqualTo((m.Gen.PinnedX + 292, m.Gen.PinnedY + 328)), "the valley's spawn, moved");
             Assert.That(m.Plan.Problems, Is.Empty);
-            // It's never baked whole: too big.
             Assert.That(GeneratedMap.IsBaked(WorldTwelveTests.Dir), Is.False);
             Assert.That(() => MapBake.EnsureBaked(WorldTwelveTests.Dir), Throws.InvalidOperationException.With.Message.Contains("too big to bake"));
             Assert.That(() => m.Bake(Path.Combine(Path.GetTempPath(), "never")), Throws.InvalidOperationException);
         }
 
-        // The plan, and the heights of the whole world from its known samples (a pixel per sample, 8 cells), with the
-        // first two squares drawn again past the east edge so the seam shows in the middle of land, ticked above and below.
         static void Picture()
         {
             string folder = Environment.GetEnvironmentVariable("WORLD_12_PNG_OUT");
@@ -64,7 +61,6 @@ namespace Chem.Tests
                     else if (water == KnownChunk.Dry && wall == 2) col = (222, 190, 120);
                     WorldPlanPicture.Put(rgb, (y + margin) * pw + x, col, Math.Max(-50, Math.Min(50, shade / 2)));
                 }
-            // The seam's ticks, red, in the margins.
             for (int y = 0; y < margin; y++)
                 foreach (int yy in new[] { y, ph - 1 - y })
                     for (int x = w - 1; x <= w; x++)
@@ -93,7 +89,6 @@ namespace Chem.Tests
                 int d = gen.ChunkDistance(0, row, k.X, k.Y);
                 Assert.That(d, Is.GreaterThan(Streaming.Sight).And.LessThanOrEqualTo(Streaming.Know), $"chunk ({k.X}, {k.Y})");
             }
-            // Every chunk past sight within know, the short way round, is shown unless it's open sea away from the coast.
             int wanted = 0;
             for (int cy = row - Streaming.Know; cy <= row + Streaming.Know; cy++)
                 for (int cx = -Streaming.Know; cx <= Streaming.Know; cx++)
@@ -105,7 +100,6 @@ namespace Chem.Tests
                     if (shown) Assert.That(k.X, Is.EqualTo(gen.WrapChunk(cx)), "a chunk west of the seam is the map's east column");
                 }
             Assert.That(wanted, Is.EqualTo(15 * 15 - 9 * 9));
-            // A character a world east, or one column west of the seam named either way, knows the same chunks.
             var same = WorldTwelveTests.World.KnownRing(Streaming);
             same.Want(new[] { (w, row) });
             same.Fill();
@@ -122,7 +116,6 @@ namespace Chem.Tests
         [Test]
         public void ItsExpectsAreTheKnownLand()
         {
-            // map.json's expects for a world that's never baked: the known samples' share above the sea, highest and lowest.
             var heights = WorldTwelveTests.Known.SelectMany(k => k.Heights).ToArray();
             var map = MapFile.Load(WorldTwelveTests.Dir);
             int share = (int)Math.Round(100.0 * heights.Count(h => h >= map.SeaLevel) / heights.Length);

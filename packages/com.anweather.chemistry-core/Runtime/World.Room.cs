@@ -20,24 +20,14 @@ namespace Chem
     {
         ModBudgets roomBudgets;
 
-        /// <summary>The room this world is played in, or null for a world made without one.</summary>
         public RoomState Room { get; private set; }
 
-        /// <summary>The room's base rules and its active mods composed over them (what Rules is); null without a room.</summary>
         public RuleSet RoomRules { get; private set; }
 
-        /// <summary>A room command was decided, on this peer, as the log says. For the view: it never touches the world.</summary>
         public event Action<RoomCommand, RoomVerdict> RoomDecided;
 
-        /// <summary>A joining peer's world, its room still on the way: what's built doesn't wait for the host, and the view reads it from the first frame.</summary>
         public void AwaitRoom(ModBudgets budgets) => roomBudgets = budgets ?? throw new ArgumentNullException(nameof(budgets));
 
-        /// <summary>
-        /// Makes this world a room, as it is made: the change mode, the host's name, the base rules
-        /// every mod composes over, the budgets the checks use (rules/budgets.json) and the mods it
-        /// starts with, if any (a rebuilt world keeps the ones on). Puts all that in force if it
-        /// isn't already. A set of mods that doesn't compose throws ModException.
-        /// </summary>
         public void OpenRoom(ChangeMode mode, string host, Rules baseRules, ModBudgets budgets, IReadOnlyList<RoomMod> mods = null)
         {
             if (Room != null) throw new InvalidOperationException("This world already has a room; its change mode is set when it is made.");
@@ -52,30 +42,17 @@ namespace Chem
             if (Rules.Fingerprint != next.Fingerprint || next.Effective.ModBuildings.Count > 0) ApplyRules(next.Effective);
         }
 
-        /// <summary>
-        /// The base rules were reloaded (solo, rules/*.json saved in the Editor): the room's mods
-        /// compose over the new base. A set that no longer composes throws ModException.
-        /// </summary>
         public void RebaseRoom(Rules baseRules)
         {
             PutInForce(RuleSet.Compose(baseRules, Room.Mods.Select(m => new ActiveMod(m.Id, m.Json))));
         }
 
-        /// <summary>
-        /// Decides a room command, between ticks: switches the mod on or reverts it, or refuses it with
-        /// one sentence. Logs the verdict either way and returns it.
-        /// </summary>
         public RoomVerdict ApplyRoom(RoomCommand c) => ApplyRoom(c, null);
 
-        /// <summary>
-        /// ApplyRoom, with the switch's checks and compose done ahead (PrepareSwitch, then Run on any thread): used if it
-        /// was prepared for this mod against the rules in force now, else done here as ApplyRoom does (#155). The verdict and
-        /// the rules put in force are the same either way.
-        /// </summary>
         public RoomVerdict ApplyRoom(RoomCommand c, RoomSwitchPrep prep)
         {
             if (Room == null) throw new InvalidOperationException("This world has no room to change; OpenRoom makes one.");
-            FinishTick(); // a rule switch lands between whole ticks
+            FinishTick();
             if (c.Change == RoomChange.Found) return Found(c);
             var verdict = c.Change switch
             {
@@ -88,14 +65,12 @@ namespace Chem
             };
             AddLog(verdict.Line, verdict.Done ? LogKind.Notable : LogKind.Info);
             RoomDecided?.Invoke(c, verdict);
-            // The mods that went with a revert (World.Lapse.cs): each heard as reverted too, after it.
             var also = wentWith ?? new List<RoomMod>();
             wentWith = null;
             foreach (var m in also) RoomDecided?.Invoke(RoomCommand.Revert(m.By, m.Id), verdict);
             return verdict;
         }
 
-        // The mods a revert took with it, for ApplyRoom to tell the view; null between commands.
         List<RoomMod> wentWith;
 
         RoomVerdict SwitchOn(RoomCommand c, RoomSwitchPrep prep)
@@ -137,7 +112,6 @@ namespace Chem
 
         static RoomVerdict Refused(RoomCommand c, string why) => new RoomVerdict(false, why, RoomPolicy.RefusedLine(c.Change, why));
 
-        /// <summary>The command's title, else the patch's own, else the mod's id.</summary>
         static string TitleOf(RoomCommand c)
         {
             if (!string.IsNullOrWhiteSpace(c.Title)) return c.Title.Trim();
@@ -149,15 +123,11 @@ namespace Chem
 #pragma warning disable S108
             catch (ModException)
             {
-                // the checks say what is wrong with it
             }
 #pragma warning restore S108
             return c.Mod;
         }
 
-        /// <summary>ModValidator on the patch against the rules in force here: null if it passes, else its first problem.</summary>
-        // Checks, handing back the rules the checks composed (the rules in force with the mod), when the rules in force are
-        // the room's own: then they're the rules switching it on puts in force, and aren't composed twice (#155).
         string Checks(string title, string json, out Rules composed, RoomSwitchPrep prep)
         {
             composed = null;
@@ -178,14 +148,12 @@ namespace Chem
             return $"{title} doesn't pass the checks: {problems[0].Message.TrimEnd('.')}{more}";
         }
 
-        // The room's mods and this one, from the rules the checks composed: null, as they fit (the checks composed them).
         string Composed(ActiveMod mod, Rules composed, out RuleSet next)
         {
             next = RoomRules.Adding(mod, composed);
             return null;
         }
 
-        /// <summary>The room's base rules with these mods over them, in order: null if they fit, else why not.</summary>
         string Compose(IEnumerable<ActiveMod> mods, string what, out RuleSet next)
         {
             try
@@ -200,10 +168,6 @@ namespace Chem
             }
         }
 
-        /// <summary>
-        /// A switch-on's checks and compose, to be done ahead (#155): its inputs taken now, on the world's thread, so Run can
-        /// go on a worker while the world ticks. ApplyRoom(command, prep) uses it only if those inputs are still the world's.
-        /// </summary>
         public RoomSwitchPrep PrepareSwitch(RoomCommand c)
         {
             if (Room == null) throw new InvalidOperationException("This world has no room to change; OpenRoom makes one.");
@@ -211,16 +175,8 @@ namespace Chem
             return new RoomSwitchPrep(Rules, RoomRules, roomBudgets, TempMaterials.Owners(TemporaryMaterials), c.Json);
         }
 
-        // ---------- the checksum ----------
-
-        /// <summary>A fingerprint (FNV-1a) of the room: its mode, host and active mods. Part of CastHash, so in the checksum.</summary>
         public string RoomHash() => Fnv1a.Hash(RoomText());
 
-        /// <summary>
-        /// The room as text, "" without one (so worlds without a room hash as they did):
-        /// "#room mode host" and then "|id:by:tick:patch hash" for each mod on, in order,
-        /// then the things found, the retired materials and the other retired rows (World.Lapse.cs), each only when there are any.
-        /// </summary>
         public string RoomText()
         {
             if (Room == null) return "";
@@ -234,12 +190,10 @@ namespace Chem
                 sb.Append("|retired:").Append(r.Table).Append(':').Append(r.Id).Append(':').Append(r.Into ?? "").Append(':').Append(r.Mod).Append(':').Append(r.Tick.ToString(inv));
             foreach (var r in Room.RetiredRows)
                 sb.Append("|gone:").Append(r.Kind).Append(':').Append(r.Id).Append(':').Append(r.Mod).Append(':').Append(r.Tick.ToString(inv));
-            foreach (var m in Room.Mixes) // not its row: the rows it came from decide that, and its look holds floats
+            foreach (var m in Room.Mixes)
                 sb.Append("|mix:").Append(m.Table).Append(':').Append(m.Id).Append(':').Append(m.Tick.ToString(inv));
             return sb.ToString();
         }
-
-        // ---------- the save ----------
 
         void SaveRoom(JObject save)
         {
@@ -258,7 +212,6 @@ namespace Chem
             SaveBuildings((JObject)save["room"]);
         }
 
-        /// <summary>A saved room's rules: the base with its mods composed again, in order.</summary>
         static RuleSet SavedRoomRules(JObject room, Rules baseRules, ModBudgets budgets)
         {
             Expect(budgets != null, "a room, loaded without the budgets its mods are checked against");

@@ -17,7 +17,6 @@ public partial class ChemGrid
     readonly Dictionary<int, (float start, float tip)> spireRides = new();
     readonly List<int> spiresGone = new();
 
-    /// <summary>The spire the core raises on this cell bursts up at <paramref name="when"/> (Time.time), not at once.</summary>
     public void SpiresRiseAt(int x, int y, float when)
     {
         spiresGone.Clear();
@@ -27,21 +26,17 @@ public partial class ChemGrid
         spireRises[World.Idx(x, y)] = when;
     }
 
-    /// <summary>A new spire dressing: rises out of the ground if it was told to, else stands as it is.</summary>
     public void RiseSpires(Transform cluster, int x, int y)
     {
-        // Online the core's tick may come a little after the caster's view said: it rises late rather than not at all.
         if (!spireRises.TryGetValue(World.Idx(x, y), out float when) || Time.time > when + SpireLate) return;
         cluster.gameObject.AddComponent<SpireRise>().Begin(Mathf.Max(when, Time.time), SpireRiseSeconds, SpireDepth, SpireRock, (x + y) % 3 == 0);
     }
 
-    /// <summary>A puff of the dust earth shaping throws up, where a spire breaks the ground.</summary>
     public void SpireDust(Vector3 at) => Dust(at);
 
     float SpireDepth => CellDressing.Look(World.Rules, TerrainIds.Pillar).height * 3.2f;
     Color SpireRock => CellDressing.Look(World.Rules, TerrainIds.Pillar).color;
 
-    /// <summary>A spire bursts up under the raider at <paramref name="when"/>, carries it up on its point and crumbles away under it.</summary>
     public void SpireUnder(Raider raider, int x, int y, float when)
     {
         var c = World.At(x, y);
@@ -59,7 +54,6 @@ public partial class ChemGrid
         spireRides[raider.Id] = (when, tip);
     }
 
-    /// <summary>How high a raider riding a spire is drawn above its ground now, or null when it rides none.</summary>
     public float? SpireRide(int raiderId)
     {
         if (!spireRides.TryGetValue(raiderId, out var ride)) return null;

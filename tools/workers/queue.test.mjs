@@ -68,7 +68,6 @@ test("the queue is opt-in: on for u2 unless told, off elsewhere unless told", ()
   assert.ok(!queueOn("u2", { env: { WORKER_QUEUE: "0" }, read: () => "on" }));
 });
 
-// A scratch origin with a queue on dev, and a clone per worker.
 function origin(files) {
   const dir = mkdtempSync(join(tmpdir(), "queue-"));
   const g = (cwd, ...a) => execFileSync("git", a, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
@@ -101,15 +100,14 @@ test("a claim that loses the push race fetches and picks again", () => {
   const { dir, g, clone } = origin({ [`${QUEUE}/a.md`]: brief("core", "rules/"), [`${QUEUE}/b.md`]: brief("core", "world/") });
   try {
     const [u2, w1] = [clone("u2"), clone("w1")];
-    // Between w1's pick and its push, u2 takes a.md: origin's hook lands u2's claim, then refuses w1's push.
     const hook = join(dir, "origin.git", "hooks", "pre-receive");
     writeFileSync(hook, `#!/usr/bin/env bash\n[ -e "${dir}/raced" ] && exit 0\ntouch "${dir}/raced"\nenv -u GIT_QUARANTINE_PATH git update-ref refs/heads/dev "$(cat "${dir}/u2-claim")"\nexit 1\n`);
     chmodSync(hook, 0o755);
     g(u2, "fetch", "-q");
-    writeFileSync(join(dir, "raced"), ""); // u2's own claim goes through
+    writeFileSync(join(dir, "raced"), "");
     assert.equal(claim(u2, core, "u2").name, "a.md");
     writeFileSync(join(dir, "u2-claim"), g(u2, "rev-parse", "origin/dev"));
-    g(dir + "/origin.git", "update-ref", "refs/heads/dev", g(u2, "rev-parse", "origin/dev~1")); // back to before it
+    g(dir + "/origin.git", "update-ref", "refs/heads/dev", g(u2, "rev-parse", "origin/dev~1"));
     rmSync(join(dir, "raced"));
     const lines = [];
     assert.equal(claim(w1, core, "w1", { log: m => lines.push(m) }).name, "b.md");

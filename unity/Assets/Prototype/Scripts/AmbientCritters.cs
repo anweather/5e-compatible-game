@@ -18,20 +18,17 @@ public class AmbientCritters : MonoBehaviour
     public Material fireflyMaterial;
     public Material butterflyMaterial;
     public float tileSize = 24f;
-    /// <summary>Critters are drawn this far from the camera (the shaders fade them out by here).</summary>
     public float radius = 70f;
-    /// <summary>Candidate homes of each kind per 100 m²; each is kept with its spot's density over this.</summary>
     public float maxDensity = 8f;
 
     const int FireflyVertices = 6;
     const int ButterflyVertices = 12;
     const int TilesPerFrame = 4;
 
-    // Must match Critters.hlsl's Critter.
     [StructLayout(LayoutKind.Sequential)]
     struct Critter
     {
-        public Vector3 position;   // home, on the ground
+        public Vector3 position;
         public float random;
         public Vector4 color;
     }
@@ -55,23 +52,21 @@ public class AmbientCritters : MonoBehaviour
 
     static readonly Color[] Wings =
     {
-        new Color(1f, 0.42f, 0.04f),     // monarch orange
-        new Color(0.95f, 0.95f, 0.9f),   // cabbage white
-        new Color(1f, 0.85f, 0.18f),     // brimstone yellow
-        new Color(0.25f, 0.45f, 0.95f),  // blue
-        new Color(0.75f, 0.3f, 0.45f),   // pinkish
+        new Color(1f, 0.42f, 0.04f),
+        new Color(0.95f, 0.95f, 0.9f),
+        new Color(1f, 0.85f, 0.18f),
+        new Color(0.25f, 0.45f, 0.95f),
+        new Color(0.75f, 0.3f, 0.45f),
     };
 
     readonly Dictionary<Vector2Int, Tile> tiles = new();
     readonly List<Vector2Int> scratch = new();
     readonly List<Critter> fireflies = new(), butterflies = new();
     ChemGrid grid;
-    Vector2 shown;   // x fireflies, y butterflies: how many are out, 0..1
+    Vector2 shown;
 
-    /// <summary>How many fireflies and butterflies are out (0..1 each), for the probe.</summary>
     public Vector2 Shown => shown;
 
-    /// <summary>Fireflies and butterflies with homes in the tiles drawn now, for the probe.</summary>
     public (int fireflies, int butterflies) Homes()
     {
         int f = 0, b = 0;
@@ -108,9 +103,6 @@ public class AmbientCritters : MonoBehaviour
         Draw();
     }
 
-    // Fireflies by the rules' hours (Sky.InHours over sim.json's day): out from halfway through dusk
-    // to halfway through dawn; butterflies from the end of dawn to the start of dusk. Rain and snow
-    // keep both in, wind most of them. (Update eases between, so they come and go gradually.)
     static Vector2 Wanted(World world)
     {
         var d = world.Rules.Sim.Day;
@@ -124,7 +116,6 @@ public class AmbientCritters : MonoBehaviour
 
     Vector2 TileCentre(Vector2Int c) => ((Vector2)c + Vector2.one * 0.5f) * tileSize;
 
-    // Drops tiles that fell out of range and builds the nearest few missing ones.
     void Stream(World world, Vector2 camXZ)
     {
         scratch.Clear();
@@ -157,7 +148,6 @@ public class AmbientCritters : MonoBehaviour
         fireflies.Clear();
         butterflies.Clear();
         int perTile = (int)(tileSize * tileSize * maxDensity / 100f);
-        // Seeded by the tile, so a tile has the same homes each time it streams in (as far as its cells allow).
         var rng = new System.Random(coord.x * 73856093 ^ coord.y * 19349663);
         for (int i = 0; i < perTile * 2; i++)
         {
@@ -194,8 +184,6 @@ public class AmbientCritters : MonoBehaviour
         return buffer;
     }
 
-    // Critters of a kind per 100 m² at a spot, from its cell, and the height they hover from
-    // (the water's surface over water). Nothing lives on bare dirt, rock, walls or fire.
     float Density(World world, Vector2 xz, bool butterfly, out float y)
     {
         var p = new Vector3(xz.x, 0f, xz.y);
@@ -216,10 +204,6 @@ public class AmbientCritters : MonoBehaviour
         return green ? 2f : 0f;
     }
 
-    // Butterflies per 100 m² by biome, Punchy's (its Biomes/*.asset): 5 over grassland, 1.5 in temperate country (the
-    // valley, and a cell of a map that isn't generated), 2 in the sparkling forest, a few in the mountains, the sonoran
-    // and on the tundra, none in the other dry, burnt, frozen or wet country. #220: at 5 everywhere (8 over brush) they
-    // were everywhere.
     static float ButterfliesIn(string biome) => biome switch
     {
         null or "temperate" => 1.5f,
@@ -230,7 +214,6 @@ public class AmbientCritters : MonoBehaviour
         _ => 0f,
     };
 
-    // Brush draws more of them than grass.
     const float BrushMore = 1.5f;
 
     static bool NearWater(World world, Vector2Int cell)

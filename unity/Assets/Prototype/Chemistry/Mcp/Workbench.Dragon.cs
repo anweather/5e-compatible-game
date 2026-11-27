@@ -11,7 +11,6 @@ namespace Chem.Mcp
     {
         const string DragonTable = "dragon";
 
-        /// <summary>What each of sim.json's dragon fields does, in DragonParams' words.</summary>
         static readonly (string field, string what)[] DragonFields =
         {
             ("budget", "the cells (ground, height or cover) that may differ from how the world started before it comes by itself; 0, the default, or never, and it comes only when summoned"),
@@ -31,7 +30,6 @@ namespace Chem.Mcp
 
         const string DragonAbout = "The dragon resets the world: it comes when summoned, or by itself past a budget if a mod sets one (0, the default, is never), warns, then flies passes over the valley, and every chunk its breath reaches goes back to how it started, things and all. Whoever the breath catches is downed unless sheltered by deep water or a stone wall. Its fields are sim parameters: tune dragon.<field>, such as dragon.budget never so it only comes when summoned.";
 
-        // The dragon's fields as list sim gives them, each with what it does.
         IEnumerable<string> DragonLines()
         {
             var lines = new List<string>();
@@ -39,7 +37,6 @@ namespace Chem.Mcp
             return new[] { DragonAbout }.Concat(lines);
         }
 
-        /// <summary>What a sim parameter does, after its line in list sim; empty for one with no words here.</summary>
         static string SimNote(string path)
         {
             if (!path.StartsWith(DragonTable + ".", StringComparison.Ordinal)) return "";
@@ -48,7 +45,6 @@ namespace Chem.Mcp
             return what == null ? "" : $": {what}";
         }
 
-        /// <summary>describe dragon, or describe dragon budget, is describe sim dragon or sim dragon.budget.</summary>
         static (string table, string id) DragonPath(string table, string id)
         {
             if (!string.Equals(table?.Trim(), DragonTable, StringComparison.OrdinalIgnoreCase)) return (table, id);
@@ -57,7 +53,6 @@ namespace Chem.Mcp
             return ("sim", field.Length == 0 ? DragonTable : $"{DragonTable}.{field}");
         }
 
-        // describe's words for the dragon or one of its fields.
         static string DragonNote(string table, string id)
         {
             if (table != "sim" || !(id == DragonTable || id.StartsWith(DragonTable + ".", StringComparison.Ordinal))) return "";
@@ -66,7 +61,6 @@ namespace Chem.Mcp
                 : $"\n{id}{SimNote(id)}.";
         }
 
-        /// <summary>tune's value: "never" (or "off") for the dragon's budget is 0, its own word for never coming by itself.</summary>
         static string DragonValue(string param, string value)
         {
             if (param != DragonTable + ".budget") return value;

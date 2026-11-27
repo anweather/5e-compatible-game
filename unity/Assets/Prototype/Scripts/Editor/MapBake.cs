@@ -22,7 +22,6 @@ public static class MapBake
         Debug.Log("MAP BAKE: " + Bake());
     }
 
-    /// <summary>Bakes the open map's folder; says what it wrote, or why it didn't.</summary>
     public static string Bake()
     {
         string dir = ChemGrid.Folders.World;
@@ -48,8 +47,6 @@ public static class MapBake
         }
     }
 
-    // The order the yard build baked in before phase 6: heights, trees, the cells (which know the trees), the cells'
-    // own heights and paint, then the pack.
     static GroundPack BakeValley(ValleyBake bake, ChemGrid grid, string[] yardRows, TerrainData template)
     {
         var layout = bake.Layout;
@@ -63,15 +60,12 @@ public static class MapBake
         MapFile.WriteCells(ChemGrid.Folders.World, cells);
         var world = ChemGrid.MapWorld(grid.LoadBaseRules(), ChemGrid.CellMap(), grid.seed, out _);
         bake.BakeCells(world, grid.stepHeight);
-        // The map's own stamps (stamps.json): no tree on a crag's face or a canyon's floor.
         valleyTrees.RemoveAll(t =>
         {
             var c = ValleyBuilder.CellAt(t.at);
             return world.InBounds(c.x, c.y) && world.IsStampedRock(c.x, c.y);
         });
 
-        // The cells painted as they are: the old yard's, the ball court's dirt floor (CellKind), the paths, the villages'
-        // squares, lanes and walls, and what the stamps moved.
         var painted = new List<(int x, int y)>();
         for (int y = yard.yMin; y < yard.yMax; y++)
             for (int x = yard.xMin; x < yard.xMax; x++) painted.Add((x, y));
@@ -98,10 +92,6 @@ public static class MapBake
         }
     }
 
-    // --- trees -----------------------------------------------------------------
-
-    // The valley's forest: world points with a scale, a species and a turn each. Open meadow near the yard, thickening
-    // toward the valley's edges; past them as thick as the generated land's biome grows it (ValleySurroundings).
     static List<(Vector2 at, float scale, int species, float turn)> TreeSpots(ValleyBake bake, bool any)
     {
         var spots = new List<(Vector2, float, int, float)>();
@@ -121,8 +111,6 @@ public static class MapBake
             float scale = 0.8f + 0.5f * (float)rng.NextDouble();
             spots.Add((w, scale, rng.NextDouble() < 0.35 ? 1 : 0, (float)(rng.NextDouble() * Mathf.PI * 2)));
         }
-        // None on the ball court, in a village, on the coast or by the path. Dropped afterwards, so every
-        // other tree stands where it always has.
         spots.RemoveAll(s => ValleyShape.InCourt(s.Item1, -1.5f));
         spots.RemoveAll(s => ValleyShape.DistanceToVillage(s.Item1) < 4f);
         spots.RemoveAll(s => ValleyCoast.Coastal(s.Item1) || ValleyCoast.DistanceToPath(s.Item1) < 3.5f);
@@ -135,7 +123,6 @@ public static class MapBake
         !ValleyShape.KeepClear(w, 14f) && (w - ValleyBuilder.StonesAt).magnitude > 16f && (w - ValleyBuilder.OutcropAt).magnitude > 14f &&
         ValleyShape.HeightAt(w) <= 150f && bake.Steepness(w) <= 34f;
 
-    // The valley's trees and one smaller conifer on each of the yard map's tree cells.
     static IEnumerable<(Vector2 at, float scale, int species, float turn)> AllTrees(
         List<(Vector2 at, float scale, int species, float turn)> valley, ChemGrid grid, RectInt yard, World world)
     {
@@ -151,11 +138,6 @@ public static class MapBake
         }
     }
 
-    // --- cells -----------------------------------------------------------------
-
-    // The cell map from the same shapes the ground comes from, the yard's rows in their corner; and the river's cells whose
-    // ground is cut below their water (ValleyShape.ChannelDepth) and how deep, as world cell indices: the water stands at
-    // the banks' level, over the channel.
     static (string cells, int[] channelCells, float[] channelDepths) Cells(TerrainGrid layout, float cs, string[] yardRows,
         List<(Vector2 at, float scale, int species, float turn)> trees)
     {
@@ -178,10 +160,7 @@ public static class MapBake
             {
                 int yx = x - left, yy = y - top;
                 bool inYard = yx >= 0 && yx < yw && yy >= 0 && yy < yh;
-                // Cell centre on the ground plane (yard cell (0, 0) is at (0, (yh - 1) * cs)).
                 var p = new Vector2(yx * cs, (yh - 1 - yy) * cs);
-                // Where ValleyGround reads a cell's ground: its heightmap sample (the cell's centre on a full-detail
-                // chunk, its south-west corner on a coarse one); the river is decided and its channel measured there.
                 var (i, j, sx, sz) = layout.CellSample(x, y);
                 var (wx, wz) = layout.SamplePosition(i, j, sx, sz);
                 var sample = new Vector2(wx, wz);
@@ -204,37 +183,28 @@ public static class MapBake
         return (rows.ToString(), channelCells.ToArray(), channelDepths.ToArray());
     }
 
-    // The generated land's own lakes and rivers past the valley floor ('\0' for none); the coast decides its own water.
     static char GeneratedWater(Vector2 p)
     {
         bool coast = ValleyCoast.Weight(p) > 0.05f || ValleyCoast.InIsland(p) > -40f;
         return !coast && ValleySurroundings.Mask(p) > 0.5f ? ValleySurroundings.Water(p) : '\0';
     }
 
-    // Lake water (where the ground is under the lake's surface: the river's banks, not its channel's bed, so the river
-    // runs on at its own level until it meets the lake), the generated land's lakes and rivers, cabin wall, a tree, bare
-    // shore, or meadow grass.
     static char CellKind(Vector2 p, Vector2 sample, bool tree)
     {
         float ground = ValleyShape.BankHeightAt(p);
-        // Under the lake's or the sea's surface (one level): water.
         if (ground < ValleyShape.LakeLevel) return 'w';
         char water = GeneratedWater(p);
         if (water != '\0') return water;
         if (ValleyShape.InRiver(sample)) return 'r';
         if (ValleyShape.OnCabinWindow(p)) return 'P';
         if (ValleyShape.InCabin(p)) return 'L';
-        // The ball court's floor is dirt: bare earth to look at, and nothing on it to burn.
         if (ValleyShape.InCourt(p, 0.2f)) return '.';
         if (DefenseFieldBuilder.OnPath(p)) return '.';
-        // Trees (the palms on the sand too), then the path and the beaches: bare ground, nothing to burn.
         if (tree) return 'T';
         if (ValleyCoast.OnPath(p) || ValleyCoast.OnSand(p, ground)) return '.';
         if (ValleyShape.DistanceToLake(p) < 6f && ground < 0.6f) return '.';
         return ',';
     }
-
-    // --- the pack --------------------------------------------------------------
 
     static GroundPack Pack(ValleyBake bake, float bottom, int[] channelCells, float[] channelDepths)
     {

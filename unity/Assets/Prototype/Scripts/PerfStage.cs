@@ -21,24 +21,18 @@ using UnityEngine;
 // map's thickest forest, cast as measuring starts: the frames of the cast and of the fire and smoke after it (#178).
 public partial class PerfStage : ShowcaseScript
 {
-    // Hollowmere's place and square in cells (world/villages.json).
     const int HollowmereX = 222, HollowmereY = 300, SquareX = 5, SquareY = 6;
     static readonly int[] BoltsAt = { 2, 8, 14, 20, 25 };
     const float BoltGap = 0.4f, Noon = 12f, Night = 21.5f;
-    // The route in chunks: F-0002's, in a ring through the forest, walked until the run ends.
     static readonly (int cx, int cy)[] ForestRoute = { (6, 7), (6, 6), (5, 6), (5, 5), (4, 5), (4, 4), (5, 4), (6, 4), (6, 5), (7, 5), (7, 6), (6, 6) };
     const int ChunkCells = 64, WallCells = 40, WallDeep = 6, DragonWarning = 30;
     const float StuckSeconds = 6f, JumpEverySeconds = 1f, ArriveMetres = 3f;
     const int FireballBlast = 3, FireballReach = 8;
     const float AimSecondsEach = 5f, AimStepSeconds = 0.1f, AimRingMetres = 14f, RelightSeconds = 0.5f;
 
-    /// <summary>The scenario's name. Set before Start.</summary>
     public string Scenario { get; set; }
-    /// <summary>The hour to set, or a negative number for the scenario's own.</summary>
     public float Hour { get; set; } = -1f;
-    /// <summary>Whether the scene is set.</summary>
     public bool Ready { get; private set; }
-    /// <summary>The measuring has begun: the wizard sets off.</summary>
     public bool Go { get; set; }
 
     protected override IEnumerator Play()
@@ -52,22 +46,22 @@ public partial class PerfStage : ShowcaseScript
         else if (Scenario == "fireball")
         {
             StartCoroutine(Fireball());
-            yield break; // Ready once the chunks round the forest are drawn
+            yield break;
         }
         else if (Scenario == "handover")
         {
             StartCoroutine(Handover());
-            yield break; // Ready once every pair is taken
+            yield break;
         }
         else if (Scenario == "stand")
         {
             yield return Stand();
-            yield break; // Ready once the chunks round it are drawn
+            yield break;
         }
         else if (Scenario == "roadwalk" && (Pair("-perf-from") != null || Asked("-perf-river") || Asked("-perf-forest")))
         {
             StartCoroutine(RoadWalk());
-            yield break; // Ready once the chunks round its start are drawn
+            yield break;
         }
         else if (Scenario is not ("walkout" or "seamwalk" or "roadwalk")) Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));
         if (Scenario == "forest") StartCoroutine(Walk());
@@ -82,8 +76,6 @@ public partial class PerfStage : ShowcaseScript
         Ready = true;
     }
 
-    // A Fireball into the map's thickest forest (the chunk forestload burns), at its cell with the most trees round it:
-    // the wizard a cast's reach south of it, the camera on it, and the chunks round it drawn before the run starts.
     IEnumerator Fireball()
     {
         var thickest = World.ChunkCoords.OrderByDescending(TreesIn).ThenBy(c => c.cy).ThenBy(c => c.cx).First();
@@ -104,8 +96,6 @@ public partial class PerfStage : ShowcaseScript
         Debug.Log($"PERF FIREBALL chunk={thickest.cx},{thickest.cy} cell={best.x},{best.y} trees={most}");
         yield return null;
         while (grid.ChunksLeftToDraw > 0) yield return null;
-        // Again once its ground is drawn: on the nine the forest is far from the start, and a wizard put there before
-        // its chunk's ground stood fell through the map and cast from 2 km under it, so the Fireball never landed.
         PlaceCell(best.x, best.y + FireballReach);
         Ready = true;
         while (!Go) yield return null;
@@ -122,8 +112,6 @@ public partial class PerfStage : ShowcaseScript
         return trees;
     }
 
-    // One view from above the valley's middle, for the dragon's flight (from R, at its real speed, with a short warning) and for
-    // the same view with no dragon.
     void DragonShot()
     {
         var middle = grid.CellCenter(World.W / 2, World.H / 2);
@@ -134,7 +122,6 @@ public partial class PerfStage : ShowcaseScript
         grid.SummonDragon();
     }
 
-    // Noon, this weather and no other, ramped in at once.
     IEnumerator Sky(string only)
     {
         var kinds = new[] { "clear", "cloudy", "windy", "fog", "rain", "storm", "snow" };
@@ -144,7 +131,6 @@ public partial class PerfStage : ShowcaseScript
         return Switch(At(hour) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': { " + weights + " } }");
     }
 
-    // What stands where, chunk by chunk: for choosing a route, and for reading a spike's chunk.
     void LogMap()
     {
         var line = new System.Text.StringBuilder("PERF MAP cx,cy:trees/wet");
@@ -171,7 +157,6 @@ public partial class PerfStage : ShowcaseScript
         return at;
     }
 
-    // The stick, sprinting, as PlaytestPlayer steers: jumps when blocked, and a teleport (counted) when stuck.
     IEnumerator Walk()
     {
         Teleport(ChunkMiddle(ForestRoute[0]) + Vector3.up * 0.1f);
@@ -220,7 +205,6 @@ public partial class PerfStage : ShowcaseScript
         }
     }
 
-    // One spell of each kind of marker, its aim walking round a ring so the mesh is redrawn all the time.
     IEnumerator Aim()
     {
         var mid = V(28f, 0f, 15f);
@@ -248,7 +232,6 @@ public partial class PerfStage : ShowcaseScript
             }
     }
 
-    // A wall WallCells long and WallDeep thick on open ground, the camera low and close, kept burning at its hottest.
     IEnumerator FlameWall()
     {
         var mid = grid.CellAt(V(28f, 0f, 15f));
@@ -273,10 +256,8 @@ public partial class PerfStage : ShowcaseScript
 
     static bool Asked(string flag) => System.Environment.GetCommandLineArgs().Contains(flag);
 
-    // -perf-weather KIND (clear, cloudy, windy, fog, rain, storm, snow): the weather held, for the haze's stills.
     static string WeatherAsked => System.Environment.GetCommandLineArgs().SkipWhile(a => a != "-perf-weather").Skip(1).FirstOrDefault();
 
-    // What else a wall of flames brings, taken away for a run: the fire lights and the smoke (every particle).
     void LateUpdate()
     {
         if (Asked("-perf-lights-off"))
@@ -288,17 +269,14 @@ public partial class PerfStage : ShowcaseScript
             foreach (var look in FindObjectsByType<ParticleSystemRenderer>(FindObjectsSortMode.None)) look.enabled = false;
     }
 
-    // Takes a surface's meshes out of the picture, to see what they cost the GPU.
     static void Hide(string surface)
     {
         var root = GameObject.Find(surface);
         if (root != null) root.SetActive(false);
     }
 
-    /// <summary>Takes the camera to a fixed shot; for PerfPsoCheck.</summary>
     public void CutTo(Vector3 position, Vector3 lookAt) => Cut(position, lookAt);
 
-    // After Sky: a rule switch replaces the mods, a Toggle adds to them.
     IEnumerator Wildfire()
     {
         if (grid.TryGetComponent<RuleSwitcher>(out var switcher)) switcher.Toggle("wildfire");

@@ -19,7 +19,6 @@ public static class ItemBuilder
         ItemIds.Spyglass, ItemIds.DancingLights, ItemIds.SendingStone, ItemIds.Ball, ItemIds.Pick,
     };
 
-    /// <summary>Builds (or rebuilds) one prefab per item.</summary>
     public static List<ThingSpawner.KindPrefab> BuildPrefabs()
     {
         var built = new List<ThingSpawner.KindPrefab>();
@@ -39,8 +38,6 @@ public static class ItemBuilder
         return built;
     }
 
-    // Greybox shapes. Lit items get a placeholder emission (a black one would drop the
-    // material's emission keyword when saved); ItemLight sets the rules' colour.
     static GameObject Shape(string id)
     {
         switch (id)
@@ -66,7 +63,6 @@ public static class ItemBuilder
             }
             case ItemIds.Pick:
             {
-                // A haft, and a thin head across its top (no collider of its own).
                 var haft = Solid(PrimitiveType.Cylinder, new Vector3(0.05f, 0.4f, 0.05f));
                 PropBuilder.Paint(haft, "ItemPickHaft", new Color(0.45f, 0.3f, 0.16f), 0.3f);
                 var head = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -79,7 +75,6 @@ public static class ItemBuilder
             }
             case ItemIds.Ball:
             {
-                // A big kickball (70 cm): easy to see and to run into on the big court.
                 var ball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
                 ball.transform.localScale = Vector3.one * 0.7f;
                 ball.GetComponent<Collider>().sharedMaterial = Bouncy();
@@ -104,7 +99,6 @@ public static class ItemBuilder
         }
     }
 
-    // A cylinder's own collider is a capsule, which rolls; a convex mesh stands.
     static GameObject Solid(PrimitiveType type, Vector3 scale)
     {
         var go = GameObject.CreatePrimitive(type);

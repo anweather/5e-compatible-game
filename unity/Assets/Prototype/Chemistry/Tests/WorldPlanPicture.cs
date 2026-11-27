@@ -73,7 +73,6 @@ namespace Chem.Tests
             }
         }
 
-        /// <summary>A heights picture's colour for land <paramref name="v"/> (land units): sea blue by depth, else green to brown to white.</summary>
         internal static (int R, int G, int B) Height(int v)
         {
             if (v < ChunkGen.SeaLevel) return (30, 70 + Math.Max(0, 60 + v / 6), 150 + Math.Max(0, 60 + v / 8));
@@ -81,7 +80,6 @@ namespace Chem.Tests
             return t < 128 ? (60 + t, 130 + t / 3, 50) : (188 + (t - 128) / 2, 172 + (t - 128) * 2 / 3, 50 + (t - 128) * 3 / 2);
         }
 
-        /// <summary>Writes <paramref name="col"/> lit by <paramref name="shade"/> into an RGB array at pixel <paramref name="at"/>.</summary>
         internal static void Put(byte[] rgb, int at, (int R, int G, int B) col, int shade)
         {
             rgb[at * 3] = (byte)Math.Max(0, Math.Min(255, col.R + shade));
@@ -92,7 +90,6 @@ namespace Chem.Tests
         static (byte, byte, byte) Mix((byte r, byte g, byte b) a, (byte r, byte g, byte b) b, int pctB) =>
             ((byte)((a.r * (100 - pctB) + b.r * pctB) / 100), (byte)((a.g * (100 - pctB) + b.g * pctB) / 100), (byte)((a.b * (100 - pctB) + b.b * pctB) / 100));
 
-        /// <summary>The plan at <paramref name="px"/> pixels a world square.</summary>
         internal static Canvas Draw(WorldPlan plan, int px)
         {
             var g = plan.Grid;
@@ -122,7 +119,6 @@ namespace Chem.Tests
                     cv.Disc(cx, cy, P(c.Notch[k]), Sea);
                 }
             }
-            // Features from each side's slot to the hub, the ones under the roads first.
             foreach (var kind in new[] { EdgeKind.Canyon, EdgeKind.Range, EdgeKind.River, EdgeKind.Road })
                 for (int i = 0; i < plan.Count; i++)
                 {
@@ -146,7 +142,6 @@ namespace Chem.Tests
                             cv.Line(x0 + P(sx), y0 + P(sy), x0 + P(hx), y0 + P(hy), r, col, kind == EdgeKind.Road && f.Trail ? Math.Max(2, px / 16) : 0);
                         }
                 }
-            // Grid lines between squares, and a cross on each filler.
             for (int i = 0; i < plan.Count; i++)
             {
                 int x0 = g.X(i) * px, y0 = g.Y(i) * px;

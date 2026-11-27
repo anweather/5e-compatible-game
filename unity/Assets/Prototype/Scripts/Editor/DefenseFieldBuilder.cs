@@ -22,24 +22,18 @@ public static class DefenseFieldBuilder
 {
     const string Generated = "Assets/Prototype/Generated";
 
-    /// <summary>The gate's square centre and the flag's (x, z), on one row of 1.5 m squares, 60 m apart.</summary>
     public static readonly Vector2 Gate = new Vector2(-25.5f, 85.5f), Flag = new Vector2(34.5f, 85.5f);
 
-    /// <summary>How far either side of the path the field reaches (m), and past its ends.</summary>
     public const float HalfWidth = 14f, EndRoom = 6f;
 
-    // The start plate: south-west of the flag, off the path; its radius.
     static readonly Vector2 Plate = Flag + new Vector2(-5f, -6f);
     const float PlateRadius = 1.4f;
 
-    /// <summary>Whether a point is within <paramref name="margin"/> of the field's rectangle (inside it with a negative one).</summary>
     public static bool NearDefenseField(Vector2 p, float margin) =>
         p.x > Gate.x - EndRoom - margin && p.x < Flag.x + EndRoom + margin && Mathf.Abs(p.y - Gate.y) < HalfWidth + margin;
 
-    /// <summary>Whether a point is on the path's dirt: the row of squares from the gate to the flag.</summary>
     public static bool OnPath(Vector2 p) => p.x > Gate.x - 1f && p.x < Flag.x + 1f && Mathf.Abs(p.y - Gate.y) < 0.75f;
 
-    /// <summary>The path's squares (world cells), painted as the dirt they are.</summary>
     public static IEnumerable<(int x, int y)> PathCells()
     {
         var layout = EditorGround.Layout;
@@ -55,7 +49,6 @@ public static class DefenseFieldBuilder
         public Material stone, wood, flag, plate, banner;
     }
 
-    /// <summary>Builds the field, named "Defense field", with its DefenseField.</summary>
     public static DefenseField Build(ChemGrid grid)
     {
         var looks = MakeMaterials();
@@ -89,7 +82,6 @@ public static class DefenseFieldBuilder
         return t;
     }
 
-    // A rough stone arch over the path's west end: two pillars either side of it and a lintel.
     static void GateArch(Transform root, Looks looks)
     {
         var foot = At(Gate);
@@ -103,7 +95,6 @@ public static class DefenseFieldBuilder
         Solid(root, PrimitiveType.Cube, "Defense gate lintel", foot + Vector3.up * (tall - 0.1f), new Vector3(1.3f, 0.9f, gap * 2f + 1.6f), looks.stone);
     }
 
-    // The flag at the path's east end: a pole, a red flag flying west toward the gate, and the lives on a board below.
     static TextMesh FlagPole(Transform root, Looks looks)
     {
         var foot = At(Flag);
@@ -111,15 +102,12 @@ public static class DefenseFieldBuilder
         Solid(root, PrimitiveType.Cylinder, "Defense flagpole", foot + Vector3.up * (pole / 2f), new Vector3(0.2f, pole / 2f, 0.2f), looks.wood);
         Piece(root, PrimitiveType.Cube, "Defense flag", foot + new Vector3(-1.1f, pole - 0.7f, 0f), new Vector3(2f, 1.2f, 0.05f), looks.flag);
         var board = Piece(root, PrimitiveType.Cube, "Defense banner board", foot + new Vector3(-0.2f, 2.4f, 0f), new Vector3(0.08f, 1.3f, 2.2f), looks.banner);
-        // The words on the board's west face, toward the gate and the players.
         var words = new GameObject("Defense banner words");
         words.transform.SetParent(board.transform.parent, true);
         words.transform.SetPositionAndRotation(board.transform.position + new Vector3(-0.06f, 0f, 0f), Quaternion.LookRotation(Vector3.right));
-        // Fitted to the longest it gets in a game (the lives and the wave), inside the board.
         return SignWords.Write(words, "LIVES 10", 0.05f, 1.9f, 1.1f, "LIVES 10\nWAVE 10/10");
     }
 
-    // The start plate south-west of the flag, with a sign; returns the middle of the plate's top.
     static Vector3 StartPlate(Transform root, Looks looks)
     {
         var at = At(Plate) + Vector3.up * 0.2f;
@@ -128,9 +116,7 @@ public static class DefenseFieldBuilder
         var signAt = At(Plate + new Vector2(-2.6f, 0.4f));
         var board = new GameObject("Defense sign").transform;
         board.SetParent(root, true);
-        // Facing the path (north), where players come from.
         board.SetPositionAndRotation(signAt, Quaternion.LookRotation(Vector3.back));
-        // A wider, taller board, and the words in short lines that fit it.
         foreach (float x in new[] { -1.2f, 1.2f })
             Local(board, PrimitiveType.Cylinder, new Vector3(x, 0.9f, 0f), new Vector3(0.12f, 0.9f, 0.12f), looks.wood);
         Local(board, PrimitiveType.Cube, new Vector3(0f, 1.75f, 0f), new Vector3(2.8f, 1.4f, 0.08f), looks.wood);
@@ -141,7 +127,6 @@ public static class DefenseFieldBuilder
         return at;
     }
 
-    // A drawn piece the wizard bumps into (its own mesh as the collider).
     static void Solid(Transform root, PrimitiveType type, string name, Vector3 at, Vector3 scale, Material mat)
     {
         var go = Piece(root, type, name, at, scale, mat);

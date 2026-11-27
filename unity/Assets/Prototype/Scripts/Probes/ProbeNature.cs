@@ -13,22 +13,16 @@ using UnityEngine;
 // the grown tree, the thorns and the thorns burning.
 public class NatureProbe : ProbeScenario
 {
-    // The yard's tree at (5, 8); the Fireball lands two squares north of it, so its crater misses
-    // the tree (shaping would topple it) and its flames reach it.
     const int BurnX = 5, BurnY = 6, TreeX = 5, TreeY = 8;
-    // Spike Growth on the south meadow; the wizard walks east along row 13.
     const int SpikeX = 13, SpikeY = 13;
 
     protected override IEnumerator Run()
     {
-        // Noon, clear and calm, so no rain puts the fire out or snow covers the grass.
         yield return Switch(At(12f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, " +
             "'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 } }");
         yield return Regrow();
         yield return Thorns();
     }
-
-    // --- Plant Growth ------------------------------------------------------------------
 
     IEnumerator Regrow()
     {
@@ -54,7 +48,6 @@ public class NatureProbe : ProbeScenario
         Check("tree_burns_to_stump", treeAfterFire == TerrainIds.Stump, $"the tree at ({TreeX}, {TreeY}) is now {treeAfterFire}");
         Shot("burnt");
 
-        // Plant Growth, held to charge 2 (a radius of 5): green shoots ripen outward into grass.
         Check($"bar_has_{SpellIds.PlantGrowth}", caster.Select(SpellIds.PlantGrowth));
         puppet.Face(grid.CellCenter(target.x, target.y));
         caster.Cast(new CastCommand(SpellIds.PlantGrowth, target.x, target.y, 1, 2));
@@ -74,7 +67,6 @@ public class NatureProbe : ProbeScenario
         Check("stump_sprouts", onStump == TerrainIds.Sapling, $"the old tree's square is {onStump}");
         Shot("regrown");
 
-        // The saplings grow into trees (90 to 240 ticks, plus the wave): the stump's tree is drawn again.
         yield return Wait(25f);
         string grown = World.At(tree.x, tree.y).T;
         int trees = Count(area, c => c.T == TerrainIds.Tree);
@@ -88,8 +80,6 @@ public class NatureProbe : ProbeScenario
         Shot("tree");
     }
 
-    // --- Spike Growth --------------------------------------------------------------------
-
     IEnumerator Thorns()
     {
         var surface = wizard.GetComponent<SurfaceEffects>();
@@ -98,7 +88,6 @@ public class NatureProbe : ProbeScenario
         row.y = grid.GroundAt(row);
         Cut(row + V(0f, 8f, -12f), row);
 
-        // On open grass first, for the speed to compare with.
         Place(1, SpikeY);
         yield return Timed(8, SpikeY, 1.6f);
         float open = lastSpeed;
@@ -115,7 +104,6 @@ public class NatureProbe : ProbeScenario
 
         Place(SpikeX - 4, SpikeY);
         yield return Wait(0.3f);
-        // The Fireball earlier may have caught the wizard; start the walk whole, so the thorns can hurt.
         if (vitals != null) vitals.Heal(vitals.HealthMax);
         float health = vitals != null ? vitals.Health : 0f;
         yield return Timed(SpikeX + 4, SpikeY, 1.6f);
@@ -128,7 +116,6 @@ public class NatureProbe : ProbeScenario
         Check("thorns_slow", open > 0.5f && slow < open * 0.75f && felt, $"{open:0.00} m/s on grass, {slow:0.00} m/s through the thorns (in thorns: {felt})");
         Check("thorns_hurt", hurt >= 1f, $"{hurt:0.0} health lost walking {slow * 1.6f:0.0} m");
 
-        // A Fire Bolt into the thorns: they catch, and burn to ash.
         Place(SpikeX - 8, SpikeY);
         yield return CastFromBar(SpellIds.FireBolt, SpikeX, SpikeY, 1, 1.5f);
         int burning = Count(squares, c => c.Fire > 0);
@@ -142,10 +129,8 @@ public class NatureProbe : ProbeScenario
         Shot("thorns_burnt");
     }
 
-    // The ground the last timed walk covered a second (metres, flat).
     float lastSpeed;
 
-    // Walks toward a yard cell for a while, timing it (lastSpeed).
     IEnumerator Timed(int x, int y, float seconds)
     {
         var from = wizard.transform.position;

@@ -11,10 +11,8 @@ namespace Chem
 {
     public static class Wing
     {
-        // The opening rows a wing asks for by name, from rules/buildings.json.
         const string Door = "door", Window = "window";
 
-        /// <summary>The longest wall facing this side: left of its way is outside, as outer walls run clockwise. Null if none.</summary>
         public static (string id, int length)? HostOf(JObject row, Side side)
         {
             var joins = row["joins"] as JObject;
@@ -31,7 +29,6 @@ namespace Chem
             return best;
         }
 
-        /// <summary>Adds a wing of width by depth cells to the row: on the wall facing that side where it fits along it, else against the row's cells.</summary>
         public static void Add(JObject row, Side side, int width, int depth, BuildingTables tables)
         {
             var host = HostOf(row, side);
@@ -49,7 +46,6 @@ namespace Chem
             return $"wing{n}";
         }
 
-        // Three walls out from the host and back, clockwise, between two new joins on it.
         static void OnWall(JObject row, string hostId, int width, int depth, string name, BuildingTables tables)
         {
             var joins = (JObject)row["joins"];
@@ -75,7 +71,6 @@ namespace Chem
             GrowRoof(row, (string)host["from"], (string)host["to"], name);
         }
 
-        // The host's openings under the wing go; a hollow building gets a door through to the wing.
         static void GoThrough(JObject row, JObject host, int start, int width, int length, BuildingTables tables)
         {
             var kept = new JArray();
@@ -93,7 +88,6 @@ namespace Chem
             else host.Remove("openings");
         }
 
-        // A closed box flush against the row's cells on that side, when no wall there can take the wing.
         static void AgainstCells(JObject row, Side side, int width, int depth, string name)
         {
             var (x0, y0, x1, y1) = Extent(row);
@@ -118,7 +112,6 @@ namespace Chem
             RoofOver(row, name);
         }
 
-        // The row's extent in half cells from its at: its joins and its built cells.
         static (int x0, int y0, int x1, int y1) Extent(JObject row)
         {
             var xs = new List<int>();
@@ -148,7 +141,6 @@ namespace Chem
             return wall;
         }
 
-        // The outline goes out round the wing where the host's two joins are next to each other in it; else the wing has its own roof.
         static void GrowRoof(JObject row, string from, string to, string name)
         {
             foreach (var roof in (row["roofs"] as JObject)?.PropertyValues().OfType<JObject>() ?? Enumerable.Empty<JObject>())

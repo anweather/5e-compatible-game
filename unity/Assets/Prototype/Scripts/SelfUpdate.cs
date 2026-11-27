@@ -21,23 +21,14 @@ public static class SelfUpdate
     static UpdateManager manager;
     static UpdateInfo pending;
 
-    /// <summary>True when this copy was installed by Velopack and can update itself.</summary>
     public static bool Installed { get; private set; }
 
-    /// <summary>
-    /// Whether an update found at launch is downloaded and applied straight away (the
-    /// default: everyone playing together needs the same version); -no-auto-update
-    /// leaves it to the Esc menu's button.
-    /// </summary>
     public static bool AutoUpdate => Array.IndexOf(Environment.GetCommandLineArgs(), "-no-auto-update") < 0;
 
-    /// <summary>The version Velopack installed, or null when this copy isn't a Velopack install.</summary>
     public static string CurrentVersion => Installed ? manager.CurrentVersion?.ToString() : null;
 
-    /// <summary>Download progress, 0 to 100, while an update is downloading; -1 otherwise.</summary>
     public static int Progress { get; private set; } = -1;
 
-    /// <summary>Why the last check or download failed, or null.</summary>
     public static string Error { get; private set; }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -46,10 +37,6 @@ public static class SelfUpdate
         if (Application.isEditor) return;
         try
         {
-            // Handles Velopack's install/update/uninstall hooks and finishes an update that was
-            // waiting for a restart. Velopack ends a hook run with Environment.Exit, which a
-            // Unity player doesn't honour (Setup then waits 30 s and reports a failure), so
-            // each hook ends the process itself.
             VelopackApp.Build()
                 .OnAfterInstallFastCallback(_ => EndHookRun())
                 .OnAfterUpdateFastCallback(_ => EndHookRun())
@@ -69,15 +56,12 @@ public static class SelfUpdate
         }
     }
 
-    // A hook run (Setup or Update.exe started the game with --veloapp-...) has nothing more
-    // to do: end at once with success, without Unity's shutdown (QuickExit.Now).
     static void EndHookRun()
     {
         Debug.Log("Self update: Velopack hook done; ending this run.");
         QuickExit.Now(0);
     }
 
-    // GitHub's pre-releases, or the folder or URL after -update-source.
     static IUpdateSource Source()
     {
         var args = Environment.GetCommandLineArgs();
@@ -89,11 +73,6 @@ public static class SelfUpdate
         return new GithubSource(BuildVersion.RepoUrl, null, true, null);
     }
 
-    /// <summary>
-    /// Asks the update source for a newer version: its X.Y.Z, or null when there is none.
-    /// Velopack runs on a worker (off Unity's main-thread context), and a check that takes
-    /// longer than CheckSeconds fails rather than waiting forever.
-    /// </summary>
     public static async Task<string> CheckAsync()
     {
         if (!Installed) return null;
@@ -107,11 +86,6 @@ public static class SelfUpdate
 
     const int CheckSeconds = 30;
 
-    /// <summary>
-    /// Downloads the update found by CheckAsync, then quits so Velopack can apply it and
-    /// restart the game. Call it from the main thread (a button): the await comes back
-    /// there, where Application.Quit is allowed.
-    /// </summary>
     public static async Task DownloadAndRestart()
     {
         if (pending == null || Progress >= 0) return;

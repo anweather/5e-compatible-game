@@ -43,7 +43,6 @@ public partial class PerfStage
         int k = 0, way = 1;
         while (enabled)
         {
-            // There and back again.
             if (k + way < 0 || k + way >= path.Count) way = -way;
             k += way;
             roadCells += Mathf.Max(Mathf.Abs(path[k].x - last.x), Mathf.Abs(path[k].y - last.y));
@@ -55,7 +54,6 @@ public partial class PerfStage
         inputs.sprint = false;
     }
 
-    // The densest wood's chunk and a path along its middle row, ForestHalfCells either side, keeping to the gaps.
     static ((int cx, int cy) heart, List<(int x, int y)> path) ForestPath(ChunkGen gen, HillsLand hills)
     {
         var heart = hills.Forest.Heart(hills.At);
@@ -71,7 +69,6 @@ public partial class PerfStage
         int off = 0;
         for (int x = hx - ForestHalfCells; x <= hx + ForestHalfCells; x++)
         {
-            // The sway nearest the last one with no tree round it (else straight on: the walk jumps or is put past it).
             for (int d = 0; d <= ForestSway; d++)
             {
                 if (Mathf.Abs(off + d) <= ForestSway && Clear(x, hy + off + d))
@@ -90,7 +87,6 @@ public partial class PerfStage
         return (heart, path);
     }
 
-    // Every frame once the run is going: the trees round the camera (TreeImpostors' counts for the tree budget).
     IEnumerator WatchTrees()
     {
         while (enabled)
@@ -110,7 +106,6 @@ public partial class PerfStage
         }
     }
 
-    /// <summary>The "PERF FORESTWALK" line: how far the walk went, and the trees round the camera on average.</summary>
     void LogForestWalk()
     {
         long n = System.Math.Max(1, forestFrames);

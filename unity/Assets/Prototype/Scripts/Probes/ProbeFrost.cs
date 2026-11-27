@@ -29,7 +29,6 @@ public class FrostProbe : ProbeScenario
         puppet.Face(at);
         caster.Cast(SpellIds.RayOfFrost, shore.x, shore.y + 1, 2);
         var line = World.SpellCells(World.Rules.Spell(SpellIds.RayOfFrost), shore.x, shore.y + 1, 2);
-        // The thrust releases the beam (0.14 s), it reaches the end (0.12 s), then holds 0.4 s.
         yield return Wait(0.4f);
         CheckBeam(line[line.Count - 1]);
         Shot("beam");
@@ -41,7 +40,6 @@ public class FrostProbe : ProbeScenario
         Metric("line_cells_frozen", frozen);
         Check("water_froze", wet > 0 && frozen == wet, $"{frozen}/{wet} wet squares in the beam frozen");
 
-        // The ice: a collider at the frozen squares, at or above the lake's drawn surface.
         var lake = GameObject.Find("Lake");
         float lakeY = lake != null ? lake.transform.position.y : float.NegativeInfinity;
         var ice = line.FirstOrDefault(c => World.At(c.x, c.y).Frozen);
@@ -53,7 +51,6 @@ public class FrostProbe : ProbeScenario
             hit ? $"ray hits '{h.collider.name}' at {h.point.y:0.00} m, the lake's surface at {lakeY:0.00} m" : "nothing under the ray");
         Shot("ice");
 
-        // Sleet Storm out on the open water: a wide circle of ice.
         var far = new Vector2Int(shore.x, shore.y + 9);
         Check("bar_has_sleet_storm", caster.Select(SpellIds.SleetStorm));
         caster.Cast(SpellIds.SleetStorm, far.x, far.y, 2);
@@ -67,8 +64,6 @@ public class FrostProbe : ProbeScenario
         Shot("sleet");
     }
 
-    // While the cast plays: one beam of frost from the wizard's hand to the end of the line, and no
-    // ice sphere (the old IceLance impact) or projectile ball anywhere.
     void CheckBeam((int x, int y) end)
     {
         var beam = FrostBeam.InPlay;

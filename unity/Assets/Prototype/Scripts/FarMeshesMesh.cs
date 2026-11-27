@@ -4,7 +4,6 @@ using UnityEngine;
 // ring's meshes that needs the engine, kept in the game so the plan builds and tests in dotnet.
 public static class FarMeshesMesh
 {
-    /// <summary>A mesh of these arrays (32-bit indices only when it needs them).</summary>
     public static Mesh ToMesh(this FarMeshes.Data data, string name)
     {
         var mesh = new Mesh { name = name };

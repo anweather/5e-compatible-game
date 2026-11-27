@@ -19,7 +19,6 @@ public class SitPose : MonoBehaviour
     Seat seat;
     float weight;
 
-    /// <summary>How far into the sitting pose the body is, 0 to 1.</summary>
     public float Weight => weight;
 
     void Awake()
@@ -40,11 +39,9 @@ public class SitPose : MonoBehaviour
         weight = Mathf.MoveTowards(weight, on != null ? 1f : 0f, Time.deltaTime * Ease);
         if (weight <= 0f || seat == null || hips == null) return;
 
-        // The hips down onto the seat, tipped back to lie on a lounger.
         var right = transform.right;
         var forward = transform.forward;
         var seatHips = seat.SeatPoint + Vector3.up * 0.06f;
-        // A lounger's back leans 55 degrees up from flat (PropMesher.Lounger): lie against it.
         float recline = seat.lounge ? -35f : -6f;
         hips.SetPositionAndRotation(
             Vector3.Lerp(hips.position, seatHips, weight),
@@ -56,7 +53,6 @@ public class SitPose : MonoBehaviour
         Arm(rightArm, 1f, forward, right);
     }
 
-    // Knees bent with the feet on the ground in front of the seat; on a lounger, straight out along it.
     void Leg(LimbIK.Limb leg, float side, Vector3 forward, Vector3 right)
     {
         if (!leg.Valid) return;
@@ -75,7 +71,6 @@ public class SitPose : MonoBehaviour
         LimbIK.Solve(leg, foot, knee, weight);
     }
 
-    // Hands on the thighs; on a lounger, clasped behind the head with the elbows out.
     void Arm(LimbIK.Limb arm, float side, Vector3 forward, Vector3 right)
     {
         if (!arm.Valid) return;

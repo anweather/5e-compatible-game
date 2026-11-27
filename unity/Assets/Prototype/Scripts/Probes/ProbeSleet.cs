@@ -31,7 +31,6 @@ public class SleetProbe : ProbeScenario
         at = Yard(TargetX, TargetY);
         at.y = grid.GroundAt(at);
         squares = World.SpellCells(World.Rules.Spell(SpellIds.SleetStorm), target.x, target.y, 1);
-        // From behind the wizard, high enough to see the cloud over the storm and the ground under it.
         var back = wizard.transform.position - at;
         back.y = 0f;
         Cut(at + back.normalized * 24f + V(0f, 8f, 0f), at + V(0f, 3f, 0f));
@@ -43,16 +42,14 @@ public class SleetProbe : ProbeScenario
         Metric("puddles_laid", puddles.Count);
         Check("something_to_freeze", burning > 0 && puddles.Count >= 20, $"{burning} squares burning, {puddles.Count} puddles laid");
 
-        // Half a second in: the storm is gathering, nothing has landed yet.
         float castAt = Time.time;
-        flyingBefore = Flying(); // the Fire Bolt's, which lingers a moment after it lands
+        flyingBefore = Flying();
         yield return CastFromBar(SpellIds.SleetStorm, TargetX, TargetY, 1, 0.5f);
         var storm = FindAnyObjectByType<SleetStorm>();
         CheckShow(storm);
         Check("not_landed_yet", squares.All(s => !World.At(s.x, s.y).Frozen), "the puddles wait for the sleet to reach the ground");
         if (storm == null) yield break;
 
-        // Well in: the sleet falls on the spell's squares, and they froze and went out when it landed.
         yield return Wait(1.1f);
         yield return CheckFalling(storm);
         CheckGround();
@@ -60,18 +57,16 @@ public class SleetProbe : ProbeScenario
         Metric("strength_raging", storm.Strength);
         Shot("storm");
 
-        // It dies away: weaker near its end, gone a few seconds after.
         yield return Wait(castAt + SleetStorm.Seconds - 0.7f - Time.time);
         float fading = storm != null ? storm.Strength : 0f;
         Metric("strength_near_end", fading);
         Check("storm_fades", fading > 0f && fading < 0.9f, $"strength {fading:0.00} near its end");
         yield return Wait(castAt + SleetStorm.Seconds + 5.5f - Time.time);
-        bool gone = storm == null; // Unity's null check: destroyed
+        bool gone = storm == null;
         Check("storm_ends", gone, gone ? "the storm is gone" : "the storm is still there");
         Shot("after");
     }
 
-    // Puddles on every other dry, open square of the storm that isn't burning (round the fire).
     void LayPuddles()
     {
         foreach (var (x, y) in squares)
@@ -88,7 +83,6 @@ public class SleetProbe : ProbeScenario
 
     int Burning() => squares.Count(s => World.At(s.x, s.y).Fire > 0);
 
-    // A storm over the target, with its cloud and sleet, and nothing flying or landing like a ball.
     void CheckShow(SleetStorm storm)
     {
         Check("storm_shown", storm != null && storm.Cloud != null && storm.Sleet != null && storm.Pellets != null,
@@ -108,7 +102,6 @@ public class SleetProbe : ProbeScenario
         Check("no_projectile", !projectile && !lance, $"projectile {(projectile ? "flew" : "none")}, ice impact {(lance ? "played" : "none")}");
     }
 
-    // The sleet: plenty of it, moving down from one frame to the next, and what's near the ground is over the squares.
     IEnumerator CheckFalling(SleetStorm storm)
     {
         var sleet = storm.Sleet;
@@ -140,7 +133,6 @@ public class SleetProbe : ProbeScenario
         Check("sleet_lands_on_squares", low > 50 && lowOver >= low * 0.9f, $"{lowOver} of {low} streaks near the ground are over the spell's squares");
     }
 
-    // What the rules say it does: the water in its squares freezes (wherever the puddles ran to) and the flames go out.
     void CheckGround()
     {
         int wet = squares.Count(s => World.At(s.x, s.y).Water > 0);

@@ -7,7 +7,6 @@ using System.Collections.Generic;
 
 namespace Chem
 {
-    /// <summary>A map's land as sea, basin or dry, cell by cell.</summary>
     public sealed class SeaMask
     {
         const byte Dry = 0, Sea = 1, Basin = 2;
@@ -15,20 +14,15 @@ namespace Chem
         public int W { get; }
         public int H { get; }
 
-        // Held a chunk at a time (core-mem-scale): a chunk all one kind (all sea, all dry: most of a map) is that byte alone;
-        // only a chunk that mixes them keeps a byte a cell. On the Scale Island 38 MB a byte a cell, a few MB this way.
         readonly int chunksW;
         readonly byte[] uniform;
         readonly byte[][] mixed;
 
-        /// <summary>How many cells are sea, and how many are in basins.</summary>
         public int SeaCells { get; }
         public int BasinCells { get; }
 
-        // Whether off the map is sea: when any of its cells is (the sea reaches the edge), unless the map says otherwise (OfKnown).
         readonly bool offMapSea;
 
-        // A mask from its chunks as they're held: a kind each, and a byte a cell for those that mix.
         SeaMask(int w, int h, byte[] uniform, byte[][] mixed, int seaCells, int basinCells, bool offMapSea)
         {
             W = w;
@@ -78,7 +72,6 @@ namespace Chem
                 }
         }
 
-        // A cell's kind, on the map.
         byte KindAt(int x, int y)
         {
             int c = (y >> Chunks.Shift) * chunksW + (x >> Chunks.Shift);
@@ -86,11 +79,6 @@ namespace Chem
             return cells == null ? uniform[c] : cells[((y & Chunks.Mask) << Chunks.Shift) | (x & Chunks.Mask)];
         }
 
-        /// <summary>
-        /// Whether every cell of a chunk and the eight round it (those on the map) is one kind, wet or dry alike (sea, and a
-        /// basin's when <paramref name="basins"/>): then every cell of the chunk is near water, for any reach up to a chunk,
-        /// exactly when it is wet itself (sea-land-speed: only coastal chunks need working out).
-        /// </summary>
         internal bool UniformAround(int cx, int cy, bool basins, out bool wet)
         {
             wet = false;
@@ -111,7 +99,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>The bytes the mask holds now: a byte a chunk, and a byte a cell of the chunks that mix sea, basin and dry.</summary>
         public long Bytes
         {
             get
@@ -123,7 +110,6 @@ namespace Chem
             }
         }
 
-        /// <summary>The mask of a map's land (row by row, w × h, in land units) at its sea level: below it is water.</summary>
         public static SeaMask Of(int[] land, int w, int h, int seaLevel)
         {
             if (land == null || land.Length != w * h) throw new ArgumentException($"the land is not {w} × {h}", nameof(land));
@@ -132,7 +118,6 @@ namespace Chem
             return Flooded(kind, w, h);
         }
 
-        /// <summary>The same, from land held a chunk at a time (LandChunks): read a band of rows at a time, never as an int a cell.</summary>
         public static SeaMask Of(LandChunks land, int seaLevel)
         {
             if (land == null) throw new ArgumentNullException(nameof(land));
@@ -148,14 +133,6 @@ namespace Chem
             return Flooded(kind, w, h);
         }
 
-        /// <summary>
-        /// A generated map's mask from its known chunks (ChunkGen.Know: 9 x 9 samples a chunk), not its land: a map too big
-        /// to bake whole (J-086) has no land to flood, and making every chunk to read it would be the whole map. The
-        /// generator knows its water already (the sea, a lake's or a pond's, which is a basin here), so nothing is flooded: a
-        /// chunk whose samples are all one kind is that kind, and one that mixes them takes each cell's nearest sample's, the
-        /// coast true to 8 cells. Off the map is never sea (the 12 x 10's north and south rows are ice and desert, and east
-        /// joins west). Every chunk is known side by side; the mask is the same on any number of threads.
-        /// </summary>
         public static SeaMask OfKnown(ChunkGen gen)
         {
             if (gen == null) throw new ArgumentNullException(nameof(gen));
@@ -181,8 +158,6 @@ namespace Chem
             return new SeaMask(w, h, uniform, mixed, seaCells, basinCells, offMapSea: false);
         }
 
-        // A known chunk's kinds: one for them all, or a byte a cell (its nearest sample's) where they mix; and its sea and
-        // basin cells, of the cols x rows of it on the map.
         static (byte kind, byte[] cells, int sea, int basin) OfKnownChunk(KnownChunk k, int cols, int rows)
         {
             var kinds = new byte[KnownChunk.Side * KnownChunk.Side];
@@ -197,7 +172,6 @@ namespace Chem
             return (kinds[0], cells, sea, basin);
         }
 
-        // A chunk whose samples mix kinds: each cell its nearest sample's, and the sea and basin cells of those on the map.
         static (byte[] cells, int sea, int basin) Mixed(byte[] kinds, int cols, int rows)
         {
             var cells = new byte[Chunks.Area];
@@ -215,24 +189,20 @@ namespace Chem
             return (cells, sea, basin);
         }
 
-        // A known sample's water as the mask's kind: a lake's or a pond's is a basin, a river's is dry (its cells hold it).
         static byte KindOf(byte water)
         {
             if (water == KnownChunk.Sea) return Sea;
             return water == KnownChunk.Lake ? Basin : Dry;
         }
 
-        // The mask of land whose cells under the sea level are marked 1 (LandChunks.Read's pass): the same mask as Of.
         internal static SeaMask OfLow(byte[] low, int w, int h)
         {
             for (int i = 0; i < low.Length; i++) low[i] = low[i] != 0 ? Basin : Dry;
             return Flooded(low, w, h);
         }
 
-        // Low cells (Basin) joined to the edge through low cells become sea; the rest of the low cells stay basins.
         static SeaMask Flooded(byte[] kind, int w, int h)
         {
-            // From every low cell on the edge, through the low cells beside each other: the sea.
             var open = new Queue<int>();
             void Reach(int x, int y)
             {
@@ -264,16 +234,10 @@ namespace Chem
 
         bool In(int x, int y) => x >= 0 && y >= 0 && x < W && y < H;
 
-        /// <summary>Whether a cell is sea: below the level and joined to the map's edge. Off the map is sea when any edge is.</summary>
         public bool IsSea(int x, int y) => In(x, y) ? KindAt(x, y) == Sea : offMapSea;
 
-        /// <summary>Whether a cell is in a basin: below the level, and walled off from the sea.</summary>
         public bool IsBasin(int x, int y) => In(x, y) && KindAt(x, y) == Basin;
 
-        /// <summary>
-        /// The cells within <paramref name="reach"/> cells (a square's half side) of water: the sea's, and the basins' too
-        /// when <paramref name="basins"/>. What a surface over the water spans, so it runs up under the beach.
-        /// </summary>
         public bool[] Near(int reach, bool basins)
         {
             var wet = new bool[W * H];
@@ -286,10 +250,6 @@ namespace Chem
             return Grow(Grow(wet, reach, true), reach, false);
         }
 
-        /// <summary>
-        /// Near for a rectangle only (island-startup-2): the same answers for its cells as Near's, from the cells within
-        /// reach of it, not a pass over the whole map. Row-major, w x h.
-        /// </summary>
         public bool[] NearIn(int x0, int y0, int w, int h, int reach, bool basins)
         {
             int wx0 = Math.Max(0, x0 - reach), wy0 = Math.Max(0, y0 - reach);
@@ -314,16 +274,10 @@ namespace Chem
             return result;
         }
 
-        /// <summary>
-        /// Near, a chunk at a time as its cells are asked (island-startup-2): each chunk worked out by NearIn the first time
-        /// one of its cells is, and kept; so a view asking round the players holds and works out those chunks, not the map.
-        /// </summary>
         public SeaNear NearByChunk(int reach, bool basins) => new SeaNear(this, reach, basins);
 
-        // Spreads each true cell `reach` cells either way along the rows, or along the columns.
         bool[] Grow(bool[] wet, int reach, bool alongRows) => Grow(wet, W, H, reach, alongRows);
 
-        // Grow, over a w x h block.
         static bool[] Grow(bool[] wet, int width, int height, int reach, bool alongRows)
         {
             var grown = new bool[wet.Length];
@@ -349,7 +303,6 @@ namespace Chem
         }
     }
 
-    /// <summary>The cells near water (SeaMask.Near), worked out a chunk at a time as they're asked, and kept.</summary>
     public sealed class SeaNear
     {
         readonly SeaMask sea;
@@ -364,17 +317,14 @@ namespace Chem
             this.basins = basins;
         }
 
-        /// <summary>How many chunks are worked out.</summary>
         public int Chunks => made.Count;
 
-        /// <summary>Whether the cell is near water, as Near(reach, basins) says; false off the map.</summary>
         public bool this[int x, int y]
         {
             get
             {
                 if (x < 0 || y < 0 || x >= sea.W || y >= sea.H) return false;
                 int cx = Chem.Chunks.ChunkOf(x), cy = Chem.Chunks.ChunkOf(y);
-                // Open sea or dry inland, all round: no chunk worked out or kept (the coarse sea asks nearly every chunk).
                 if (reach <= Chem.Chunks.Size && sea.UniformAround(cx, cy, basins, out bool wet)) return wet;
                 long key = Chem.Chunks.Key(cx, cy);
                 if (!made.TryGetValue(key, out var cells))

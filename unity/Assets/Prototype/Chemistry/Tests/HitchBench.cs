@@ -1,23 +1,20 @@
+// What the two kinds of frame-long stall in Andrew's 2026-11-08 play log cost in the core: a world rebuilt from
+// scratch (start-up, hosting, an online reset: its ground's heightfield worked out for all 81 chunks), and a mod
+// switched on from chat (checked, then composed over the rules). Not a check and not in CI (Explicit): run it by
+// name in Release and read the lines it prints.
+// dotnet test core/Game.Core.sln -c Release --filter "FullyQualifiedName~HitchBench" --logger "console;verbosity=detailed"
 using System;
 using System.Diagnostics;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// What the two kinds of frame-long stall in Andrew's 2026-11-08 play log cost in the core: a world rebuilt from
-    /// scratch (start-up, hosting, an online reset: its ground's heightfield worked out for all 81 chunks), and a mod
-    /// switched on from chat (checked, then composed over the rules). Not a check and not in CI (Explicit): run it by
-    /// name in Release and read the lines it prints.
-    /// <code>dotnet test core/Game.Core.sln -c Release --filter "FullyQualifiedName~HitchBench" --logger "console;verbosity=detailed"</code>
-    /// </summary>
     [Explicit("a benchmark: run it by name")]
     [Category("Simulation")]
     public class HitchBench
     {
         const int Runs = 5;
 
-        // A chat record's mod as he switched it on (74f9b7a34e6c, "Make the fire pink").
         internal const string PinkFire = "{ 'title': 'Pink fire', 'patch': { 'elements': { 'fire': { 'look': { 'color': [1.0, 0.4, 0.75] } } }, "
             + "'spells': [ { 'id': 'fireball', 'look': { 'color': [1.0, 0.4, 0.75] } }, { 'id': 'fire-bolt', 'look': { 'color': [1.0, 0.4, 0.75] } } ] } }";
 

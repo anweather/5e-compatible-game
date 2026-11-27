@@ -14,8 +14,6 @@ namespace Chem
 {
     public sealed partial class WorldPlan
     {
-        // The paper's ROAD costs: a step, a band step (main, lesser), the high band (main, lesser), a river or range on the
-        // side crossed, a side that offers a road, a crossing, a main road beside or on another, and the jitter.
         const int StepCost = 10, BandCost = 30, LesserBandCost = 18, HighCost = 30, LesserHighCost = 12, RiverCost = 4, RangeCost = 20;
         const int OfferCost = 3, CrossCost = 6, BesideCost = 35, OverlapCost = 30, Jitter = 3, NetworkCost = 4;
         const int OutcropEvery = 6, OutcropSpacing = 3, LeastRoadSquares = 3;
@@ -25,10 +23,8 @@ namespace Chem
         bool[] roadOk, barRiver, barCanyon, crossRiver, crossCanyon;
         (int x, int y)?[] roadEnd;
 
-        /// <summary>Whether a road may enter a square: low, hills or high land, and not across a range but at a pass.</summary>
         public bool RoadMayEnter(int i) => i >= 0 && roadOk[i];
 
-        /// <summary>Whether a road may pass through a square: no river or canyon runs through it, or it has a crossing.</summary>
         public bool Passable(int i) => !(barRiver[i] && !crossRiver[i]) && !(barCanyon[i] && !crossCanyon[i]);
 
         void SolveRoads()
@@ -45,13 +41,11 @@ namespace Chem
                         if (f.Kind == EdgeKind.Range) ranges++;
                         else if (f.Kind == EdgeKind.River) rivers++;
                         else if (f.Kind == EdgeKind.Canyon) canyons++;
-                // A held square's roads are its own plan's: none comes in from this one.
                 roadOk[i] = Band[i] >= 1 && Band[i] <= 3 && Wall[i] == 0 && !Options[i].Sea && (ranges < 2 || Options[i].Template.Pass) && held[i] < 0;
                 if (Band[i] == 0 || Options[i].Sea) continue;
                 barRiver[i] = rivers >= 2;
                 barCanyon[i] = canyons >= 2;
             }
-            // 1. Points of interest.
             PlaceCaves();
             Destinations = new PlanDestination[n];
             void AddDest(int i, string kind, int sx, int sy)
@@ -81,7 +75,6 @@ namespace Chem
             for (int i = 0; i < n; i++) if (Options[i].Template.Pass) AddDest(i, "pass", -1, -1);
             var dests = Enumerable.Range(0, n).Where(i => Destinations[i] != null).ToList();
             PlaceCrossings();
-            // 2. Main roads; 3. lesser roads and trails.
             var entry = Enumerable.Repeat(-1, n).ToArray();
             var mainSq = new bool[n];
             var net = new bool[n];
@@ -131,7 +124,6 @@ namespace Chem
                         }
                     if (u < 0) break;
                     done[u] = true;
-                    // A square a river or canyon runs through with no crossing is a dead end: reached, never passed through.
                     if (!Passable(u) && !isSrc[u]) continue;
                     for (int s = 0; s < 4; s++)
                     {
@@ -266,7 +258,6 @@ namespace Chem
                     }
                 if (t < 0)
                 {
-                    // Nothing left is reachable from this network: a village that can't be reached starts its own.
                     int v = left.Where(d => Destinations[d].Kind == "village" && !seeded.Contains(d) && Passable(d)).DefaultIfEmpty(-1).First();
                     if (v < 0) break;
                     seeded.Add(v);
@@ -278,7 +269,6 @@ namespace Chem
                 int start = path[0];
                 var from = Destinations[start] ?? new PlanDestination { Square = start, Kind = "junction" };
                 bool trail = to.Kind == "cave" || to.Kind == "shore" || to.Kind == "pass";
-                // A road that only goes on from where another lesser road ends is the same road, longer.
                 var before = Roads.FirstOrDefault(r => !r.IsMain && r.Path[r.Path.Count - 1] == start);
                 if (before != null && Roads.Count(r => r.Path.Contains(start)) == 1)
                 {
@@ -293,7 +283,6 @@ namespace Chem
                 AddRoad(new PlanRoad { Kind = trail ? "trail" : "lesser road", From = from, To = to, Path = path, Cost = dist[t] });
             }
             DropStubs();
-            // 5. The slots a road crosses sides by come from its route.
             var slotOf = new Dictionary<int, (int slot, EdgeFeature a, EdgeFeature b)>();
             foreach (var r in Roads)
             {
@@ -330,7 +319,6 @@ namespace Chem
             CheckRoads();
         }
 
-        // A network of roads (roads that share a square) spanning fewer than three world squares leads nowhere: drop it.
         void DropStubs()
         {
             var group = Enumerable.Range(0, Roads.Count).ToArray();
@@ -355,7 +343,6 @@ namespace Chem
             Roads.AddRange(keep);
         }
 
-        // Caves: a small destination, most often in the hills or high ground (or where a template asks for one), apart.
         void PlaceCaves()
         {
             int n = Count, land = 0;
@@ -385,8 +372,6 @@ namespace Chem
             }
         }
 
-        // The crossings nature allows, per canyon or river (squares it runs through, joined where it crosses a side): one
-        // or two bridges a canyon, one to three fords or bridges a river, spread apart and drawn to places and low ground.
         void PlaceCrossings()
         {
             int n = Count, group = 0;
@@ -461,7 +446,6 @@ namespace Chem
             }
         }
 
-        // An inn or a shop every two or three squares along each main road, never on a destination or a crossing.
         void PlaceWaystations(List<PlanRoad> mains)
         {
             var at = new HashSet<int>();
@@ -491,8 +475,6 @@ namespace Chem
             }
         }
 
-        // No road passes through a river or canyon but at a crossing (a dead end is reached from one bank only), and no
-        // main road runs beside another for more than one square.
         void CheckRoads()
         {
             var bank = new SortedDictionary<int, HashSet<int>>();
@@ -532,15 +514,12 @@ namespace Chem
                 }
         }
 
-        // A canyon takes one bridge, two when it is long; a river one to three fords or bridges by its length.
         static int CrossingsFor(EdgeKind kind, int squares)
         {
             if (kind == EdgeKind.Canyon) return squares >= 5 ? 2 : 1;
             if (squares <= 3) return 1;
             return squares <= 7 ? 2 : 3;
         }
-
-        // ---------- outcrops ----------
 
         static (int x, int y) SlotPoint(int s, int slot)
         {
@@ -549,8 +528,6 @@ namespace Chem
 
         static (int x, int y) Inward(int s) => (-PlanGrid.Dx[s], -PlanGrid.Dy[s]);
 
-        // A seeded sight every six chunks or so along each road, off to one side and within sight of it: a waterfall where
-        // a river meets a band step, a view over the sea, a ruin, a rock spire or crag on high ground, a lone great tree.
         void PlaceOutcrops()
         {
             var marks = Landmarks.Select(l => (l.ChunkX, l.ChunkY)).Concat(Waystations.Select(w => (w.ChunkX, w.ChunkY)))
@@ -642,7 +619,6 @@ namespace Chem
             Outcrops.Add(new PlanSight { Square = i, Kind = kind, SiteX = sx, SiteY = sy, ChunkX = cx, ChunkY = cy, Road = road });
         }
 
-        /// <summary>Whether a site (cells within square <paramref name="i"/>) is out past the shore, by the coast's depths.</summary>
         public bool InSea(int i, int x, int y)
         {
             if (Band[i] == 0) return true;

@@ -50,7 +50,7 @@ public class BuildVersionTests
     public void IsUpToDateWhenNothingIsNewer()
     {
         Assert.That(BuildVersion.NewestRelease(Releases, "0.10.0"), Is.Null);
-        Assert.That(BuildVersion.NewestRelease("[]", "0.1.0"), Is.Null); // no releases yet
+        Assert.That(BuildVersion.NewestRelease("[]", "0.1.0"), Is.Null);
     }
 
     [Test]
@@ -78,7 +78,6 @@ public class BuildVersionTests
     public void SameBuildIsAllowed()
     {
         Assert.That(BuildVersion.Mismatch(Stamp("0.1.0", "abc1234"), Stamp("0.1.0", "abc1234")), Is.Null);
-        // The Editor's commit is whatever is checked out, so only the version counts.
         Assert.That(BuildVersion.Mismatch(Stamp("0.1.0", "abc1234"), Stamp("0.1.0", "fff0000", editor: true)), Is.Null);
     }
 
@@ -115,7 +114,6 @@ public class BuildVersionTests
         string silent = BuildVersion.JoinFailure("[Disconnect Event][Client-0][TransportClientId-0][TransportDisconnect] Disconnected.");
         StringAssert.Contains("probably a different version", silent);
         StringAssert.Contains("probably a different version", BuildVersion.JoinFailure(""));
-        // What Netcode sends when the NetworkConfig hash (network prefabs) differs.
         StringAssert.Contains("probably a different version", BuildVersion.JoinFailure("Client-3 disconnected by server."));
     }
 }

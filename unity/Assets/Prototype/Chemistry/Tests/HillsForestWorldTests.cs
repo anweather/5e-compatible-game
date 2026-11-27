@@ -51,7 +51,6 @@ namespace Chem.Tests
             }
             var host = Peer(Source());
             var other = Peer(Source());
-            // Through the densest wood from west to east, a character on it, a fire bolt now and then into a tree ahead.
             int s = ChunkGen.Size, y0 = heart.cy * s + s / 2, x0 = (heart.cx - 2) * s;
             var path = Enumerable.Range(0, 5 * s).Select(k => (x: PlanGrid.Mod(x0 + k, host.W), y: y0)).ToList();
             var planner = new ChunkPlanner();
@@ -72,7 +71,6 @@ namespace Chem.Tests
                 (int x, int y)? cast = null;
                 if (t % 40 == 20)
                 {
-                    // The nearest tree ahead within a few cells of the path.
                     var (px, py) = path[Math.Min(path.Count - 1, t + 8)];
                     for (int d = 0; d < 12 && cast == null; d++)
                         foreach (var (dx, dy) in new[] { (0, d), (0, -d), (d, 0), (-d, 0) })

@@ -19,26 +19,20 @@ public sealed class RecordedSpeech : ISpeech
 
     public RecordedSpeech(string folder) => this.folder = folder;
 
-    /// <summary>The samples' folder, in a checkout.</summary>
     public static string SamplesFolder => Path.Combine(ChemGrid.Folders.Repo, "tools", "voice-samples", "out");
 
-    /// <summary>Set by the probe: the sample the next hold plays.</summary>
     public static string Next { get; set; }
 
-    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options): a probe sets them.
     [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
         Next = null;
     }
 
-    /// <summary>The whole ask, once a sample is loaded.</summary>
     public string Text => string.Join(" ", words.ConvertAll(w => w.word));
 
-    /// <summary>How long the sample runs.</summary>
     public float Seconds => seconds;
 
-    /// <summary>When the last word starts; the sample then has its trailing silence.</summary>
     public float LastWordAt => words.Count == 0 ? 0f : words[words.Count - 1].at;
 
     public SpeechState State { get; private set; }
@@ -93,7 +87,6 @@ public sealed class RecordedSpeech : ISpeech
         return heard.TryDequeue(out line);
     }
 
-    // The words whose time has come, and at the end of the sample the whole ask.
     void Play()
     {
         float at = Time.unscaledTime - startedAt;

@@ -11,14 +11,8 @@ namespace Chem
 {
     public sealed partial class World
     {
-        /// <summary>The status of a frozen creature with its first crack.</summary>
         public const string CrackedStatus = "cracked";
 
-        /// <summary>
-        /// A hit on the cell (EffectKind.Shatter: a heavy thing hit it): its ice first, else its terrain if that
-        /// has a shatter.leaves. With shatter.cracks the first hit cracks it (once a tick, so one blast is one hit)
-        /// and the next shatters it. Returns whether it shattered. A paused chunk doesn't change.
-        /// </summary>
         public bool Shatter(int x, int y)
         {
             var c = LocateActive(x, y, out _, out _);
@@ -46,15 +40,12 @@ namespace Chem
         void LogShattered(TerrainDef what) =>
             LogOnce($"shatter#{what.Id}#{Tick}", $"The {what.Name.ToLowerInvariant()} shatters", LogKind.Notable);
 
-        // Ice that cracks, on this cell; null for none (a mod's ice that doesn't crack doesn't shatter either).
         TerrainDef IceOver(Cell c) =>
             c.Frozen && FrozenWater() is TerrainDef ice && ice.Cracks ? ice : null;
 
-        // The terrain frozen water is (sim.json water.freezes), whose shatter it borrows; null for none.
         internal TerrainDef FrozenWater() =>
             Rules.Sim.WaterFreezes != null && Rules.Terrain.TryGetValue(Rules.Sim.WaterFreezes, out var ice) ? ice : null;
 
-        // Cracked, with a warning if a creature stands on it.
         void Crack(int x, int y, Cell c, TerrainDef what)
         {
             c.Cracked = Tick + 1;
@@ -66,10 +57,8 @@ namespace Chem
 
         readonly SortedSet<ulong> crackedThings = new SortedSet<ulong>();
 
-        /// <summary>Whether a thing (a glow ball) has its first crack (EffectKind.Crack), by its stable id.</summary>
         public bool IsCracked(ThingId thing) => crackedThings.Contains(thing.Value);
 
-        // A blast's shock (a spell with a crater, an explosion): everything in it that shatters does.
         void Blast(List<(int x, int y)> cells)
         {
             foreach (var (x, y) in cells) Shatter(x, y);
@@ -81,14 +70,12 @@ namespace Chem
                 for (int dx = -radius; dx <= radius; dx++) Shatter(x + dx, y + dy);
         }
 
-        // A wall at (x, y) is gone: a pane beside it with no wall left to stand in falls.
         void WallLost(int x, int y)
         {
             foreach (var (nx, ny, _) in ActiveNeighbours(x, y))
                 if (IsBlocking(At(nx, ny)) && TerrainOf(At(nx, ny)).ShattersTo != null && !Held(nx, ny)) Fall(At(nx, ny));
         }
 
-        // A pane with nothing to stand in goes at once, cracked or not.
         void Fall(Cell c)
         {
             var t = TerrainOf(c);
@@ -97,7 +84,6 @@ namespace Chem
             LogShattered(t);
         }
 
-        // Whether a wall stands beside a pane (panes don't hold each other up).
         bool Held(int x, int y)
         {
             foreach (var (nx, ny, _) in Neighbours(x, y))

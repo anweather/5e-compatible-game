@@ -1,21 +1,18 @@
+// The sparse World, step 3 (ChunkCells.cs; docs/design/sparse-world.md): the core's per-cell state beside the cells is
+// held a chunk at a time. The land reads the same from a packed chunk's bytes as from an unpacked chunk's block, and a
+// stamp or a road's cut moves a packed chunk's land without unpacking it; the starting state holds only its changes;
+// and a big world holds nothing the size of its map.
 using System;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The sparse World, step 3 (ChunkCells.cs; docs/design/sparse-world.md): the core's per-cell state beside the cells is
-    /// held a chunk at a time. The land reads the same from a packed chunk's bytes as from an unpacked chunk's block, and a
-    /// stamp or a road's cut moves a packed chunk's land without unpacking it; the starting state holds only its changes;
-    /// and a big world holds nothing the size of its map.
-    /// </summary>
     [Category("Simulation")]
     public class ChunkCellsTests
     {
         static Rules R => ChemistryTests.R;
 
-        // Rolling land with a few wild values (the codec's widest steps) and a lake marked NoLand by its water.
         static int Units(int x, int y)
         {
             if ((x * 31 + y * 17) % 997 == 0) return (x % 2 == 0 ? 1 : -1) * (int.MaxValue - x);
@@ -51,7 +48,6 @@ namespace Chem.Tests
             Assert.That(land.Count(v => v == World.NoLand), Is.GreaterThan(1000), "the lake is NoLand");
             Assert.That(land[w.Idx(5, 150)], Is.EqualTo(Units(5, 150)));
             Assert.That(land.Any(v => v > 1 << 30), "a wild value");
-            // As SetLand(int[]) sets it.
             var whole = new World(R, w.W, w.H, 3, "grass");
             for (int y = 20; y < 90; y++)
                 for (int x = 30; x < 140; x++)
@@ -78,7 +74,6 @@ namespace Chem.Tests
             plain.SetAllActive(false);
             packed.SetAllActive(false);
             foreach (var (cx, cy) in packed.ChunkCoords) packed.Pack(cx, cy);
-            // A road's cut across every chunk, the lake's edge too.
             var cut = Enumerable.Range(0, 200).SelectMany(x => new[] { (x, 60 + x / 4, -3), (x, 61 + x / 4, -2) }).ToList();
             plain.LayLand(cut);
             packed.LayLand(cut);
@@ -110,7 +105,6 @@ namespace Chem.Tests
                         w.Cast("fire-bolt", 180, 20, 0);
                         w.Cast("flood", 420, 100, 0);
                     }
-                // The east columns let go (the far two pack, not beside an active chunk), then one taken back.
                 if (t == 40)
                     foreach (var w in new[] { plain, packing })
                         for (int cx = 5; cx < 8; cx++)

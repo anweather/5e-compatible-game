@@ -25,9 +25,6 @@ public static class ChemYardBuilder
     const string CastFeelPath = "Assets/Prototype/Settings/CastFeel.asset";
     const string ThingPrefabsPath = "Assets/Prototype/Generated/ThingNetworkPrefabs.asset";
 
-    // Same legend as the web sandbox: , grass  " brush  T tree  . dirt  o oil
-    // w pond  _ pit  = wooden bridge  m metal  ~ puddle  % bedrock  @ start
-    // The edge is open grass: the yard sits in the valley (ValleyBuilder).
     internal const string Map =
         ",,T,,,,,,,,,,,,,,,,,,,,T,,\n" +
         ",,,,,,T,,,,,,,,,,.......,,\n" +
@@ -58,15 +55,11 @@ public static class ChemYardBuilder
         var grid = new GameObject("ChemGrid").AddComponent<ChemGrid>();
         AssignEffects(grid);
 
-        // The wizard at the map's spawn (map.json), whose cell stands where map.json's yard puts it: on the old yard's
-        // flat ground at 0 in the valley. On another map ChemGrid stands it at that map's spawn, on its ground.
         var rows = Map.Split('\n');
         var map = Chem.MapFile.Load(ChemGrid.Folders.World);
         var (spawnX, spawnY) = (map.Spawn.x - map.Origin.x, map.Origin.y - map.Spawn.y);
         var start = new Vector3(spawnX * grid.cellSize, 0.1f, spawnY * grid.cellSize);
 
-        // The wizard is the Starter Assets third-person character (restore it with
-        // Prototype > Restore Asset Packs), with our spellcasting added.
         var armature = Load(StarterAssets + "/PlayerArmature.prefab");
         var mainCamera = Load(StarterAssets + "/MainCamera.prefab");
         var followCamera = Load(StarterAssets + "/PlayerFollowCamera.prefab");
@@ -83,33 +76,24 @@ public static class ChemYardBuilder
         player.name = WizardRig.Name;
         player.transform.position = start;
         var (controls, _, hands) = AddWizardParts(player, grid, BuildSpellVisuals(), playerDriven: true);
-        SoundBankBuilder.Build(); // the mastered sounds (Generated/Resources), loaded by GameSounds at runtime
+        SoundBankBuilder.Build();
 
         var follow = (GameObject)PrefabUtility.InstantiatePrefab(followCamera);
         var cameraRoot = player.transform.Find(WizardRig.CameraRoot);
         follow.GetComponent<CinemachineCamera>().Target.TrackingTarget = cameraRoot;
         follow.AddComponent<CameraZoom>().controls = controls;
-        // Out of the ground and the wizard (CameraClearance), and a wider check for what it backs into
-        // than the pack's 0.15 m, so the lens's corners don't see through a slope; but narrower than
-        // the wizard (0.28 m): the check starts at its middle, and wider than it, a wall the wizard
-        // stands against is inside the check from the start, which pulled the camera right in
-        // (issue #20: at houses, whose box walls the wizard walks flush against).
         follow.AddComponent<CameraClearance>();
         var third = follow.GetComponent<CinemachineThirdPersonFollow>();
         var avoid = third.AvoidObstacles;
         avoid.CameraRadius = 0.25f;
-        // Eased back out after an obstacle rather than snapped (Andrew: the camera still snaps).
         avoid.DampingFromCollision = 0.4f;
         third.AvoidObstacles = avoid;
         hands.view = follow.GetComponent<CinemachineCamera>();
-        // Casts and meteors shake it (CastImpact); the strongest counts, so quick casts don't pile up.
         follow.AddComponent<CinemachineImpulseListener>().SignalCombinationMode = CinemachineImpulseListener.SignalCombinationModes.UseLargest;
-        // After CameraClearance: it holds the camera through a hit-stop.
         follow.AddComponent<CastCamera>();
 
         SetUpLighting();
         ValleyBuilder.Dress(grid, rows);
-        // Props and items aren't placed here: ThingSpawner spawns them from world/things.json.
         var things = PropBuilder.BuildPrefabs();
         things.AddRange(ItemBuilder.BuildPrefabs());
         var spawner = new GameObject("Things").AddComponent<ThingSpawner>();
@@ -121,7 +105,6 @@ public static class ChemYardBuilder
 
         WriteSceneMeta();
         EditorSceneManager.SaveScene(scene, ScenePath);
-        // The grid's NetworkObject gets the same id on every machine (StableNetworkIds).
         StableNetworkIds.PinScene(ScenePath);
         var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
         if (!scenes.Exists(s => s.path == ScenePath)) scenes.Insert(0, new EditorBuildSettingsScene(ScenePath, true));
@@ -129,13 +112,9 @@ public static class ChemYardBuilder
         Debug.Log($"Built {ScenePath}. Press Play.");
     }
 
-    /// <summary>What in the built yard isn't on its stable network id (StableNetworkIds); empty when all is.</summary>
     public static System.Collections.Generic.List<string> UnstableNetworkIds() =>
         StableNetworkIds.Unstable(ScenePath, AssetDatabase.LoadAssetAtPath<NetworkPrefabsList>(ThingPrefabsPath));
 
-    // The scene and its .meta aren't in git (YardAutoBuild), so a new scene would
-    // get a new GUID and change the build settings. Writing the .meta first keeps
-    // the same GUID on every machine and every rebuild.
     const string SceneGuid = "f2663c50dfda24918a8751f8d49c8fbb";
 
     static void WriteSceneMeta()
@@ -148,7 +127,6 @@ public static class ChemYardBuilder
 
     static GameObject Load(string path) => EditorAssets.LoadPrefab(path);
 
-    // Particle Pack effects; any that are missing leave the grid's cube stand-ins.
     static void AssignEffects(ChemGrid grid)
     {
         grid.flameShader = Shader.Find("Prototype/Flame");
@@ -157,14 +135,11 @@ public static class ChemYardBuilder
         grid.smokeFx = Load(SmokeFx + "/SmokeEffect.prefab");
         grid.steamFx = Load(SmokeFx + "/RisingSteam.prefab");
         grid.sparksFx = Load(MiscFx + "/SparksEffect.prefab");
-        // The dust thrown up by earth shaping uses the Particle Pack's dust material.
         var dust = Load(FireFx + "/DustExplosion.prefab");
         grid.dustMaterial = dust != null ? dust.GetComponent<ParticleSystemRenderer>().sharedMaterial : null;
         if (grid.smokeFx == null) Debug.LogWarning("Particle Pack missing: no flames, and smoke will be cubes. Run Prototype > Restore Asset Packs.");
     }
 
-    // Late-afternoon sun, and a post-processing volume: bloom so fire glows,
-    // filmic tonemapping, a little extra saturation and a soft vignette.
     static void SetUpLighting()
     {
         var sun = Object.FindAnyObjectByType<Light>();
@@ -192,7 +167,6 @@ public static class ChemYardBuilder
         SetUpFauna();
     }
 
-    // The dragon drawn (DragonView): its own object, as a new world destroys the grid's children (ChemGrid.ResetWorld).
     static void SetUpDragon(ChemGrid grid)
     {
         var view = new GameObject("Dragon").AddComponent<DragonView>();
@@ -201,8 +175,6 @@ public static class ChemYardBuilder
         view.shadowShader = Shader.Find("Prototype/DragonShadow");
     }
 
-    // The clock turns the sun and a dim blue moon (SkyLight); WeatherFx draws the rain and lightning;
-    // AmbientCritters the fireflies and butterflies, CloudSky the sky's clouds (Punchy's shaders, ThirdParty/Punchy).
     static void SetUpSky(Light sun)
     {
         var go = new GameObject("Sky");
@@ -219,7 +191,6 @@ public static class ChemYardBuilder
         go.AddComponent<CloudSky>().cloudNoise = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/CloudNoise.asset",
             () => Punchy.Weather.CloudNoise.Create());
         var fx = go.AddComponent<WeatherFx>();
-        // Rain streaks and snowflakes: Punchy's precipitation shader (_Shape 1 rain, 0 snow), lit like the sky.
         fx.rainMaterial = Precipitation("Rain", 1f);
         fx.snowMaterial = Precipitation("Snow", 0f);
         fx.boltMaterial = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/LightningBolt.mat",
@@ -233,10 +204,8 @@ public static class ChemYardBuilder
 
     static void SetUpFauna()
     {
-        // Footprints in the snow, the wizards' and the animals'.
         new GameObject("Footprints").AddComponent<Footprints>().material = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/Footprint.mat",
             () => UrpMaterials.NewUnlitParticles("Footprint", Color.white, additive: false));
-        // The species themselves are rows (rules/fauna.json), read at run time.
         var fauna = new GameObject("Fauna").AddComponent<ValleyFauna>();
         var shader = Shader.Find("Punchy/Creature");
         fauna.material = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/Creature.mat", () => new Material(shader) { name = "Creature" });
@@ -264,9 +233,6 @@ public static class ChemYardBuilder
         EditorUtility.SetDirty(component);
     }
 
-    // Multiplayer: the grid's lockstep chemistry (NetChem), a NetworkManager on
-    // UDP port NetSession.Port with the wizard and the things as network
-// prefabs, and the Play together panel.
     static void SetUpNetwork(ChemGrid grid, GameObject netWizard, System.Collections.Generic.List<ThingSpawner.KindPrefab> things)
     {
         grid.gameObject.AddComponent<NetworkObject>();
@@ -278,7 +244,6 @@ public static class ChemYardBuilder
         var go = new GameObject("NetworkManager");
         var manager = go.AddComponent<NetworkManager>();
         var transport = go.AddComponent<UnityTransport>();
-        // A late joiner receives the history and every prop's state at once; the default 128 overflowed.
         transport.MaxPacketQueueSize = 512;
         manager.NetworkConfig = new NetworkConfig
         {
@@ -287,8 +252,6 @@ public static class ChemYardBuilder
             ConnectionApproval = true,
         };
         manager.NetworkConfig.Prefabs.Add(new NetworkPrefab { Prefab = netWizard });
-        // The props and items, which the host spawns from world/things.json (ThingSpawner). A list
-        // asset, since NetworkConfig.Prefabs keeps only its lists in the scene, not prefabs added to it.
         manager.NetworkConfig.Prefabs.NetworkPrefabsLists.Add(ThingPrefabList(things));
 
         new GameObject("NetSession").AddComponent<NetSession>();
@@ -305,21 +268,10 @@ public static class ChemYardBuilder
         return list;
     }
 
-    // The networked wizard: a variant of the Starter Assets character with
-    // owner-authoritative movement and animation. Input, movement and
-    // spellcasting start switched off; NetWizard turns them on for the owner.
-    /// <summary>
-    /// The wizard's gameplay parts, the one recipe for both wizards (the solo one in the yard and
-    /// the NetWizard prefab), so the two can't drift apart: anything a wizard can do goes here.
-    /// <paramref name="playerDriven"/>: the solo wizard, wired to the grid and its controls now;
-    /// otherwise switched off and left for NetWizard to wire up for its owner on spawn.
-    /// WizardPartsTests checks both builds carry the same parts.
-    /// </summary>
     internal static (PlayerControls controls, SpellCaster caster, ItemHolder hands) AddWizardParts(
         GameObject wizard, ChemGrid grid, SpellVisuals visuals, bool playerDriven)
     {
         WizardRig.TuneMovement(wizard);
-        // Set by reflection, so tell the prefab instance (or prefab) the fields changed, or saving drops them.
         var mover = wizard.GetComponent(WizardRig.ControllerComponent);
         if (mover != null)
         {
@@ -337,31 +289,28 @@ public static class ChemYardBuilder
         surface.enabled = playerDriven;
         var knockback = wizard.AddComponent<Knockback>();
         var hands = wizard.AddComponent<ItemHolder>();
-        // Poses laid over the animation with IK: swimming, throwing, sitting (casting is CastPose, above).
         wizard.AddComponent<SwimPose>();
         wizard.AddComponent<ThrowPose>();
         wizard.AddComponent<PunchPose>();
         wizard.AddComponent<HandPose>();
         wizard.AddComponent<SitPose>();
-        wizard.AddComponent<Sitter>(); // sits the local wizard on a Seat (E); the pose above is every machine's
-        wizard.AddComponent<CurrentRider>(); // the river and the surf carry the local wizard (WaterCurrents)
+        wizard.AddComponent<Sitter>();
+        wizard.AddComponent<CurrentRider>();
         wizard.AddComponent<Vitals>();
-        wizard.AddComponent<WizardStrike>(); // tells the core where it stands, and strikes; on the owner's machine
-        wizard.AddComponent<WizardDown>(); // at 0 health: down, then back at the yard; the pose is every machine's
+        wizard.AddComponent<WizardStrike>();
+        wizard.AddComponent<WizardDown>();
         wizard.AddComponent<DownedPose>();
         wizard.AddComponent<Kicker>();
         wizard.AddComponent<SprintToggle>();
-        wizard.AddComponent<DoubleJump>(); // a second jump in mid-air (the climbing tower, ValleyTower)
-        wizard.AddComponent<WizardStats>(); // the player's speed, size and jumps from the rules (set_player)
-        wizard.AddComponent<SpellRadialHud>(); // waits for the caster and controls to be on (solo now, the owner's on spawn)
-        // The dodge roll and its tumble, and keeping the local wizard in sight behind what's in the way.
+        wizard.AddComponent<DoubleJump>();
+        wizard.AddComponent<WizardStats>();
+        wizard.AddComponent<SpellRadialHud>();
         wizard.AddComponent<DodgeRoll>();
         wizard.AddComponent<RollPose>();
         var fade = wizard.AddComponent<OccluderFade>();
         fade.ditherLit = Shader.Find("Prototype/DitherLit");
         fade.silhouette = Shader.Find("Prototype/WizardSilhouette");
-        wizard.AddComponent<Shapeshift>(); // an animal's shape: on every copy, so each machine draws the animal
-        // The wizard's look: hat, robe and beard on the rig's bones, from a seed (synced by NetWizard).
+        wizard.AddComponent<Shapeshift>();
         var outfit = wizard.AddComponent<WizardOutfit>();
         outfit.material = ValleyBuilder.VillageMaterial();
         outfit.faceShader = Shader.Find("Prototype/WizardFace");
@@ -390,7 +339,6 @@ public static class ChemYardBuilder
         animator.Animator = wizard.GetComponent<Animator>();
         animator.AuthorityMode = NetworkAnimator.AuthorityModes.Owner;
 
-        // Every copy holds what its player holds; NetWizard gives the owner's copy its grid and controls.
         AddWizardParts(wizard, null, BuildSpellVisuals(), playerDriven: false);
         wizard.AddComponent<NetWizard>();
 
@@ -401,8 +349,6 @@ public static class ChemYardBuilder
         return prefab;
     }
 
-    // How casts look: one show per effect family of rules/looks.json, from the Particle Pack, so
-    // nothing here names a spell. Missing prefabs leave that part out.
     static SpellVisuals BuildSpellVisuals()
     {
         var visuals = AssetDatabase.LoadAssetAtPath<SpellVisuals>(SpellVisualsPath);
@@ -435,7 +381,6 @@ public static class ChemYardBuilder
         scaleBase = f.Base,
     };
 
-    // "Fire/BigExplosion" as a prefab of the Particle Pack's folder for fire effects; null for none.
     static GameObject Fx(string name)
     {
         if (string.IsNullOrEmpty(name)) return null;

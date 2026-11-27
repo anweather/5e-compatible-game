@@ -1,9 +1,9 @@
+// The wizard's face (WizardOutfit): a black ball with a fuzzy edge and two red vertical slits for
+// eyes. No textures: on a Unity sphere, the object's +z is the way the head faces. The fuzz is
+// noise cutting holes in the silhouette, with a faint sheen on the hairs; the eyes glow past 1, so
+// they bloom. The shadow and depth passes are URP Lit's, through the Fallback.
 Shader "Prototype/WizardFace"
 {
-    // The wizard's face (WizardOutfit): a black ball with a fuzzy edge and two red vertical slits for
-    // eyes. No textures: on a Unity sphere, the object's +z is the way the head faces. The fuzz is
-    // noise cutting holes in the silhouette, with a faint sheen on the hairs; the eyes glow past 1, so
-    // they bloom. The shadow and depth passes are URP Lit's, through the Fallback.
     Properties { }
     SubShader
     {
@@ -53,7 +53,6 @@ Shader "Prototype/WizardFace"
                 return frac(p.x * p.y * p.z * (p.x + p.y + p.z));
             }
 
-            // An eye: a thin upright slit, widest in its middle, soft at its edge.
             half Slit(float3 p, float side)
             {
                 const float Across = 0.15, Up = 0.05, Tall = 0.2, Wide = 0.026;

@@ -1,10 +1,10 @@
+// What mods add to the world (G4 to G6): looks on things, things appended by chunk, a seeded chance, the first find.
 using System.Linq;
 using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>What mods add to the world (G4 to G6): looks on things, things appended by chunk, a seeded chance, the first find.</summary>
     [Category("Simulation")]
     public class ModThingTests
     {
@@ -26,7 +26,6 @@ namespace Chem.Tests
             return w;
         }
 
-        // A client's world has no room until the host's arrives, and a thing of the host's may get here first.
         [Test]
         public void ThingsReadBeforeTheRoomOpensDoNotStick()
         {
@@ -159,7 +158,6 @@ namespace Chem.Tests
             Assert.That(off.Line, Does.Contain("off the world"));
             var uses = w.ApplyRoom(RoomCommand.Apply("Bo", "uses", Adds("{ 'kind': 'test-find', 'cell': [11, 10] }", false)));
             Assert.That(uses.Done, uses.Line);
-            // The other mod places hide's kind, so it goes with hide (#88).
             Assert.That(w.ApplyRoom(RoomCommand.Revert("Ana", "hide")).Line, Is.EqualTo("Ana switched off hide, and uses with it (Open room)"));
             Assert.That(w.Room.Mods, Is.Empty);
             Assert.That(w.ThingsNow.Count, Is.EqualTo(before));

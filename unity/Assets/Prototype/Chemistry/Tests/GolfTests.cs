@@ -1,17 +1,16 @@
+// Spell golf (docs/BACKLOG.md 24; Play/GolfSystem.cs): the ball, the strokes and the course in world/golf.json.
 using System;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>Spell golf (docs/BACKLOG.md 24; Play/GolfSystem.cs): the ball, the strokes and the course in world/golf.json.</summary>
     [Category("Unit")]
     public class GolfTests
     {
         static Rules R => ChemistryTests.R;
         static void Run(World w, int ticks) { for (int i = 0; i < ticks; i++) w.Step(); }
 
-        // A dirt strip with a rise to climb (x 11-12) and a pond across the way (x 17-18), the tee at (4, 5) and the hole at (30, 5).
         static World Strip()
         {
             var w = new World(R, 40, 12, 3, "dirt");
@@ -40,8 +39,6 @@ namespace Chem.Tests
         [Test]
         public void ATeeShotAPenaltyACarryOverThePondAndHoledInSix()
         {
-            // Gust of Wind pushes the ball (its force push), Raise Earth under it throws it (its force throw); water
-            // puts it back on the tee a stroke down. Ported from sandbox/test/terraform.test.ts.
             var w = Strip();
             Assert.That(Stroke(w, "gust-of-wind", 2, 5), Is.EqualTo((14, 5)), "the tee shot rolls over the rise");
             Assert.That(Stroke(w, "gust-of-wind", 12, 5), Is.EqualTo((4, 5)), "into the pond: back on the tee");
@@ -80,11 +77,9 @@ namespace Chem.Tests
             Run(w, 24);
             Assert.That(w.Log.Any(l => l.Text == "The ball bounces back off the rock"));
             Assert.That(w.Golf.X, Is.LessThan(6), "back the way it came");
-            // Out of the world to the west: back on the tee, a stroke's penalty.
             Assert.That(w.Log.Any(l => l.Text.StartsWith("The ball is out of bounds", StringComparison.Ordinal)));
             Assert.That((w.Golf.X, w.Golf.Y, w.Golf.Strokes), Is.EqualTo((4, 5, 2)));
 
-            // A roll that runs out at the top of a slope runs on down it: ten cells from the tee is (12, 5), and the ground falls away east of it.
             var hill = new World(R, 30, 10, 3, "dirt");
             for (int x = 13; x < 30; x++) hill.At(x, 5).Height = x == 13 ? -1 : -2;
             hill.ApplyGolf(new GolfCommand(2, 5, 25, 2));
@@ -112,7 +107,6 @@ namespace Chem.Tests
         [Test]
         public void GustKnocksARaiderBackOnceAndRaiseEarthThrowsOneOffItsFeet()
         {
-            // The force the ball takes acts on raiders the same way (spells.json force). Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 20, 8, 5, "dirt");
             var hound = w.SpawnRaider("bone-hound", 5, 3, 6);
             var crab = w.SpawnRaider("ash-crab", 10, 6, 9);

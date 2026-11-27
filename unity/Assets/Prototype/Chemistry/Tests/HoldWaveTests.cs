@@ -13,7 +13,6 @@ namespace Chem.Tests
 
         static void Moment(World w, string id) => Assert.That(w.ApplyCombo(ComboCommand.Moment(Me, id)), id);
 
-        // In a moment's wave with its raiders all out, a wizard out of harm's way.
         static World InMoment(string id, int seed = 7)
         {
             var w = Field(seed);
@@ -172,7 +171,6 @@ namespace Chem.Tests
             Assert.That(two, Is.EqualTo(one));
         }
 
-        // To a wave as fast as a run gets there: its raiders burn out at once, and no warning is waited for.
         static void Hurry(World w, int wave)
         {
             for (int left = 4000; w.Hold.Wave < wave && left > 0; left--)
@@ -186,7 +184,6 @@ namespace Chem.Tests
             Assert.That(w.Hold.Wave, Is.EqualTo(wave));
         }
 
-        // The wave's raiders in the order they come, each caught as it spawns.
         static string[] KindsOf(World w)
         {
             var kinds = new System.Collections.Generic.Dictionary<int, string>();
@@ -252,8 +249,6 @@ namespace Chem.Tests
             Assert.That(other.CastHash(), Is.EqualTo(one.CastHash()));
         }
 
-        // ---------- routes ----------
-
         static World WithRaider(string kind)
         {
             var w = Field();
@@ -267,7 +262,6 @@ namespace Chem.Tests
             return w;
         }
 
-        // The share of the cells it walks that are road, by the time it's at the heart or a limit.
         static (int onRoad, int cells) Walk(World w)
         {
             var road = BuildingRaster.Cells(BuildingRow.Read(w.HoldSite.Castle, w.HoldSite.Row, R.Buildings), R.Buildings)
@@ -303,7 +297,7 @@ namespace Chem.Tests
         {
             var w = WithRaider("bone-hound");
             var hound = w.Raiders[0];
-            Ticks(w, 8); // the ways are worked out
+            Ticks(w, 8);
             hound.Wait = 100000;
             (int x, int y)? meet = null;
             for (int y = w.HoldSite.Heart.y - 30; y < w.HoldSite.Heart.y + 30 && meet == null; y++)
@@ -389,8 +383,6 @@ namespace Chem.Tests
             Assert.That(r.Hp, Is.LessThan(hp));
         }
 
-        // ---------- barricades ----------
-
         static System.Collections.Generic.List<(int x, int y)> Barricades(World w)
         {
             var found = new System.Collections.Generic.List<(int, int)>();
@@ -399,7 +391,6 @@ namespace Chem.Tests
             return found;
         }
 
-        // A wave with barricades, at its first raider.
         static World Barricaded(string moment = "late-wave")
         {
             var w = Field();
@@ -438,7 +429,7 @@ namespace Chem.Tests
             var w = Barricaded();
             var cells = Barricades(w);
             int was = cells.Count;
-            foreach (var (x, y) in cells) w.At(x, y).Cover = null; // it's the barricade's own catch under test, not the grass under it
+            foreach (var (x, y) in cells) w.At(x, y).Cover = null;
             Assert.That(w.Flammability(w.At(cells[0].x, cells[0].y)), Is.GreaterThan(0));
             var beside = cells.SelectMany(c => new[] { (c.x + 1, c.y), (c.x - 1, c.y), (c.x, c.y + 1), (c.x, c.y - 1) })
                 .Where(c => w.At(c.Item1, c.Item2).T != P.BarricadeTerrain).Take(4).ToList();

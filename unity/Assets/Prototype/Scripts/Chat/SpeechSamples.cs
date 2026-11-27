@@ -8,15 +8,12 @@ using System.Text;
 // Unity in it, so it runs on any thread and its tests need no Editor state.
 public static class SpeechSamples
 {
-    /// <summary>The rate every recording is handed over at.</summary>
     public const int Rate = 16000;
 
     const int WavPcm = 1, WavFloat = 3, WavExtensible = 0xFFFE;
 
-    /// <summary>Seconds of these samples at Rate.</summary>
     public static float Seconds(float[] samples) => samples.Length / (float)Rate;
 
-    /// <summary>The loudest sample, 0 to 1.</summary>
     public static float Peak(float[] samples, int from = 0, int count = -1)
     {
         int end = count < 0 ? samples.Length : Math.Min(samples.Length, from + count);
@@ -25,7 +22,6 @@ public static class SpeechSamples
         return peak;
     }
 
-    /// <summary>Interleaved frames of this many channels as one, by their mean.</summary>
     public static float[] Mono(IReadOnlyList<float> interleaved, int channels)
     {
         if (channels < 1) throw new ArgumentOutOfRangeException(nameof(channels));
@@ -39,7 +35,6 @@ public static class SpeechSamples
         return mono;
     }
 
-    /// <summary>Mono samples at one rate as another, by straight lines between them; enough for speech.</summary>
     public static float[] Resample(float[] samples, int from, int to)
     {
         if (from <= 0 || to <= 0) throw new ArgumentOutOfRangeException(nameof(from));
@@ -58,14 +53,12 @@ public static class SpeechSamples
         return output;
     }
 
-    /// <summary>A WAV file's sound as a transcriber takes it. Throws InvalidDataException, with why, for one it can't read.</summary>
     public static float[] FromWav(byte[] wav)
     {
         var (interleaved, rate, channels) = ReadWav(wav);
         return Resample(Mono(interleaved, channels), rate, Rate);
     }
 
-    /// <summary>A WAV file's samples as they are: 8, 16, 24 or 32-bit PCM, or 32-bit float, any rate and channels.</summary>
     public static (float[] samples, int rate, int channels) ReadWav(byte[] wav)
     {
         if (wav.Length < 12 || Tag(wav, 0) != "RIFF" || Tag(wav, 8) != "WAVE") throw new InvalidDataException("not a WAV file");
@@ -75,7 +68,7 @@ public static class SpeechSamples
             string tag = Tag(wav, at);
             int body = at + 8;
             int size = BitConverter.ToInt32(wav, at + 4);
-            if (size < 0 || body + size > wav.Length) size = wav.Length - body; // a writer that left the size open
+            if (size < 0 || body + size > wav.Length) size = wav.Length - body;
             if (tag == "fmt " && size >= 16) format = Format(wav, body, size);
             else if (tag == "data")
             {
@@ -114,7 +107,6 @@ public static class SpeechSamples
         return samples;
     }
 
-    /// <summary>Samples as a 16-bit PCM WAV file, interleaved if more than one channel.</summary>
     public static byte[] ToWav(float[] samples, int rate, int channels = 1)
     {
         using var stream = new MemoryStream();

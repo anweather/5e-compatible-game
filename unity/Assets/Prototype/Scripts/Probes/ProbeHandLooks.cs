@@ -15,13 +15,11 @@ public class HandLooksProbe : RoomProbe
     protected override ChangeMode Mode => ChangeMode.Open;
     protected override bool StartsWithAMod => false;
 
-    /// <summary>What every wizard here shows in its hands, "player:left:right" sorted by player.</summary>
     public static string Shown() => string.Join(" ", FindObjectsByType<HandPose>(FindObjectsSortMode.None)
         .Where(h => h.isActiveAndEnabled)
         .Select(h => $"{h.GetComponent<CastBeats>().Player}:{h.Showing(HandsDef.Left) ?? Nothing}:{h.Showing(HandsDef.Right) ?? Nothing}")
         .OrderBy(s => s, StringComparer.Ordinal));
 
-    /// <summary>This peer's hands to "left,right", "-" for nothing: from where it stands, outside a run, a hand at a time with its moment (hold-batch: the keep's room went).</summary>
     public static IEnumerator Attune(ChemGrid grid, NetChem net, string hands)
     {
         var wizard = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject;
@@ -54,10 +52,6 @@ public class HandLooksProbe : RoomProbe
         yield return Both("air,water", "-,earth", "with_an_empty_hand");
     }
 
-    /// <summary>
-    /// This peer's hands cast as D16 has them, through the host: a held charge let go, both hands held into a merge, then one hand
-    /// held while the other's throw fires twice. Both peers at once, with different hands, and the checksums must stay alike.
-    /// </summary>
     public static IEnumerator HandCasts(NetChem net)
     {
         net.RequestCombo(ComboCommand.HandDown("", HandsDef.Right));
@@ -84,7 +78,6 @@ public class HandLooksProbe : RoomProbe
         yield return new WaitForSecondsRealtime(2f);
     }
 
-    // Both peers cast at once with different hands; the host hears each one's casts, and both run the same ticks.
     IEnumerator Casting(string name)
     {
         var heard = new FiredCastsHeard();

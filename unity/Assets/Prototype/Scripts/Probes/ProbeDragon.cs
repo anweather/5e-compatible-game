@@ -20,24 +20,15 @@ using UnityEngine.InputSystem.LowLevel;
 public class DragonProbe : ProbeScenario
 {
     const float MostSeconds = 200f, LookSeconds = 4f;
-    // Sim params for a staged flight: warning, turns, leaving, and a pass at three times the speed.
     const int ShortWarning = 60, ShortTurn = 12, ShortLeaving = 60, QuickSpeed = 18, QuickChunks = 2;
-    // Cells ahead of the lead where a wizard waits for the breath.
     const int Ahead = 70;
-    // A cell of the Gauntlet's lava pit (world/gauntlet.json) and of the wizard's meadow, to wreck.
     const int LavaX = 303, LavaY = 433;
-    // Points read along the stream's line; a bigger sum of red and green over a little box than with no stream counts as lit.
     const int StreamPoints = 17, StreamBox = 4, StreamBrighter = 40;
-    // The part of those in the picture that must be lit, in a frame with the stream drawn. From the ground the last
-    // few fall below the frame, how many by where the dragon has got to, so it's of those there are.
     const float StreamLitPart = 0.75f;
-    // Frames a watcher lets the view lag the core's tick by; seconds the last drops may fly on.
     const int LagFrames = 2;
     const float DropsLand = 1.2f;
-    // How far off the ground the view from below stands: clear of the trees.
     const float BelowHeight = 35f, SideOn = 330f;
     const int Placings = 300;
-    // A tap of the Reset button, how long it's held to rebuild (EventLog), and how long the reload may take beyond that.
     const float TapSeconds = 0.25f, RebuildSeconds = 3f, LoadSeconds = 30f;
 
     DragonView view;
@@ -90,7 +81,6 @@ public class DragonProbe : ProbeScenario
         Check("no_console_errors", Result.Console.ErrorCount == 0, $"{Result.Console.ErrorCount} errors");
     }
 
-    // The starting state's size on this map, and how long it took.
     void Measured()
     {
         Check("world_keeps_a_start", World.HasStart, "ChemGrid.StartWorld");
@@ -99,7 +89,6 @@ public class DragonProbe : ProbeScenario
         Metric("cells", World.W * World.H);
         Metric("chunks", World.ChunkCoords.Count());
         Metric("changed_at_the_start", World.ChangedCount);
-        // Each chunk's changes against the source (the sparse World, step 3).
         Metric("start_state_kb", World.StartBytes / 1024.0);
         int deep = World.AllCells().Count(c => c.Water >= World.Rules.Sim.Dragon.ShelterWater && !c.Frozen);
         Metric("cells_deep_enough_to_shelter", deep);
@@ -156,7 +145,6 @@ public class DragonProbe : ProbeScenario
         Metric("inactive_chunks_drawn", grid.FreshInactiveDrawn);
         Check("logs_the_flight", ConsoleSaid("dives out of the clouds", mark) || LogSince(0).Any(l => l.Contains("dives out of the clouds")), "core's log");
         if (lookFrames.Count == 0) yield break;
-        // The same view, clear, once the sky has come back.
         while (sky.Menace > 0.02f && Time.time - started < MostSeconds + LookSeconds) yield return null;
         var clear = new List<float>();
         yield return LookFor(lookEye, lookAt, clear);
@@ -183,7 +171,6 @@ public class DragonProbe : ProbeScenario
         Check("seen_in_the_warning", seen, "the high crossing or the dive");
     }
 
-    // A pass each: first a wizard in the open, then one behind a wall, then a look at the breath.
     IEnumerator StagePass()
     {
         if (!open) yield return InTheOpen(result => open = result);
@@ -191,7 +178,6 @@ public class DragonProbe : ProbeScenario
         else if (lookFrames.Count == 0 && World.Dragon.Pass > 1) yield return LookAndShoot();
     }
 
-    // At the real speed for the moment: the frames of one view of the breath, then shots of it.
     IEnumerator LookAndShoot()
     {
         var p = World.Rules.Sim.Dragon;
@@ -215,7 +201,6 @@ public class DragonProbe : ProbeScenario
         p.Speed = quick;
     }
 
-    // The numbers, as drawn, against the core's: all of this has to fit together.
     void TheFit(DragonParams p)
     {
         var d = World.Dragon;
@@ -243,7 +228,6 @@ public class DragonProbe : ProbeScenario
         Metric("breath_along_m", (d.AlongX ? x1 - x0 : y1 - y0) * grid.cellSize);
     }
 
-    // A frame's worth of placing the breath, over again: the stream's work is in the shader, and this makes no garbage.
     IEnumerator NoGarbage()
     {
         var flat = Vector3.ProjectOnPlane(view.Way, Vector3.up).normalized;
@@ -257,7 +241,6 @@ public class DragonProbe : ProbeScenario
     static float ShadowFor(DragonParams p) =>
         DragonFlight.Wingspan(p) * Mathf.Lerp(1.2f, 2.6f, Mathf.InverseLerp(0f, DragonFlight.High, DragonFlight.Cruise(p)));
 
-    // Twice the data for a moment: the drawn dragon and its shadow go with it, so neither is a number of the view's own.
     IEnumerator ScaleFollowsTheData(DragonParams p)
     {
         double was = p.Scale;
@@ -272,7 +255,6 @@ public class DragonProbe : ProbeScenario
         staging = false;
     }
 
-    // A frame with the stream and one without, from one side or from under it on the ground: its line has to be lit.
     IEnumerator StreamSeen(string label, bool side)
     {
         var breath = view.Breath;
@@ -307,7 +289,6 @@ public class DragonProbe : ProbeScenario
         Check($"stream_seen_{label}", inPicture > StreamPoints / 2 && lit >= inPicture * StreamLitPart, $"{lit} of the {inPicture} points of {StreamPoints} in the picture, between the mouth and the wall, lit by it");
     }
 
-    // How many of the points on the stream's line have their little box in the picture.
     static int StreamInPicture(DragonBreath breath)
     {
         var eye = Camera.main;
@@ -318,7 +299,6 @@ public class DragonProbe : ProbeScenario
         });
     }
 
-    // The sum of red and green over a little box at each point of the stream's line.
     static int[] StreamPicture(DragonBreath breath)
     {
         var picture = ScreenCapture.CaptureScreenshotAsTexture();
@@ -340,7 +320,6 @@ public class DragonProbe : ProbeScenario
         return sums;
     }
 
-    // The stream against the core's breath, frame by frame: on while it's out, off at the turns and on leaving, and gone once the drops land.
     IEnumerator WatchTheStream()
     {
         var frameEnd = new WaitForEndOfFrame();
@@ -368,8 +347,6 @@ public class DragonProbe : ProbeScenario
         if (Time.time - streamStopped > DropsLand && breath.StreamDrawn) drawnAfter++;
     }
 
-    // The Reset button itself, on a virtual pad, after the flight, solo: a tap calls the dragon and rebuilds nothing;
-    // holding it rebuilds the valley at once, the old R: the scene reloads, so this comes last and takes the probe across.
     IEnumerator ResetButton()
     {
         var controls = caster.controls;
@@ -405,7 +382,6 @@ public class DragonProbe : ProbeScenario
         }
     }
 
-    // The reloaded scene's grid, once its world is up, for what's left of the run.
     IEnumerator TheNewYard()
     {
         float from = Time.unscaledTime;
@@ -417,7 +393,6 @@ public class DragonProbe : ProbeScenario
         }
     }
 
-    // How close the dragon's tips come to the land drawn under them, land past the valley's edge too, on the passes and the turns.
     IEnumerator WatchTheFit()
     {
         var frameEnd = new WaitForEndOfFrame();
@@ -438,7 +413,6 @@ public class DragonProbe : ProbeScenario
         }
     }
 
-    // The height of the land drawn at a point: any terrain over it.
     static float LandAt(Vector3 at)
     {
         float best = float.NegativeInfinity;
@@ -452,7 +426,6 @@ public class DragonProbe : ProbeScenario
         return best;
     }
 
-    // The fastest the shown dragon moves on a pass, frame to frame: a jump at each tick would show here.
     IEnumerator WatchTheFlight()
     {
         var was = view.ShownAt;
@@ -481,7 +454,6 @@ public class DragonProbe : ProbeScenario
         Shot("perch");
     }
 
-    // A close look at it, for the eye: from the side, a little above.
     void ShootTheDragon()
     {
         var side = Vector3.Cross(Vector3.up, view.Way).normalized;
@@ -489,7 +461,6 @@ public class DragonProbe : ProbeScenario
         Shot("close");
     }
 
-    // A camera high and ahead of the breath and off to one side, looking back at it over the valley.
     (Vector3 eye, Vector3 at) LookAtTheBreath()
     {
         var d = World.Dragon;
@@ -517,7 +488,6 @@ public class DragonProbe : ProbeScenario
         }
     }
 
-    // The next pass's way, a cell of the strip this far ahead of the lead that passes the test, or null.
     (int x, int y)? AheadOfTheBreath(int ahead, System.Func<int, int, bool> good)
     {
         var d = World.Dragon;
@@ -553,7 +523,6 @@ public class DragonProbe : ProbeScenario
         caught(down);
     }
 
-    // Whether the breath's tail has gone by a cell.
     bool Passed(int x, int y)
     {
         var d = World.Dragon;
@@ -592,7 +561,6 @@ public class DragonProbe : ProbeScenario
         Check("breath_spares_the_sheltered", !vitals.IsDown, $"at {at}, standing on {here}, on {World.At(at.x, at.y)?.T}, down {vitals.IsDown}");
     }
 
-    // What the flight must put back, set up before it comes and checked after.
     sealed class Damage
     {
         readonly DragonProbe probe;

@@ -55,7 +55,7 @@ public class HoldClipProbe : ProbeScenario
             for (float t = 0f; t < MostWait && !Core.HoldRunning; t += Time.deltaTime) yield return null;
             Check("a_run_starts", Core.HoldRunning);
             if (!Core.HoldRunning) yield break;
-            Core.Hold.ToSpawn = 0; // the takes stage their own raiders
+            Core.Hold.ToSpawn = 0;
             film = new ClipFilm(this, ScreenshotDir, withHud: true) { Keeping = false };
             film.Roll();
             yield return AtTheTower(site);
@@ -73,7 +73,6 @@ public class HoldClipProbe : ProbeScenario
         }
     }
 
-    // The water tower, over the wizard's shoulder: the HUD's tower line and timer, a trigger that attunes, then one that casts.
     IEnumerator AtTheTower(WorldHold site)
     {
         var tower = site.Towers.First(t => t.Element == ElementIds.Water);
@@ -101,7 +100,6 @@ public class HoldClipProbe : ProbeScenario
         film.Keeping = false;
     }
 
-    // High in the open keep, from the plate's side: raiders striking the crystal, the keep's health stepped down.
     IEnumerator TheCrystal(WorldHold site)
     {
         var show = grid.GetComponent<HoldShow>();
@@ -115,7 +113,7 @@ public class HoldClipProbe : ProbeScenario
         var (px, py) = site.Plate;
         var plate = grid.CellCenter(px, py);
         var toward = new Vector3(plate.x - heart.x, 0f, plate.z - heart.z).normalized;
-        Cut(heart + toward * 9f + Vector3.up * 17f + Vector3.Cross(toward, Vector3.up) * 3f, heart + Vector3.up * 1.5f); // at the height of the keep's walls
+        Cut(heart + toward * 9f + Vector3.up * 17f + Vector3.Cross(toward, Vector3.up) * 3f, heart + Vector3.up * 1.5f);
         int put = 0;
         foreach (var (dx, dy) in new[] { (1, 0), (-1, 0), (0, 1), (1, 1) })
             if (Core.SpawnRaider(RaiderIds.BoneHound, hx + dx, hy + dy, 4000) is { } r)

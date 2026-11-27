@@ -13,13 +13,11 @@ using UnityEngine.InputSystem.Controls;
 public sealed class PlaytestTools : MonoBehaviour
 {
     const string ShownKey = "playtest-where";
-    const int SectionOrder = 507; // the Settings sub menu, after the frame readout's
-    // Metres a second; [ and ] step through them. The last crosses the nine in about a minute.
+    const int SectionOrder = 507;
     static readonly float[] Speeds = { 12f, 40f, 120f, 400f };
     static readonly string[] Points = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
     static readonly CultureInfo Plain = CultureInfo.InvariantCulture;
 
-    /// <summary>The tools in this session, for the probe.</summary>
     public static PlaytestTools Instance { get; private set; }
 
     GUIStyle style;
@@ -27,19 +25,16 @@ public sealed class PlaytestTools : MonoBehaviour
     CharacterController frozenBody;
     Behaviour frozenDriver;
     int speed = 1;
-    int hopped = -1;      // the spawn last hopped to, in SpawnPoints order
-    float landWaitUntil;  // a hop's wizard waits (body off) for ground to stand on, until then
+    int hopped = -1;
+    float landWaitUntil;
     bool landing;
-    Behaviour landDriver; // the wizard's movement script, off with its body while a hop waits for ground
+    Behaviour landDriver;
 
-    /// <summary>Whether a hop's wizard is still waiting for ground (for the probe).</summary>
     public bool Landing => landing;
     const float LandWaitSeconds = 4f, ProbeHeight = 400f;
 
-    /// <summary>Whether the where-am-I line shows: on in a player build, off in the Editor, until the player chooses.</summary>
     public bool Shown { get; private set; }
 
-    /// <summary>Whether the wizard is flying.</summary>
     public bool Flying { get; private set; }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -75,7 +70,6 @@ public sealed class PlaytestTools : MonoBehaviour
         if (Instance == this) Instance = null;
     }
 
-    /// <summary>Shows or hides the where-am-I line, and remembers it.</summary>
     public void Show(bool on)
     {
         Shown = on;
@@ -89,10 +83,8 @@ public sealed class PlaytestTools : MonoBehaviour
         if (PauseMenu.Button($"Fly mode: {(Flying ? "On" : "Off")} (F4)", PauseMenu.ButtonStyle)) Fly(!Flying);
     }
 
-    /// <summary>The biome at a cell: the generated map's strongest, "pinned" in its hand-made square, else "valley" (the hand-made map).</summary>
     public static string BiomeAt(int x, int y) => BiomeGround.Last == null ? "valley" : BiomeGround.Last.BiomeAt(x, y) ?? "pinned";
 
-    /// <summary>"cell 3012,4410  chunk 47,68  grassland" for a world point, or null with no grid.</summary>
     public static string Where(Vector3 p, out Vector2Int cell, out Vector2Int chunk)
     {
         cell = chunk = default;
@@ -103,7 +95,6 @@ public sealed class PlaytestTools : MonoBehaviour
         return $"cell {cell.x},{cell.y}  chunk {chunk.x},{chunk.y}  {BiomeAt(cell.x, cell.y)}";
     }
 
-    /// <summary>The camera's heading as a compass point and degrees (north is +z, the top of the map).</summary>
     public static string Heading()
     {
         var cam = Camera.main;
@@ -123,10 +114,8 @@ public sealed class PlaytestTools : MonoBehaviour
         if (landing) Land();
     }
 
-    /// <summary>The spawn after (or, with a negative step, before) <paramref name="from"/> among <paramref name="count"/>, wrapping.</summary>
     public static int HopTo(int from, int step, int count) => ((from + step) % count + count) % count;
 
-    /// <summary>The spawn nearest a cell, by index: where the hop order starts from.</summary>
     public static int NearestSpawn(System.Collections.Generic.IReadOnlyList<SpawnPoints.Spawn> spawns, Vector2Int cell)
     {
         int best = 0;
@@ -141,10 +130,6 @@ public sealed class PlaytestTools : MonoBehaviour
         return best;
     }
 
-    /// <summary>
-    /// N / Shift+N: stands the wizard at the next / previous spawn point. A view-side move like fly's (a peer's place is
-    /// shared state, so online it is refused), after the destination's chunks are made active as a fresh start makes its own.
-    /// </summary>
     public void Hop(int step)
     {
         var chem = ChemGrid.Current?.Grid;
@@ -165,7 +150,6 @@ public sealed class PlaytestTools : MonoBehaviour
         if (hopped < 0 || hopped >= spawns.Count) hopped = NearestSpawn(spawns, chem.CellAt(before));
         hopped = HopTo(hopped, step, spawns.Count);
         var spawn = spawns[hopped];
-        // As a fresh start does (ChemGrid.Build): the destination's reach active before anything stands there.
         ChunkStreaming.Apply(chem.World, ChunkStreaming.StartPlan(chem.World, new[] { (spawn.Cell.x, spawn.Cell.y) }));
         var at = chem.CellCenter(spawn.Cell.x, spawn.Cell.y);
         at.y = Mathf.Max(chem.SurfaceY(spawn.Cell.x, spawn.Cell.y), chem.GroundAt(at)) + 1f;
@@ -181,8 +165,6 @@ public sealed class PlaytestTools : MonoBehaviour
         PlayLog.Instance?.Note($"hop to {spawn.Name} from {before.x:0},{before.y:0},{before.z:0} to {at.x:0},{at.y:0},{at.z:0}");
     }
 
-    // After a hop the wizard waits, body off, until the ground under it can be stood on (its collider is drawn), then
-    // is set on it: a hop of hundreds of metres must not drop the wizard into a chunk not yet drawn.
     void Land()
     {
         var wizard = WizardRig.FindLocal();
@@ -206,7 +188,6 @@ public sealed class PlaytestTools : MonoBehaviour
         landDriver = null;
     }
 
-    // F8's place, appended to marks-<time>.txt (one file a session, made at the first mark), with a toast.
     void OnMarked(string why)
     {
         var wizard = WizardRig.FindLocal();
@@ -227,7 +208,6 @@ public sealed class PlaytestTools : MonoBehaviour
         EventLog.Add($"Marked: chunk {chunk.x},{chunk.y}");
     }
 
-    /// <summary>Starts or stops flying. Refused online, where the wizard's place is shared.</summary>
     public void Fly(bool on)
     {
         if (on == Flying) return;
@@ -255,7 +235,6 @@ public sealed class PlaytestTools : MonoBehaviour
         EventLog.Add($"Fly mode: {Speeds[speed]:0} m/s ([ and ] change it, F4 lands)");
     }
 
-    // WASD along the camera's heading on the ground plane, Space up and C down; Shift doubles it.
     void FlyStep(Keyboard k)
     {
         var wizard = WizardRig.FindLocal();

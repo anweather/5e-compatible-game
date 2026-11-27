@@ -26,11 +26,6 @@ public static class UnityPackageSubset
         public readonly HashSet<string> References = new HashSet<string>();
     }
 
-    /// <summary>
-    /// Writes the subset to <paramref name="destination"/> and returns how many assets it holds.
-    /// Assets for which <paramref name="alreadyPresent"/> is true are left out: Unity would write
-    /// an imported asset over any existing asset with the same GUID, wherever that one lives.
-    /// </summary>
     public static int Create(string source, string destination, IReadOnlyList<string> includePrefixes, Func<string, bool> alreadyPresent)
     {
         var assets = Scan(source);
@@ -39,7 +34,6 @@ public static class UnityPackageSubset
         return keep.Count;
     }
 
-    // Pass 1: every asset's path and the GUIDs its text refers to.
     static Dictionary<string, AssetInfo> Scan(string source)
     {
         var assets = new Dictionary<string, AssetInfo>();
@@ -54,9 +48,6 @@ public static class UnityPackageSubset
         return assets;
     }
 
-    // Files under the prefixes and everything they reference, transitively. Folder entries are
-    // left out (Unity creates folders from file paths), so folder GUIDs shared between sample
-    // packs can't redirect files into another pack's folder.
     static HashSet<string> Closure(Dictionary<string, AssetInfo> assets, IReadOnlyList<string> prefixes, Func<string, bool> alreadyPresent)
     {
         var keep = new HashSet<string>();
@@ -74,7 +65,6 @@ public static class UnityPackageSubset
         return keep;
     }
 
-    // Under one of the prefixes (a folder or a file), and not project settings or packages.
     static bool IsIncluded(string path, IReadOnlyList<string> prefixes)
     {
         if (path == null || path.StartsWith("ProjectSettings/", StringComparison.Ordinal) || path.StartsWith("Packages/", StringComparison.Ordinal)) return false;
@@ -85,7 +75,6 @@ public static class UnityPackageSubset
         return false;
     }
 
-    // Pass 2: copy the kept assets' entries into a new package.
     static void Copy(string source, string destination, HashSet<string> keep)
     {
         using var file = File.Create(destination);
@@ -102,7 +91,6 @@ public static class UnityPackageSubset
         public byte[] Data;
     }
 
-    // Streams the tar inside the gzip. Without keepData, only small text-like parts are loaded.
     static IEnumerable<Entry> Read(string source, Func<string, bool> keepData = null)
     {
         using var file = File.OpenRead(source);
@@ -126,7 +114,6 @@ public static class UnityPackageSubset
         }
     }
 
-    // A tar header's entry: its name, and for "<guid>/<part>" files the GUID and part.
     static Entry ParseHeader(byte[] header, out long size)
     {
         string name = Field(header, 0, 100);
@@ -146,7 +133,6 @@ public static class UnityPackageSubset
         return entry;
     }
 
-    // The parts the first pass reads: paths, meta files, and assets small enough to search for references.
     static bool IsScanned(string part, long size) =>
         part == "pathname" || part == "asset.meta" || (part == "asset" && size <= MaxScannedBytes);
 

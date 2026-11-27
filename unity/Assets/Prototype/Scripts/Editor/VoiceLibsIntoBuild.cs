@@ -26,8 +26,6 @@ class VoiceLibsIntoBuild : IPreprocessBuildWithReport, IPostprocessBuildWithRepo
     const string Crt = "Contents/VC/Redist/MSVC/14.44.35112/x64/Microsoft.VC143.CRT/", OpenMp = "Contents/VC/Redist/MSVC/14.44.35112/x64/Microsoft.VC143.OpenMP/",
         Vulkan = "VulkanRT-X64-1.4.341.0-Components/", VulkanLicence = Vulkan + "VulkanRT-License.txt", Cache = "Library/VoiceLibs";
 
-    // Visual Studio 17.14's redistributable: its id and hash are in Microsoft's channel manifest (aka.ms/vs/17/release/channel).
-    // Vulkan's runtime components from LunarG, the version GPU drivers install, signed by Microsoft's hardware programme.
     static readonly Package[] Packages =
     {
         new()
@@ -52,7 +50,6 @@ class VoiceLibsIntoBuild : IPreprocessBuildWithReport, IPostprocessBuildWithRepo
         },
     };
 
-    /// <summary>The libraries a Windows player carries for voice, by file name.</summary>
     public static string[] Names => Packages.SelectMany(p => p.Files).Select(f => Path.GetFileName(f.entry)).ToArray();
 
     public int callbackOrder => 2;

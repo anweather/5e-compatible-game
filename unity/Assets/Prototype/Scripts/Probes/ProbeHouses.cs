@@ -59,7 +59,6 @@ public class HousesProbe : ProbeScenario
         Check("stone_stands", stoneAfter == stoneBefore, $"stone walls {stoneBefore} -> {stoneAfter}");
     }
 
-    // A house's wall cells of a terrain: those under its box (a little grown), by world cell.
     int Walls(VillageHouse house, string terrain) => Under(house).Count(c => World.At(c.x, c.y).T == terrain);
 
     System.Collections.Generic.IEnumerable<Vector2Int> Under(VillageHouse house)
@@ -71,7 +70,6 @@ public class HousesProbe : ProbeScenario
                 if (World.InBounds(x, y)) yield return new Vector2Int(x, y);
     }
 
-    // A Fire Bolt at the house's wall cell nearest its middle.
     void Bolt(VillageHouse house, string terrain)
     {
         var centre = grid.CellAt(house.transform.position);

@@ -8,7 +8,6 @@ using UnityEngine;
 // whose part isn't in the scene is simply left out.
 public static class PlaytestPlaces
 {
-    /// <summary>The places by name, in a fixed order (so the bot's choices replay).</summary>
     public static List<(string name, Vector3 at)> Find(ChemGrid grid, Vector3 start)
     {
         var places = new List<(string, Vector3)> { ("start", start) };
@@ -17,20 +16,15 @@ public static class PlaytestPlaces
         Add(places, "ball court", One<BallCourt>(start));
         Add(places, "defense field", One<DefenseField>(start));
         Add(places, "village", One<Village>(start));
-        // The waterfall is drawn away from its object's origin: go by what it draws.
         Drawn(places, "waterfall", One<WaterfallFx>(start));
         var bridge = GameObject.Find("Bridge");
         if (bridge != null) places.Add(("bridge", bridge.transform.position));
-        // The sea: a few metres out from the shore nearest the valley. Its drawing reaches the
-        // horizon, so the middle of what it draws is kilometres off the world.
         var ocean = Ocean.Instance;
         if (ocean != null)
         {
             var shore = ocean.shoreOrigin + ocean.seaward.normalized * SeaWade;
             places.Add(("sea", new Vector3(shore.x, 0f, shore.y)));
         }
-        // Put each on the ground (a landmark's own point may be up a pole or under the water),
-        // and leave out any that isn't on the world.
         for (int i = places.Count - 1; i >= 0; i--)
         {
             var (name, at) = places[i];
@@ -40,18 +34,14 @@ public static class PlaytestPlaces
         return places;
     }
 
-    /// <summary>Metres from the shore into the sea that "the sea" is: wading depth.</summary>
     const float SeaWade = 8f;
 
-    /// <summary>Whether a point is over the world's cells (the bot never sends the wizard anywhere else).</summary>
     public static bool InWorld(ChemGrid grid, Vector3 p)
     {
         var cell = grid.CellAt(p);
         return grid.World.InBounds(cell.x, cell.y);
     }
 
-    // The one nearest the start, if there are several (there are villages): FindAnyObjectByType
-    // promises no order, so a run and its replay could each go to a different one.
     static T One<T>(Vector3 start) where T : Component =>
         Object.FindObjectsByType<T>(FindObjectsSortMode.None)
             .OrderBy(c => (c.transform.position - start).sqrMagnitude)
@@ -63,7 +53,6 @@ public static class PlaytestPlaces
         if (part != null) places.Add((name, part.transform.position));
     }
 
-    // The middle of everything a part and its children draw (or its position if it draws nothing).
     static void Drawn(List<(string, Vector3)> places, string name, Component part)
     {
         if (part == null) return;
@@ -78,7 +67,6 @@ public static class PlaytestPlaces
         places.Add((name, bounds.center));
     }
 
-    /// <summary>The nearest place within a radius, for a candidate's signature; else the chunk it's in.</summary>
     public static string Near(List<(string name, Vector3 at)> places, ChemGrid grid, Vector3 p, float radius = 60f)
     {
         string best = null;

@@ -1,13 +1,11 @@
+// The stream fixtures in chat-fixtures/ fed to a recorder, each line "arriving" Step ms after the last: ChatRecordTests'
+// and the bench's (Chat.Bench.Tests links this file).
 using System.IO;
 using Chem.Mcp;
 using Newtonsoft.Json.Linq;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The stream fixtures in chat-fixtures/ fed to a recorder, each line "arriving" Step ms after the last: ChatRecordTests'
-    /// and the bench's (Chat.Bench.Tests links this file).
-    /// </summary>
     internal static class ChatFixtures
     {
         internal const int Step = 100;

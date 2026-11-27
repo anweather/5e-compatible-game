@@ -1,13 +1,11 @@
+// The player's stable id (PlayerId.cs; docs/design/player-saves.md, step 2): made from random bytes, read back as
+// written, and never a session's name for a player ("p0", "solo").
 using System;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The player's stable id (PlayerId.cs; docs/design/player-saves.md, step 2): made from random bytes, read back as
-    /// written, and never a session's name for a player ("p0", "solo").
-    /// </summary>
     [Category("Unit")]
     public class PlayerIdTests
     {
@@ -54,7 +52,6 @@ namespace Chem.Tests
         [Test]
         public void ASessionsNameIsNeverAnId()
         {
-            // What the game calls a player today (NetChem.PlayerName, TriggerDef.SoloPlayer) can't be taken for an id.
             foreach (ulong client in new ulong[] { 0, 1, 9, 42, ulong.MaxValue - 1 })
                 Assert.That(PlayerId.TryParse("p" + client.ToString(System.Globalization.CultureInfo.InvariantCulture), out _), Is.False, $"client {client}");
             Assert.That(PlayerId.TryParse(TriggerDef.SoloPlayer, out _), Is.False);

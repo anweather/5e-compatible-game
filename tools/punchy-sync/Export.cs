@@ -12,29 +12,22 @@ namespace PunchySync
     public sealed class Exported
     {
         public readonly JsonObject Fauna = new(), Parts = new();
-        /// <summary>By species id: upstream features we have no code for, so a new one is left out.</summary>
         public readonly Dictionary<string, List<string>> NeedsCode = new();
-        /// <summary>By species id: upstream fields set that our rows don't carry (the animal works without them).</summary>
         public readonly Dictionary<string, List<string>> Extras = new();
-        /// <summary>Part ids whose role our view hasn't got.</summary>
         public readonly HashSet<string> UnsupportedParts = new();
     }
 
     public static class Export
     {
-        // LimbRole in Punchy's order; wing came after our port (flight).
         static readonly string[] Roles = { "leg", "arm", "tail", "neck", "head", "ear", "horn", "eye", "feature", "wing" };
         static readonly string[] Actives = { "day", "night", "always" };
         static readonly string[] PoseFields = { "Idle", "WalkReach", "WalkPush", "WalkLift", "RunReach", "RunPush", "RunLift" };
         static readonly string[] PoseKeys = { "idle", "walkReach", "walkPush", "walkLift", "runReach", "runPush", "runLift" };
         const int Leg = 0, Arm = 1, Ear = 5, Horn = 6, Eye = 7, Feature = 8, Wing = 9;
 
-        // How one differs from the next (life-variety): a touch for animals, more for folk.
         static JsonObject AnimalVary() => new() { ["shade"] = 0.14, ["warm"] = 0.06, ["girth"] = 0.08 };
         static JsonObject FolkVary() => new() { ["shade"] = 0.1, ["warm"] = 0.05, ["girth"] = 0.14, ["mix"] = true };
 
-        // Fields a species can't do without, that our animator and brain haven't got: one of these
-        // set leaves a new species out (its code is ported by hand first, ThirdParty/Punchy/README.md).
         static readonly (string field, string what)[] Required =
         {
             ("Tunnels", "tunnelling under the ground"), ("Rooted", "rooted to the spot"), ("Haunts", "a ghost's drift"),
@@ -42,7 +35,6 @@ namespace PunchySync
             ("DrawnToLight", "flitting round cave lights"), ("Hawks", "hawking over water"),
         };
 
-        // Fields that give an animal more to do but that it works without; listed, not ported.
         static readonly (string field, string unset)[] Optional =
         {
             ("Gallop", "0"), ("Climbing", "0"), ("SpinsWebs", "0"), ("Burrows", "0"), ("CaveDweller", "0"), ("ChamberFolk", "0"),
@@ -85,7 +77,6 @@ namespace PunchySync
             return needs;
         }
 
-        /// <summary>"RedFox" as an id: "red-fox".</summary>
         public static string Id(string assetName)
         {
             var id = new StringBuilder();
@@ -102,8 +93,6 @@ namespace PunchySync
             var words = Id(assetName).Replace('-', ' ');
             return char.ToUpperInvariant(words[0]) + words[1..];
         }
-
-        // ---------- species ----------
 
         static JsonObject Species(Snapshot snap, Asset asset)
         {
@@ -147,8 +136,6 @@ namespace PunchySync
             return c;
         }
 
-        // A slot by a name that reads: a leg by where it stands, else by its role, or a feature by its
-        // limb; a second of a name takes a number. Rows keep the slots' order, which parents need.
         static JsonObject Slots(Snapshot snap, Dictionary<string, object> s)
         {
             var slots = s.Items("Parts").OfType<Dictionary<string, object>>().ToList();
@@ -184,7 +171,6 @@ namespace PunchySync
             int role = (int)limb.Fields.Num("Role", 0);
             return role switch
             {
-                // CreatureRowExport compared floats with 0.2f; the same as doubles on the asset's digits.
                 Leg => at[2] > 0.2 ? "fore" : at[2] < -0.2 ? "hind" : "legs",
                 Arm => "arm" + many,
                 Ear => "ear" + many,
@@ -223,7 +209,6 @@ namespace PunchySync
             return m;
         }
 
-        // A variant's behaviour comes from what it's based on, but for its activities, which are its own.
         static JsonObject Behave(Snapshot snap, Dictionary<string, object> s, bool variant)
         {
             var b = new JsonObject();
@@ -246,8 +231,6 @@ namespace PunchySync
             b["chase"] = s.Num("ChaseTime", 10);
             return b;
         }
-
-        // ---------- parts ----------
 
         static JsonObject Part(Dictionary<string, object> limb)
         {

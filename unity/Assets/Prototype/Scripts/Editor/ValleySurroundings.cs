@@ -19,18 +19,14 @@ using UnityEngine;
 // the terrain and the cell map, which every machine then loads the same.
 public static class ValleySurroundings
 {
-    // Surfaces, in ValleyBuilder.LayerNames order (the biomes' surfaces are the valley's layers).
     const int Grass = 0, Moss = 1, Rock = 2, Snow = 3, Sand = 4, Soil = 5, Surfaces = 6;
     static readonly string[] Lands = { "Grassland", "Temperate", "Mountains", "Fells" };
     static readonly float[] LandTrees = { 0.12f, 0.75f, 0.3f, 0.05f };
 
     const string ThemeId = "home-valley";
     const int ThemeSeed = 1;
-    /// <summary>A theme region, in cells: a 3×3 core is then 576 cells across, the valley's size.</summary>
     const double RegionCells = 192;
-    /// <summary>How far past the valley floor the generated land takes over fully, in metres.</summary>
     const float BlendMetres = 90f;
-    /// <summary>The theme's layout is sampled this far apart (metres), and the lands' weights blurred over these.</summary>
     const float Step = 3f, ShapeBlur = 140f, SurfaceBlur = 45f;
 
     static BiomeTerrain land;
@@ -39,15 +35,12 @@ public static class ValleySurroundings
     static Vector2 centre, origin;
     static float cellSize;
     static (Vector2 at, float radius)[] floor;
-    // The sampled layout: per land a blurred weight map (for heights, for surfaces), and per sample
-    // the look's tree factor and what fills it (ThemeField.Mat*).
     static float[][] shapeMaps, surfaceMaps;
     static float[] treeFactor;
     static int[] material;
     static int size;
     static float[] lakeLevels;
 
-    /// <summary>Sets the land up around the valley as ValleyShape.Plan laid it out.</summary>
     public static void Plan(Vector2 valleyCentre, Vector2 lakeCentre, Vector2 falls, IEnumerable<Vector2> cabins,
         IEnumerable<(Vector2 at, float radius)> villages, float cells)
     {
@@ -72,9 +65,6 @@ public static class ValleySurroundings
         SampleLayout(registry);
     }
 
-    // Punchy's temperate biomes (Grassland, Temperate, Mountains; Tundra as the fells), scaled to a
-    // valley under a kilometre across: lower relief and smaller features than his 8 km world. In
-    // Lands order.
     static List<Biome> Biomes() => new()
     {
         new Biome
@@ -120,9 +110,6 @@ public static class ValleySurroundings
     static SurfaceRule Patches(int surface, float coverage) =>
         new() { Surface = surface, UsePatches = true, PatchSize = 45f, PatchCoverage = coverage };
 
-    // ---------- the theme's layout, sampled ----------
-
-    // The continent cell (x east, y south, the yard's centre at 0) of a point on the ground plane.
     static (int x, int y) Cell(Vector2 p) =>
         (Mathf.RoundToInt((p.x - centre.x) / cellSize), Mathf.RoundToInt(-(p.y - centre.y) / cellSize));
 
@@ -165,7 +152,6 @@ public static class ValleySurroundings
         LevelLakes();
     }
 
-    // Where the theme says nothing: Punchy's own random regions.
     static void Filler(Vector2 p, float[][] weights, int at)
     {
         var w = land.Weights(new float2(p.x, p.y), false);
@@ -173,7 +159,6 @@ public static class ValleySurroundings
             if (w.Weights[s] > 0f) weights[w.Ids[s]][at] += w.Weights[s];
     }
 
-    // Two passes of a box blur each way (close to a gaussian), radius in samples.
     static float[] Blurred(float[] map, int radius)
     {
         var a = (float[])map.Clone();
@@ -217,7 +202,6 @@ public static class ValleySurroundings
 
     static int Index(int line, int k, bool rows) => rows ? line * size + k : k * size + line;
 
-    // Each theme lake's water level: the lowest generated ground inside it, so it never spills.
     static void LevelLakes()
     {
         lakeLevels = new float[blueprint.Lakes.Count];
@@ -235,7 +219,6 @@ public static class ValleySurroundings
         }
     }
 
-    // Bilinear sample of a sampled map at a point.
     static float Sample(float[] map, Vector2 p)
     {
         var q = (p - origin) / Step;
@@ -265,9 +248,6 @@ public static class ValleySurroundings
         return w;
     }
 
-    // ---------- what ValleyShape and the builder ask ----------
-
-    /// <summary>0 on the valley floor, rising to 1 where the generated land takes over.</summary>
     public static float Mask(Vector2 p)
     {
         float outside = float.MaxValue;
@@ -276,10 +256,8 @@ public static class ValleySurroundings
         return Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, BlendMetres, outside));
     }
 
-    // The lands' height at a point, before lakes and rivers are carved in.
     static float Dry(Vector2 p) => land.Height(new float2(p.x, p.y), WeightsAt(shapeMaps, p));
 
-    /// <summary>The generated land's height at a point (metres above the yard), lakes and rivers carved in.</summary>
     public static float Height(Vector2 p)
     {
         float h = Dry(p);
@@ -288,18 +266,15 @@ public static class ValleySurroundings
         {
             var lake = blueprint.Lakes[l];
             if (lake.Material != "water") continue;
-            // A flat bed two metres under the lake's level, rising to the shore.
             float rho = (float)ThemeGeometry.Rho(lake.Blob, cx + 0.5, cy + 0.5);
             float inside = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1.25f, 0.9f, rho));
             h = Mathf.Lerp(h, Mathf.Min(h, lakeLevels[l] - 2f), inside);
         }
-        // A channel a metre and a half deep along each river, easing out over a few cells.
         float bank = (float)field.RiverBankDistance(cx, cy);
         if (bank < 4f) h -= 1.5f * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(4f, 0f, bank));
         return h;
     }
 
-    /// <summary>The theme's water at a point: 'w' a lake, 'r' a river, or '\0' (dry).</summary>
     public static char Water(Vector2 p)
     {
         var (cx, cy) = Cell(p);
@@ -307,7 +282,6 @@ public static class ValleySurroundings
         return field.RiverBankDistance(cx, cy) <= 0 ? 'r' : 'w';
     }
 
-    /// <summary>The generated land's layers at a point (LayerNames order, summing to 1); sand on the theme's lake shores.</summary>
     public static float[] LayerWeights(Vector2 p, float height, float slope)
     {
         var w = land.SurfaceWeights(new float2(p.x, p.y), height, slope, WeightsAt(surfaceMaps, p));
@@ -319,7 +293,6 @@ public static class ValleySurroundings
         return w;
     }
 
-    /// <summary>How thick the forest grows at a point on the generated land, 0..1: the land's own, scaled by the theme's look; none in water.</summary>
     public static float Trees(Vector2 p)
     {
         int at = Nearest(p);

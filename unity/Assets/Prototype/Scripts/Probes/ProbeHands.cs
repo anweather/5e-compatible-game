@@ -12,7 +12,6 @@ public class HandsProbe : ProbeScenario
 {
     const int WallX = 21, WallY = 3, AimNorth = 6, AimFar = 60;
     const float MostWait = 8f;
-    // Long enough for a big spell's own cooldown (a merge's Thunder Strike rests 90 ticks, 15 s).
     const float CoolWait = 20f;
 
     Gamepad pad;
@@ -25,7 +24,6 @@ public class HandsProbe : ProbeScenario
     int leftArm, rightArm;
     bool together;
 
-    // What the arms played of a press: each its gesture, the two as one.
     void Watch()
     {
         if (body.Playing(HandsDef.Left) != HandsDef.NoGesture) leftArm = body.Playing(HandsDef.Left);
@@ -51,7 +49,6 @@ public class HandsProbe : ProbeScenario
         InputSystem.QueueStateEvent(keys, new KeyboardState());
     }
 
-    // A press, held for a few frames, let go, and what the core sets off, spells and acts; then the hands cool down.
     IEnumerator Fires(string name, string[] wanted, System.Action press, System.Action second = null)
     {
         heard.StartFrom(Core);
@@ -97,7 +94,6 @@ public class HandsProbe : ProbeScenario
         InputSystem.QueueStateEvent(pad, state);
     }
 
-    // The mouse's clicks with the keyboard's bumpers, Q and E.
     void Keys(bool left, bool right, params MouseButton[] held)
     {
         var state = new MouseState();
@@ -109,7 +105,6 @@ public class HandsProbe : ProbeScenario
         InputSystem.QueueStateEvent(mouse, state);
     }
 
-    // At the element's tower (hold-batch): a press of the hand's trigger attunes it, in its moment.
     IEnumerator AttuneTo(string element, int hand, System.Action press)
     {
         if (Core.HandsOf(Me).Holds[hand] != element)
@@ -129,7 +124,6 @@ public class HandsProbe : ProbeScenario
         Check($"it_shows_{hand}_{element ?? "nothing"}", wizard.GetComponent<HandPose>().Showing(hand) == element, wizard.GetComponent<HandPose>().Showing(hand));
     }
 
-    // Each hand at its element's tower, with the pad's triggers (the room went, hold-batch), then back on the wall.
     IEnumerator Attune(string left, string right)
     {
         Check("the_hands_layout_is_on", controls.HandPad);
@@ -140,7 +134,6 @@ public class HandsProbe : ProbeScenario
         yield return Wait(0.3f);
     }
 
-    // Both hands to nothing from the spell list, before a run: a tower gives only its element.
     IEnumerator EmptyHands()
     {
         foreach (int hand in new[] { HandsDef.Left, HandsDef.Right })
@@ -199,8 +192,6 @@ public class HandsProbe : ProbeScenario
         yield return Fires("q_and_e", both(HandsDef.Throw), () => Keys(true, true));
     }
 
-    // D16's charge: a held trigger charges to the most and goes off as it's let go; both held merge, the icons meet, and the merge
-    // goes off at the lower charge; one hand tapping while the other charges fires on its own, and the held one still charges.
     IEnumerator Charges(string left, string right)
     {
         var hud = EventLog.CastShown;
@@ -222,7 +213,6 @@ public class HandsProbe : ProbeScenario
         Check("it_fires_on_the_release_at_full_charge", fired.Count == 1 && fired[0].Charge == full, string.Join(",", fired.Select(f => $"{f.Spell}@{f.Charge}")));
         yield return Cooled();
 
-        // Both held: the merge, which goes off at the lower of the two charges.
         heard.StartFrom(Core);
         int slams = hud != null ? hud.Slams : 0;
         Pad(0f, 1f);
@@ -242,8 +232,6 @@ public class HandsProbe : ProbeScenario
         Check("the_merge_fires_once", fired.Count == 1 && fired[0].Spell == Table.Both(left, right, HandsDef.Thrust)?.Spell, string.Join(",", fired.Select(f => $"{f.Spell}@{f.Charge}")));
         yield return Cooled();
 
-        // The left trigger held, the right bumper tapped (another gesture, so no merge): the right goes off alone, and the left
-        // goes on charging.
         heard.StartFrom(Core);
         Pad(1f, 0f);
         yield return Wait(0.2f);
@@ -272,7 +260,6 @@ public class HandsProbe : ProbeScenario
         yield return Wait(0.2f);
     }
 
-    // Attuning from the spell list, outside the Hold: it takes a moment, and one element is on both hands.
     IEnumerator AttuneFromTheList()
     {
         string wasLeft = Core.HandsOf(Me).Holds[HandsDef.Left], wasRight = Core.HandsOf(Me).Holds[HandsDef.Right];
@@ -294,7 +281,6 @@ public class HandsProbe : ProbeScenario
         yield return Wait(0.2f);
     }
 
-    // The bumper's spell aimed past the long range, and the trigger's past the short: they land inside them.
     IEnumerator Ranges(string holds, Vector2Int me)
     {
         var far = grid.CellCenter(me.x, me.y - AimFar);
@@ -314,7 +300,7 @@ public class HandsProbe : ProbeScenario
         row = world.BuildingRowOf(site.Castle);
         controls = caster.controls;
         controls.enabled = true;
-        EventLog.HudVisible = true; // the hands' icons are drawn by the HUD
+        EventLog.HudVisible = true;
         caster.enabled = true;
         InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
         pad = InputSystem.AddDevice<Gamepad>("Hands pad");
@@ -329,7 +315,6 @@ public class HandsProbe : ProbeScenario
         yield return AttuneFromTheList();
         yield return Charges(world.HandHolds(Me, HandsDef.Left), world.HandHolds(Me, HandsDef.Right));
 
-        // One element is on both hands (D16), so a hand is empty only with nothing in either.
         yield return EmptyHands();
         var holder = wizard.GetComponent<ItemHolder>();
         int fists = 0;
@@ -348,7 +333,7 @@ public class HandsProbe : ProbeScenario
         for (float t = 0f; t < MostWait && !world.HoldRunning; t += Time.deltaTime) yield return null;
         Check("a_run_starts", world.HoldRunning);
         if (!world.HoldRunning) yield break;
-        world.Hold.Health = int.MaxValue / 2; // the run outlasts the probe
+        world.Hold.Health = int.MaxValue / 2;
 
         var hud = grid.GetComponent<HoldShow>();
         yield return Attune("air", "fire");

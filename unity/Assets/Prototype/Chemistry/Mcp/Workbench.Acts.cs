@@ -8,16 +8,14 @@ using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 
-#pragma warning disable S107 // a tool's parameters are its schema (RulesTools)
+#pragma warning disable S107
 
 namespace Chem.Mcp
 {
     public sealed partial class Workbench
     {
-        // Each act gets its own seed unless asked for one, so a second one near the first picks afresh.
         int actSeed;
 
-        /// <summary>act(): count of a terrain, cover, thing or animal over open cells near something, or a spell cast there, now.</summary>
         public string Act(string what, int? count, string near, int? within, int? spacing, string side, string edge, int? seed, string[] onto, int? lasts, string peer = null, LandAsk landAsk = null)
         {
             var plan = PlanAct(what, count, near, within, spacing, side, edge, seed, onto, lasts, landAsk);
@@ -27,16 +25,13 @@ namespace Chem.Mcp
             return FormattableString.Invariant($"{said}\n{(plan.ActKindOf == World.ActLand ? "At" : "Near")} {plan.PlaceName}.{plan.Note} {Landed(said)}, for everyone, and it isn't a mod: nothing to apply or save.{AfterAct(plan.ActKindOf)}");
         }
 
-        // What act will send, worked out from the world as it is: the ask, or what's wrong with the place.
         sealed class ActPlan
         {
             public JObject Command;
             public string What, ActKindOf, PlaceName, NoRoom;
-            /// <summary>What was changed from the ask (a stamp's rise cut to its width), said before the verdict; "" for nothing.</summary>
             public string Note = "";
         }
 
-        // One ask of act. A wrong ask throws; a place with no room is NoRoom, as it's no mistake of the asker's.
         ActPlan PlanAct(string what, int? count, string near, int? within, int? spacing, string side, string edge, int? seed, string[] onto, int? lasts, LandAsk landAsk)
         {
             what = Required(what, "what");
@@ -56,7 +51,6 @@ namespace Chem.Mcp
             return new ActPlan { What = what, Command = ask, ActKindOf = kind, PlaceName = name };
         }
 
-        /// <summary>call_act(): a named act, a trigger with on: called from a mod that's on, fired at a place: each of its rows as act would do it, one firing.</summary>
         public string CallAct(string id, string near, string side, string edge, string peer = null)
         {
             id = Required(id, "id");
@@ -80,18 +74,14 @@ namespace Chem.Mcp
             return $"{said}\nAt {place}.{roomy}{notes} {Landed(said)}, for everyone. undo_act takes back what can be, all at once: casts, animals and golf stay.";
         }
 
-        // How a reply ends: only what really landed is called done.
         static string Landed(string said) => said.Contains(World.FellShort) ? "What landed is done; tell the player what didn't" : "It's done";
 
-        // Where a firing at a place stands: one cell for all its rows but land, the cell its land rows stand on, and
-        // whether every row has room there. Moved says how far the land went from where it was asked; "" if it didn't.
         sealed class Spot
         {
             public string Near, Land, Name, Moved = "";
             public (int x, int y) At;
             public bool Fits;
 
-            /// <summary>Where a row of the firing stands.</summary>
             public string For(JObject row) => IsLand(row) ? Land : Near;
         }
 
@@ -101,11 +91,6 @@ namespace Chem.Mcp
 
         static string CellName((int x, int y) c) => FormattableString.Invariant($"[{c.x}, {c.y}]");
 
-        // One spot for a firing of several rows at a place of many cells, so its rows stand together. It comes from the
-        // world's seed and the firing's id and number, never a peer; the first with room for every row, else the one with
-        // room for most. Land goes where a lone act would stamp it, the place's middle, or as near it as it fits, at most
-        // land.maxMove cells off: a stamp that fits nowhere so near isn't moved, and is refused there and says why (#156).
-        // Null when it's fired at one cell, or has one row: each row is where it's asked already.
         Spot SpotFor(string id, List<JObject> rows, string near, string side, string edge)
         {
             if (rows.Count < 2) return null;
@@ -134,7 +119,6 @@ namespace Chem.Mcp
             });
         }
 
-        // The first spot with room for every row, else the one with room for most; the fallback when no spot is open.
         Spot Best(World w, List<JObject> rows, List<(int x, int y)> spots, (int x, int y) fallback, string name)
         {
             var best = (x: fallback.x, y: fallback.y, rows: -1);
@@ -148,7 +132,6 @@ namespace Chem.Mcp
             return new Spot { Near = at, Land = at, At = (best.x, best.y), Name = $"{name}, round {at}", Fits = best.rows == rows.Count };
         }
 
-        // Where a land row may stand: the cell asked first, then every open cell up to land.maxMove from it, nearest first.
         List<(int x, int y)> LandSpots(World w, (int x, int y) asked, int salt)
         {
             int most = (int)Budgets.Number("land.maxMove", 4);
@@ -157,10 +140,8 @@ namespace Chem.Mcp
             return new[] { asked }.Concat(near.Where(c => c != asked)).ToList();
         }
 
-        // A place's middle, as a lone land act takes it.
         static (int x, int y) Middle(List<(int x, int y)> from) => (from.Sum(c => c.x) / from.Count, from.Sum(c => c.y) / from.Count);
 
-        // Whether all of a row can land round a cell.
         bool RowFits(World w, JObject row, int x, int y)
         {
             if ((string)row["act"] == World.ActLand)
@@ -178,13 +159,11 @@ namespace Chem.Mcp
 
         static string[] OntoOf(JObject row) => (row["onto"] as JArray)?.Select(t => (string)t).ToArray();
 
-        // A row of a called trigger, what act would be asked, with where it's being called.
         ActPlan PlanOfRow(JObject row, string near, string side, string edge)
         {
             return PlanAct((string)row["act"], (int?)row["count"], near, (int?)row["within"], (int?)row["spacing"], side, edge, (int?)row["seed"], OntoOf(row), (int?)row["lasts"], AskOf(row));
         }
 
-        /// <summary>What a land stamp asks for: metres and cells as a player says them.</summary>
         public sealed class LandAsk
         {
             public string Profile = LandStamp.Dome, Along;
@@ -199,7 +178,6 @@ namespace Chem.Mcp
             ["southeast"] = (1, 1),
         };
 
-        // One stamp at a time, where it's asked for, off buildings and settled ground; water and the terrain's range the world refuses itself.
         ActPlan PlanLand(string near, string side, string edge, int? seed, LandAsk ask)
         {
             var from = Targets(string.IsNullOrWhiteSpace(near) ? "me" : near, side, edge, out string name);
@@ -210,7 +188,6 @@ namespace Chem.Mcp
             return new ActPlan { What = World.ActLand, ActKindOf = World.ActLand, PlaceName = name, Note = SteepNote(ask), Command = new JObject { ["kind"] = World.ActLand, ["what"] = World.ActLand, ["stamp"] = stamp.Row } };
         }
 
-        // The stamp a land ask makes at a cell; a wrong ask throws.
         LandStamp StampOf(LandAsk ask, int x, int y, int seed)
         {
             int radius = ask.Radius ?? 8, rise = ask.Rise ?? 0;
@@ -228,11 +205,8 @@ namespace Chem.Mcp
 
         const int LandUnitsPerMetre = 8;
 
-        // The most a stamp this wide rises, in whole metres: land.steepest a cell of radius, so its sides look climbable
-        // (#156: a 100 m mountain 12 cells across, 30 m canyon walls at radius 6). Never below 1 m.
         int SteepestRise(int radius) => Math.Max(1, (int)Math.Floor(Budgets.Number("land.steepest", 1.5) * radius));
 
-        // What the reply says when a stamp's rise was cut to its width; "" when it wasn't.
         string SteepNote(LandAsk ask)
         {
             int radius = ask.Radius ?? 8, rise = Math.Abs(ask.Rise ?? 0), most = SteepestRise(radius);
@@ -245,10 +219,8 @@ namespace Chem.Mcp
             return FormattableString.Invariant($" {rise} m is too steep for a radius of {radius}, so it rises {most} m: at most {steepest} m a cell of radius, so its sides stay climbable. A wider radius rises higher: {wider}. Tell the player what they got.");
         }
 
-        // How uneven land is when nobody says: nothing the land makes is a smooth slab, and a flat is asked for as flat.
         const int LandRoughness = 40;
 
-        // What stands on a stamp's cells: a building, or the ground of a settled place (SettledKinds).
         string SettledUnder(World w, LandStamp s)
         {
             var built = new HashSet<(int, int)>();
@@ -277,7 +249,6 @@ namespace Chem.Mcp
             return kind == World.ActThing || kind == World.ActTerrain || kind == World.ActCover ? " undo_act takes it back." : "";
         }
 
-        /// <summary>undo_act(): takes back an act that laid ground or placed things, the last of the player's if none is named.</summary>
         public string UndoAct(int? act, string peer = null) =>
             Decide(RoomCommand.Undo(PeerOf(peer), act));
 
@@ -303,9 +274,6 @@ namespace Chem.Mcp
             }
         }
 
-        // ---------- superseded mods ----------
-
-        // The earlier mods this one says all of: the chat's own, by the same player. Each goes, and the line says so.
         string Superseded(string json, string id, string peer)
         {
             var now = Now();
@@ -321,8 +289,6 @@ namespace Chem.Mcp
             return taken.Count == 0 ? "" : $"\nIt says all that {string.Join(" and ", taken)} said, so that's off now: one change, not a pile.";
         }
 
-        // Everything a mod says, a value to a line: where it sits, and for a list that isn't a colour or rows by id what's
-        // in it, as two mods adding to one list add different things.
         static HashSet<string> Says(string json)
         {
             var lines = new HashSet<string>(StringComparer.Ordinal);
@@ -339,7 +305,6 @@ namespace Chem.Mcp
             }
             if (token is JArray rows && rows.Count > 0 && rows.All(r => r is JObject row && row["id"] != null))
             {
-                // Rows by id, as a spell's are: one's look is the same line in two mods.
                 foreach (var row in rows) Say(row, at + "/" + (string)row["id"], lines);
                 return;
             }

@@ -59,17 +59,10 @@ namespace Playtest.Runner
             int GetMute(out bool mute);
         }
 
-        /// <summary>What <see cref="Mute"/> returns when the PC has no default audio output: nothing can play aloud.</summary>
         public const int NoOutput = -1;
 
-        /// <summary>Whether a <see cref="Mute"/> result means the player is silent: sessions muted, or no output to hear it on.</summary>
         public static bool Silenced(int result) => result > 0 || result == NoOutput;
 
-        /// <summary>
-        /// Mutes every audio session of a process on the default output; how many it muted (0 if it
-        /// has none yet), or <see cref="NoOutput"/> when there is no default output (a PC with no audio
-        /// device, or a VM: Windows answers "Element not found").
-        /// </summary>
         [SupportedOSPlatform("windows")]
         public static int Mute(int pid)
         {

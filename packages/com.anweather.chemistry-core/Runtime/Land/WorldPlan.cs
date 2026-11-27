@@ -13,62 +13,31 @@ using System.Linq;
 
 namespace Chem
 {
-    /// <summary>What a plan is solved from, besides the library: the seed and the world's shape.</summary>
     public sealed class PlanInputs
     {
         public string Seed = "valley-1";
-        /// <summary>
-        /// World squares across and down, not counting the sea column and row of an unwrapped world or the wall rows of an
-        /// east-west one (a 12 × 8 east-west world is 12 × 10 squares in all).
-        /// </summary>
         public int Width = 3, Height = 3;
         public PlanWrap Wrap = PlanWrap.None;
-        /// <summary>Ice to the north, desert to the south (Andrew's start), or ice at both ends with desert between.</summary>
         public bool HalfProfile = true;
-        /// <summary>How strongly the climate follows latitude, in percent.</summary>
         public int Latitude = 60;
-        /// <summary>The open sea's share of the land squares, in percent.</summary>
         public int Sea;
-        /// <summary>The share of land that's high ground or peaks, in percent.</summary>
         public int Mountains = 30;
-        /// <summary>How often a landmark square keeps its village, in percent.</summary>
         public int Towns = 35;
-        /// <summary>At most this many main roads; -1 for about one per two squares a side, six at most.</summary>
         public int MainRoads = -1;
         public int InlandSeas, InlandSize = 1;
-        /// <summary>The valley's sides read from its land; null for the prototype's (sea to the south and west).</summary>
         public ValleySides Valley;
-        /// <summary>The valley's own spawn, cells within its square (its map.json's); null to place one as any square's.</summary>
         public (int x, int y)? ValleySpawn;
-        /// <summary>
-        /// The far landmarks the world must hold (section 5's must-haves, "a volcano"): each a village form's landmark. The
-        /// solve gives one square inside the map a template whose village comes out as it, and keeps that village.
-        /// </summary>
         public List<string> Musts = new List<string>();
-        /// <summary>The world sketch the land's biome follows where it's drawn (map.json's "sketch"); null for none.</summary>
         public WorldSketch Sketch;
-        /// <summary>
-        /// Forced squares (a world file's "forced"), by plan square: the template each takes and the band it asks. One of
-        /// the sea band is open sea; one the envelope moves off its template's bands takes its band's filler.
-        /// </summary>
         public Dictionary<(int x, int y), ForcedSquare> Forced = new Dictionary<(int x, int y), ForcedSquare>();
-        /// <summary>
-        /// A pinned block (a world file pinning a generated map): the plan whose map squares this one holds as they are,
-        /// their templates, turns and bands, with its map's north-west square at plan square <see cref="HeldAt"/>. Its
-        /// valley is this plan's valley. Null for none.
-        /// </summary>
         public WorldPlan Held;
         public (int x, int y) HeldAt;
-        /// <summary>Backtracks in all, and per contradiction, before a filler takes a square.</summary>
         public int Budget = 3000, LocalBacktracks = 40;
 
-        /// <summary>The longer side, in squares: what the prototype's size-led defaults read.</summary>
         public int Size => Math.Max(Width, Height);
 
-        /// <summary>The prototype's defaults for a square world of this size: a 3 × 3 doesn't wrap and has no open sea.</summary>
         public static PlanInputs For(string seed, int size, PlanWrap wrap, ValleySides valley = null) => For(seed, size, size, wrap, valley);
 
-        /// <summary>The prototype's defaults for a world <paramref name="width"/> × <paramref name="height"/> squares.</summary>
         public static PlanInputs For(string seed, int width, int height, PlanWrap wrap, ValleySides valley = null)
         {
             int size = Math.Max(width, height);
@@ -84,11 +53,9 @@ namespace Chem
             };
         }
 
-        /// <summary>The most main roads this world may have.</summary>
         public int MainRoadCap => MainRoads >= 0 ? MainRoads : Math.Max(1, Math.Min(6, (Size + 1) / 2));
     }
 
-    /// <summary>A forced square: the template it takes ("filler" for its band's filler) and the band it asks.</summary>
     public sealed class ForcedSquare
     {
         public const string Filler = "filler";
@@ -96,20 +63,12 @@ namespace Chem
         public int Band;
     }
 
-    /// <summary>What the valley's land says about each of its sides (n e s w): mostly sea or not, and its band.</summary>
     public sealed class ValleySides
     {
         public bool[] Sea = new bool[4];
-        /// <summary>The band of the side's land, nearest by height; -1 for a sea side.</summary>
         public int[] Band = { -1, -1, -1, -1 };
-        /// <summary>Per side, which of its slots are sea.</summary>
         public bool[][] SeaSlots = { new bool[9], new bool[9], new bool[9], new bool[9] };
 
-        /// <summary>
-        /// The sides of a <paramref name="size"/>² land (land units of <paramref name="unitMetres"/>): a slot is sea when most
-        /// of its border cells are below <paramref name="seaLevel"/>, a side is when most of its slots are, and a land side's
-        /// band is the one whose height is nearest the middle height of its land cells.
-        /// </summary>
         public static ValleySides Read(int[] land, int size, int seaLevel, double unitMetres, SquareLibrary lib)
         {
             var v = new ValleySides();
@@ -148,53 +107,40 @@ namespace Chem
         internal static ValleySides Paper(bool wraps) => new ValleySides { Sea = new[] { false, false, wraps, wraps } };
     }
 
-    /// <summary>A world square's coast: which sides face the sea, the shoreline's offset class there, and corner notches.</summary>
     public sealed class SquareCoast
     {
         public bool[] Open = new bool[4];
-        /// <summary>The shoreline's offset from an open side, in cells.</summary>
         public int[] Depth = new int[4];
-        /// <summary>A corner's sea notch (only its diagonal neighbour is sea), its radius in cells; 0 for none.</summary>
         public int[] Notch = new int[4];
         internal int[] Dv = { -1, -1, -1, -1 }, Nv = { -1, -1, -1, -1 };
     }
 
-    /// <summary>A landmark of the plan: its square, kind and site (cells within the square).</summary>
     public sealed class PlanLandmark
     {
         public int Square;
-        /// <summary>"castle", "spire", "cave", or a village intent's form ("temperate", "mountains", "foggy-marsh").</summary>
         public string Kind;
         public string Intent, Biome;
         public int SiteX, SiteY, ChunkX, ChunkY;
         public bool Port;
     }
 
-    /// <summary>A bridge or ford the plan allows over a canyon or river.</summary>
     public sealed class PlanCrossing
     {
         public int Square, SiteX, SiteY, ChunkX, ChunkY;
-        /// <summary>"bridge" or "ford"; over "canyon" or "river".</summary>
         public string Kind, Over;
-        /// <summary>How many squares the canyon or river it crosses runs through, and which one it is.</summary>
         public int Size, Group;
         public bool Used;
     }
 
-    /// <summary>A place a road leads to.</summary>
     public sealed class PlanDestination
     {
         public int Square;
-        /// <summary>"castle", "village", "cave", "shore", "pass" or "junction".</summary>
         public string Kind;
-        /// <summary>Its site in the square, or (-1, -1) for the square's middle.</summary>
         public int SiteX = -1, SiteY = -1;
     }
 
-    /// <summary>A road: its route through squares and the side and slot it leaves each by.</summary>
     public sealed class PlanRoad
     {
-        /// <summary>"main road", "lesser road" or "trail".</summary>
         public string Kind;
         public PlanDestination From, To;
         public List<int> Path = new List<int>(), Sides = new List<int>(), Slots = new List<int>();
@@ -202,7 +148,6 @@ namespace Chem
         public bool IsMain => Kind == WorldPlan.MainRoad;
     }
 
-    /// <summary>A waystation (an inn or a shop) on a main road, or an outcrop (a sight) along any road.</summary>
     public sealed class PlanSight
     {
         public int Square, SiteX, SiteY, ChunkX, ChunkY, Road;
@@ -213,9 +158,7 @@ namespace Chem
     {
         public const int SquareCells = 576, ChunkCells = 64, ChunksPerSquare = SquareCells / ChunkCells;
         public const string VillageIntent = "village-with-landmark", MainRoad = "main road";
-        /// <summary>The generator's version, in the hash: a change that alters plans is a new version.</summary>
         public const int Version = 3;
-        /// <summary>sim.json streaming's `sight`, in chunks: an outcrop is placed within it of its road.</summary>
         const int Sight = 4;
 
         public readonly PlanInputs Inputs;
@@ -223,49 +166,31 @@ namespace Chem
         public readonly PlanGrid Grid;
         public readonly int Seed;
         public readonly bool Half;
-        /// <summary>The pinned valley's square.</summary>
         public readonly int Valley;
 
-        /// <summary>Per square: 0, or the wall it is (1 ice, 2 a dune sea).</summary>
         public byte[] Wall;
-        /// <summary>Per square: its coldness in Q16, 0 desert to 1 ice, from its row.</summary>
         public long[] Cold;
         public bool[] ForcedSea;
         public int[] Raw, Band;
-        /// <summary>Per square: 0, or the inland sea (from 1) it's part of.</summary>
         public int[] Inland;
         public List<int[]> InlandRegions = new List<int[]>();
         public SquareCoast[] Coasts;
-        /// <summary>Per square, the option it took.</summary>
         public SquareOption[] Options;
-        /// <summary>Per square and side, the features crossing it, roads included, by slot.</summary>
         public List<EdgeFeature>[][] Features;
         public List<int> Fillers = new List<int>();
         public int Steps, Picks, Backtracks;
-        /// <summary>Per square: a lake ends (or starts) a river in it.</summary>
         public bool[] Lake;
-        /// <summary>Per square: where its features meet, in cells within it.</summary>
         public (int x, int y)[] Hub;
         public List<PlanLandmark> Landmarks = new List<PlanLandmark>();
         public List<PlanCrossing> Crossings = new List<PlanCrossing>();
         public List<PlanRoad> Roads = new List<PlanRoad>();
         public List<PlanSight> Waystations = new List<PlanSight>(), Outcrops = new List<PlanSight>();
-        /// <summary>Per square, the destination there (null for none).</summary>
         public PlanDestination[] Destinations;
-        /// <summary>What the checks found wrong: empty for a good plan.</summary>
         public List<string> Problems = new List<string>();
-        /// <summary>Per must-have of the inputs, in order: the square holding it, or -1 where the land doesn't allow one.</summary>
         public int[] MustSquares = Array.Empty<int>();
-        /// <summary>Why a must-have has no square (empty when every one has).</summary>
         public List<string> MustMisses = new List<string>();
-        /// <summary>The world's biome field (WorldBiomes), when the library has biomes.json; else null.</summary>
         public BiomeField Biomes;
-        /// <summary>
-        /// Per land square: how many of its 81 chunk middles the biome field makes each biome (by biomes.json row), what
-        /// the solve weighs its templates by; null without a field, and for the sea and the walls.
-        /// </summary>
         public int[][] BiomeCounts;
-        /// <summary>FNV-1a over the plan in a fixed order: squares, coasts, landmarks, crossings, roads, sights, spawns.</summary>
         public uint Hash;
 
         WorldPlan(PlanInputs inputs, SquareLibrary lib)
@@ -276,13 +201,10 @@ namespace Chem
             var wrap = inputs.Wrap;
             if (nw < 1 || nh < 1) throw new ArgumentException("a world needs a world square");
             string mode = wrap switch { PlanWrap.Torus => "t", PlanWrap.EastWest => "c", _ => "r" };
-            // A square world's seed says its side alone, as it always has.
             Seed = (int)Fnv(inputs.Seed + "|" + (nw == nh ? nw.ToString(System.Globalization.CultureInfo.InvariantCulture) : nw + "x" + nh) + "|" + mode);
-            // An unwrapped world has a sea column west and a sea row south; an east-west one a wall row north and south.
             int w = wrap == PlanWrap.None ? nw + 1 : nw, h = wrap switch { PlanWrap.None => nh + 1, PlanWrap.EastWest => nh + 2, _ => nh };
             Grid = new PlanGrid(w, h, wrap);
             Half = inputs.HalfProfile && wrap != PlanWrap.Torus;
-            // The valley stays at a temperate row (its coldness about 0.4).
             int vy = ((h - 1) * 71 + 50) / 100;
             if (wrap == PlanWrap.None) vy = nh - 1;
             else if (Half) vy = ((h - 1) * 6 + 5) / 10;
@@ -291,7 +213,6 @@ namespace Chem
             if (heldValley >= 0) Valley = heldValley;
         }
 
-        // Per square, the held plan's square it is (-1 for none); a held plan's valley is this one's.
         readonly int[] held;
 
         int[] Hold(out int valley)
@@ -312,17 +233,12 @@ namespace Chem
             return at;
         }
 
-        /// <summary>The held plan's square that square <paramref name="i"/> is (a pinned block's), or -1.</summary>
         public int HeldSquare(int i) => held[i];
 
-        /// <summary>The forced square at plan square <paramref name="i"/>, or null.</summary>
         public ForcedSquare ForcedAt(int i) => Inputs.Forced.TryGetValue((Grid.X(i), Grid.Y(i)), out var f) ? f : null;
 
-        /// <summary>Forced squares that didn't take their template (the envelope moved their band off it, or a neighbour or
-        /// a copy within 3 squares left it nothing): empty when every one did.</summary>
         public List<string> ForcedMisses = new List<string>();
 
-        /// <summary>Solves a plan. Never fails: a square nothing fits takes its band's filler.</summary>
         public static WorldPlan Solve(PlanInputs inputs, SquareLibrary lib)
         {
             var plan = new WorldPlan(inputs, lib);
@@ -340,19 +256,14 @@ namespace Chem
 
         bool IsLand(int i) => Band[i] > 0 && Wall[i] == 0;
 
-        /// <summary>Whether square <paramref name="i"/> is in the map (an unwrapped world's sea column and row aren't).</summary>
         public bool InMap(int i) => Inputs.Wrap != PlanWrap.None || (Grid.X(i) > 0 && Grid.Y(i) < Grid.H - 1);
 
-        /// <summary>The far landmark a template's village comes out as ("volcano", "great tree"), or null; a village by the
-        /// water may turn a fishing village, so it's none.</summary>
         internal string VillageLandmarkOf(SquareTemplate t)
         {
             string lm = t.Lm;
             if (lm != "land" || Library.Village == null) return null;
             return Library.Village.LandmarkOf(FormOf(t.Biome));
         }
-
-        // ---------- bands ----------
 
         void LayBands()
         {
@@ -380,7 +291,6 @@ namespace Chem
                     c = Half ? (h - 1 - y) * one / Math.Max(1, h - 1) : Math.Abs(y * one - eq) * one / Math.Max(1, eq);
                 Cold[i] = c;
             }
-            // The raw field: low-frequency noise whose period divides a wrapped axis, and the latitude's pull.
             int latticeX = Math.Max(1, (Inputs.Width + 1) / 3), latticeY = Math.Max(1, (Inputs.Height + 1) / 3);
             long s = Inputs.Latitude * one / 100;
             var v = new long[n];
@@ -396,7 +306,6 @@ namespace Chem
                 v[i] = val;
                 if (wrap == PlanWrap.None && (x == 0 || y == h - 1)) ForcedSea[i] = true;
             }
-            // The valley's sides, from its land: land beside its land sides (and between two), sea beside its sea sides.
             var sides = Inputs.Valley ?? ValleySides.Paper(Grid.WrapX);
             var vLand = new List<(int i, int band)> { (Valley, 1) };
             var vSea = new List<int>();
@@ -417,13 +326,11 @@ namespace Chem
             }
             foreach (var (i, _) in vLand) ForcedSea[i] = false;
             foreach (int i in vSea) if (vLand.All(l => l.i != i)) ForcedSea[i] = true;
-            // A world file's held and forced squares are what it says, whatever the valley's sides ask.
             for (int i = 0; i < n; i++)
             {
                 if (held[i] >= 0) ForcedSea[i] = Inputs.Held.Band[held[i]] == 0;
                 else if (ForcedAt(i) is ForcedSquare f) ForcedSea[i] = f.Band == 0;
             }
-            // The band thresholds are quantiles of the inner squares, so the sea share and the mountain cover are what's asked.
             var inner = new List<long>();
             for (int i = 0; i < n; i++) if (Wall[i] == 0 && !ForcedSea[i]) inner.Add(v[i]);
             inner.Sort();
@@ -446,7 +353,7 @@ namespace Chem
             }
             Raw[Valley] = 1;
             foreach (var (i, band) in vLand) Raw[i] = Math.Max(Raw[i], i == Valley ? 1 : band);
-            ReadSketch(vLand); // a world sketch, if any, sets the raw band where it's drawn
+            ReadSketch(vLand);
             for (int i = 0; i < n; i++)
             {
                 if (held[i] >= 0) Raw[i] = Inputs.Held.Band[held[i]];
@@ -454,7 +361,6 @@ namespace Chem
             }
             PlaceInlandSeas(i => (wrap == PlanWrap.None && (Grid.X(i) == 0 || Grid.Y(i) == h - 1)) || Wall[i] != 0 || ForcedSea[i] || SketchOn(i)
                 || held[i] >= 0 || ForcedAt(i) != null);
-            // The envelope: band(s) = min over t of raw(t) + step × distance(s, t), so neighbours differ by at most a step.
             Band = new int[n];
             for (int i = 0; i < n; i++)
             {
@@ -466,13 +372,10 @@ namespace Chem
                     int b = Raw[j] + Library.Step * Grid.Distance(i, j);
                     if (b < m) m = b;
                 }
-                // A held square keeps its own plan's band.
                 Band[i] = held[i] >= 0 ? Inputs.Held.Band[held[i]] : m;
             }
         }
 
-        // Inland seas: a region of sea squares with land on all eight sides of each (never the world's edge, a wall or the
-        // outer sea). Its ring is raised to land, and its coasts are solved like any other.
         void PlaceInlandSeas(Func<int, bool> edge)
         {
             int n = Count;
@@ -543,10 +446,6 @@ namespace Chem
                         if (j >= 0 && owner[j] == 0) Raw[j] = Math.Max(Raw[j], 1);
         }
 
-        // ---------- the world's biomes ----------
-
-        // The land's biome comes from the world (J-085): the field over the whole plan, then what it puts under each land
-        // square, read at its 81 chunk middles.
         void ReadBiomes()
         {
             if (Library.Biomes == null) return;
@@ -565,10 +464,6 @@ namespace Chem
             }
         }
 
-        // ---------- coasts ----------
-
-        // A coast is laid with the bands: open sides face sea, corner notches where only the diagonal is sea, and the
-        // shoreline's offset class agrees wherever a shore crosses a side (union-find over the ends that meet).
         void LayCoasts()
         {
             int n = Count;
@@ -643,8 +538,6 @@ namespace Chem
             }
         }
 
-        // The variable of a shoreline's end where side `side` of square i meets corner k: the open side round the corner's
-        // depth, or the corner's notch.
         int EndVar(int i, int side, int k)
         {
             var c = Coasts[i];
@@ -653,7 +546,6 @@ namespace Chem
             return c.Nv[k] >= 0 ? c.Nv[k] : -1;
         }
 
-        /// <summary>The shoreline's offset where side <paramref name="side"/> of a square ends at its end <paramref name="e"/> (0 or 1), or 0.</summary>
         public int EndOffset(int i, int side, int e)
         {
             var c = Coasts[i];
@@ -662,9 +554,6 @@ namespace Chem
             return c.Open[other] ? c.Depth[other] : c.Notch[k];
         }
 
-        // ---------- integers: hashing, noise, rolls ----------
-
-        /// <summary>FNV-1a over a string's UTF-16 units.</summary>
         public static uint Fnv(string s)
         {
             unchecked
@@ -679,12 +568,10 @@ namespace Chem
             }
         }
 
-        /// <summary>A hash in Q16 [0, 1) of (seed, a, b).</summary>
         internal static long Unit(int seed, int a, int b) => WorldHash.Hash4(seed, 0x0de1, a, b) >> 16;
 
         internal static uint H(int seed, int a, int b) => WorldHash.Hash4(seed, 0x0de2, a, b);
 
-        // Value noise in Q16 at a point in Q16 lattice units, the lattice repeating every px (py) points when not 0.
         static long Noise(int seed, long xQ, long yQ, int px, int py)
         {
             const long one = BiomeMath.One;
@@ -699,7 +586,6 @@ namespace Chem
         }
     }
 
-    /// <summary>A seeded stream of rolls on WorldHash: the n-th roll is a pure function of (seed, n).</summary>
     internal sealed class PlanRng
     {
         readonly int seed;
@@ -711,10 +597,8 @@ namespace Chem
 
         public uint Next() => WorldHash.Hash4(seed, 0x5eed, n++, 0);
 
-        /// <summary>A whole number in [0, k).</summary>
         public int Below(int k) => k <= 0 ? 0 : (int)((ulong)Next() * (uint)k >> 32);
 
-        /// <summary>A whole number in [0, k) for a large k.</summary>
         public long Below(long k) => k <= 0 ? 0 : (long)((((ulong)Next() << 32) | Next()) % (ulong)k);
     }
 }

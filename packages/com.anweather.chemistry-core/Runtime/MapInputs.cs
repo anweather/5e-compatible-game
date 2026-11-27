@@ -7,21 +7,17 @@ using System.Linq;
 
 namespace Chem
 {
-    /// <summary>The files a map's bake reads, and their hash.</summary>
     public static class MapInputs
     {
-        /// <summary>The map's own files the bake reads (the valley's shapes are code, beside them): absent ones count as empty.</summary>
         public static readonly string[] Files =
         {
             MapFile.FileName, MapStamps.FileName, VillageLayout.FileName, WorldBuildings.FileName, WorldPuzzles.FileName, GolfCommand.FileName,
         };
 
-        /// <summary>The folder the world themes are in, every file of which the bake reads.</summary>
         public const string ThemesFolder = "themes";
 
         const ulong Offset = 14695981039346656037, Prime = 1099511628211;
 
-        /// <summary>The hash of a map's inputs: each file's name and its text (line endings as LF), in order, then the themes'.</summary>
         public static string Hash(string worldDir)
         {
             ulong hash = Offset;

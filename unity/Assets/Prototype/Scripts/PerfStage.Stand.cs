@@ -22,7 +22,6 @@ public partial class PerfStage
         Debug.Log($"PERF STAND chunk={chunk.x},{chunk.y} cell={cell.x},{cell.y}");
         yield return null;
         while (grid.ChunksLeftToDraw > 0) yield return null;
-        // Again once its ground is drawn: a wizard put down far from the start before its ground stood fell through it.
         PlaceCell(cell.x, cell.y);
         Ready = true;
         while (!Go) yield return null;
@@ -37,7 +36,6 @@ public partial class PerfStage
         if (high || look != null)
         {
             if (!high) up = 4f;
-            // Let the follow camera settle behind the wizard first, then rise from where it looks (or toward -perf-look's cell).
             yield return new WaitForSecondsRealtime(1f);
             var at = wizard.transform.position;
             var ahead = Camera.main != null ? Camera.main.transform.forward : wizard.transform.forward;
@@ -49,7 +47,6 @@ public partial class PerfStage
         }
     }
 
-    // A command-line "X,Y" pair after the flag, or null.
     static Vector2Int? Pair(string flag)
     {
         var args = System.Environment.GetCommandLineArgs();
@@ -71,7 +68,6 @@ public partial class PerfStage
         return new Vector2Int(6, 20);
     }
 
-    // The cell nearest (x, y), ring by ring, that is dry open ground.
     Vector2Int NearestStanding(int x, int y)
     {
         for (int r = 0; r <= StandSearch; r++)

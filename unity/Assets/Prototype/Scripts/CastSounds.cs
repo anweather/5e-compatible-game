@@ -24,14 +24,12 @@ public sealed class CastSounds
     Held right, left;
     bool met;
 
-    // A hum and the stage of the cast its loop is.
     struct Held
     {
         public Voice voice;
         public int stage;
     }
 
-    /// <summary>The first hand's hum, for the probe.</summary>
     public Voice Hum => right.voice;
 
     public CastSounds(CastBeats beats, SpellCaster caster)
@@ -68,7 +66,6 @@ public sealed class CastSounds
         Say(ref thump, CastSoundTable.Slam);
     }
 
-    /// <summary>Each frame: the hums while the hands are in a cast. If this stops being called, they let go by themselves.</summary>
     public void Tick()
     {
         bool humming = beats.SoundsOn && beats.Now is Beat.First or Beat.Second or Beat.WindUp or Beat.Slam or Beat.Charge
@@ -79,7 +76,6 @@ public sealed class CastSounds
             return;
         }
         var (first, second) = beats.Elements;
-        // Never back down: the charge reads 1 for a moment between letting go and the core firing.
         int stage = met ? Mathf.Max(beats.Charge, right.stage) : 0;
         Keep(ref right, first, stage, 0f);
         if (second != null) Keep(ref left, second, stage, CastSoundTable.SecondHumAt);
@@ -98,7 +94,6 @@ public sealed class CastSounds
             playing ? CastSoundTable.CutSeconds : CastSoundTable.HumIn, startAt);
     }
 
-    /// <summary>Stops what's in the hands.</summary>
     public void Hush()
     {
         Quiet(CastSoundTable.HumOut);

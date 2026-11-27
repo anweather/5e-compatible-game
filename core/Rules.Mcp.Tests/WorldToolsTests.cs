@@ -1,3 +1,4 @@
+// places(), here(), and set_look's where and mix (docs/design/world-tools.md G1 and "Scoped and mixed looks").
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,7 +8,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>places(), here(), and set_look's where and mix (docs/design/world-tools.md G1 and "Scoped and mixed looks").</summary>
     [Category("Simulation")]
     public class WorldToolsTests
     {

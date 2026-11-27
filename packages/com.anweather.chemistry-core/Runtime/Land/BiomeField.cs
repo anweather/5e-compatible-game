@@ -22,7 +22,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>A climate in Q16, each 0..1: altitude, temperature (falling with altitude), humidity, volcanism.</summary>
     public readonly struct BiomeClimate
     {
         public readonly long Altitude, Temperature, Humidity, Volcanism;
@@ -38,7 +37,6 @@ namespace Chem
         public long this[int channel] => channel switch { 0 => Altitude, 1 => Temperature, 2 => Humidity, _ => Volcanism };
     }
 
-    /// <summary>Up to four biomes (row indices into BiomeTable.Rows) and their Q16 weights at a cell, summing to One.</summary>
     public struct BiomeBlend
     {
         public int Id0, Id1, Id2, Id3;
@@ -58,7 +56,6 @@ namespace Chem
             }
         }
 
-        /// <summary>Adds weight to a biome: to its slot, or to an empty or weaker slot (Punchy's BiomeWeights.Add).</summary>
         public void Add(int id, long w)
         {
             if (w <= 0) return;
@@ -76,7 +73,6 @@ namespace Chem
             if (w > Weight(slot)) Set(slot, id, w);
         }
 
-        /// <summary>Scales the weights to sum to One exactly; what rounding leaves goes to the strongest.</summary>
         public void Normalize()
         {
             long sum = W0 + W1 + W2 + W3;
@@ -104,23 +100,20 @@ namespace Chem
             return best;
         }
 
-        /// <summary>The strongest biome's row index.</summary>
         public int Dominant => Id(DominantSlot());
     }
 
-    /// <summary>One biome as a row of world/biomes.json: climate ranges in Q16, and the shape numbers phase 3 will read.</summary>
     public sealed class BiomeRow
     {
         public string Id, Name;
         public bool On, Ocean;
-        public long Frequency;            // Q16
-        public long[] ClimateMin, ClimateMax; // Q16, altitude, temperature, humidity, volcanism
+        public long Frequency;
+        public long[] ClimateMin, ClimateMax;
         public uint NameHash;
-        public JObject Shape;              // base elevation, relief kind and sizes, kept for land from biomes
+        public JObject Shape;
         public double Rainfall;
     }
 
-    /// <summary>The biome rows and the field's settings, from world/biomes.json.</summary>
     public sealed class BiomeTable
     {
         public const string FileName = "biomes.json";
@@ -128,19 +121,13 @@ namespace Chem
 
         public List<BiomeRow> Rows { get; } = new List<BiomeRow>();
         public int Seed, RegionCells, WarpCells, ClimateCells, BlendCells, ShapeBlendCells, SquareCells;
-        public long ClimateInfluence, AnchorBias; // Q16
-        /// <summary>
-        /// Cells after which the field repeats east-west, a world that wraps (0 for none): regions, warp, climate and
-        /// hotspots all repeat, so the land runs on unbroken across the seam. A whole number of regions.
-        /// </summary>
+        public long ClimateInfluence, AnchorBias;
         public int WrapCells;
 
-        /// <summary>The anchor biome's row index per square, [x, y] with y north; −1 for none.</summary>
         public int[,] Layout;
 
         public int IndexOf(string id)
         {
-            // A loop, not FindIndex with a lambda: a field reads a row's index for every cell it blends (bake-lean).
             for (int i = 0; i < Rows.Count; i++)
                 if (Rows[i].Id == id) return i;
             return -1;
@@ -186,7 +173,7 @@ namespace Chem
             t.SquareCells = (int)f["squareCells"];
             t.ClimateInfluence = BiomeMath.FromDouble((double)f["climateInfluence"]);
             t.AnchorBias = BiomeMath.FromDouble((double)f["anchorBias"]);
-            var layout = (JArray)o["layout"]; // north row first, as on a map
+            var layout = (JArray)o["layout"];
             int rows = layout.Count, cols = ((JArray)layout[0]).Count;
             t.Layout = new int[cols, rows];
             for (int r = 0; r < rows; r++)
@@ -211,15 +198,14 @@ namespace Chem
         const int SaltWarpX = 0x5101, SaltWarpY = 0x5102, SaltJitter = 0x5103, SaltAlt = 0x5104, SaltAlt2 = 0x5105,
             SaltTemp = 0x5106, SaltHum = 0x5107, SaltHum2 = 0x5108, SaltVolc = 0x5109, SaltRace = 0x510a, SaltDraw = 0x510b;
 
-        const long JitterLow = 6554, JitterSpan = 52428; // a feature point at 0.1 + 0.8 × u, as Punchy's
+        const long JitterLow = 6554, JitterSpan = 52428;
         const int ChunkSize = 64;
 
         readonly BiomeTable table;
         readonly int seed;
-        readonly WorldBiomes world; // null for a field anchored by the table's layout
-        readonly int[] land; // row indices of the land biomes that are on
+        readonly WorldBiomes world;
+        readonly int[] land;
         readonly Dictionary<(int, int), int> anchored = new Dictionary<(int, int), int>();
-        // Regions east-west before the field repeats; 0 for a field that doesn't.
         readonly int regionsX;
 
         public BiomeTable Table => table;
@@ -239,7 +225,6 @@ namespace Chem
                     throw new InvalidDataException($"biomes.json: a world {table.WrapCells} cells round needs a whole number of {table.RegionCells}-cell regions");
                 regionsX = table.WrapCells / table.RegionCells;
             }
-            // The region nearest each square's centre takes the square's anchor.
             for (int sx = 0; sx < table.Layout.GetLength(0); sx++)
                 for (int sy = 0; sy < table.Layout.GetLength(1); sy++)
                 {
@@ -252,16 +237,12 @@ namespace Chem
                 }
         }
 
-        // ---- regions ----
-
-        /// <summary>A region's feature point in Q16 region units.</summary>
         (long x, long y) Feature(int rx, int ry)
         {
             uint h = WorldHash.Hash4(seed, SaltJitter, WrapRegion(rx), ry);
             return ((long)rx * One + JitterLow + (h & 0xFFFF) * JitterSpan / 0xFFFF, (long)ry * One + JitterLow + (h >> 16) * JitterSpan / 0xFFFF);
         }
 
-        // The region east-west as the field counts it: the same region either side of a wrapped world's seam.
         int WrapRegion(int rx) => regionsX > 0 ? (int)BiomeMath.Mod(rx, regionsX) : rx;
 
         (int, int) NearestRegion(long px, long py)
@@ -283,7 +264,6 @@ namespace Chem
             return best;
         }
 
-        /// <summary>Where a cell lies in warped region space (Q16 region units).</summary>
         (long x, long y) Warp(int x, int y)
         {
             long xq = (long)x * One + One / 2, yq = (long)y * One + One / 2;
@@ -293,21 +273,18 @@ namespace Chem
             return (BiomeMath.FloorDiv(xq + wx, table.RegionCells), BiomeMath.FloorDiv(yq + wy, table.RegionCells));
         }
 
-        /// <summary>The region a cell is in.</summary>
         public (int rx, int ry) RegionAt(int x, int y)
         {
             var p = Warp(x, y);
             return NearestRegion(p.x, p.y);
         }
 
-        /// <summary>A region's centre in Q16 cells.</summary>
         public (long x, long y) RegionCentre(int rx, int ry)
         {
             var f = Feature(rx, ry);
             return (f.x * table.RegionCells, f.y * table.RegionCells);
         }
 
-        /// <summary>The anchor biome of the square a region's centre is in, or −1.</summary>
         public int AnchorOf(int rx, int ry)
         {
             var c = RegionCentre(rx, ry);
@@ -317,7 +294,6 @@ namespace Chem
             return table.Layout[sx, sy];
         }
 
-        /// <summary>The biome (row index) of a region.</summary>
         public int RegionBiome(int rx, int ry)
         {
             rx = WrapRegion(rx);
@@ -335,17 +311,15 @@ namespace Chem
                 if (land[i] == anchor) suit[i] = suit[i] * table.AnchorBias / One;
                 total += suit[i];
             }
-            if (total == 0) return NearestFit(climate); // a climate no biome covers takes the nearest fit
-            // Each biome races: −ln(u) / weight, earliest wins, which picks in proportion to weight; a biome's draw
-            // comes from its name, so adding one only takes the regions it wins. (ln 2 is common to all, so log2.)
+            if (total == 0) return NearestFit(climate);
             int pick = land[0];
             long first = long.MaxValue;
             for (int i = 0; i < land.Length; i++)
             {
                 if (suit[i] <= 0) continue;
                 uint h = WorldHash.Hash4(seed ^ unchecked((int)table.Rows[land[i]].NameHash), SaltRace, rx, ry);
-                ulong m = ((ulong)(h >> 8) << 1) + 1; // u = m / 2^25, never 0
-                long l = ((25L << 32) - BiomeMath.Log2(m)) >> 8; // −log2 u in Q24
+                ulong m = ((ulong)(h >> 8) << 1) + 1;
+                long l = ((25L << 32) - BiomeMath.Log2(m)) >> 8;
                 long t = (l << 30) / suit[i];
                 if (t < first)
                 {
@@ -356,8 +330,6 @@ namespace Chem
             return pick;
         }
 
-        // A region of a world's field: the climate at its centre from latitude and the bands, and a race whose draws are
-        // smooth noise a few regions across, so neighbouring regions of one climate mostly pick alike.
         int WorldRegionBiome(int rx, int ry)
         {
             if (land.Length <= 1) return land.Length == 1 ? land[0] : 0;
@@ -378,8 +350,8 @@ namespace Chem
             {
                 if (suit[i] <= 0) continue;
                 long u = BiomeMath.Noise(seed ^ unchecked((int)table.Rows[land[i]].NameHash), SaltDraw, c.x, c.y, lattice, table.WrapCells, 0);
-                ulong m = ((ulong)Math.Min(u, One - 1) << 1) + 1; // u = m / 2^17, never 0
-                long l = ((17L << 32) - BiomeMath.Log2(m)) >> 8; // −log2 u in Q24
+                ulong m = ((ulong)Math.Min(u, One - 1) << 1) + 1;
+                long l = ((17L << 32) - BiomeMath.Log2(m)) >> 8;
                 long t = (l << 30) / suit[i];
                 if (t < first)
                 {
@@ -390,8 +362,6 @@ namespace Chem
             return pick;
         }
 
-        // A world's misfit: the altitude held to the bands the biome's templates come in, so a biome's base and relief
-        // stand on the land they were shaped for (tundra's 105 m isn't laid on low land).
         long WorldMisfit(BiomeRow b, in BiomeClimate climate)
         {
             var (lo, hi) = world.AltitudeOf(table.IndexOf(b.Id));
@@ -415,28 +385,19 @@ namespace Chem
             return best;
         }
 
-        /// <summary>
-        /// A world's climate at a field point (Q16 cells): its altitude the bands' (a quarter the noise's wander on top), its
-        /// temperature latitude's warmth by the plan's share (the noise's the rest), cooling with height over low land, and humidity and
-        /// volcanism as the anchored field's.
-        /// </summary>
         public BiomeClimate WorldClimate(long xq, long yq)
         {
             if (world == null) return Climate(xq, yq);
             long c = table.ClimateCells, p = table.WrapCells;
             var (px, py) = world.PlanPoint(xq, yq);
             long altitude = BiomeMath.Clamp01(world.Altitude(px, py) + (Altitude(xq, yq) - One / 2) / 4);
-            // Warmth by latitude, 0.75 at the desert's edge to 0 at the ice: the valley's row (coldness 0.4) is 0.45, the
-            // middle of temperate's range.
             long warmth = (One - world.Cold(px, py)) * 3 / 4, noise = Spread(BiomeMath.Centred(seed, SaltTemp, xq, yq, c * 10 / 8, p, 0));
             long temperature = BiomeMath.Clamp01((world.Latitude * warmth + (One - world.Latitude) * noise) / One - (altitude - WorldBiomes.LowAltitude) * 4 / 10);
             long humidity = Spread(BiomeMath.Centred(seed, SaltHum, xq, yq, c * 10 / 11, p, 0) * 3 / 4 + BiomeMath.Centred(seed, SaltHum2, xq, yq, c * 10 / 26, p, 0) / 4);
             return new BiomeClimate(altitude, temperature, humidity, Volcanism(xq, yq));
         }
 
-        // ---- climate ----
-
-        static long Spread(long n) => BiomeMath.Clamp01(One / 2 + n * 42598 / One); // 0.5 + 0.65 n
+        static long Spread(long n) => BiomeMath.Clamp01(One / 2 + n * 42598 / One);
 
         long Altitude(long xq, long yq)
         {
@@ -446,7 +407,6 @@ namespace Chem
             return Spread(n);
         }
 
-        /// <summary>The climate at a point in Q16 cells: smooth fields a few regions across, and volcanic hotspots.</summary>
         public BiomeClimate Climate(long xq, long yq)
         {
             long c = table.ClimateCells, p = table.WrapCells;
@@ -456,14 +416,11 @@ namespace Chem
             return new BiomeClimate(altitude, temperature, humidity, Volcanism(xq, yq));
         }
 
-        // About a quarter of the cells of a coarse grid hold a hotspot (if it's in high country); volcanism falls off
-        // from it, so every volcanic area has its heart. Round a wrapped world the grid's columns stretch a little so a
-        // whole number of them go round, and a hotspot repeats with them.
         long Volcanism(long xq, long yq)
         {
             long g = (long)table.ClimateCells * 8 / 5;
             long cols = table.WrapCells > 0 ? Math.Max(1, (table.WrapCells + g / 2) / g) : 0;
-            long gx = cols > 0 ? BiomeMath.FloorDiv(xq * cols, table.WrapCells) : xq / g, gy = yq / g; // Q16 grid units
+            long gx = cols > 0 ? BiomeMath.FloorDiv(xq * cols, table.WrapCells) : xq / g, gy = yq / g;
             long hx = BiomeMath.FloorDiv(gx, One), hy = BiomeMath.FloorDiv(gy, One);
             long v = 0;
             for (int i = 0; i < 9; i++)
@@ -474,16 +431,14 @@ namespace Chem
                 long sx = (long)cx * One + 13107 + ((h >> 8) & 0xFFF) * 39321 / 4095;
                 long sy = (long)cy * One + 13107 + (h >> 20) * 39321 / 4095;
                 long atX = cols > 0 ? BiomeMath.FloorDiv(sx * table.WrapCells, cols) : sx * g;
-                if (Altitude(atX, sy * g) < 29491) continue; // 0.45: only in high country
-                v = Math.Max(v, BiomeMath.Clamp01(One - BiomeMath.Length(gx - sx, gy - sy) * One / 23593)); // over 0.36
+                if (Altitude(atX, sy * g) < 29491) continue;
+                v = Math.Max(v, BiomeMath.Clamp01(One - BiomeMath.Length(gx - sx, gy - sy) * One / 23593));
             }
             return v;
         }
 
-        /// <summary>How far a climate lies outside a biome's ranges, squared, in units of the tolerance (Q16).</summary>
         public static long Misfit(BiomeRow b, in BiomeClimate climate) => Misfit(b, climate, b.ClimateMin[0], b.ClimateMax[0]);
 
-        // The misfit with the altitude's range given (a world's: the bands the biome's templates come in).
         static long Misfit(BiomeRow b, in BiomeClimate climate, long altitudeMin, long altitudeMax)
         {
             long m = 0;
@@ -492,25 +447,19 @@ namespace Chem
                 long v = climate[c];
                 long lo = c == 0 ? altitudeMin : b.ClimateMin[c], hi = c == 0 ? altitudeMax : b.ClimateMax[c];
                 long outside = Math.Max(Math.Max(lo - v, v - hi), 0);
-                long k = outside * One / (c == 3 ? 2621 : 9830); // 0.04 for volcanism (strict), 0.15 for the rest
+                long k = outside * One / (c == 3 ? 2621 : 9830);
                 m += k * k / One;
             }
             return m;
         }
 
-        /// <summary>Frequency × lerp(1, e^-misfit, influence), in Q30.</summary>
         long Suitability(BiomeRow b, in BiomeClimate climate)
         {
-            // A world's field holds a biome to its climate twice as tightly (a quarter the tolerance squared), so the
-            // biomes follow latitude's belts and the bands instead of scattering wherever a climate half fits.
             long fit = BiomeMath.ExpNeg(world != null ? 4 * WorldMisfit(b, climate) : Misfit(b, climate));
             long mix = BiomeMath.One30 + (fit - BiomeMath.One30) * table.ClimateInfluence / One;
             return mix * b.Frequency / One;
         }
 
-        // ---- weights ----
-
-        /// <summary>The top four biomes at a cell for a transition <paramref name="blendCells"/> wide (the table's surface blend by default).</summary>
         public BiomeBlend At(int x, int y, int blendCells = 0) => At(x, y, blendCells, null);
 
         BiomeBlend At(int x, int y, int blendCells, RegionCache cache)
@@ -539,9 +488,6 @@ namespace Chem
             return Drawn(x, y, blendCells > 0 ? blendCells : table.BlendCells, w);
         }
 
-        // A sketch's shapes over the regions' blend, the top one first: each takes its membership of what the shapes above
-        // it left, and the regions what's left at the end. Water (a lake or the sea) is drawn through: the land round it
-        // shows the field under it.
         BiomeBlend Drawn(int x, int y, int blendCells, BiomeBlend under)
         {
             var sketch = world.Sketch;
@@ -563,7 +509,6 @@ namespace Chem
             return w;
         }
 
-        /// <summary>A 64 × 64 chunk's weights, row by row from its south-west cell, into <paramref name="into"/> (4096 long).</summary>
         public void Chunk(int chunkX, int chunkY, BiomeBlend[] into, int blendCells = 0)
         {
             var cache = new RegionCache();
@@ -572,7 +517,6 @@ namespace Chem
                     into[j * ChunkSize + i] = At(chunkX * ChunkSize + i, chunkY * ChunkSize + j, blendCells, cache);
         }
 
-        // The regions one chunk touches: a handful, so a short list beats a dictionary.
         sealed class RegionCache
         {
             readonly List<(int x, int y, int biome)> seen = new List<(int, int, int)>();

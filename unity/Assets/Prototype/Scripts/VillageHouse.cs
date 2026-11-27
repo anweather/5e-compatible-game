@@ -34,7 +34,6 @@ public class VillageHouse : MonoBehaviour
     readonly System.Collections.Generic.List<GameObject> solids = new();
     GameObject bodyGo, roofGo;
 
-    /// <summary>What a burning or wrecked house is called in the log.</summary>
     public string Label => kind switch
     {
         BuildingKind.Inn => "inn",
@@ -61,7 +60,6 @@ public class VillageHouse : MonoBehaviour
 
     void OnDisable() => Clear();
 
-    /// <summary>Builds the meshes again from the fields.</summary>
     public void Rebuild()
     {
         Clear();
@@ -77,8 +75,6 @@ public class VillageHouse : MonoBehaviour
         roofGo = Part("Roof", roofMesh);
         if (!TryGetComponent<WindowPanes>(out var panes)) panes = gameObject.AddComponent<WindowPanes>();
         panes.Show(made.panes, glass);
-        // The roof can be stood on, and the window boxes and planters bumped into (Andrew's
-        // playtest #4); the builder's box for the walls stops at the eaves.
         roofCollider = roofGo.AddComponent<MeshCollider>();
         roofCollider.sharedMesh = roofMesh;
         roofRenderer = roofGo.GetComponent<MeshRenderer>();
@@ -92,8 +88,6 @@ public class VillageHouse : MonoBehaviour
         }
     }
 
-    // A building that burns down or caves in has its roof hidden (ValleyChemistry): its roof
-    // stops being something to stand on with it.
     void Update()
     {
         if (roofCollider != null && roofRenderer != null && roofCollider.enabled != roofRenderer.enabled)

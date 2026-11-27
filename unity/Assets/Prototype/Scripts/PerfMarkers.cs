@@ -19,11 +19,9 @@ using Unity.Profiling.LowLevel.Unsafe;
 // the slowest frames were made of, not only the mean one.
 public sealed class PerfMarkers : IDisposable
 {
-    /// <summary>The bot's own screenshot: its frames aren't the game's.</summary>
     const string BotShot = "PlaytestBot.Shot";
     const string Collect = "GC.Collect";
     const double NsPerMs = 1e6;
-    /// <summary>A marker under this in a frame stays out of its breakdown.</summary>
     const double BreakdownFloorMs = 0.5, WideFloorMs = 2.0, WindowFloorMs = 0.1;
 
     static readonly (ProfilerCategory category, string[] names)[] Timed =
@@ -38,7 +36,6 @@ public sealed class PerfMarkers : IDisposable
             "Terrain.UpdateHeightmapTexture", "Terrain.RecomputeInvalidPatches",
             "Update.DirectorUpdate", "PostLateUpdate.UpdateAllRenderers", "PostLateUpdate.UpdateAllSkinnedMeshes", "PostLateUpdate.UpdateAudio",
             "ParticleSystem.Update", "Gfx.PresentFrame", "Gfx.WaitForPresentOnGfxThread", "Gfx.WaitForGfxCommandsFromMainThread",
-            // Camera.Render stays 0 under URP: FinishFrameRendering holds the camera's work.
             "PostLateUpdate.FinishFrameRendering", "Camera.Render", "Inl_RenderCameraStack", "CullScriptable",
             Collect,
         }),
@@ -63,7 +60,6 @@ public sealed class PerfMarkers : IDisposable
             "FogBank.LateUpdate", "FogBank.MakePuffs", "FlameBank.Write", "FlameBank.LateUpdate",
             "SpellCaster.ShowAim", "AimMarker.Redraw", "SpellCaster.Unleash", "SpellCaster.Land", "SpellVisuals.Spawn",
         }),
-        // What Physics.Simulate is made of (#184).
         (ProfilerCategory.Physics, new[]
         {
             "Physics.PrepareSimulationStage", "Physics.RunSimulationStage", "Physics.PublishResultsStage", "PxScene.simulate",
@@ -74,7 +70,6 @@ public sealed class PerfMarkers : IDisposable
         }),
     };
 
-    // Physics counts read as they stand each frame (not times): what a climbing Physics.Simulate is made of (#184).
     static readonly string[] Gauges =
     {
         "Static Colliders", "Dynamic Bodies", "Active Dynamic Bodies", "Active Kinematic Bodies", "Overlaps",
@@ -82,7 +77,6 @@ public sealed class PerfMarkers : IDisposable
         "Trigger Overlaps", "Narrowphase Touches",
     };
 
-    // What the frame drew, read as they stand each frame (#201): the draw's size, not its time.
     static readonly string[] RenderGauges =
     {
         "SetPass Calls Count", "Draw Calls Count", "Batches Count", "Triangles Count", "Vertices Count",
@@ -103,7 +97,6 @@ public sealed class PerfMarkers : IDisposable
     ProfilerRecorder gfxUsed = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "Gfx Used Memory");
     long allocatedSum, allocatedPeak;
     int frames, windowFrames, collections;
-    // Every frame's markers, frame after frame (names.Count values each), while there's room.
     const int MostKept = 8 * 1024 * 1024;
     float[] kept = new float[1 << 16];
     int keptFrames;
@@ -128,7 +121,6 @@ public sealed class PerfMarkers : IDisposable
         shotAt = names.IndexOf(BotShot);
     }
 
-    // Every timed marker not read already, summed over all threads: a wait on the main thread names no culprit.
     void WatchEverything()
     {
         var handles = new List<ProfilerRecorderHandle>();
@@ -145,30 +137,23 @@ public sealed class PerfMarkers : IDisposable
 
     readonly bool keepFrames;
 
-    /// <summary>The markers read, in the order Last takes.</summary>
     public IReadOnlyList<string> Names => names;
 
-    /// <summary>Marker <paramref name="i"/>'s time in the frame Sample last read (ms).</summary>
     public double Last(int i) => last[i];
 
-    /// <summary>The last frame's garbage, in bytes (0 outside a development build).</summary>
     public long AllocatedLastFrame => allocated.Valid ? allocated.LastValue : 0;
 
-    /// <summary>Whether the last frame held the bot's own screenshot.</summary>
     public bool BotShotLastFrame => last[shotAt] > 0;
 
-    /// <summary>The process's memory as Unity's counters see it, in bytes (0 outside a development build).</summary>
     public long SystemUsedBytes => systemUsed.Valid ? systemUsed.LastValue : 0;
     public long GfxUsedBytes => gfxUsed.Valid ? gfxUsed.LastValue : 0;
 
-    /// <summary>The markers no recorder found.</summary>
     public IEnumerable<string> Missing()
     {
         for (int i = 0; i < names.Count; i++)
             if (!recorders[i].Valid) yield return names[i];
     }
 
-    /// <summary>Reads the frame that just ended. Call once a frame.</summary>
     public void Sample()
     {
         frames++;
@@ -197,7 +182,6 @@ public sealed class PerfMarkers : IDisposable
         }
     }
 
-    // This frame's markers onto the end of the kept ones, unless that would pass MostKept.
     void Keep()
     {
         int at = keptFrames * names.Count;
@@ -207,11 +191,6 @@ public sealed class PerfMarkers : IDisposable
         keptFrames++;
     }
 
-    /// <summary>
-    /// What the slow frames were made of: each marker's mean over the frames (by their order of Sample) whose time is at
-    /// least <paramref name="atMs"/>, beside its mean over every frame, the dearest first, as name=slow/all pairs.
-    /// A frame whose time is NaN (the bot's own shot) is left out of both.
-    /// </summary>
     public string SlowSummary(IReadOnlyList<float> frameMs, float atMs, int most = 30)
     {
         var inv = CultureInfo.InvariantCulture;
@@ -246,7 +225,6 @@ public sealed class PerfMarkers : IDisposable
         return line.ToString();
     }
 
-    /// <summary>What the frames drew over the run, as name=mean/peak pairs (counts, not times).</summary>
     public string RenderSummary()
     {
         var line = new StringBuilder();
@@ -264,7 +242,6 @@ public sealed class PerfMarkers : IDisposable
         return line.ToString();
     }
 
-    /// <summary>The last frame's markers of half a millisecond or more, as name=ms pairs, then its garbage.</summary>
     public string Breakdown()
     {
         var line = new StringBuilder();
@@ -274,7 +251,6 @@ public sealed class PerfMarkers : IDisposable
         return line.ToString();
     }
 
-    /// <summary>Each marker's mean since the last call, as m.name=ms pairs, leaving out the smallest.</summary>
     public string WindowSummary()
     {
         var line = new StringBuilder();
@@ -293,7 +269,6 @@ public sealed class PerfMarkers : IDisposable
         return line.ToString();
     }
 
-    /// <summary>Each marker's mean and peak over the run, as name=mean/peak pairs in ms, then the garbage.</summary>
     public string Summary()
     {
         var line = new StringBuilder();

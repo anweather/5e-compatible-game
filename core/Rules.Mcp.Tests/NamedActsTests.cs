@@ -1,14 +1,12 @@
+// Named acts (docs/design/world-acts.md): a trigger with on: called, each row what act takes, fired by call_act at a
+// place as one firing. It lives in a mod that's on, so a saved mod carries it. No firework or campsite is in the code:
+// these rows are only tests of the tools.
 using System.Linq;
 using Chem.Mcp;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Named acts (docs/design/world-acts.md): a trigger with on: called, each row what act takes, fired by call_act at a
-    /// place as one firing. It lives in a mod that's on, so a saved mod carries it. No firework or campsite is in the code:
-    /// these rows are only tests of the tools.
-    /// </summary>
     [Category("Simulation")]
     public class NamedActsTests
     {
@@ -100,7 +98,6 @@ namespace Chem.Tests
             StringAssert.Contains("tell the player what didn't", said);
         }
 
-        // #149's case: the row is found to have no room before the command, so only the reply can say so.
         [Test]
         public void ARowWithNoRoomBeforeTheCommandIsStillNamed()
         {
@@ -157,8 +154,6 @@ namespace Chem.Tests
             Assert.That(across, Is.LessThanOrEqualTo(6), "every row within 3 of the one spot");
         }
 
-        // #156: a stamp that didn't fit where it was asked was taken to the first spot anywhere round the place that it
-        // fit, far off. Now it moves at most land.maxMove (4) cells from the place's middle, the nearest it fits.
         [Test]
         public void AStampThatDoesNotFitMovesAFewCellsAtMost()
         {
@@ -174,7 +169,6 @@ namespace Chem.Tests
             Assert.That(b.LiveWorld.LandHash(), Is.EqualTo("[216,284,2,24,\"dome\",0,0,0,2]"), "3 cells off [216, 287], the shore's middle");
         }
 
-        // #156: a stamp with nowhere to fit near where it was asked isn't moved: it's refused there, and says why.
         [Test]
         public void AStampThatFitsNowhereNearIsRefusedWhereAsked()
         {
@@ -237,7 +231,7 @@ namespace Chem.Tests
             var (b, other) = Tools();
             On(other);
             b.LiveWorld.ApplyRoom(sent[0]);
-            b.LiveWorld.Step(); // as the bench does after a command
+            b.LiveWorld.Step();
             Assert.That(b.LiveWorld.CellHash(), Is.EqualTo(a.LiveWorld.CellHash()));
             Assert.That(b.LiveWorld.LandHash(), Is.EqualTo(a.LiveWorld.LandHash()));
             Assert.That(b.LiveWorld.ActText(), Is.EqualTo(a.LiveWorld.ActText()));

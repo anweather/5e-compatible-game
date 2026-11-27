@@ -18,7 +18,6 @@ namespace Chem.Tests
 
         static World Meadow(Rules rules) => new World(rules, 64, 64, 5, "grass");
 
-        /// <summary>What one tick stamps: casts, a rule switch, chunk switches, combo input and stands, strikes or leavings.</summary>
         sealed class Stamp
         {
             public readonly List<CastCommand> Casts = new List<CastCommand>();
@@ -29,7 +28,6 @@ namespace Chem.Tests
             public bool Dragon;
         }
 
-        /// <summary>A world's checksum at a tick, part by part (NetChem.Checksum's order), the stands apart from the rest of the casts.</summary>
         static string[] Parts(World w) => new[]
         {
             w.CellHash(), w.Rules.Fingerprint, w.ThingsNow.Fingerprint, w.SkyHash(), w.DefenseSystem.Hash(), w.CastText(""), w.DragonSystem.Hash(), w.LandHash(),
@@ -39,10 +37,8 @@ namespace Chem.Tests
         static readonly string[] PartNames = { "cells", "rules", "things", "sky", "defense", "casts but the stands", "dragon", "land", "stands" };
         const int StandsPart = 8;
 
-        /// <summary>A tick whose checksum peers compare: the window's end (RollingHash), or every Every'th (the probes' TickApplied).</summary>
         static bool ChecksumTick(World w, int tick) => tick % RollingHash.Every == 0 || tick % RollingHash.WindowFor(w) == 0;
 
-        /// <summary>The host's run: what it stamped each tick, the strike history it kept, and its checksum's parts each tick.</summary>
         sealed class HostRun
         {
             public readonly Dictionary<int, Stamp> Stamped = new Dictionary<int, Stamp>();
@@ -54,11 +50,6 @@ namespace Chem.Tests
             public int Ticks;
         }
 
-        /// <summary>
-        /// Runs the host for <paramref name="ticks"/>: each tick <paramref name="script"/> says what's asked (it may look at the
-        /// world as it stands), the stands go through a StandKeeper into the history, the batch runs, then the keeper hears
-        /// the tick ran. The history is kept as it stood at each tick, for joiners arriving then.
-        /// </summary>
         static HostRun Host(Func<World> build, int ticks, Action<int, World, Stamp> script, ICollection<int> snapshotAt = null)
         {
             var run = new HostRun { World = build(), Ticks = ticks };
@@ -66,7 +57,6 @@ namespace Chem.Tests
             var set = RuleSet.Plain(w.Rules);
             var history = new List<StampedStrike>();
             Stamp now = null;
-            // A rule switch stamped for a tick that hasn't run may switch on a trigger that reads stands (NetChem.StandsReadByTriggers).
             var keeper = new StandKeeper<StampedStrike>(() => w.TriggersReadStands || now?.Mods != null, w.InBounds, w.HoldReadsStand, w.DeltaX);
             for (int t = 1; t <= ticks; t++)
             {
@@ -83,7 +73,6 @@ namespace Chem.Tests
                 keeper.Ran(t, w.StandReads, RollingHash.WindowFor(w));
                 run.KeptAt[t] = history.ToArray();
                 run.Seen[t] = Parts(w);
-                // Taken between ticks, after this one ran: what a joiner arriving now loads (step 6).
                 if (snapshotAt?.Contains(t) == true) run.Snapshots[t] = JoinSnapshot.Parse(JoinSnapshot.Take(w, w.Source, set).Text());
             }
             return run;
@@ -99,11 +88,6 @@ namespace Chem.Tests
             return batch;
         }
 
-        /// <summary>
-        /// A joiner arriving at <paramref name="joinAt"/>: the strike history kept then, every strike stamped after it, and every
-        /// other command (those are all kept), replayed on a fresh world. The first tick and part where it differs from the
-        /// host's, or null: the stands may differ only at a tick whose checksum no peer compares.
-        /// </summary>
         static string FirstDifference(HostRun host, Func<World> build, int joinAt)
         {
             var strikes = host.KeptAt[joinAt].Concat(host.AllStrikes.Where(s => s.Tick > joinAt)).ToLookup(s => s.Tick, s => s.Command);
@@ -130,7 +114,6 @@ namespace Chem.Tests
         [Test]
         public void TheHarnessCatchesAMissingCommand()
         {
-            // The harness itself: a joiner whose history lost a stand differs, and says where.
             Func<World> build = () => Meadow(R);
             var host = Host(build, 40, (t, w, s) =>
             {
@@ -145,9 +128,6 @@ namespace Chem.Tests
         [Test]
         public void AStandAChecksumSawIsReplayed()
         {
-            // #55 and #164: p1 stands once early and next only after three checksums; p0 walks and casts a Fireball. The
-            // old rule (the newest stand since the last strike) dropped p1's first stand, so a joiner's checksums at 30, 60
-            // and 90 had no p1 in their stands, in the casts part only.
             Func<World> build = () => Meadow(R);
             var host = Host(build, 150, (t, w, s) =>
             {
@@ -162,9 +142,6 @@ namespace Chem.Tests
         [Test]
         public void AGolfTurnReplaysTheSame()
         {
-            // #173: p0 strokes, p1 comes onto the course and walks about it, p0 tries again while p1 is there (someone else's shot), p1 goes,
-            // and p0 strokes again. Golf reads every wizard's stand to say whose turn it is (World.GolfWaiting). All before
-            // the first checksum, so it's the turn that differs, not only the stands a checksum sees.
             Func<World> build = () =>
             {
                 var w = Meadow(R);
@@ -186,9 +163,6 @@ namespace Chem.Tests
         [Test]
         public void ADownedWizardStaysDownForATickTrigger()
         {
-            // A tick trigger reads every standing wizard each tick (World.Ticked): p0 is downed, crawls a cell still down and
-            // gets up. The first down stand fires nothing and no checksum sees it, but leaving it out has p0 standing, so
-            // the joiner's trigger would fire round it at 14, when the host's didn't.
             const string shower = "{ 'triggers': { 'shower': { 'on': 'tick', 'who': 'each', 'every': 12, 'do': [ { 'cast': 'fire-bolt', 'at': 'here' } ] } } }";
             var mods = new[] { new ActiveMod("shower", shower.Replace('\'', '"')) };
             Func<World> build = () => Meadow(R);
@@ -208,7 +182,6 @@ namespace Chem.Tests
         [Test]
         public void ADownedWizardCantAttuneOnTheReplayEither()
         {
-            // Attuning a hand reads whether the wizard is down (World.Attune), anywhere.
             Func<World> build = () => Meadow(R);
             var host = Host(build, 60, (t, w, s) =>
             {
@@ -217,7 +190,6 @@ namespace Chem.Tests
                 if (t == 15) s.Combos.Add(ComboCommand.Attune("p0", HandsDef.Left, "fire"));
                 if (t == 23) s.Strikes.Add(StrikeCommand.Stand("p0", 12, 10, 12));
                 if (t == 26) s.Strikes.Add(StrikeCommand.Stand("p0", 13, 10, 12));
-                // Down again, and up in the tick it tries: the hand is read before the stands land (TickBatch.Prepare).
                 if (t == 31) s.Strikes.Add(StrikeCommand.Stand("p0", 13, 10, 0));
                 if (t == 40) s.Combos.Add(ComboCommand.Attune("p0", HandsDef.Right, "fire"));
                 if (t == 40) s.Strikes.Add(StrikeCommand.Stand("p0", 14, 10, 12));
@@ -226,7 +198,6 @@ namespace Chem.Tests
             AssertJoinersMatch(host, build, new[] { 27, 41, 60 });
         }
 
-        // Step triggers that fire casts behind and ahead of a walker (CommandChannelTests had them), and a tick trigger's shower.
         const string BoltsAndMeteors = "{ 'triggers': { " +
             "'bolt-steps': { 'on': 'step', 'who': 'each', 'every': 9, 'do': [ { 'cast': 'fire-bolt', 'at': 'behind', 'by': 2 } ] }, " +
             "'meteor-steps': { 'on': 'step', 'who': 'each', 'every': 15, 'do': [ { 'cast': 'meteor', 'at': 'ahead', 'by': 2, 'delay': 6 } ] } } }";
@@ -235,11 +206,6 @@ namespace Chem.Tests
 
         static ActiveMod[] Mod(string id, string json) => new[] { new ActiveMod(id, json.Replace('\'', '"')) };
 
-        /// <summary>
-        /// Two players walking about a golf course: runs, turns, stops, hurts, a fall and getting up, a stand off the world,
-        /// punches, golf strokes by either (so turns wait), Fireballs; the step triggers on from tick 1 to 150, the tick
-        /// trigger from 220 to 300, nothing in between.
-        /// </summary>
         static Action<int, World, Stamp> Walks(int seed)
         {
             var random = new Random(seed);
@@ -288,8 +254,6 @@ namespace Chem.Tests
         [Test]
         public void ARuleSwitchWhileAChunkIsInactiveReplaysTheSame()
         {
-            // #190: Moonstone on, moonstone laid in two chunks, the far one deactivated, Moonstone off (the near chunk is made
-            // to fit then, the far one waits), the far one activated (made to fit then). Joiners before, between and after match.
             var moonstone = new ActiveMod("moonstone", System.IO.File.ReadAllText(System.IO.Path.Combine(ChemistryTests.RulesDir(), "mods", "moonstone.json")));
             Func<World> build = () => new World(R, 3 * Chunks.Size, Chunks.Size, 5, "grass");
             string waiting = null, after = null;
@@ -316,10 +280,6 @@ namespace Chem.Tests
         [Test]
         public void PeersAndJoinersAgreeWithCharactersCrossingTheSeam()
         {
-            // sim-across-the-seam: a world that wraps (12 x 2 chunks). Two players walk back and forth over the seam, their
-            // stands sometimes given past it (the core folds them), with step triggers casting behind and ahead of them, a
-            // Fireball on the seam, and the host's planner switching the chunks round them, stamped like any command. A
-            // joiner from the first tick is a second peer; the rest join late.
             const int ticks = 300, size = Chunks.Size;
             Func<World> build = () => new World(R, 12 * size, 2 * size, 5, "grass", wrapX: true);
             var planner = new ChunkPlanner();
@@ -328,7 +288,6 @@ namespace Chem.Tests
             var host = Host(build, ticks, (t, w, s) =>
             {
                 if (t == 1) s.Mods = Mod("steps", BoltsAndMeteors);
-                // p0 walks east from 90 cells short of the seam to 90 past it, given unfolded, and back; p1 the other way.
                 int k = t % 180, off = k < 90 ? 2 * k : 360 - 2 * k;
                 var stands = new[] { (w.W - 90 + off, 40), (90 - off, 90) };
                 s.Strikes.Add(StrikeCommand.Stand("p0", stands[0].Item1, stands[0].Item2, 12));
@@ -349,9 +308,6 @@ namespace Chem.Tests
         [Test]
         public void PeersAndJoinersAgreeWithCharactersCrossingBothSeamsOfATorus()
         {
-            // A torus (the hills, docs/design/hills.md: 8 x 6 chunks here): one player walks a diagonal back and forth over the
-            // corner where the east and south seams meet, another north-south over the south seam, both given unfolded, with
-            // step triggers, a Fireball on the corner and the host's planner switching chunks round them.
             const int ticks = 300, size = Chunks.Size;
             Func<World> build = () => new World(R, 8 * size, 6 * size, 5, "grass", wrapX: true, wrapY: true);
             var planner = new ChunkPlanner();
@@ -377,13 +333,6 @@ namespace Chem.Tests
             AssertJoinersMatch(host, build, new[] { 1, 45, 50, 51, 90, 91, 150, 181, 240, ticks });
         }
 
-        // ---------- late join from a snapshot (docs/design/player-saves.md, step 6) ----------
-
-        /// <summary>
-        /// A joiner arriving with the host's snapshot at its tick: the world loaded from it, then every batch after it (every
-        /// strike stamped after it too: the stands are in the snapshot), compared with the host's checksum part by part at
-        /// every tick to the end. The first difference, or null.
-        /// </summary>
         static string SnapshotDifference(HostRun host, JoinSnapshot snapshot, IChunkSource source, int[] land = null)
         {
             var (w, set) = snapshot.Join(R, source, land);
@@ -398,18 +347,10 @@ namespace Chem.Tests
             return null;
         }
 
-        /// <summary>
-        /// A world that wraps (12 x 2 chunks, its start kept, so the dragon can come): two players walking over the seam with
-        /// step triggers on, Fireballs, water poured, chunks switched round them by the host's planner, a rule switch that
-        /// raises the height range and back, and the dragon summoned mid-play. Joiners load the host's snapshot at ticks
-        /// before, during and after each, and run as a peer there from the start; so do joiners replaying from tick 0.
-        /// </summary>
         [Test]
         public void AJoinerFromASnapshotRunsAsAPeerThereFromTheStart()
         {
             const int ticks = 420, size = Chunks.Size;
-            // Laid the game's way: cells written over the source before the start is kept, as ChemGrid lays a map's
-            // puzzles, stamps and rows before StartWorld keeps it. Trees, and pits with water standing in them.
             Func<World> build = () =>
             {
                 var w = new World(R, 12 * size, 2 * size, 5, "grass", wrapX: true);
@@ -452,11 +393,6 @@ namespace Chem.Tests
             AssertJoinersMatch(host, build, new[] { 1, 200, ticks });
         }
 
-        /// <summary>
-        /// docs/design/player-saves.md, question 8: a world that changed cells before it kept its start (the trees here; the
-        /// game's puzzles and map stamps, laid before StartWorld keeps it) comes back from a snapshot with that start, so
-        /// the dragon's audit counts the same changes and its checksum part runs on the same.
-        /// </summary>
         [Test]
         public void AStartLaidBeforeKeepStartComesBackFromASnapshot()
         {
@@ -486,18 +422,14 @@ namespace Chem.Tests
             var snapshot = host.Snapshots[20];
             Assert.That(snapshot.Join(R, new FillSource("grass")).world.CellHash(), Is.EqualTo(host.World.CellHash()), "it fits as it is");
 
-            // Another map: the source isn't the host's.
             var map = Assert.Throws<SaveException>(() => snapshot.Join(R, new FillSource("sand")));
             StringAssert.Contains("made by", map.Message);
-            // Other base rules: its mods composed on them aren't what it was saved under.
             var otherRules = R.WithMods(new[] { ModPatch.Parse("{ \"sim\": { \"strike\": { \"reach\": 3 } } }") });
             var rules = Assert.Throws<SaveException>(() => snapshot.Join(otherRules, new FillSource("grass")));
             StringAssert.Contains("rules", rules.Message);
-            // A world that doesn't come back to the checksum it was taken with (a part the save misses would show here).
             var tampered = JoinSnapshot.Parse(snapshot.Text().Replace("\"checksum\":[\"" + snapshot.Checksum[0], "\"checksum\":[\"00000000"));
             var drift = Assert.Throws<SaveException>(() => tampered.Join(R, new FillSource("grass")));
             StringAssert.Contains("doesn't come back to the host's world", drift.Message);
-            // Not a snapshot at all, or another format.
             Assert.Throws<SaveException>(() => JoinSnapshot.Parse("{ not json"));
             Assert.Throws<SaveException>(() => JoinSnapshot.Parse("{ \"format\": 9 }"));
         }
@@ -545,10 +477,7 @@ namespace Chem.Tests
         [Test]
         public void AWalkUnderAStepTriggerKeepsAStandAChecksumOrAFiring()
         {
-            // #83: one player walks a long loop, a stand a tick, with a step trigger on and nobody striking. The history
-            // keeps the first stand, a stand a checksum, the stands round each firing and the newest: not one a step.
             const int ticks = 600;
-            // A square, 40 cells a side, east, south, west and north.
             var loop = Enumerable.Range(0, 40).Select(i => (10 + i, 10)).Concat(Enumerable.Range(0, 40).Select(i => (50, 10 + i)))
                 .Concat(Enumerable.Range(0, 40).Select(i => (50 - i, 50))).Concat(Enumerable.Range(0, 40).Select(i => (10, 50 - i))).ToArray();
             Func<World> build = () => Meadow(R);

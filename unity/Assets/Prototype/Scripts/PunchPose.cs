@@ -23,11 +23,8 @@ public class PunchPose : MonoBehaviour
     Phase phase;
     float inPhase;
 
-    /// <summary>A punch is on the bones.</summary>
     public bool Playing => phase != Phase.Rest;
-    /// <summary>Where this punch's fist is going.</summary>
     public Vector3 Goal { get; private set; }
-    /// <summary>How near the hand has come to the goal this punch (m), for the probe.</summary>
     public float NearestFist { get; private set; } = float.MaxValue;
 
     void Awake()
@@ -90,7 +87,6 @@ public class PunchPose : MonoBehaviour
         if (striking) NearestFist = Mathf.Min(NearestFist, Vector3.Distance(pose.HandPosition, Goal));
     }
 
-    // The pose, with the fist on what's being punched: the hand bone a fist short of it, and the body bent down to something low.
     CastBeats.Blend Aimed(CastFeel.BeatPose p, bool striking)
     {
         var blend = CastBeats.Blend.Of(p);
@@ -113,17 +109,14 @@ public class PunchPose : MonoBehaviour
         return blend;
     }
 
-    // The body, then the hands on it, as CastBeats lays a beat.
     void Lay(bool striking)
     {
         var feel = beats.feel;
         var forward = aimed.Way;
-        // The shoulders round to what's off to the side: the wizard itself stays facing as it was.
         float turn = Mathf.Clamp(Vector3.SignedAngle(transform.forward, forward, Vector3.up), -feel.punchTurnMost, feel.punchTurnMost) * body.rightWeight;
         pose.LayBody(body.dip, body.lean, forward, -forward * (body.recoil * pose.Scale), body.twist + turn);
         if (striking && aimed.Reached)
         {
-            // Further than the arm goes: the body goes after it, a little.
             float shortBy = Vector3.Distance(pose.RightShoulder, Goal) - pose.ArmLength;
             if (shortBy > 0f) pose.LayBody(0f, 0f, forward, forward * (Mathf.Min(shortBy, feel.punchLunge * pose.Scale) * body.rightWeight));
         }

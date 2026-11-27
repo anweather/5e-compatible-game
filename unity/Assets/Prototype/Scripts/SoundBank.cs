@@ -21,14 +21,12 @@ public class SoundBank : ScriptableObject
     }
 
     public List<Entry> entries = new();
-    /// <summary>Which table of recipes built this (SoundBankBuilder): an older bank is rebuilt.</summary>
     public int recipes;
     Dictionary<string, Entry> byName;
 
     static SoundBank loaded;
     static bool looked;
 
-    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -36,7 +34,6 @@ public class SoundBank : ScriptableObject
         looked = false;
     }
 
-    /// <summary>The built bank, or null if the yard hasn't been built with one.</summary>
     public static SoundBank Loaded
     {
         get
@@ -50,7 +47,6 @@ public class SoundBank : ScriptableObject
         }
     }
 
-    /// <summary>One of the sound's clips, at random, or null if the bank has none for it. Makes no garbage.</summary>
     public AudioClip Pick(string sound)
     {
         if (byName == null || byName.Count != entries.Count)

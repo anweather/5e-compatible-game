@@ -11,30 +11,22 @@ using UnityEngine;
 // reads it. ValleyChemistry makes one per world and steps it once a frame.
 public sealed class WetGround
 {
-    // How dark and how glossy fully wet ground is: its tint times DarkWet, its smoothness up to Gloss
-    // (GrassGloss on grass, which shouldn't look like standing water).
     const float DarkWet = 0.62f, Gloss = 0.6f, GrassGloss = 0.45f;
-    // Rain this strong (0..100) soaks the ground fully.
     const float Soaking = 60f;
-    // Seconds to soak through in heavy rain, and to dry after.
     const float SoakSeconds = 8f, DrySeconds = 90f;
-    // Only rewrite the layers when the wetness has moved this much (each write re-sets the terrains' materials).
     const float Step = 0.02f;
 
     readonly Dictionary<TerrainLayer, (TerrainLayer wet, Vector4 tint, float smoothness, Vector4 maskMin, Vector4 maskMax, float gloss)> layers = new();
     readonly Dictionary<TerrainLayer, Color> tints = new();
     float shown, written = -1f;
 
-    /// <summary>0 dry to 1 soaked, as drawn now.</summary>
     public float Wetness => shown;
 
-    /// <summary>Gives each of these runtime terrain data copies its own copies of their layers, to wet.</summary>
     public WetGround(IEnumerable<TerrainData> chunks)
     {
         foreach (var data in chunks) Add(data);
     }
 
-    /// <summary>One more runtime terrain data copy (a generated map's chunk made later, #205): its layers wet as the rest.</summary>
     public void Add(TerrainData data)
     {
         var own = data.terrainLayers;
@@ -59,19 +51,11 @@ public sealed class WetGround
         if (changed) data.terrainLayers = own;
     }
 
-    /// <summary>
-    /// Dry ground's mask remap: no metal and little shine. The chunk material draws without _MASKMAP, so TerrainLit
-    /// reads every mask as 0.5 put through the remap, and the packs' 0..1 remaps made all ground half metal and half
-    /// smooth: at a low angle it mirrored the sky, blue-grey like a sheet of water over the land with trees and bushes
-    /// standing in it (the Scale Island's playtest, 2026-11-11; in the Editor the scene's darker reflection hid it).
-    /// </summary>
     public static (Vector4 min, Vector4 max) Dry(Vector4 min, Vector4 max) =>
         (new Vector4(0f, min.y, min.z, Mathf.Min(min.w, DryShine)), new Vector4(0f, max.y, max.z, Mathf.Min(max.w, DryShine)));
 
-    // The most a dry layer's smoothness remap reaches (rain raises it toward Gloss).
     const float DryShine = 0.2f;
 
-    /// <summary>The rules switched: each layer's tint on top of its own, by the layer's name, drawn at the next Advance.</summary>
     public void Tint(System.Func<string, Color> tintOf)
     {
         tints.Clear();
@@ -79,10 +63,6 @@ public sealed class WetGround
         written = -1f;
     }
 
-    /// <summary>
-    /// Once a frame: the ground soaks toward how hard it's raining (<paramref name="rain"/>, 0..100)
-    /// and dries slowly once it stops.
-    /// </summary>
     public void Advance(int rain, float dt)
     {
         float target = Mathf.Clamp01(rain / Soaking);
@@ -96,14 +76,11 @@ public sealed class WetGround
             var own = tints.TryGetValue(wet, out var looks) ? looks : Color.white;
             wet.diffuseRemapMax = new Vector4(tint.x * dark * own.r, tint.y * dark * own.g, tint.z * dark * own.b, tint.w);
             wet.smoothness = Mathf.Lerp(smoothness, Mathf.Max(smoothness, gloss), shown);
-            // With a mask map (the packs' layers have them) TerrainLit takes smoothness from its alpha,
-            // remapped between these: raise both toward its gloss.
             wet.maskMapRemapMin = new Vector4(maskMin.x, maskMin.y, maskMin.z, Mathf.Lerp(maskMin.w, Mathf.Max(maskMin.w, gloss * 0.8f), shown));
             wet.maskMapRemapMax = new Vector4(maskMax.x, maskMax.y, maskMax.z, Mathf.Lerp(maskMax.w, Mathf.Max(maskMax.w, gloss), shown));
         }
     }
 
-    /// <summary>Frees the layer copies (the terrain data copies they're on are freed by ValleyGround).</summary>
     public void Destroy()
     {
         foreach (var (wet, _, _, _, _, _) in layers.Values) Object.Destroy(wet);

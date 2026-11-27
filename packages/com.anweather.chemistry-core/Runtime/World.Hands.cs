@@ -19,7 +19,6 @@ namespace Chem
 
         internal HandsDef HandRules => Rules.Sim.Hold.Hands;
 
-        /// <summary>A wizard's hands; as they start if nothing has changed them.</summary>
         public PlayerHands HandsOf(string player)
         {
             if (hands.TryGetValue(player, out var h)) return h;
@@ -28,7 +27,6 @@ namespace Chem
             return h;
         }
 
-        /// <summary>The ground a wizard stands on to attune at this tower: the open cells within its reach, nearest the keep's heart first (inside the walls), then in row order. The view decks them out.</summary>
         public List<(int x, int y)> TowerGround(HoldTower tower)
         {
             int reach = Rules.Sim.Hold.TowerReach;
@@ -40,53 +38,41 @@ namespace Chem
             return cells.Select(c => (x: FoldX(c.x), y: FoldY(c.y))).OrderBy(c => System.Math.Abs(DeltaX(hx, c.x)) + System.Math.Abs(DeltaY(hy, c.y))).ThenBy(c => c.y).ThenBy(c => c.x).ToList();
         }
 
-        /// <summary>The tower this wizard stands up at, whose element its hands may attune to; null at none (hold-batch).</summary>
         public HoldTower TowerOf(string player) =>
             HoldSite != null && stands.TryGetValue(player, out var s) && !s.Down ? HoldSite.TowerAt(s.X, s.Y, Rules.Sim.Hold.TowerReach) : null;
 
-        /// <summary>Whether this wizard's buttons are its hands: everywhere the rules have a hand table (D16).</summary>
         public bool HandsOn(string player) => HandRules.Any;
 
-        // In a run or at a tower, where the Hold's own rules (its kit, its towers) hold.
         bool InHold(string player) => HoldRunning || TowerOf(player) != null;
 
-        /// <summary>Whether a stand on this cell, now, is one the Hold reads, so a late joiner's history must keep it.</summary>
         public bool HoldReadsStand(int x, int y) => HoldSite != null && (HoldRunning || HoldSite.Plate == (x, y) || HoldSite.TowerAt(x, y, Rules.Sim.Hold.TowerReach) != null);
 
-        /// <summary>The D-pad's list for this wizard: the kit in the Hold, else the combo table's.</summary>
         public IReadOnlyList<DpadSpellDef> DpadOf(string player)
         {
             if (!InHold(player) || HandRules.Kit.Count == 0) return Rules.Combos.Dpad;
             return AllOpen(player) ? HandRules.Kit : HandRules.Kit.Where(k => KitOpen(player, k.Spell)).ToList();
         }
 
-        /// <summary>The ticks until this hand casts again; 0 when it's ready.</summary>
         public int HandCooling(string player, int hand) => System.Math.Max(0, HandsOf(player).Ready[hand] - Tick);
 
-        /// <summary>The charge this hand's gesture has reached: 1 for a tap, up to its spell's most while its button is down.</summary>
         public int HandCharge(string player, int hand) => ChargeOf(HandsOf(player), hand);
 
-        /// <summary>What this hand brings out: what it holds, or with nothing, what the other hand holds (one element is on both).</summary>
         public string HandHolds(string player, int hand) => HoldsNow(HandsOf(player), hand);
 
         static string HoldsNow(PlayerHands h, int hand) => h.Holds[hand] ?? h.Holds[1 - hand];
 
-        /// <summary>The first spell a hand cast under way will bring out, or null.</summary>
         public string HandSpellUnderWay(string player) => hands.TryGetValue(player, out var h) && h.Casting ? Coming(h).Select(c => c.row.Spell).FirstOrDefault(s => s != null) : null;
 
-        /// <summary>Every spell a hand cast under way will bring out: two gestures together are two.</summary>
         public List<string> HandSpellsUnderWay(string player) => hands.TryGetValue(player, out var h) && h.Casting ? Coming(h).Select(c => c.row.Spell).Where(s => s != null).ToList() : new List<string>();
 
         const int BothHands = -1;
 
-        // The row both hands make together now: the same gesture on both, and a row for what they hold; null when they don't merge.
         HandRowDef Merged(PlayerHands h)
         {
             int left = h.Gesture[HandsDef.Left];
             return left != HandsDef.NoGesture && left == h.Gesture[HandsDef.Right] ? HandRules.Both(HoldsNow(h, HandsDef.Left), HoldsNow(h, HandsDef.Right), left) : null;
         }
 
-        // What the hands bring out as they stand: a merged row with both hands, or each hand's own.
         List<(HandRowDef row, int gesture, int hand)> Coming(PlayerHands h)
         {
             var coming = new List<(HandRowDef, int, int)>();
@@ -107,8 +93,6 @@ namespace Chem
             return h;
         }
 
-        // A null element empties the hand. It always takes a moment (attuneTicks). At a tower a hand takes only the tower's element,
-        // run or not; in a run only a tower attunes; elsewhere, anything, anywhere.
         bool Attune(PlayerCast c, int hand, string element)
         {
             string player = c.Player;
@@ -126,7 +110,6 @@ namespace Chem
             return true;
         }
 
-        // A hand's button: a thrust or a throw, or with the hand's other button inside the window, a sweep. Held, it charges.
         bool PressHand(PlayerCast c, int hand, int gesture, bool held)
         {
             if (!HandsOn(c.Player) || hand < 0 || hand >= HandsDef.Count || !HandOpen(c.Player, hand) || !GestureOpen(c.Player, gesture)) return false;
@@ -142,7 +125,6 @@ namespace Chem
             else if (Tick - h.Since[hand] >= HandRules.Window || !Sweeps(h, hand, gesture, GestureOpen(c.Player, HandsDef.Sweep))) return false;
             else h.Down[hand] |= held;
             StartHand(h, hand);
-            // A merge goes off on either hand's release, and a tap is one.
             if (Merged(h) != null && h.Down[HandsDef.Left] != h.Down[HandsDef.Right]) LetGo(h);
             Mirror(c, h);
             return true;
@@ -156,8 +138,6 @@ namespace Chem
             return true;
         }
 
-        // A hand's meter, for what it brings out now: a merged row's time if it has merged. Held, there's room for the full charge;
-        // a press that isn't held is a tap at once (a merge never is: it keeps its row's time).
         void StartHand(PlayerHands h, int hand)
         {
             var merged = Merged(h);
@@ -170,14 +150,12 @@ namespace Chem
 
         static int CastTicksOf(HandRowDef row) => System.Math.Max(1, row?.CastTicks ?? 1);
 
-        // A tap is never slower than its row's wind-up.
         int TapTicksOf(HandRowDef row) => System.Math.Min(HandRules.TapTicks, CastTicksOf(row));
 
         int MaxChargeOf(HandRowDef row) => Chargeable(Rules.Spell(row?.Spell)) ? MaxCharge : 1;
 
         int ChargeOf(PlayerHands h, int hand) => h.Down[hand] ? ChargeOn(h.Extra[hand], h.Meter[hand]) : h.Charge[hand];
 
-        // A hand's release: alone it goes off at its own charge, merged both do at the lower of theirs.
         bool ReleaseHand(PlayerCast c, int hand)
         {
             if (hand < 0 || hand >= HandsDef.Count || !hands.TryGetValue(c.Player, out var h) || !h.Down[hand]) return false;
@@ -188,7 +166,6 @@ namespace Chem
             return true;
         }
 
-        // Let go before the charge began: a tap, going off tapTicks after its press (the next tick, if that's passed).
         void TapHand(PlayerHands h, int hand)
         {
             int passed = h.Total[hand] - h.Meter[hand];
@@ -207,7 +184,6 @@ namespace Chem
             EndHandHold(h, HandsDef.Right, charge);
         }
 
-        // As EndHold: the hold's extra ticks come off, so a hand let go early still takes a tap's time.
         static void EndHandHold(PlayerHands h, int hand, int charge)
         {
             h.Charge[hand] = charge;
@@ -219,8 +195,6 @@ namespace Chem
             h.Down[hand] = false;
         }
 
-        // A tick of one wizard's hands: an attuning moment runs out, each meter drains (a held one waits at its last tick),
-        // and what's run out goes off: a merge once both hands have, anything else hand by hand.
         void TickHands(PlayerCast c, PlayerHands h)
         {
             if (h.AttuneLeft > 0 && --h.AttuneLeft == 0) h.Holds[h.AttuneHand] = h.AttuneTo;
@@ -238,7 +212,6 @@ namespace Chem
             Mirror(c, h);
         }
 
-        // What a mod took away since the gesture began just doesn't go off. A hand's cooldown starts as it fires.
         void FireHand(PlayerCast c, PlayerHands h, HandRowDef row, int gesture, int hand)
         {
             bool both = hand == BothHands;
@@ -276,8 +249,6 @@ namespace Chem
             h.AttuneHand = 0;
         }
 
-        // The cast state shows the hands' longest meter, so what reads a cast (the move factor, the view's bar, a refused Load)
-        // sees them, and the merge, so the view can show it while the hands are held. An attuning moment is a meter too.
         void Mirror(PlayerCast c, PlayerHands h)
         {
             int at = -1;
@@ -293,10 +264,8 @@ namespace Chem
             if (!h.Busy) c.Total = 0;
         }
 
-        /// <summary>The hands as text, "" when none has changed (so worlds without any hash as they did).</summary>
         public string HandsText() => ProgressText() + RunText(Hold) + string.Concat(hands.Values.Select(h => $"|P{h.Player}:{h.Holds[0]}:{h.Holds[1]}:{Whole(h.Ready[0])}:{Whole(h.Ready[1])}:{Whole(h.Gesture[0])}:{Whole(h.Gesture[1])}" + MeterText(h)));
 
-        // Each hand's meter, only while one is under way or attuning (so hands at rest hash as they did), and "/t" on a tap's.
         static string MeterText(PlayerHands h) => !h.Busy ? "" : string.Concat(Enumerable.Range(0, HandsDef.Count).Select(i =>
             $":{Whole(h.Meter[i])}/{Whole(h.Total[i])}/{Whole(h.Extra[i])}/{(h.Down[i] ? 1 : 0)}/{Whole(h.Charge[i])}/{Whole(h.Since[i])}" + (h.Tap[i] ? "/t" : ""))) + $":a{Whole(h.AttuneHand)}/{h.AttuneTo}/{Whole(h.AttuneLeft)}";
 
@@ -314,14 +283,12 @@ namespace Chem
                     h.Holds[i] = (string)a[1 + i];
                     h.Ready[i] = (int)a[3 + i];
                     h.Gesture[i] = (int)a[5 + i];
-                    // Saves from before the hands had meters of their own: a gesture under way goes off on the next tick.
                     h.Meter[i] = (int?)more?[7]?[i] ?? (h.Gesture[i] == HandsDef.NoGesture ? 0 : 1);
                     h.Total[i] = (int?)more?[8]?[i] ?? h.Meter[i];
                     h.Extra[i] = (int?)more?[9]?[i] ?? 0;
                     h.Down[i] = (bool?)more?[10]?[i] ?? false;
                     h.Charge[i] = (int?)more?[11]?[i] ?? 1;
                     h.Since[i] = (int?)more?[12]?[i] ?? 0;
-                    // Saves from before taps: a gesture under way goes off as it would have, on its row's time.
                     h.Tap[i] = more?.Count > 16 && (bool?)more[16]?[i] == true;
                 }
                 h.AttuneHand = (int?)more?[13] ?? 0;

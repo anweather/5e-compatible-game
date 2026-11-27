@@ -15,18 +15,15 @@ public static class CastImpact
     static readonly CinemachineImpulseDefinition ReleaseKick = Kick(CinemachineImpulseDefinition.ImpulseShapes.Recoil);
     static readonly CinemachineImpulseDefinition LandKick = Kick(CinemachineImpulseDefinition.ImpulseShapes.Explosion);
 
-    // Same strength everywhere: how far away it is goes into the strength here.
     static CinemachineImpulseDefinition Kick(CinemachineImpulseDefinition.ImpulseShapes shape) => new()
     {
         ImpulseShape = shape,
         ImpulseType = CinemachineImpulseDefinition.ImpulseTypes.Uniform,
     };
 
-    /// <summary>How many kicks the camera has been given, and the size of the last (m), for the probe.</summary>
     public static int Kicks { get; private set; }
     public static float LastKick { get; private set; }
 
-    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -34,18 +31,15 @@ public static class CastImpact
         LastKick = 0f;
     }
 
-    /// <summary>A beat has started on this machine's wizard.</summary>
     public static void Began(CastBeats beats, Beat beat)
     {
         if (beat is Beat.First or Beat.Second) PadRumble.Play(beats.feel.gatherRumble, 1f);
         else if (beat == Beat.Fizzle) PadRumble.Stop();
     }
 
-    /// <summary>This machine's wizard's held cast has reached a charge level.</summary>
     public static void Leveled(CastBeats beats, int level) =>
         PadRumble.Play(beats.feel.levelRumble, level / (float)World.MaxCharge);
 
-    /// <summary>This machine's wizard's hands have met (Slam) or thrust home (Release).</summary>
     public static void Struck(CastBeats beats, Beat beat)
     {
         var feel = beats.feel;
@@ -69,7 +63,6 @@ public static class CastImpact
         });
     }
 
-    /// <summary>This machine's wizard's fist has landed on something, going this way: a small stop, kick and thump.</summary>
     public static void Punched(CastBeats beats, Vector3 way)
     {
         var feel = beats.feel;
@@ -80,7 +73,6 @@ public static class CastImpact
             Shake(ReleaseKick, feel.punchKickSeconds, (FromWorld(way) + Vector3.up * feel.releaseLift).normalized * (feel.punchKick * amount)));
     }
 
-    /// <summary>A spell has landed, anyone's: those with no force in them (fog, light) aren't felt.</summary>
     public static void Landed(SpellDef def, Vector3 at, int charge)
     {
         var local = EventLog.TrackedCaster;
@@ -88,7 +80,6 @@ public static class CastImpact
         Felt(at, SizeOf(def, charge, beats.feel));
     }
 
-    /// <summary>Something of this size (0 to 1) hit the ground here: harder the nearer it is to this machine's wizard, and the bigger the further it carries.</summary>
     public static void Felt(Vector3 at, float size)
     {
         var local = EventLog.TrackedCaster;
@@ -103,7 +94,6 @@ public static class CastImpact
         PadRumble.Play(feel.landRumble, Mathf.Lerp(feel.smallRumble, 1f, size) * near);
     }
 
-    /// <summary>A spell's size for shake and rumble, 0 to 1: its level, and its charge as levels (CastFeel).</summary>
     public static float SizeOf(SpellDef def, int charge, CastFeel feel)
     {
         int level = def != null ? def.Level : 0;
@@ -113,14 +103,12 @@ public static class CastImpact
     static bool Forceful(SpellDef def) =>
         def.Damage.Length == 2 || def.Push > 0 || def.ForceThrow > 0 || def.ForcePush > 0 || def.Raise > 0 || def.Dig > 0 || def.Height != null;
 
-    /// <summary>The spell last announced for this wizard, from the rules.</summary>
     public static SpellDef SpellOf(CastBeats beats)
     {
         var world = beats.TryGetComponent<SpellCaster>(out var caster) && caster.grid != null ? caster.grid.World : null;
         return world != null && beats.Spell != null ? world.Rules.Spell(beats.Spell) : null;
     }
 
-    // The listener takes a signal in the camera's own axes.
     static Vector3 FromWorld(Vector3 direction) =>
         Camera.main != null ? Quaternion.Inverse(Camera.main.transform.rotation) * direction : direction;
 

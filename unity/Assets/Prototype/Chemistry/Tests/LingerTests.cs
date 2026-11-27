@@ -1,16 +1,14 @@
+// Lingering (ChunkPlanner, docs/WORLD_STREAMING.md "Part 2, second slice"): a chunk that leaves
+// every keep distance while live stays active until it settles, what is live on its edge
+// activates the inactive chunk across it, and the caps (sim.json streaming.lingerChunks,
+// lingerTicks) bound both. The worlds are bare dirt with grass where a fire should burn, so a
+// fire burns out where it's put.
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Lingering (ChunkPlanner, docs/WORLD_STREAMING.md "Part 2, second slice"): a chunk that leaves
-    /// every keep distance while live stays active until it settles, what is live on its edge
-    /// activates the inactive chunk across it, and the caps (sim.json streaming.lingerChunks,
-    /// lingerTicks) bound both. The worlds are bare dirt with grass where a fire should burn, so a
-    /// fire burns out where it's put.
-    /// </summary>
     [Category("Simulation")]
     public class LingerTests
     {
@@ -28,7 +26,6 @@ namespace Chem.Tests
                 for (int x = x0; x <= x1; x++) w.Paint(x, y, "grass");
         }
 
-        /// <summary>A 10×10 patch of grass round the middle of a chunk, set alight.</summary>
         static void Fire(World w, int cx, int cy)
         {
             var (x, y) = Middle(cx, cy);
@@ -36,7 +33,6 @@ namespace Chem.Tests
             w.Cast("fire-bolt", x, y, 0);
         }
 
-        /// <summary>Plans and steps, as the grid does solo: the plan applies before each tick.</summary>
         static void Run(World w, ChunkPlanner p, (int x, int y) at, int ticks)
         {
             for (int i = 0; i < ticks; i++)
@@ -75,7 +71,6 @@ namespace Chem.Tests
             Run(w, p, Middle(4, 4), 3);
             Assert.That(Burning(w, 4, 4), Is.True);
 
-            // Four chunks west is past the keep distance (3).
             var away = Middle(0, 4);
             Run(w, p, away, 3);
             Assert.That(w.IsActive(4, 4), Is.True, "still burning, so it lingers");
@@ -95,7 +90,6 @@ namespace Chem.Tests
         {
             var w = Dirt();
             var p = new ChunkPlanner();
-            // A strip of grass from chunk (4, 4) into (5, 4); the wizard three chunks west of (4, 4).
             var (_, y) = Middle(4, 4);
             Grass(w, 4 * S + 40, y - 2, 5 * S + 20, y + 2);
             var at = Middle(1, 4);
@@ -154,7 +148,6 @@ namespace Chem.Tests
         [Test]
         public void LingeringSwitchesInTickBatchesReplayTheSame()
         {
-            // Live: the host plans with lingering while a wizard lights fires and walks away east.
             var live = Dirt();
             var p = new ChunkPlanner();
             var rules = RuleSet.Plain(R);
@@ -181,7 +174,6 @@ namespace Chem.Tests
                 rules = batch.RunOn(live, rules, out _);
             }
 
-            // Replay: what a late joiner rebuilds from the host's history, with no planner of its own.
             var replay = Dirt();
             Grass(replay, 0, 4 * S, 9 * S - 1, 4 * S + 3);
             var replayRules = RuleSet.Plain(R);
@@ -193,17 +185,10 @@ namespace Chem.Tests
             Assert.That(lingered, Is.True, "fires left behind lingered");
         }
 
-        // ---------- the plan visits only what it can touch (planner-reach) ----------
-
         static string Text(List<ChunkSwitch> plan) => string.Join(" ", plan.Select(p => $"{p.CX},{p.CY}{(p.Active ? "+" : "-")}"));
 
         static string Text(ChunkPlanner planner) => string.Join(" ", planner.Lingering.OrderBy(c => c.cy).ThenBy(c => c.cx).Select(c => $"{c.cx},{c.cy}"));
 
-        /// <summary>
-        /// A planner visiting every chunk and one visiting only the chunks round the characters and the active ones plan the
-        /// same, tick by tick, on one world: a world that wraps (12 x 3 chunks), two characters walking over the seam, grass
-        /// fires that linger and spread behind them; then as NetChem plans, against a set of chunks planned awake.
-        /// </summary>
         [Test]
         public void APlanVisitingOnlyWhatItCanTouchIsThePlanVisitingEveryChunk()
         {

@@ -15,19 +15,12 @@ public sealed class CreatureBodies
 
     public int Count => bodies.Count;
 
-    /// <summary>How many bodies the last <see cref="Refresh"/> built.</summary>
     public int Rebuilt { get; private set; }
 
-    /// <summary>A species' body by index, or null.</summary>
     public CreatureBody this[int index] => index >= 0 && index < bodies.Count ? bodies[index] : null;
 
-    /// <summary>A species' index by its id, or -1.</summary>
     public int IndexOf(string id) => id != null && indices.TryGetValue(id, out int i) ? i : -1;
 
-    /// <summary>
-    /// Who comes out of a door of a village of the species at <paramref name="kind"/>: them, or one of the
-    /// species whose row says it comes out among them, by the share it gives. <paramref name="roll"/> is from 0 to 1.
-    /// </summary>
     public int FolkAt(int kind, float roll)
     {
         for (int i = 0; i < bodies.Count; i++)
@@ -40,14 +33,11 @@ public sealed class CreatureBodies
         return kind;
     }
 
-    /// <summary>Whether the last Refresh found every row as it was, so no body changed.</summary>
     public bool Unchanged { get; private set; }
 
-    /// <summary>Brings the bodies up to these rules.</summary>
     public void Refresh(Rules rules)
     {
         var next = rules.Fauna;
-        // A switch that leaves every row as it was (most do) changes no body (#181).
         Unchanged = tables != null && next.SameAs(tables);
         if (Unchanged)
         {
@@ -77,7 +67,6 @@ public sealed class CreatureBodies
         SetHunting();
     }
 
-    // Whether a body's row, and the rows of the donors whose colours a graft wears ("coat": "own"), are as they were.
     bool Same(FaunaTables next, CreatureBody body, ISet<string> changedParts)
     {
         if (!next.SameRows(tables, body.Id, changedParts)) return false;
@@ -86,7 +75,6 @@ public sealed class CreatureBodies
         return true;
     }
 
-    // What each species hunts (any variant of what it lists counts), and whether anything out there hunts it.
     void SetHunting()
     {
         var hunted = new bool[bodies.Count];

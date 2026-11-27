@@ -106,7 +106,6 @@ public class PeersTests
         Assert.IsFalse(OnlineReset.Ask());
     }
 
-    // The point of Prototype.Net: the game never names networking, so it can't (step 7 of the architecture review).
     [Test]
     public void TheGameDoesNotReferenceNet()
     {
@@ -127,7 +126,6 @@ public class PeersTests
         Assert.IsTrue(new Fixed(PeerRole.Client).IsClient());
     }
 
-    // A role and nothing else, for the helpers.
     sealed class Fixed : IPeers
     {
         public Fixed(PeerRole role) => Role = role;

@@ -18,7 +18,6 @@ public partial class TranscribeProbe : ProbeScenario
 {
     const string Said = "make the deer three times bigger", MicrophoneKind = "microphone", WhisperKind = "whisper";
     const float BusySeconds = 1.5f, SlowSeconds = 3f, ShortTimeout = 1f, MicSeconds = 1f, MostWait = 10f;
-    // A frame while transcribing may be this much worse than the worst idle one before it's a hitch.
     const float MostHitchMs = 20f;
 
     string folder;
@@ -65,7 +64,6 @@ public partial class TranscribeProbe : ProbeScenario
     static TranscribedSpeech FromWav(string wav, float workSeconds, float timeoutSeconds) =>
         new(new WavAudio(wav), new StubTranscriber(TimeSpan.FromSeconds(workSeconds), StubTranscriber.TextFor(wav)), TimeSpan.FromSeconds(timeoutSeconds));
 
-    // The speech check as -speech-check -speech-wav runs it, with the stub working 1.5 s.
     IEnumerator FromWavCheck(string wav)
     {
         using var speech = FromWav(wav, BusySeconds, 10f);
@@ -86,7 +84,6 @@ public partial class TranscribeProbe : ProbeScenario
         Metric("total_ms", result.TotalMs);
     }
 
-    // A stub slower than the timeout: the hold ends at the timeout with a line, and the next works.
     IEnumerator TimesOut(string wav)
     {
         using var speech = FromWav(wav, SlowSeconds, ShortTimeout);
@@ -110,7 +107,6 @@ public partial class TranscribeProbe : ProbeScenario
         Check("silence_says_nothing_within_the_timeout", result.Done && result.Text.Length == 0 && result.TotalMs < ShortTimeout * 1000f && speech.Why == null, result.ToString());
     }
 
-    // A hold through GameVoice with the stub chosen: the words reach the chat as dictation's do.
     IEnumerator ThroughTheChat(string wav)
     {
         var chat = GameChat.Instance;
@@ -147,7 +143,6 @@ public partial class TranscribeProbe : ProbeScenario
         }
     }
 
-    // The default microphone opens and closes; whatever the room gave, the hold ends within the timeout.
     IEnumerator Microphone()
     {
         Metric("microphones", MicrophoneAudio.Devices.Length);
@@ -179,7 +174,6 @@ public partial class TranscribeProbe : ProbeScenario
         Metric("microphone_seconds", result.Heard);
     }
 
-    // Takes the chat's messages in Claude's place and answers none.
     sealed class StandInHarness : IChatHarness
     {
         public readonly List<string> Sent = new();

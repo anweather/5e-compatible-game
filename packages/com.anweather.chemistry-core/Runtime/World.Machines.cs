@@ -11,43 +11,31 @@ namespace Chem
 {
     public sealed partial class World
     {
-        /// <summary>A machine's state (MachineState in the TS): its pressure or hold, and whether it powers the gates.</summary>
         public sealed class MachineState
         {
             public int Level, Hold;
             public bool Powered;
         }
 
-        /// <summary>A gate that opens only for one machine (GateLink in the TS): both by their cell's index (Idx), and whether it has it open.</summary>
         public sealed class GateLink
         {
             public int Gate, Machine;
             public bool Open;
         }
 
-        // Each machine's state by its cell's index (Idx), made the first tick it's seen.
         readonly Dictionary<int, MachineState> machines = new Dictionary<int, MachineState>();
 
-        // The linked gates in the order they were linked, and the cells of their gates and machines.
         readonly List<GateLink> gateLinks = new List<GateLink>();
         readonly HashSet<int> linkedGates = new HashSet<int>(), linkedMachines = new HashSet<int>();
 
-        /// <summary>Whether the machines no one linked have the gates no one linked open (gatesOpen in the TS).</summary>
         public bool GatesOpen { get; private set; }
 
-        /// <summary>The machine that last opened a gate, or null.</summary>
         public string OpenedBy { get; private set; }
 
-        /// <summary>The linked gates, in the order they were linked.</summary>
         public IReadOnlyList<GateLink> GateLinks => gateLinks;
 
-        /// <summary>The state of the machine at (x, y), or null if it hasn't run.</summary>
         public MachineState MachineAt(int x, int y) => machines.TryGetValue(Idx(x, y), out var m) ? m : null;
 
-        /// <summary>
-        /// Works the gate at this cell (materials.json "swing"): it and the cells of the same terrain joined to it, north,
-        /// east, south and west, all become its swingsTo. A gate that would shut on a raider stays open, as a machine's does.
-        /// </summary>
         public void Swing(int x, int y)
         {
             var c = At(x, y);
@@ -63,7 +51,6 @@ namespace Chem
             }
         }
 
-        // The cells of one terrain joined to this one, in the order a flood reaches them.
         List<(int x, int y)> LeavesFrom(int x, int y, string terrain)
         {
             var leaves = new List<(int x, int y)> { (x, y) };
@@ -77,11 +64,6 @@ namespace Chem
             return leaves;
         }
 
-        /// <summary>
-        /// Links the gate at (gx, gy) to the machine at (mx, my) (linkGate in the TS): from then on that gate opens
-        /// only while that machine is powered, and that machine opens no other gate. A gate has one machine; linking
-        /// it again moves its link. Every peer links the same gates before the first tick (WorldPuzzles.LayInto).
-        /// </summary>
         public void LinkGate(int gx, int gy, int mx, int my)
         {
             if (!InBounds(gx, gy) || !InBounds(mx, my)) return;
@@ -102,17 +84,10 @@ namespace Chem
             }
         }
 
-        /// <summary>
-        /// Every machine on the active cells, in row order (tickMachines in the TS): a boiler builds pressure from steam
-        /// and loses it slowly; a plate is pressed by a raider heavy enough; a wheel, a coil and a windmill hold for a
-        /// while after water flows, a charge arrives or the wind blows into them. A linked gate opens while its own
-        /// machine is powered; any other machine powered opens the gates no one linked.
-        /// </summary>
         void TickMachines(RowSpan[] rows)
         {
             if (Rules.Machines.Count == 0) return;
             string poweredBy = null;
-            // Most cells are the terrain the cell before was: look an id up only when it changes.
             string lastT = null;
             MachineDef def = null;
             foreach (var s in rows)
@@ -160,7 +135,6 @@ namespace Chem
             }
         }
 
-        // Whether a wheel, a windmill or a coil was reached this tick: water flowed, wind blew, a charge arrived.
         static bool Hit(string needs, byte marks, Cell c)
         {
             if (needs == "flow") return (marks & FlowMark) != 0;
@@ -168,8 +142,6 @@ namespace Chem
             return c.Charge > 0;
         }
 
-        // Opens every gate no one linked when a machine no one linked is powered, shuts them when none is (not one
-        // a raider is wedged in), and says so.
         void SetGates(RowSpan[] rows, string poweredBy)
         {
             bool open = poweredBy != null;
@@ -205,8 +177,6 @@ namespace Chem
 
         bool Linked(Chunk ch, int i) => linkedGates.Count > 0 && linkedGates.Contains(Idx(CellX(ch, i), CellY(ch, i)));
 
-        // Each linked gate on an active cell follows its own machine, in the order they were linked: open while it's
-        // powered, shut once it isn't (not while a raider is wedged in it: then it tries again next tick), and says so.
         void SetLinkedGates()
         {
             foreach (var l in gateLinks)

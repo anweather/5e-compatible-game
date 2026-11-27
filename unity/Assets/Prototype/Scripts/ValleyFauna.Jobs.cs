@@ -19,19 +19,15 @@ public partial class ValleyFauna
     Creature[] working;
     World jobsWorld;
     double jobClock = -1;
-    // Each worker sent to its stop for a Hold run: the walk there and when it set off; null while it's on its round.
     FolkJobs.Trip[] homeTrips;
     double[] homeSince;
     bool[] keptHome;
 
-    /// <summary>For the probe: the workers, and where each is on its round now.</summary>
     public FolkJobs Jobs => jobs;
     public double JobClock => jobClock;
 
-    /// <summary>For the probe: what finding the walks took.</summary>
     public double JobsBuiltMs { get; private set; }
 
-    /// <summary>For the probe: whether a worker stands in the world, and how far the nearest is from a point.</summary>
     public bool NearestWorker(Vector3 from, out float apart)
     {
         apart = float.MaxValue;
@@ -41,7 +37,6 @@ public partial class ValleyFauna
         return apart < float.MaxValue;
     }
 
-    /// <summary>For the probe: how many workers stand in the world.</summary>
     public int WorkersOut
     {
         get
@@ -59,10 +54,7 @@ public partial class ValleyFauna
         jobsWorld = world;
         int human = bodies.IndexOf(WorkerSpecies);
         if (human < 0) return;
-        // Not yet on a map made from its source (the Wide World): the jobs' walks are found over its cells and land, which
-        // would make every chunk the walks cross, on this thread.
         if (world.Source is IGeneratedSource) return;
-        // The map's land as the ground reads it (one copy: ValleyChemistry.LandOf), none when the map has no land.json.
         var units = ValleyChemistry.LandOf(world);
         if (units == null) return;
         float2 Centre(int x, int y)
@@ -88,7 +80,6 @@ public partial class ValleyFauna
         JobsBuiltMs = timer.Elapsed.TotalMilliseconds;
     }
 
-    // The world's clock, run on smoothly between its ticks; every peer's agrees to within the glide.
     double JobSeconds(float dt)
     {
         double target = world.Tick / (double)Mathf.Max(1, world.Rules.Sim.TicksPerSecond);
@@ -123,13 +114,10 @@ public partial class ValleyFauna
         }
     }
 
-    /// <summary>For the probe: whether this worker is kept off the road for a Hold run.</summary>
     public bool KeptHome(int worker) => keptHome != null && worker >= 0 && worker < keptHome.Length && keptHome[worker];
 
-    /// <summary>For the probe: where this worker is now, its round or its walk home for a run.</summary>
     public FolkJobs.Now WorkerNow(int worker) => Now(worker, jobClock);
 
-    // Where a worker is: on its round, or while a Hold run is on (and after, until the round brings it there) at its stop for one.
     FolkJobs.Now Now(int i, double seconds)
     {
         var worker = jobs.Workers[i];
@@ -179,7 +167,6 @@ public partial class ValleyFauna
         c.state = s;
     }
 
-    // On a dock the deck is what's underfoot, not the lake bed.
     float GroundOf(FolkJobs.Now now)
     {
         float ground = Height(now.At);

@@ -21,14 +21,10 @@ using UnityEngine;
 public class WizardOutfit : MonoBehaviour
 {
     const string SeedKey = "wizard.look";
-    const int SectionOrder = 480; // the Game sub menu: before Mods
+    const int SectionOrder = 480;
     const int Sides = 12;
-    // The collar up the neck, in the shade under the face.
     const float NeckShade = 0.3f;
-    // The face's middle in the head bone's space, and its size (the robot's head was 0.22 m wide):
-    // a little taller than wide, down to the collar.
     public static readonly Vector3 FaceAt = new(0f, 0.055f, 0.015f), FaceSize = new(0.25f, 0.31f, 0.25f);
-    // The hat's brim, over the head bone, and how far back of it the hat sits.
     public const float HatCrown = 0.14f, HatBack = 0.015f;
     static Material sharedFace;
 
@@ -39,14 +35,12 @@ public class WizardOutfit : MonoBehaviour
     [Tooltip("Unused: the staff is off the wizard (the cast-feel pass). Kept so it can come back as an item, a focus.")]
     public bool carriesStaff;
 
-    /// <summary>The look worn now (null until dressed).</summary>
     public WizardLook Look { get; private set; }
 
     readonly List<GameObject> parts = new();
     Animator animator;
     int pending = int.MinValue;
 
-    /// <summary>The seed this machine's player keeps (a new one the first time).</summary>
     public static int SavedSeed
     {
         get
@@ -59,20 +53,10 @@ public class WizardOutfit : MonoBehaviour
     void Awake()
     {
         animator = GetComponent<Animator>();
-        // The solo wizard too, not only the online ones (NetWizard.KeepAnimating): unseen for a moment (the camera turned
-        // away, swimming, shapeshifted), the rig stopped writing its bones and the poses laid over it piled up, carrying
-        // the hips metres above the body (50 m after a shapeshift and a swim), and the legs and robe with them: the pants
-        // that disappeared (playtest 2026-11-08 B2; the pants probe).
         if (animator != null) animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
         HideCovered();
     }
 
-    // The robot under the clothes (Andrew: no more clipping). On the skin only, each bone the clothes
-    // cover is swapped for a stand-in of next to no size at its joint, so whatever it moved shrinks
-    // away inside the cloth. The rig itself and all its animation and IK carry on as they were. Next
-    // to no size, not none: a size of nothing takes the skin's normals to nothing too, and the slivers
-    // left between the joints (at the neck, seen from above) then drew NaN pixels, which the bloom
-    // spread into a flare (issue #16).
     const float HiddenBoneSize = 0.001f;
 
     void HideCovered()
@@ -99,7 +83,6 @@ public class WizardOutfit : MonoBehaviour
 
     void OnDisable() => PauseMenu.RemoveSection(DrawSection);
 
-    // "New look" in the Esc menu, for the local player's own wizard only.
     void DrawSection()
     {
         if (WizardRig.FindLocal() != gameObject) return;
@@ -108,13 +91,11 @@ public class WizardOutfit : MonoBehaviour
 
     IEnumerator Start()
     {
-        // A frame in, the rig stands in its idle pose: the sleeves are measured from it, and a staff set upright in the hand.
         yield return null;
         if (pending == int.MinValue && Look == null && GetComponent<NetWizard>() == null) pending = SavedSeed;
         if (pending != int.MinValue) Dress(pending);
     }
 
-    /// <summary>Dresses the wizard in the look of this seed (again, if it changed).</summary>
     public void Wear(int seed)
     {
         if (Look != null && Look.Seed == seed) return;
@@ -122,10 +103,8 @@ public class WizardOutfit : MonoBehaviour
         else Dress(seed);
     }
 
-    /// <summary>The local player draws a new look: saved, worn, and sent to everyone online.</summary>
     public void Reroll() => Keep(WizardLook.NewSeed());
 
-    /// <summary>The local player changes what's on the wizard's head, and only that.</summary>
     public void NextHeadwear()
     {
         if (Look != null) Keep(WizardLook.NextHeadwear(Look.Seed));
@@ -170,15 +149,9 @@ public class WizardOutfit : MonoBehaviour
 
     Transform Bone(HumanBodyBones b) => animator.isHuman ? animator.GetBoneTransform(b) : null;
 
-    // --- the hat, and a staff if carried, by pose (Andrew: no staff through the body, no crushed hat) --
-
     Transform staff, hat;
-    // The staff's length and its grip, in the hand's space as built.
     Vector3 staffAxis, staffGrip;
     Sitter sitter;
-    // How far a moving staff leans out from the body (so its foot clears the leg and its top the
-    // hat's brim), how far down it's held (its top below the hat), and how far the hat tips forward
-    // over the face when lying back.
     const float StaffLeanOut = 0.35f, StaffDrop = 0.15f, HatTip = 45f;
 
     void LateUpdate()
@@ -195,7 +168,6 @@ public class WizardOutfit : MonoBehaviour
                 HoldStaff(along, null);
                 staff.position -= along * StaffDrop;
             }
-            // Lying back: stood upright beside the lounger, by the hand.
             else if (seat.lounge) HoldStaff(Vector3.up, Bone(HumanBodyBones.Hips).position - transform.right * 0.45f + Vector3.up * 0.4f);
         }
         if (hat != null)
@@ -206,8 +178,6 @@ public class WizardOutfit : MonoBehaviour
         }
     }
 
-    // Turns the staff to lie along <paramref name="along"/> (its top that way), its grip in the hand
-    // or at <paramref name="grip"/>.
     void HoldStaff(Vector3 along, Vector3? grip)
     {
         var axis = staff.TransformDirection(staffAxis);
@@ -216,12 +186,10 @@ public class WizardOutfit : MonoBehaviour
         staff.position += at - staff.TransformPoint(staffGrip);
     }
 
-    // The part just hung, if it's the one named (Hang skips a part with no bone).
     Transform Last(string name) => parts.Count > 0 && parts[^1].name == name ? parts[^1].transform : null;
 
     static readonly int SteadyGlow = Shader.PropertyToID("_SteadyGlow");
 
-    // Builds what the kit holds into a part on a bone, then empties the kit.
     void Hang(MeshKit kit, Transform bone, string name, bool steadyGlow = false)
     {
         if (bone == null || kit.VertexCount == 0)
@@ -236,7 +204,6 @@ public class WizardOutfit : MonoBehaviour
         r.sharedMaterial = material;
         if (steadyGlow)
         {
-            // A glow carried about: steady, no window flicker (VillageLit's _SteadyGlow).
             var block = new MaterialPropertyBlock();
             block.SetFloat(SteadyGlow, 1f);
             r.SetPropertyBlock(block);
@@ -245,9 +212,6 @@ public class WizardOutfit : MonoBehaviour
         kit.Clear();
     }
 
-    // --- the parts, each in its bone's own space (metres; the rig's head, chest and hips stand upright) ---
-
-    // A black fuzzy ball where the robot's head was, its eyes in the shader.
     void Face(Transform head)
     {
         if (head == null) return;
@@ -267,18 +231,15 @@ public class WizardOutfit : MonoBehaviour
         else Hat(kit, head);
     }
 
-    // A hood: rings from the shoulders up over the head to a soft point at the back, open in front
-    // of the face, dark inside.
     void Cowl(MeshKit kit, Transform head)
     {
-        // Each ring: its height over the head bone, its radius, how far back it sits, and whether the front is open.
         var rings = new (float y, float r, float back, bool open)[]
         {
             (-0.17f, 0.21f, 0.02f, false), (-0.09f, 0.175f, 0.01f, false), (-0.03f, 0.17f, 0f, true), (0.08f, 0.175f, 0f, true),
             (0.17f, 0.155f, 0.015f, true), (0.24f, 0.115f, 0.05f, true), (0.275f, 0.055f, 0.1f, false), (0.29f, 0.006f, 0.15f, false),
         };
         const int Round = 20;
-        const float OpenHalf = 0.85f; // radians either side of straight ahead: its edges round the ball
+        const float OpenHalf = 0.85f;
         Vector3 At(int ring, int k)
         {
             float a = 2f * Mathf.PI * k / Round;
@@ -303,14 +264,9 @@ public class WizardOutfit : MonoBehaviour
     void Hat(MeshKit kit, Transform head)
     {
         var look = Look;
-        // Down over the head, the brim at the brow, just over the eyes' tops, and centred on the face
-        // (FaceAt, FaceSize): any lower, or further back, and the ball pokes out through the cone.
         const float crown = HatCrown, back = HatBack;
-        // The brim: a thin disc, a touch down at the back.
         Tube(kit, new[] { new Vector3(0f, crown - 0.012f, back), new Vector3(0f, crown + 0.012f, back) }, new[] { look.Brim, look.Brim }, look.Hat, Ends.Both);
-        // The band round the cone's foot.
         Tube(kit, new[] { new Vector3(0f, crown + 0.01f, back), new Vector3(0f, crown + 0.055f, back) }, new[] { 0.145f, 0.14f }, look.Band, Ends.None);
-        // The cone, rising and then drooping back (and leaning to one side) along a curve.
         const int Rings = 6;
         var spine = new Vector3[Rings + 1];
         var radii = new float[Rings + 1];
@@ -326,12 +282,6 @@ public class WizardOutfit : MonoBehaviour
         hat = Last("Outfit hat");
     }
 
-    // The bodice as clothing, not a shell (Andrew: "rough"): slim elliptical rings from the waist up
-    // the spine to the shoulders and a collar up the neck, skinned to the rig's hips, spine, chest,
-    // upper chest and neck (and, at the shoulders' sides, the upper arms), so it bends with the
-    // torso: a wizard lying back has it lying along the backrest. Built in the idle pose, in the
-    // body's own space; each vertex blends the bones of the two rings it lies between.
-    // How far forward of the spine the bodice's upper rings sit.
     static readonly Vector3 BodiceForward = new(0f, 0f, 0.012f);
 
     void SkinnedBodice()
@@ -349,13 +299,10 @@ public class WizardOutfit : MonoBehaviour
         var root = transform;
         Vector3 At(Transform t) => root.InverseTransformPoint(t.position);
         float shoulderY = (At(leftArm).y + At(rightArm).y) / 2f;
-        // Each ring: its centre on the spine, half its width, its depth as a share of that, its bone.
         var rings = new (Vector3 at, float half, float depth, Transform bone)[]
         {
             (At(hips) + Vector3.up * 0.06f, 0.175f, 1f, hips),
             (At(chest), 0.165f, 0.85f, chest),
-            // Deeper over the chest and a little forward, so the robot's chest plate doesn't show
-            // through under the beard.
             (At(upper) + BodiceForward, 0.17f, 0.82f, upper),
             (Vector3.Lerp(At(upper), new Vector3(At(upper).x, shoulderY, At(upper).z), 0.55f) + BodiceForward, 0.18f, 0.8f, upper),
             (new Vector3(At(neck).x, shoulderY, At(upper).z) + BodiceForward, 0.19f, 0.72f, upper),
@@ -373,9 +320,6 @@ public class WizardOutfit : MonoBehaviour
         parts.Add(SkinnedTube.Make(root, "Outfit bodice", tube, 16, bones, (p, _) => Weigh(p, heights, ringBones, shoulders), material));
     }
 
-    // A sleeve as clothing: slim down the upper arm and the forearm, flaring a little to a cuff
-    // at the wrist, skinned to the upper arm, forearm and hand, its cuff partly to a spring bone at
-    // the wrist (ClothSpring) so it hangs and sways. Built in the idle pose like the bodice.
     void SkinnedSleeve(HumanBodyBones upperBone, HumanBodyBones lowerBone, HumanBodyBones handBone)
     {
         Transform upper = Bone(upperBone), lower = Bone(lowerBone), hand = Bone(handBone);
@@ -399,7 +343,6 @@ public class WizardOutfit : MonoBehaviour
             Ring(wrist - lowerWay.normalized * 0.005f, lowerWay, 0.078f, Look.Trim),
         };
         var bones = new[] { upper, lower, hand, cuffBone };
-        // Upper arm to the elbow, forearm on, the cuff mostly with the hanging spring.
         static BoneWeight Share(Vector3 _, int ring) => ring switch
         {
             <= 1 => SkinnedTube.Blend(0, 1, 0f),
@@ -415,8 +358,6 @@ public class WizardOutfit : MonoBehaviour
             new() { at = at, along = along, half = radius, depth = 1f, colour = colour };
     }
 
-    // A bodice vertex's bones: the two rings it lies between, by height; at the shoulders' sides, a
-    // share to that side's upper arm.
     static BoneWeight Weigh(Vector3 p, float[] heights, int[] ringBones, (float centre, float half, float y, int left, int right) shoulders)
     {
         int below = 0;
@@ -436,21 +377,14 @@ public class WizardOutfit : MonoBehaviour
     void Bodice(MeshKit kit, Transform chest)
     {
         if (chest == null) return;
-        // Chest bone to the shoulders, with a trim collar.
-        // Wide at the shoulders (the rig's shoulder joints stand 0.16 m out), so they stay under the cloth.
         Tube(kit, new[] { new Vector3(0f, -0.17f, 0f), new Vector3(0f, 0.12f, 0f), new Vector3(0f, 0.26f, -0.02f), new Vector3(0f, 0.31f, -0.02f) },
             new[] { 0.165f, 0.205f, 0.25f, 0.14f }, Look.Robe, Ends.End);
         Tube(kit, new[] { new Vector3(0f, 0.29f, -0.01f), new Vector3(0f, 0.34f, -0.01f) }, new[] { 0.10f, 0.075f }, Look.Trim, Ends.None);
         Hang(kit, chest, "bodice");
     }
 
-    /// <summary>
-    /// Off: the skirt is the old rigid shell instead of cloth (RobeCloth). For before-and-after
-    /// comparisons only (the cloth probe); not reset between Play sessions on purpose.
-    /// </summary>
     public static bool RigidRobe;
 
-    // The cloth's rings: 14 round (a little finer than the rigid parts), from the waist to the hem.
     const int ClothSides = 14;
 
     void Skirt(MeshKit kit, Transform hips)
@@ -464,13 +398,10 @@ public class WizardOutfit : MonoBehaviour
         float hem = -Look.RobeLength;
         Tube(kit, new[] { new Vector3(0f, 0.10f, 0f), new Vector3(0f, -0.10f, 0f), new Vector3(0f, hem * 0.6f, 0f), new Vector3(0f, hem, 0f) },
             new[] { 0.165f, 0.19f, Mathf.Lerp(0.19f, Look.RobeFlare, 0.6f), Look.RobeFlare }, Look.Robe, Ends.None, inside: true);
-        // A trim band at the hem.
         Tube(kit, new[] { new Vector3(0f, hem + 0.05f, 0f), new Vector3(0f, hem, 0f) }, new[] { Look.RobeFlare * 0.985f + 0.004f, Look.RobeFlare + 0.006f }, Look.Trim, Ends.None, inside: true);
         Hang(kit, hips, "robe");
     }
 
-    // The skirt as cloth: rings from the waist (two pinned to the hips) down to a trim band at the
-    // hem, flaring as the rigid robe does.
     void ClothSkirt()
     {
         float hem = -Look.RobeLength;
@@ -497,7 +428,6 @@ public class WizardOutfit : MonoBehaviour
         parts.Add(go);
     }
 
-    // A sleeve down the upper arm, then a bell from the elbow, open at the wrist.
     void Sleeve(MeshKit kit, HumanBodyBones upper, HumanBodyBones lower, HumanBodyBones hand)
     {
         Transform u = Bone(upper), l = Bone(lower), h = Bone(hand);
@@ -511,14 +441,12 @@ public class WizardOutfit : MonoBehaviour
         Hang(kit, l, "bell " + lower);
     }
 
-    // Unused while carriesStaff is off. Upright in the left hand in the idle pose: a gnarled branch, a
-    // crystal-topped rod or an orb-topped rod.
     void Staff(MeshKit kit, Transform hand)
     {
         if (hand == null || Look.Staff == WizardLook.StaffKind.None) return;
         var up = hand.InverseTransformDirection(Vector3.up);
         var grip = hand.InverseTransformPoint(hand.position + transform.forward * 0.03f);
-        var wood = new Color(0.36f, 0.24f, 0.14f, 0f); // alpha 0: VillageLit's glow off
+        var wood = new Color(0.36f, 0.24f, 0.14f, 0f);
         var foot = grip - up * 0.95f;
         var top = grip + up * 0.75f;
         if (Look.Staff == WizardLook.StaffKind.Gnarled)
@@ -531,7 +459,7 @@ public class WizardOutfit : MonoBehaviour
         {
             Tube(kit, new[] { foot, top }, new[] { 0.02f, 0.022f }, wood, Ends.Both);
             Tube(kit, new[] { top - up * 0.02f, top + up * 0.04f }, new[] { 0.03f, 0.03f }, Look.Trim, Ends.None);
-            var glow = new Color(Look.StaffGlow.r, Look.StaffGlow.g, Look.StaffGlow.b, 0.85f); // alpha: VillageLit's glow
+            var glow = new Color(Look.StaffGlow.r, Look.StaffGlow.g, Look.StaffGlow.b, 0.85f);
             if (Look.Staff == WizardLook.StaffKind.Crystal)
                 Tube(kit, new[] { top + up * 0.03f, top + up * 0.11f, top + up * 0.24f }, new[] { 0.01f, 0.05f, 0.002f }, glow, Ends.Both, sides: 6);
             else
@@ -560,8 +488,6 @@ public class WizardOutfit : MonoBehaviour
     [System.Flags]
     enum Ends { None = 0, Start = 1, End = 2, Both = Start | End }
 
-    // A tube along a curve: a ring of Sides corners at each point, faces between rings (outward,
-    // and inward too for a skirt or a sleeve you can see into), flat caps on the ends asked for.
     static void Tube(MeshKit kit, Vector3[] spine, float[] radii, Color color, Ends ends, bool inside = false, int sides = Sides)
     {
         var rings = Rings(spine, radii, sides);
@@ -579,7 +505,6 @@ public class WizardOutfit : MonoBehaviour
         if ((ends & Ends.Start) != 0) Cap(kit, spine[0], rings[0], spine[0] - spine[1], color);
     }
 
-    // The rings round each point of a curve, each turned as little as it can from the one before.
     static Vector3[][] Rings(Vector3[] spine, float[] radii, int sides)
     {
         var rings = new Vector3[spine.Length][];

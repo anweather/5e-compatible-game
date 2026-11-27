@@ -9,7 +9,6 @@ using UnityEngine;
 // world dressed as an animal, is carried and found, and goes with its mod. The things
 // here are plain test kinds: named content never goes in the code or rules (J-055).
 
-/// <summary>The mod the things probes switch on: a carried kind and a pushed one, at two cells.</summary>
 public static class ProbeThingsMod
 {
     public const string Id = "probe-things", Title = "Probe things", Find = "probe-find", Stump = "probe-stump";
@@ -23,7 +22,6 @@ public static class ProbeThingsMod
             {{ ""kind"": ""{Find}"", ""cell"": [{item.x}, {item.y}], ""rot"": 135 }},
             {{ ""kind"": ""{Stump}"", ""cell"": [{prop.x}, {prop.y}] }} ] }} }} }}";
 
-    /// <summary>Two open cells near a place, by the same check a peer makes at the switch.</summary>
     public static (Vector2Int item, Vector2Int prop) Near(ChemGrid grid, Vector3 at)
     {
         var from = grid.CellAt(at);
@@ -36,8 +34,7 @@ public static class ProbeThingsMod
     }
 }
 
-/// <summary>Solo: a mod's things spawn dressed, rest on the ground, are found once, and go with the mod, even out of a hand.</summary>
-[DefaultExecutionOrder(200)] // a picture is taken after ThingBodies has drawn
+[DefaultExecutionOrder(200)]
 public class ModThingProbe : ProbeScenario
 {
     const int ShotWidth = 1280, ShotHeight = 720, ShotQuality = 85;
@@ -83,7 +80,6 @@ public class ModThingProbe : ProbeScenario
         yield return Snap("standing", item.transform.position);
         yield return Snap("prop", prop.transform.position);
 
-        // Found once: the first pick-up logs it, the second doesn't.
         wizard.transform.position = item.transform.position + Vector3.right;
         int tick = World.Tick;
         var carried = item.GetComponent<Carryable>();
@@ -100,7 +96,6 @@ public class ModThingProbe : ProbeScenario
         yield return Wait(Settle);
         Check("found_only_once", !LogSince(tick).Any(l => l.Contains("found the probe find")) && World.Room.Found.Count == 1);
 
-        // Reverting takes it out of the hand and out of the world.
         switcher.Ask(RoomCommand.Revert(switcher.Me, ProbeThingsMod.Id));
         yield return Wait(Settle);
         Check("gone_from_the_hand", hands.Held == null);
@@ -108,7 +103,6 @@ public class ModThingProbe : ProbeScenario
         Check("no_body_left", bodies.Count == 0, $"{bodies.Count} dressed");
         Check("the_find_went_with_it", World.Room.Found.Count == 0, World.RoomText());
 
-        // And it's only composing: the same mod brings the same things back.
         switcher.Ask(RoomCommand.Apply(switcher.Me, ProbeThingsMod.Id, ProbeThingsMod.Json(itemCell, propCell), ProbeThingsMod.Title));
         yield return Wait(Settle);
         Check("back_when_on_again", Live(ProbeThingsMod.Find) != null && bodies.Count == 2, $"{bodies.Count} dressed");
@@ -126,7 +120,6 @@ public class ModThingProbe : ProbeScenario
         Check(what + "_rests_on_the_ground", Mathf.Abs(gap) < 0.25f, $"{gap:0.00} m");
     }
 
-    // One picture from a little way off, the Game view being whatever shape a hidden Editor gives it.
     IEnumerator Snap(string label, Vector3 at)
     {
         if (string.IsNullOrEmpty(ScreenshotDir)) yield break;
@@ -161,7 +154,6 @@ public class ModThingProbe : ProbeScenario
     }
 }
 
-/// <summary>A mod's things across peers: the client adopts them dressed, finds one, a late joiner gets them, and a revert takes one out of the client's hand.</summary>
 public class RoomThingProbe : RoomProbe
 {
     const float Settle = 1f, CatchUp = 20f;
@@ -187,7 +179,6 @@ public class RoomThingProbe : RoomProbe
         if (Theirs == null) yield break;
         Check("in_the_clients_hand", Theirs.held == ProbeThingsMod.Find, Theirs.held);
 
-        // Leaving drops it; the late joiner's copy arrives before its rules do, so it waits for them.
         HashesFrom = Net.NetTick;
         yield return Ask("rejoin");
         yield return Wait(Settle);
@@ -208,7 +199,6 @@ public class RoomThingProbe : RoomProbe
 
     float caughtUp;
 
-    // A virtual player in the background runs behind: this waits until it holds what this side holds.
     IEnumerator InStep()
     {
         for (caughtUp = 0f; caughtUp < CatchUp; caughtUp += Settle)

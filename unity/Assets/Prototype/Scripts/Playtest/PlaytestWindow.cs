@@ -27,7 +27,6 @@ public static class PlaytestWindow
         notes.Append($"window moved off-screen: {moved}; ");
     }
 
-    /// <summary>If this player is in front, gives the front back to that window; true if it did.</summary>
     public static bool HandBack(long window)
     {
         var user = new IntPtr(window);
@@ -37,7 +36,6 @@ public static class PlaytestWindow
         return SetForegroundWindow(user) || Say(false, "SetForegroundWindow refused");
     }
 
-    // Says why the front wasn't handed back, once per reason (the playtest's Player.log).
     static readonly System.Collections.Generic.HashSet<string> said = new();
     static bool Say(bool result, string why)
     {
@@ -45,7 +43,6 @@ public static class PlaytestWindow
         return result;
     }
 
-    // This process's Unity window, found by its window class (no callbacks, so it works under IL2CPP).
     static IntPtr Own()
     {
         uint me = (uint)System.Diagnostics.Process.GetCurrentProcess().Id;

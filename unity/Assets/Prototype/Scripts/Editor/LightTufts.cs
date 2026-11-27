@@ -18,13 +18,11 @@ public static class LightTufts
 {
     public const string Folder = "Assets/Prototype/Generated/Ground/Tufts";
 
-    /// <summary>The pack tufts lightened, and how many quads a card keeps; the rest are used as the pack has them.</summary>
     public static readonly IReadOnlyDictionary<string, int> Lightened = new Dictionary<string, int>
     {
         ["Grass_A"] = 1, ["Grass_B"] = 1, ["Grass_C"] = 2, ["Fern_A"] = 2,
     };
 
-    /// <summary>Whether the ground's template (built before LightTufts) still grows a pack tuft that has a light copy.</summary>
     public static bool GroundHasPackTufts()
     {
         var template = AssetDatabase.LoadAssetAtPath<TerrainData>(Template);
@@ -32,24 +30,17 @@ public static class LightTufts
             && AssetDatabase.GetAssetPath(d.prototype).StartsWith(PackPaths.TerrainSamples, System.StringComparison.Ordinal));
     }
 
-    /// <summary>The ground's template, which the valley's build makes (ValleyBuilder).</summary>
     public const string Template = "Assets/Prototype/Generated/Ground/Template.asset";
 
-    /// <summary>Whether a detail prototype of the ground's template still casts shadows (from before they were turned off).</summary>
     public static bool GroundGrassCastsShadows()
     {
         var template = AssetDatabase.LoadAssetAtPath<TerrainData>(Template);
         return template != null && template.detailPrototypes.Any(d => d.prototype != null && CastsShadows(d.prototype));
     }
 
-    /// <summary>Whether any renderer of a prefab casts shadows.</summary>
     public static bool CastsShadows(GameObject prefab) =>
         prefab.GetComponentsInChildren<Renderer>(true).Any(r => r.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.Off);
 
-    /// <summary>
-    /// The terrains' copy of a pack tuft prefab (made or brought up to date in Folder), casting no shadows: lighter when
-    /// it is one of Lightened, else with the pack's own mesh. The pack's own when it isn't a single mesh.
-    /// </summary>
     public static GameObject For(GameObject pack)
     {
         if (pack == null) return pack;
@@ -85,11 +76,6 @@ public static class LightTufts
         }
     }
 
-    /// <summary>
-    /// A copy of a tuft with each of its cards (the triangles joined by shared vertices) remade as <paramref name="segments"/>
-    /// quads (1 or 2) through its own corner (and middle) vertices, found by their texture coordinates; a card already that
-    /// small is kept as it is. Only the vertices used are kept.
-    /// </summary>
     public static Mesh Lighten(Mesh source, int segments)
     {
         var uv = new List<Vector2>();
@@ -119,10 +105,8 @@ public static class LightTufts
         return Compact(source, kept);
     }
 
-    /// <summary>How many cards (triangles joined by shared vertices) a mesh has.</summary>
     public static int CardCount(Mesh mesh) => Cards(mesh.triangles, mesh.vertexCount).Count;
 
-    // The triangles of each card: those joined by shared vertices, in order of their first triangle.
     static List<List<int>> Cards(int[] tris, int vertices)
     {
         var root = Enumerable.Range(0, vertices).ToArray();
@@ -153,8 +137,6 @@ public static class LightTufts
         return order;
     }
 
-    // A card's rows of (left, right) vertices from its foot to its tip: the corners of its patch of texture (the extremes
-    // of u ± v), and between them the vertices nearest the middle of each side.
     static List<(int left, int right)> Quads(List<int> verts, List<Vector2> uv, int segments)
     {
         int Most(System.Func<Vector2, float> score) => verts.OrderByDescending(i => score(uv[i])).ThenBy(i => i).First();
@@ -172,8 +154,6 @@ public static class LightTufts
 
     static int Nearest(List<int> verts, List<Vector2> uv, Vector2 at) => verts.OrderBy(i => (uv[i] - at).sqrMagnitude).ThenBy(i => i).First();
 
-    // A triangle wound to face the way its vertices' normals do, as the card's own triangles were (the material lights a
-    // card's back by its winding).
     static void Face(List<int> into, int a, int b, int c, Vector3[] positions, Vector3[] normals)
     {
         var facing = Vector3.Cross(positions[b] - positions[a], positions[c] - positions[a]);
@@ -183,8 +163,6 @@ public static class LightTufts
         into.Add(flip ? b : c);
     }
 
-    // The source's vertices that the triangles use, in their order, with every channel the source has in the source's own
-    // vertex layout (its uvs two wide), so the grass draws with the pipeline states it always had (the PSO collections).
     static Mesh Compact(Mesh source, List<int> tris)
     {
         var used = tris.Distinct().OrderBy(i => i).ToList();

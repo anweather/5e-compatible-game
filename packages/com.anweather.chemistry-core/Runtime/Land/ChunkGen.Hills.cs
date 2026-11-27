@@ -11,26 +11,17 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>The rolling hills' land: octaves of tiling value noise over a base, in land units (0.125 m).</summary>
     public sealed class HillsLand
     {
-        /// <summary>The land everywhere is at least this, in land units: above the sea level, so no cell is water.</summary>
         public readonly int Base;
-        /// <summary>Each octave's lattice period in cells and its height range in land units, broadest first.</summary>
         public readonly IReadOnlyList<(int period, int amplitude)> Octaves;
-        /// <summary>The biome the whole map is (biomes.json's id).</summary>
         public readonly string Biome;
-        /// <summary>Its roads (map.json's "hills" "roads", HillsRoads), or null for hills with none.</summary>
         public HillsRoads Roads { get; private set; }
-        /// <summary>Its alpine massif (map.json's "hills" "massif", HillsMassif), or null for hills with none.</summary>
         public HillsMassif Massif { get; private set; }
-        /// <summary>Its rivers (map.json's "hills" "rivers", HillsRivers: from springs on the massif), or null for none.</summary>
         public HillsRivers Rivers { get; private set; }
-        /// <summary>Its woods (map.json's "hills" "forest", HillsForest), or null for hills with none.</summary>
         public HillsForest Forest { get; private set; }
         readonly int seed, w, h;
 
-        // Fixed point for the blend between lattice points.
         const long One = 1 << 16;
 
         public HillsLand(int seed, int cellsW, int cellsH, int baseUnits, IReadOnlyList<(int period, int amplitude)> octaves, string biome)
@@ -51,7 +42,6 @@ namespace Chem
             Biome = biome;
         }
 
-        /// <summary>The highest land the hills can reach (every octave at its top), in land units.</summary>
         public int Highest
         {
             get
@@ -62,7 +52,6 @@ namespace Chem
             }
         }
 
-        /// <summary>map.json's generated "hills": { "base", "octaves": [[period, amplitude], ...], "biome" }.</summary>
         public static HillsLand Read(JObject o, int seed, int cellsW, int cellsH)
         {
             var list = new List<(int, int)>();
@@ -70,12 +59,9 @@ namespace Chem
                 list.Add(((int)oct[0], (int)oct[1]));
             var land = new HillsLand(seed, cellsW, cellsH, (int?)o["base"] ?? 8, list, (string)o["biome"] ?? "grassland");
             var massif = HillsMassif.Read(o["massif"] as JObject, seed, cellsW, cellsH);
-            // The massif's shape first, then the roads (no lesser one into its ring), then its passes along the main roads,
-            // then the roads graded over the whole land.
             land.Roads = HillsRoads.Read(o["roads"] as JObject, seed, cellsW / WorldPlan.SquareCells, cellsH / WorldPlan.SquareCells,
                 massif != null ? massif.InRing : (Func<int, int, bool>)null);
             if (massif != null) massif.SetPasses(land.Roads?.MainLines() ?? new List<(long[], long[])>());
-            // The rivers' gorge is cut through the ring before the roads are graded over the land.
             var rivers = o["rivers"] as JObject;
             var settings = HillsRivers.Settings.Read(rivers);
             if (massif != null && rivers != null) massif.SetGorge(land.Rolling, settings.LakeDepth, settings.GorgeWidth, settings.GorgeFall);
@@ -88,10 +74,8 @@ namespace Chem
             return land;
         }
 
-        /// <summary>The land at any cell, x and y taken round the torus: the same at (x, y) and (x + k W, y + m H).</summary>
         public int At(int x, int y) => Massif == null ? Rolling(x, y) : Massif.Land(x, y, Rolling(x, y));
 
-        /// <summary>The rolling hills' own land at a cell, without the massif.</summary>
         public int Rolling(int x, int y)
         {
             x = PlanGrid.Mod(x, w);
@@ -112,10 +96,8 @@ namespace Chem
             return Base + (int)(sum / One);
         }
 
-        // A lattice point's height, 0 .. amplitude, from the seed: the octave's salt keeps octaves apart.
         long Lattice(int octave, int i, int j, int amplitude) => WorldHash.Hash4(seed, 0x4111 + octave, i, j) % (uint)(amplitude + 1);
 
-        // 3t² − 2t³ in Q16: the land's slope is level at each lattice point, so the hills roll without creases.
         static long Smooth(long t) => t * t / One * (3 * One - 2 * t) / One;
 
         public override string ToString() =>
@@ -124,16 +106,10 @@ namespace Chem
 
     public sealed partial class ChunkGen
     {
-        /// <summary>A hills map's land (docs/design/hills.md), or null for a plan's map.</summary>
         public readonly HillsLand Hills;
 
-        /// <summary>Whether the map joins north to south too (a torus: a hills map's "wrap": "torus").</summary>
         public readonly bool WrapY;
 
-        /// <summary>
-        /// A hills map's generator, <paramref name="w"/> × <paramref name="h"/> world squares: no plan, no pinned map, every
-        /// cell grass on the hills' land, wrapping east-west and, when <paramref name="wrapY"/>, north-south.
-        /// </summary>
         public ChunkGen(HillsLand hills, BiomeTable biomes, int seed, int w, int h, bool wrapY)
         {
             Hills = hills ?? throw new ArgumentNullException(nameof(hills));
@@ -147,13 +123,10 @@ namespace Chem
             landmarkRows = Array.Empty<LandmarkRows>();
         }
 
-        /// <summary>A map cell's y on the map: modulo the map's height where it wraps north-south, else as it is.</summary>
         public int WrapCellY(int y) => WrapY ? PlanGrid.Mod(y, CellsH) : y;
 
-        /// <summary>A map chunk's y on the map: modulo the map's height in chunks where it wraps north-south, else as it is.</summary>
         public int WrapChunkY(int cy) => WrapY ? PlanGrid.Mod(cy, ChunksH) : cy;
 
-        // Chunks between two chunk coordinates along one axis of n, the short way where it wraps.
         static int Along(int a, int b, int n, bool wrap)
         {
             int d = Math.Abs(a - b);
@@ -162,11 +135,8 @@ namespace Chem
             return Math.Min(d, n - d);
         }
 
-        /// <summary>Land this steep across a cell (land units to a neighbour) is bare rock on a hills map, and this steep scree.</summary>
         public const int HillsRock = 7, HillsScree = 4;
 
-        // Every cell grass on the hills' land, but its roads' dirt, and rock or scree where it's steep; no things. The land is
-        // worked out a cell past the chunk's edge for the slopes, so a cell's ground is the same in either chunk.
         void MakeHills(GeneratedChunk c)
         {
             int x0 = c.X * Size, y0 = c.Y * Size;
@@ -187,8 +157,6 @@ namespace Chem
             c.Biome = Hills.Biome;
         }
 
-        // A hills cell off the road and water by its slope: bare rock or scree where steep, else grass, or a tree by the
-        // woods' chance there (HillsForest) unless it's kept clear (by a road, a river or a lake).
         char HillsGround(int slope, int x, int y, int land, bool clear)
         {
             char ground = HillsGround(slope);
@@ -197,10 +165,6 @@ namespace Chem
             return forest.Roll(x, y, forest.Density(x, y, land)) ? Tree : Grass;
         }
 
-        /// <summary>
-        /// A hills cell's own ground as its chunk makes it, worked out from the cell and its four neighbours alone: road,
-        /// water, rock, scree, grass or a tree.
-        /// </summary>
         public char HillsGroundAt(int x, int y)
         {
             var near = HillsNearBox(x - 1, y - 1, x + 1, y + 1);
@@ -218,22 +182,18 @@ namespace Chem
             return Math.Max(Math.Max(Math.Abs(land[k - 1] - h), Math.Abs(land[k + 1] - h)), Math.Max(Math.Abs(land[k - ap] - h), Math.Abs(land[k + ap] - h)));
         }
 
-        // A hills cell off the road by its slope: grass, scree or bare rock.
         static char HillsGround(int slope)
         {
             if (slope >= HillsRock) return Rock;
             return slope >= HillsScree ? Scree : Grass;
         }
 
-        /// <summary>The roads and rivers that may reach a box of map cells (unwrapped).</summary>
         public struct HillsNear
         {
             public List<HillsRoads.Placed> Roads;
-            /// <summary>The rivers' pieces that may touch the box (their water and banks), and those a road's ford ramp may reach.</summary>
             public List<HillsRivers.Placed> Rivers, Fords;
         }
 
-        // How far over a lake's level its shore is kept clear of trees, in land units (0.75 m).
         const int LakeShore = 6;
 
         static readonly HillsRivers.Hit NoRiver = new HillsRivers.Hit { Distance = long.MaxValue };
@@ -245,18 +205,8 @@ namespace Chem
             Fords = Hills.Rivers?.Near(x0, y0, x1, y1, Hills.Rivers.FordReach),
         };
 
-        // A hills cell's land and what's laid on it ('\0' for nothing: the slope decides its ground), a pure function of the
-        // cell, the same either side of a chunk's edge and a seam:
-        // - under a lake on a river (its land under the lake's level): the lake's level, a pond ('w'); but its outlet's
-        //   river where that runs lower, and a road over it on a causeway a land unit over the water;
-        // - within a river's half width: its surface there, river ('r'); where a road crosses too, a ford;
-        // - on a road: the land at the road's line (level across it), coming down to the river's surface at the road's grade
-        //   by a ford; on a road's bank, leaning back from that to the land over HillsRoads.Bank cells;
-        // - on a river's bank: leaning back from its surface to the land over HillsRivers.Bank cells, never under it.
         int HillsPoint(int x, int y, HillsNear near, out char kind, out bool ford) => HillsPoint(x, y, near, out kind, out ford, out _);
 
-        // As above, and whether the cell is kept clear of trees: on or by a road (its bank) or a river (its bank and a cell
-        // more), or a lake.
         int HillsPoint(int x, int y, HillsNear near, out char kind, out bool ford, out bool clear)
         {
             int natural = Hills.At(x, y);
@@ -265,14 +215,11 @@ namespace Chem
             var rivers = Hills.Rivers;
             int land = RoadPoint(x, y, natural, near.Roads, out bool road, out clear);
             var river = rivers != null && near.Rivers != null && near.Rivers.Count > 0 ? HillsRivers.Nearest(near.Rivers, x, y, rivers.Reach) : NoRiver;
-            // A road looks farther for a ford it comes down to.
             if (road && river.Distance == long.MaxValue && near.Fords != null && near.Fords.Count > 0) river = HillsRivers.Nearest(near.Fords, x, y, rivers.FordReach);
             long halfQ = (long)river.Half * One, d = river.Distance;
             if (d < halfQ + (long)(HillsRivers.Bank + 1) * One) clear = true;
             int lake = rivers != null ? rivers.LakeAt(x, y, natural) : HillsRivers.NoLake;
-            // A lake's shore (land within LakeShore units over its level) stands no trees either.
             if (rivers != null && lake == HillsRivers.NoLake && !clear && rivers.LakeAt(x, y, natural - LakeShore) != HillsRivers.NoLake) clear = true;
-            // A lake but where its outlet's river runs on lower, or a road crosses it on a causeway a unit over the water.
             if (lake != HillsRivers.NoLake && !(d < halfQ && river.Surface < lake))
             {
                 clear = true;
@@ -281,7 +228,6 @@ namespace Chem
                     kind = Pond;
                     return lake;
                 }
-                // Where the river's line crosses the causeway the water runs over it: a ford at the lake's level.
                 if (d < halfQ)
                 {
                     kind = Stream;
@@ -304,8 +250,6 @@ namespace Chem
             }
             if (road)
             {
-                // Down to the ford at the road's grade: a road over the river's surface comes down to it, the farther the
-                // higher it is (FordRamp cells at least, HillsRivers.FordRampMost at most).
                 kind = Dirt;
                 int over = land - river.Surface;
                 if (over <= 0) return land;
@@ -320,9 +264,6 @@ namespace Chem
             return Math.Max(river.Surface, river.Surface + (int)BiomeMath.FloorDiv((long)(land - river.Surface) * lean + One / 2, One));
         }
 
-        // A hills cell's land with its roads: on a road, the land at the road's line (level across it); on its bank, leaning
-        // back from that to the land over HillsRoads.Bank cells.
-        // And whether it's on the road or its bank (kept clear of trees).
         int RoadPoint(int x, int y, int land, List<HillsRoads.Placed> near, out bool road, out bool bankOrRoad)
         {
             road = false;
@@ -345,7 +286,6 @@ namespace Chem
             return centre + (int)BiomeMath.FloorDiv((land - centre) * lean + One / 2, One);
         }
 
-        /// <summary>A hills cell's land with its roads and rivers, and whether it is road (a ford's too): what its chunk makes there.</summary>
         public int HillsLandAt(int x, int y, out bool road)
         {
             int land = HillsPoint(x, y, HillsNearBox(x, y, x, y), out char kind, out bool ford);
@@ -353,10 +293,6 @@ namespace Chem
             return land;
         }
 
-        /// <summary>
-        /// A hills cell's land and what's laid on it: '.' road, 'r' river, 'w' lake, or '\0' for its own ground (by slope);
-        /// and whether it's a ford (a river cell a road crosses).
-        /// </summary>
         public int HillsCellAt(int x, int y, out char kind, out bool ford) => HillsPoint(x, y, HillsNearBox(x, y, x, y), out kind, out ford);
 
         static byte KnownWater(char kind)
@@ -365,7 +301,6 @@ namespace Chem
             return kind == Pond ? KnownChunk.Lake : KnownChunk.Dry;
         }
 
-        // The known chunk's samples: the hills' land at each, its rivers and lakes, all the hills' biome.
         KnownChunk KnowHills(int cx, int cy)
         {
             var k = new KnownChunk { X = cx, Y = cy, Biome = Hills.Biome };
@@ -375,11 +310,9 @@ namespace Chem
                 for (int i = 0; i < KnownChunk.Side; i++)
                 {
                     int q = j * KnownChunk.Side + i;
-                    // The last samples are the next chunk's first, across the seams too: the land tiles.
                     int x = x0 + i * KnownChunk.Step, y = y0 + j * KnownChunk.Step;
                     k.Heights[q] = HillsPoint(x, y, near, out char kind, out _, out bool clear);
                     k.Water[q] = KnownWater(kind);
-                    // How wooded it looks from far off: its chance of a tree, nothing on a road or water.
                     if (Hills.Forest != null && kind == '\0' && !clear) k.Wood[q] = Hills.Forest.Cover(Hills.Forest.Density(x, y, k.Heights[q]));
                     k.Biomes[q] = Hills.Biome;
                 }

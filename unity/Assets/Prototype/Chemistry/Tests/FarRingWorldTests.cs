@@ -50,7 +50,6 @@ namespace Chem.Tests
                     }
                 return false;
             }
-            // Two characters on two coasts, and one inland.
             foreach (var at in new[] { new[] { (12, 12) }, new[] { (22, 22), (28, 12) }, new[] { (20, 30) } })
             {
                 var ring = new KnownRing(gen, Streaming);
@@ -89,7 +88,6 @@ namespace Chem.Tests
             ring.Want(new[] { FarRingTests.Valley });
             Assert.That(ring.Handover(), Is.False, "standing still changes nothing");
             Assert.That(ring.Version, Is.EqualTo(version));
-            // A step east: the chunks it no longer knows go at the next handover, the new ones when the worker has them.
             ring.Want(new[] { (FarRingTests.Valley.x + 1, FarRingTests.Valley.y) });
             while (ring.Busy && watch.ElapsedMilliseconds < 60000) ring.Handover();
             ring.Handover();
@@ -103,7 +101,6 @@ namespace Chem.Tests
             var table = HorizonTable.Load(LandmarkIntentTests.GameWorldDir());
             foreach (var row in table.Rows.Values)
                 Assert.That(row.SeenFrom, Is.GreaterThanOrEqualTo(Streaming.Know + 2), $"{row.Type}'s seenFrom");
-            // Every type the plans place that the file names, and nothing it doesn't.
             foreach (string seed in new[] { null, "seed-4", "seed-9" })
                 foreach (var l in GeneratedMap.Load(FarRingTests.NineDir, seed).Far.All)
                 {
@@ -132,8 +129,6 @@ namespace Chem.Tests
             }
         }
 
-        // A 4 × 4 world, nearly half of it sea and no valley pinned, so open sea lies well inside the map (the nine's lies
-        // past its edge, every sea chunk on it beside the land).
         static ChunkGen SeaWorld()
         {
             string world = LandmarkIntentTests.GameWorldDir();
@@ -147,7 +142,6 @@ namespace Chem.Tests
         public void TheLoadCostOfALoneCharactersRing()
         {
             var gen = FarRingTests.Nine.Gen;
-            // A character in the middle of the nine knows the whole 15 × 15 less the 9 × 9 it can see.
             var at = (13, 13);
             Filled(FarRingTests.Nine, at);
             var times = new List<double>();
@@ -183,18 +177,15 @@ namespace Chem.Tests
             foreach (var l in far.All)
             {
                 int r = l.SeenFrom * ChunkGen.Size;
-                // Straight out on each side, at its radius and a cell past it.
                 foreach (var (dx, dy) in new[] { (1, 0), (0, 1), (-1, 0), (0, -1) })
                 {
                     Assert.That(far.SeenAt(l.X + dx * r, l.Y + dy * r), Has.Member(l), $"{Show(l)} at {r} cells");
                     Assert.That(far.SeenAt(l.X + dx * (r + 1), l.Y + dy * (r + 1)), Has.No.Member(l), $"{Show(l)} at {r + 1} cells");
                 }
-                // A radius, not a square: on the diagonal at the square's corner it's out of sight.
                 Assert.That(far.SeenAt(l.X + r, l.Y + r), Has.No.Member(l), $"{Show(l)} on the diagonal");
                 int d = (int)(r / Math.Sqrt(2));
                 Assert.That(far.SeenAt(l.X + d, l.Y - d), Has.Member(l), $"{Show(l)} on the diagonal within its radius");
             }
-            // From the valley's middle: the list is exactly the landmarks within radius.
             var (vx, vy) = (FarRingTests.Valley.x * ChunkGen.Size + 32, FarRingTests.Valley.y * ChunkGen.Size + 32);
             var seen = far.SeenAt(vx, vy).ToList();
             Assert.That(seen, Is.EqualTo(far.All.Where(l => Math.Sqrt((double)(l.X - vx) * (l.X - vx) + (double)(l.Y - vy) * (l.Y - vy)) <= l.SeenFrom * ChunkGen.Size).ToList()));

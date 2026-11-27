@@ -11,11 +11,9 @@ public class HoldTowers : MonoBehaviour
     const float TileGap = 0.35f, Lift = 0.04f;
     static Material particles;
 
-    /// <summary>Each tower's element and its look's root, for the probe.</summary>
     public IReadOnlyList<(string element, Transform at)> Shown => shown;
     readonly List<(string element, Transform at)> shown = new();
 
-    /// <summary>Puts each tower's look on its ground (World.TowerGround): the open cells in its reach, where a wizard stands to attune.</summary>
     public void Show(ChemGrid grid, World world)
     {
         foreach (var (_, at) in shown) Destroy(at.gameObject);
@@ -53,7 +51,6 @@ public class HoldTowers : MonoBehaviour
         }
     }
 
-    // A flat tile of the element's colour, glowing a little, on each cell a wizard attunes on.
     static void Tiles(Transform root, List<Vector3> points, float size, Color colour)
     {
         var v = new List<Vector3>();
@@ -125,7 +122,6 @@ public class HoldTowers : MonoBehaviour
         shape.rotation = new Vector3(-90f, 0f, 0f);
     }
 
-    // Embers rising off the tower, flickering out as they go.
     static void Embers(Transform root, float radius)
     {
         var ps = Particles(root, "Embers", new Color(1f, 0.55f, 0.1f), new Color(1f, 0.85f, 0.3f), additive: true);
@@ -141,7 +137,6 @@ public class HoldTowers : MonoBehaviour
         ps.Play();
     }
 
-    // Glossy puddles on the tower's top and drops falling into them.
     static void Puddles(Transform root, List<Vector3> points, float radius)
     {
         var water = UrpMaterials.NewLit("Tower puddle", new Color(0.2f, 0.45f, 0.85f), 0.95f);
@@ -171,7 +166,6 @@ public class HoldTowers : MonoBehaviour
         ps.Play();
     }
 
-    // Stones strewn on the tower's top, and dust lifting off them.
     static void Stones(Transform root, List<Vector3> points, float radius)
     {
         var stone = UrpMaterials.NewLit("Tower stone", new Color(0.45f, 0.38f, 0.28f), 0.15f);
@@ -202,7 +196,6 @@ public class HoldTowers : MonoBehaviour
         ps.Play();
     }
 
-    // Leaves blown round the tower's top in a ring.
     static void Leaves(Transform root, float radius)
     {
         var ps = Particles(root, "Leaves", new Color(0.55f, 0.7f, 0.25f), new Color(0.85f, 0.75f, 0.3f), additive: false);
@@ -219,7 +212,6 @@ public class HoldTowers : MonoBehaviour
         orbit.enabled = true;
         orbit.space = ParticleSystemSimulationSpace.Local;
         orbit.orbitalY = new ParticleSystem.MinMaxCurve(1.6f);
-        // Unity wants x, y and z in one mode.
         orbit.x = new ParticleSystem.MinMaxCurve(0f, 0f);
         orbit.y = new ParticleSystem.MinMaxCurve(0.2f, 0.6f);
         orbit.z = new ParticleSystem.MinMaxCurve(0f, 0f);

@@ -12,11 +12,9 @@ namespace Chem.Mcp
 {
     public sealed class StandInValley : IChunkSource
     {
-        // How deep the water stands, in units; how far a sea's beach reaches, and how far a village keeps from water, in cells.
         const int WaterUnits = 12, BeachCells = 5, VillageClear = 3;
         const string Grass = "grass", Sand = "sand", Bare = "dirt";
 
-        /// <summary>Marks a rules folder with no world files beside it.</summary>
         internal static readonly StandInValley None = new StandInValley(0, 0);
 
         readonly bool[] water;
@@ -35,7 +33,6 @@ namespace Chem.Mcp
         public int H { get; }
         public string Version => "stand-in-valley-1";
 
-        /// <summary>The stand-in for the folders' map; null if it has no land or places.</summary>
         public static StandInValley Load(GameFolders folders, ModBudgets budgets)
         {
             string worldDir = folders.World;
@@ -97,7 +94,6 @@ namespace Chem.Mcp
             }
         }
 
-        // The rows the cells don't hold, as the game lays them, so a site here is refused as it is there.
         void LayRows(WorldBuildings buildings, GameFolders folders)
         {
             if (!buildings.LaidRows.Any()) return;

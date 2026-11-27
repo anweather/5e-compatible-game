@@ -10,11 +10,9 @@ using UnityEngine;
 // the truth.
 public sealed class CellCrackMesh
 {
-    // How far the decal floats over its cell, and the dark of the lines.
     const float Lift = 0.035f, IceLift = 0.05f, DepthBias = -60f;
     static readonly Color32 Line = new Color(0.05f, 0.07f, 0.1f, 0f), Mortar = new Color(0.5f, 0.43f, 0.36f, 0f);
     const float WebKind = 2f, BrickKind = 3f;
-    // Quads to a side of a crack on ice.
     const int IceGrid = 6;
 
     readonly ChemGrid grid;
@@ -43,10 +41,8 @@ public sealed class CellCrackMesh
         r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
     }
 
-    /// <summary>A web's seed, 0 to 1, in the middle of one of the shader's 64 steps: on the edge of one, it speckled from step to step.</summary>
     public static float WebSeed(float any) => (Mathf.Floor(Mathf.Repeat(any, 1f) * 64f) + 0.5f) / 64f;
 
-    /// <summary>A cell was redrawn: its crack, at the height its top is drawn, is rebuilt at the next Rebuild.</summary>
     public void Changed(int x, int y, Cell c, float top)
     {
         int key = grid.World.Idx(x, y);
@@ -58,7 +54,6 @@ public sealed class CellCrackMesh
         dirty |= had != now || (now && (was.brick != brick || !Mathf.Approximately(was.top, top)));
     }
 
-    /// <summary>Rebuilds the quads if a cell's crack changed since the last time.</summary>
     public void Rebuild()
     {
         if (!dirty || mesh == null) return;
@@ -99,7 +94,6 @@ public sealed class CellCrackMesh
         triangles.AddRange(new[] { v, v + 2, v + 1, v, v + 3, v + 2 });
     }
 
-    // A grid of quads over the cell, each corner on the ice as it's drawn there.
     void IceQuads(int key, float top)
     {
         int w = grid.World.W, x = key % w, y = key / w, first = vertices.Count, side = IceGrid + 1;
@@ -109,7 +103,6 @@ public sealed class CellCrackMesh
             for (int i = 0; i < side; i++)
             {
                 float u = i / (float)IceGrid, t = j / (float)IceGrid;
-                // The cell's +x is the world's, and its +y runs the world's -z (ContourSurface.Flat).
                 float gx = x + u, gy = y + 1f - t;
                 var at = new Vector3(middle.x + (u * 2f - 1f) * half, grid.DrawnWaterTopAt(gx, gy, top) + IceLift, middle.z + (t * 2f - 1f) * half);
                 vertices.Add(grid.transform.InverseTransformPoint(at));

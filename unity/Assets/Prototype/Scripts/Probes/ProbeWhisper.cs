@@ -38,8 +38,6 @@ public partial class TranscribeProbe
             if (Path.GetFileName(file) != SpeechChoice.ModelFile) yield return file;
     }
 
-    // What a sample says. Windows' make.ps1 gives short names and a transcript beside each ("0.100 make", a word a line,
-    // under a "seconds" line); the Mac's make.sh names a file by its words.
     static string Wanted(string wav)
     {
         string transcript = Path.ChangeExtension(wav, ".txt");
@@ -90,7 +88,6 @@ public partial class TranscribeProbe
         Check("whisper_abandoned_work_ended", speech.Abandoned == 0, $"{speech.Abandoned} still out");
     }
 
-    // A cancel can't stop whisper, so a cancelled call must end with no words, and the next must still work.
     IEnumerator Cancels(string wav)
     {
         var audio = new WavAudio(wav);

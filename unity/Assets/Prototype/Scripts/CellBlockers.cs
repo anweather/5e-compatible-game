@@ -12,17 +12,13 @@ using UnityEngine;
 // boxes rather than making its 3800 again (ReleaseAll; 130 ms of a rebuild).
 public sealed class CellBlockers
 {
-    // A raised wall's blocker reaches its top as drawn (a 1.5 m wall is out of a jump's
-    // reach anyway), and this far down its sides, where the terrain falls steeply away from it.
     const float WallReach = 0.05f, WallFoot = 2f;
-    // A tree's blocker: about its trunk, not the whole square around it.
     const float TrunkWidth = 0.7f;
 
     readonly ChemGrid grid;
     readonly Transform parent;
     readonly Dictionary<int, BoxCollider> used = new();
     readonly Stack<BoxCollider> spare = new();
-    // Row houses' cells (world indices) and how tall their walls stand: their looks give no height.
     readonly Dictionary<int, float> built = new();
 
     const string ParentName = "Blockers";
@@ -34,19 +30,13 @@ public sealed class CellBlockers
         parent.SetParent(grid.transform, false);
     }
 
-    /// <summary>Whether <paramref name="c"/> is one of these invisible boxes (nothing to stand on or to see).</summary>
     public static bool IsBlocker(Collider c) =>
         c != null && c.transform.parent != null && c.transform.parent.name == ParentName;
 
     public int Count => used.Count;
 
-    /// <summary>Where the boxes are kept: a world rebuilt (ChemGrid.ResetWorld) keeps it, and them.</summary>
     public Transform Parent => parent;
 
-    /// <summary>
-    /// A new world: every box goes back to the pool, still standing, for Place to take again where the new world's
-    /// cells block (most where the old one's did); HideSpare then puts away the ones no cell took.
-    /// </summary>
     public void ReleaseAll()
     {
         foreach (var box in used.Values) spare.Push(box);
@@ -54,14 +44,12 @@ public sealed class CellBlockers
         built.Clear();
     }
 
-    /// <summary>After ReleaseAll and a whole world placed: the boxes left in the pool stop blocking.</summary>
     public void HideSpare()
     {
         foreach (var box in spare)
             if (box.gameObject.activeSelf) box.gameObject.SetActive(false);
     }
 
-    /// <summary>How high a cell's blocker stands above its ground; 0 when it doesn't block.</summary>
     public float Reach(Cell c)
     {
         var world = grid.World;
@@ -69,20 +57,14 @@ public sealed class CellBlockers
         return world.IsBlocking(c) ? CellDressing.Look(world.Rules, c.T).height : 0f;
     }
 
-    /// <summary>A cell of a row house's wall now stands this tall; 0 when it's none any more.</summary>
     public void BuiltWall(int key, float tall)
     {
         if (tall > 0f) built[key] = tall;
         else built.Remove(key);
     }
 
-    /// <summary>Whether a cell is a standing wall of a row house, which draws it.</summary>
     public bool IsBuiltWall(int key, Cell c) => built.ContainsKey(key) && grid.World.IsBlocking(c);
 
-    /// <summary>
-    /// Puts a cell's blocker on its ground at <paramref name="ground"/>, or removes it if the cell doesn't block.
-    /// Returns whether one stands there now.
-    /// </summary>
     public bool Place(int x, int y, Cell c, float ground)
     {
         int key = grid.World.Idx(x, y);
@@ -101,17 +83,14 @@ public sealed class CellBlockers
         return true;
     }
 
-    /// <summary>Moves a cell's blocker, if it has one, with its ground (earth shaping).</summary>
     public void Move(int x, int y, float ground)
     {
         if (!used.TryGetValue(grid.World.Idx(x, y), out var box)) return;
         var center = grid.CellCenter(x, y);
-        // A tree's blocker stands at its trunk, where the valley drew it in the square.
         if (IsTrunk(grid.World.At(x, y)) && grid.valley != null && grid.valley.TrunkAt(x, y, out var trunk)) center = trunk;
         box.transform.position = new Vector3(center.x, ground, center.z);
     }
 
-    /// <summary>A cell's blocker, if it has one, back to the pool (its chunk was undrawn, far from everyone).</summary>
     public void Remove(int key) => Release(key);
 
     bool IsTrunk(Cell c) => c.T == TerrainIds.Tree && !grid.World.IsRaisedWall(c);
@@ -119,8 +98,6 @@ public sealed class CellBlockers
     void Release(int key)
     {
         if (!used.Remove(key, out var box)) return;
-        // The pool keeps at most MostSpare (chunks let go far behind hand back thousands, ChemGrid.Undraw): kept, it
-        // held the most ever placed for good.
         if (spare.Count >= MostSpare)
         {
             Object.Destroy(box.gameObject);

@@ -40,7 +40,6 @@ public partial class ProgressKeeper
         if (pad.dpad.up.wasPressedThisFrame) Take(caster, run, choice);
     }
 
-    /// <summary>Takes the offer's nth upgrade, as a key, a click or the pad would (the probe too).</summary>
     public bool Take(SpellCaster caster, RunWizard run, int n)
     {
         if (run == null || n < 0 || n >= run.Offer.Count) return false;
@@ -51,7 +50,6 @@ public partial class ProgressKeeper
         return true;
     }
 
-    /// <summary>The offer as the player reads it, one line an upgrade; empty with none open (the probe).</summary>
     public string OfferText()
     {
         var world = grid != null ? grid.World : null;
@@ -75,7 +73,6 @@ public partial class ProgressKeeper
         return $"{i + 1}. {row?.Name ?? id}: {row?.Words()}";
     }
 
-    /// <summary>The wizard's picks this run, as the side list shows them; empty with none (the probe).</summary>
     public string PicksText(World world, string player)
     {
         var run = world?.RunOf(player);

@@ -29,7 +29,6 @@ namespace Chem.Tests
             var land = map.Hills;
             Assert.That(m, Is.Not.Null, "map.json asks for a massif");
             Assert.That((m.CentreX, m.CentreY), Is.EqualTo((map.Gen.CellsW / 2, map.Gen.CellsH / 2)), "in the middle of the map");
-            // Round the centre: the meadow's land, the ring's highest and the foothills', by radius.
             int meadowLow = int.MaxValue, meadowHigh = int.MinValue, ringHigh = int.MinValue;
             for (int a = 0; a < 360; a += 3)
             {
@@ -42,7 +41,6 @@ namespace Chem.Tests
                     meadowHigh = Math.Max(meadowHigh, h);
                 }
                 for (int r = m.Meadow; r < m.Foot; r += 8) ringHigh = Math.Max(ringHigh, land.At(Cell(r, false), Cell(r, true)));
-                // Past its reach (and its wander) the land is the hills' own.
                 for (int r = m.Reach + m.Warp + 2; r < m.Reach + m.Warp + 200; r += 20)
                     Assert.That(land.At(Cell(r, false), Cell(r, true)), Is.EqualTo(land.Rolling(Cell(r, false), Cell(r, true))));
             }
@@ -61,7 +59,6 @@ namespace Chem.Tests
             int passes = 0;
             foreach (var (x, y) in roads.MainLines())
             {
-                // The line's points in the ring: the road there, and the ring's land beside it.
                 int roadTop = int.MinValue, sideTop = int.MinValue;
                 for (int k = 0; k < x.Length; k++)
                 {
@@ -69,13 +66,11 @@ namespace Chem.Tests
                     if (!m.InRing(cx, cy) || m.Ring(m.Radius(cx, cy)) < BiomeMath.One / 2) continue;
                     roadTop = Math.Max(roadTop, gen.HillsLandAt(cx, cy, out bool road));
                     Assert.That(road, Is.True);
-                    // Off the road either way, a pass's walls: the land well off the line stands higher.
                     for (int off = m.PassWidth; off <= 2 * m.PassWidth; off += 40)
                         sideTop = Math.Max(sideTop, Math.Max(map.Hills.At(cx + off, cy), Math.Max(map.Hills.At(cx - off, cy), Math.Max(map.Hills.At(cx, cy + off), map.Hills.At(cx, cy - off)))));
                 }
                 if (roadTop == int.MinValue) continue;
                 passes++;
-                // Where the pass's col is: the line's point nearest the crest.
                 int col = 0;
                 long crest = -1;
                 for (int k = 0; k < x.Length; k++)
@@ -114,7 +109,6 @@ namespace Chem.Tests
             Assert.That(lesser, Is.GreaterThan(100));
         }
 
-        // A cell's ground worked out from the land at it and its four neighbours alone, as a chunk makes it (or what's laid on it).
         char GroundAt(int x, int y)
         {
             int h = map.Gen.HillsCellAt(x, y, out char kind, out _);
@@ -123,11 +117,9 @@ namespace Chem.Tests
             foreach (var (dx, dy) in new[] { (1, 0), (-1, 0), (0, 1), (0, -1) }) slope = Math.Max(slope, Math.Abs(map.Gen.HillsCellAt(x + dx, y + dy, out _, out _) - h));
             if (slope >= ChunkGen.HillsRock) return '^';
             if (slope >= ChunkGen.HillsScree) return ':';
-            // Grass, or one of the woods' trees (HillsForestTests).
             return map.Gen.HillsGroundAt(x, y) == 'T' ? 'T' : ',';
         }
 
-        // Chunks of the ring, the meadow and the foothills along a line from the centre east, and its pass's chunks.
         List<(int cx, int cy)> Sample()
         {
             var m = Massif;
@@ -147,7 +139,6 @@ namespace Chem.Tests
                 rock += c.Cells.Count(ch => ch == '^');
                 scree += c.Cells.Count(ch => ch == ':');
                 grass += c.Cells.Count(ch => ch == ',' || ch == 'T');
-                // Every edge cell is what the cell alone works out: the land and the ground, so the chunk east of it meets it.
                 for (int k = 0; k < s; k++)
                     foreach (var (i, j) in new[] { (0, k), (s - 1, k), (k, 0), (k, s - 1) })
                     {
@@ -176,7 +167,6 @@ namespace Chem.Tests
                 again[chunks.Count - 1 - k] = other.Gen.Make(cx, cy).Hash;
             });
             for (int k = 0; k < chunks.Count; k++) Assert.That(again[k], Is.EqualTo(first[chunks[k]]), $"chunk {chunks[k]}");
-            // A known chunk samples the same land as the made one.
             var (kx, ky) = chunks[chunks.Count / 2];
             var known = map.Gen.Know(kx, ky);
             var made = map.Gen.Make(kx, ky);
@@ -215,7 +205,6 @@ namespace Chem.Tests
                 TestContext.Out.WriteLine($"SPRING {name} at ({at % w * g}, {at / w * g}) {land[at] / 8.0:0} m");
                 for (int basin = 0; basin < 6; basin++)
                 {
-                    // Down the steepest way to a pit.
                     int steps = 0;
                     while (true)
                     {
@@ -230,7 +219,6 @@ namespace Chem.Tests
                         at = best;
                         steps++;
                     }
-                    // Fill the pit until it spills: the lowest rim first, until a cell lower than the water is reached.
                     var seen = new HashSet<int> { at };
                     var open = new SortedSet<(int h, int id)> { (land[at], at) };
                     int level = land[at], spill = -1;

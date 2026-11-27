@@ -14,25 +14,17 @@ namespace Chem
     {
         Running,
         Lost,
-        /// <summary>The last wave beaten (HoldParams.Waves).</summary>
         Won,
     }
 
-    /// <summary>A run: how it stands.</summary>
     public sealed class HoldState
     {
         public HoldPhase Phase;
-        /// <summary>The wave under way (the score, once it's lost), the keep's health, raiders of this wave still to come, the tick the next comes on, and how many have come in all.</summary>
         public int Wave, Health, ToSpawn, NextSpawn, Spawned;
-        /// <summary>The wizards at the run's start, which scale its waves; raiders of this wave out so far.</summary>
         public int Peers = 1, InWave;
-        /// <summary>With timed waves (HoldParams.WaveTicks), the tick the next wave starts on, whoever is still standing; 0 without.</summary>
         public int NextWave;
-        /// <summary>This wave's theme, or null.</summary>
         public string Theme;
-        /// <summary>The moment this run came from, or null; and the tick it was gone into.</summary>
         public string Moment;
-        /// <summary>Each wizard's offer and picks, by name.</summary>
         public SortedDictionary<string, RunWizard> Wizards { get; } = new SortedDictionary<string, RunWizard>(StringComparer.Ordinal);
         public int MomentTick;
     }

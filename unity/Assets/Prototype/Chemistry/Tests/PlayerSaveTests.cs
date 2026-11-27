@@ -1,12 +1,10 @@
+// The player save (PlayerSave.cs; docs/design/player-saves.md, step 3): it comes back as it was written, the Hold's
+// old progress file still loads, a write cut short leaves the last save, and the same progress is the same text.
 using System.IO;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The player save (PlayerSave.cs; docs/design/player-saves.md, step 3): it comes back as it was written, the Hold's
-    /// old progress file still loads, a write cut short leaves the last save, and the same progress is the same text.
-    /// </summary>
     [Category("Unit")]
     public class PlayerSaveTests
     {
@@ -55,13 +53,10 @@ namespace Chem.Tests
             b.Raise(3);
             b.Raise(5);
             Assert.That(a.Text(), Is.EqualTo(b.Text()));
-            // The format: a change here means old player saves need a new version.
             Assert.That(a.Text(), Is.EqualTo("{\n  \"version\": 2,\n  \"id\": \"ann\",\n  \"points\": 5,\n  \"known\": [\n    \"a-combo\",\n    \"b-combo\"\n  ]\n}\n"));
             Assert.That(new PlayerSave(Temp()).Text(), Is.EqualTo("{\n  \"version\": 2,\n  \"points\": 0,\n  \"known\": []\n}\n"), "no id, none written");
         }
 
-        // The same progress is the same text on a Mac and a PC: "\n" whatever Environment.NewLine is, and a save written
-        // with "\r\n" (by hand, or by a build before this) still reads.
         [Test]
         public void TheTextIsTheSameOnEveryMachine()
         {
@@ -100,7 +95,6 @@ namespace Chem.Tests
             var s = new PlayerSave(folder, "ann");
             s.Raise(10);
             s.Save();
-            // A crash after the new save was half written, before its rename: the file beside it, torn.
             File.WriteAllText(FileIn(folder) + ".new", "{\n  \"version\": 2,\n  \"id\": \"an");
             var back = Read(folder);
             Assert.That(back.Points, Is.EqualTo(10));

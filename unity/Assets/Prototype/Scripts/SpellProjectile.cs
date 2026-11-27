@@ -11,10 +11,8 @@ public class SpellProjectile : MonoBehaviour
 {
     static readonly Registry<SpellProjectile> registry = new();
 
-    /// <summary>Every SpellProjectile in play (what FindObjectsByType found), as a new array: see Registry.</summary>
     public static SpellProjectile[] All => registry.All();
 
-    /// <summary>The first SpellProjectile in play (what FindAnyObjectByType found), or null: see Registry.</summary>
     public static SpellProjectile InPlay => registry.First;
 
     void Awake() => registry.Join(this);
@@ -46,7 +44,7 @@ public class SpellProjectile : MonoBehaviour
 
     void Update()
     {
-        if (caster == null) // destroyed in flight (Unity's null check)
+        if (caster == null)
         {
             onArrive = null;
             FadeOut();
@@ -64,7 +62,6 @@ public class SpellProjectile : MonoBehaviour
         FadeOut();
     }
 
-    // Stops emitting and lets the particles already out fade, then goes.
     void FadeOut()
     {
         foreach (var ps in GetComponentsInChildren<ParticleSystem>()) ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);

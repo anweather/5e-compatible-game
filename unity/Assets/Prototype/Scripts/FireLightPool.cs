@@ -34,10 +34,8 @@ public sealed class FireLightPool
         }
     }
 
-    /// <summary>How many cells burned at the last Place (the simulated chunks').</summary>
     public int BurningCount => burning.Count;
 
-    /// <summary>Moves the lights to the biggest fires, at least two cells apart; call after the world steps.</summary>
     public void Place()
     {
         CollectBurning();
@@ -61,7 +59,6 @@ public sealed class FireLightPool
         }
     }
 
-    // A fire's crackle: playing (at this volume) while its light is lit, stopped otherwise.
     void SetCrackle(int i, float volume)
     {
         var s = crackles[i];
@@ -70,7 +67,6 @@ public sealed class FireLightPool
         else if (volume <= 0f && s.isPlaying) s.Stop();
     }
 
-    /// <summary>Wavers the lit lights' range; call every frame.</summary>
     public void Flicker()
     {
         for (int i = 0; i < lights.Count; i++)
@@ -81,7 +77,6 @@ public sealed class FireLightPool
         }
     }
 
-    // Every burning cell of the simulated chunks (a sleeping chunk's fire is paused), biggest fire first.
     void CollectBurning()
     {
         var world = grid.World;
@@ -106,7 +101,6 @@ public sealed class FireLightPool
         burning.Sort((a, b) => b.fire.CompareTo(a.fire));
     }
 
-    // Whether one of the first `used` lights is already within two cells.
     bool NearLitFire(int x, int y, int used)
     {
         for (int i = 0; i < used; i++)

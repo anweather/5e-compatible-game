@@ -10,8 +10,6 @@ namespace Chem.Tests
     [Category("Simulation")]
     public class MapTests
     {
-        // The FNV-1a of the cell map taken from the baked scene when it moved to cells.txt.
-        // Moved for hold-east-path: the west brook is dry, its cells grass (and the trees its draws moved).
         const uint ValleyCells = 307482015u;
 
         string map;
@@ -38,7 +36,6 @@ namespace Chem.Tests
             Assert.That(hash, Is.EqualTo(ValleyCells), "the cells the scene held, byte for byte");
         }
 
-        // The cells stand where the map says (map.json's yard and fullDetail): the valley's are where they always stood.
         [Test]
         public void TheValleysLayoutIsTheOneItAlwaysHad()
         {
@@ -52,8 +49,6 @@ namespace Chem.Tests
             Assert.That(file.Spawn, Is.EqualTo((292, 328)), "the yard's @");
         }
 
-        // The nine pins the valley at square [0, 2]: its chunk terrains are the valley's own, chunk for chunk, and it draws
-        // them in the valley's full detail, so the valley's ground pack lays into it as it is (PinnedGround).
         [Test]
         public void AGeneratedMapTakesItsPinnedMapsFullDetailWhereItIs()
         {

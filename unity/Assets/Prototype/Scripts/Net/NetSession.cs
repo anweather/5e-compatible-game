@@ -32,7 +32,6 @@ public class NetSession : MonoBehaviour
 {
     static readonly Registry<NetSession> registry = new();
 
-    /// <summary>The first NetSession in play (what FindAnyObjectByType found), or null: see Registry.</summary>
     public static NetSession InPlay => registry.First;
 
     void Awake() => registry.Join(this);
@@ -46,22 +45,18 @@ public class NetSession : MonoBehaviour
     ISession session;
     GUIStyle label, field, codeStyle, corner;
     NetworkManager manager;
-    bool joining; // started a client that the host hasn't accepted yet
+    bool joining;
     readonly CodePicker picker = new();
     PauseMenu.Page codePage;
     GUIStyle slot, slotOn;
 
-    /// <summary>The Join by code page's id in the Esc menu.</summary>
     public const string CodePage = "join-code";
 
-    /// <summary>The change mode of the room this copy hosts next (docs/RULES_MCP.md); static so it outlives the scene reload back to solo.</summary>
     public static ChangeMode RoomMode { get; set; }
 
-    // Why the last join failed; static so it outlives the scene reload back to solo.
     static string joinFailure;
     static float joinFailureUntil;
 
-    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -73,7 +68,6 @@ public class NetSession : MonoBehaviour
         joinCodeWhenLoaded = joinAddressWhenLoaded = joinedCode = joinedAddress = null;
     }
 
-    // The scene's NetworkManager (Netcode's singleton), looked up once it exists.
     NetworkManager Net
     {
         get
@@ -94,16 +88,10 @@ public class NetSession : MonoBehaviour
         ResumeAfterMapChange();
     }
 
-    // --- the map ----------------------------------------------------------------
-
-    // What to do once the scene is back on another map: host (the Esc menu's map was another), or join again (the host
-    // is on another map). Static: they outlive the scene's reload.
     static bool hostWhenLoaded;
     static string joinCodeWhenLoaded, joinAddressWhenLoaded;
-    // How this copy last joined, to join the same way again after going to the host's map.
     static string joinedCode, joinedAddress;
 
-    /// <summary>The map to host on, by id: the map being played until another is picked in the Esc menu.</summary>
     public static string HostMap { get; set; }
 
     void ResumeAfterMapChange()
@@ -127,10 +115,6 @@ public class NetSession : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// The host is on another map than this copy (which has it, or the host would have turned it away): leave, go to that
-    /// map (made from its world file here too, the same as the host's) and join again the way it joined.
-    /// </summary>
     public static void JoinOnHostMap(string id)
     {
         Debug.Log($"NET: the host is on {id}; going there and joining again");
@@ -141,7 +125,6 @@ public class NetSession : MonoBehaviour
         ChemGrid.PlayMap(id);
     }
 
-    // Host online on the map picked in the Esc menu: straight away on this one, after the scene reloads on another.
     void HostPicked()
     {
         if (HostMap == null || HostMap == ChemGrid.MapId)
@@ -166,21 +149,17 @@ public class NetSession : MonoBehaviour
         if (clientId == Net.LocalClientId) joining = false;
     }
 
-    // A join the host refused (or that never got through): say why and go back to solo.
     void Disconnected(ulong clientId)
     {
         if (Net.IsServer || !joining) return;
         joining = false;
         joinFailure = BuildVersion.JoinFailure(Net.DisconnectReason);
         joinFailureUntil = Time.realtimeSinceStartup + 20f;
-        // The host's own words are already in joinFailure; add Netcode's only when they say something else.
         string reason = Net.DisconnectReason;
         bool said = !string.IsNullOrEmpty(reason) && joinFailure.Contains(reason);
         Debug.LogWarning(said ? $"NET: {joinFailure}" : $"NET: {joinFailure} (Netcode said: {reason})");
         _ = Leave();
     }
-
-    // --- online (Relay) ------------------------------------------------------
 
     public Task HostOnline() => Run("Starting an online yard…", async () =>
     {
@@ -198,11 +177,8 @@ public class NetSession : MonoBehaviour
         session = await MultiplayerService.Instance.JoinSessionByCodeAsync(code.Trim().ToUpperInvariant());
     });
 
-    /// <summary>The code friends type to join this yard, once hosting online.</summary>
     public string SessionCode => session?.Code;
 
-    // Each running copy signs in as its own anonymous player, so several copies on one
-    // machine (Multiplayer Play Mode, or two builds) don't collide.
     static async Task SignIn()
     {
         if (UnityServices.State != ServicesInitializationState.Initialized)
@@ -226,7 +202,6 @@ public class NetSession : MonoBehaviour
         }
         catch (Exception e) when (joinFailure != null)
         {
-            // The host turned us away and Disconnected already said why; the session's own error adds nothing.
             Debug.Log($"NET: the join ended: {e.Message}");
         }
         catch (Exception e)
@@ -239,8 +214,6 @@ public class NetSession : MonoBehaviour
             busy = false;
         }
     }
-
-    // --- same network --------------------------------------------------------
 
     public void Host()
     {
@@ -272,8 +245,6 @@ public class NetSession : MonoBehaviour
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
-    // The solo wizard isn't networked; the network spawns everyone's. The connection
-    // request carries this copy's version for the host to check.
     void PrepareForNetwork()
     {
         joinFailure = null;
@@ -295,15 +266,13 @@ public class NetSession : MonoBehaviour
         response.Reason = refusal;
     }
 
-    // --- in the Esc menu, and a status line while online ----------------------
-
     void OnEnable()
     {
         codePage ??= new PauseMenu.Page
         {
             Title = "Join by code",
             Draw = DrawCodePage,
-            Move = delta => { picker.Step(-delta); return true; }, // up: next letter
+            Move = delta => { picker.Step(-delta); return true; },
             Submit = SubmitPicked,
             Back = () => picker.Back(),
         };
@@ -317,14 +286,12 @@ public class NetSession : MonoBehaviour
         PauseMenu.RemovePage(CodePage);
     }
 
-    // A on the Join by code page: the next letter, or join after the last.
     bool SubmitPicked()
     {
         if (picker.Next()) JoinPicked();
         return true;
     }
 
-    /// <summary>Opens the Join by code page, filled in with a copied (or typed) code if there is one.</summary>
     public void PickCode()
     {
         string clip = GUIUtility.systemCopyBuffer;
@@ -332,7 +299,6 @@ public class NetSession : MonoBehaviour
         PauseMenu.Instance.ShowPage(CodePage);
     }
 
-    // The picker's code is done: join with it, back on the main page where the status shows.
     void JoinPicked()
     {
         joinCode = picker.Code;
@@ -358,7 +324,6 @@ public class NetSession : MonoBehaviour
         GUI.enabled = true;
     }
 
-    // The Play together section of the Esc menu.
     void MenuSection()
     {
         if (Net == null) return;
@@ -383,19 +348,15 @@ public class NetSession : MonoBehaviour
         GUILayout.BeginHorizontal();
         GUI.SetNextControlName(JoinField);
         joinCode = GUILayout.TextField(joinCode, 12, field, GUILayout.Width(170));
-        // Typing a code: W, S and Enter are letters to it, not the menu's keys.
         if (GUI.GetNameOfFocusedControl() == JoinField) PauseMenu.FieldHasKeys();
         if (PauseMenu.Button("Join code", null, GUILayout.Height(32)) && joinCode.Trim().Length > 0) _ = JoinOnline(joinCode);
         GUILayout.EndHorizontal();
-        // The code field needs a keyboard; with a controller, pick the code letter by letter.
         if (Gamepad.current != null && PauseMenu.Button("Enter a code with the controller", null, GUILayout.Height(32))) PickCode();
         GUI.enabled = true;
     }
 
     (string id, string name)[] maps;
 
-    // The map to host on: each press the next this copy has (the Valley, The Nine). Hosting another than the one being
-    // played loads it first.
     void MapPicker()
     {
         maps ??= ChemGrid.Maps();
@@ -411,7 +372,6 @@ public class NetSession : MonoBehaviour
         StartPicker(HostMap ?? ChemGrid.MapId);
     }
 
-    // Where to start on that map, for a map with more than one spawn: each press the next (its own spawn first).
     static void StartPicker(string map)
     {
         var spawns = SpawnPoints.OfMap(map);
@@ -454,8 +414,6 @@ public class NetSession : MonoBehaviour
         return players > 0 ? $"{RoleLabel()} · {players}/{MaxPlayers} players · {where}" : $"{RoleLabel()} · {where}";
     }
 
-    // While online, one line top right (under the help line and spell bar) so the join
-    // code is always there to share; everything else is in the Esc menu.
     void OnGUI()
     {
         HudScale.Apply();

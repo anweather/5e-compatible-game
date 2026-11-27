@@ -24,7 +24,6 @@ public static class PropMesher
         return new Color(Mathf.Clamp01(c.r * k), Mathf.Clamp01(c.g * k), Mathf.Clamp01(c.b * k), c.a);
     }
 
-    /// <summary>A palm: its mesh, and the top of its trunk (for a collider up the trunk).</summary>
     public static Mesh Palm(int seed, out Vector3 crown)
     {
         var rng = new System.Random(seed);
@@ -36,7 +35,6 @@ public static class PropMesher
         for (int i = 0; i < segments; i++)
         {
             float t0 = (float)i / segments, t1 = (float)(i + 1) / segments;
-            // The trunk bows: its lean grows with the square of the height.
             var a = new Vector3(lean.x * t0 * t0, height * t0, lean.z * t0 * t0);
             var b = new Vector3(lean.x * t1 * t1, height * t1, lean.z * t1 * t1);
             float r = Mathf.Lerp(0.24f, 0.14f, t0);
@@ -50,8 +48,6 @@ public static class PropMesher
         float turn = Range(rng, 0f, 360f);
         for (int f = 0; f < count; f++)
             Frond(kit, rng, at, turn + f * 360f / count + Range(rng, -12f, 12f), Range(rng, 2.6f, 3.6f), Jitter(rng, frond, 0.12f));
-        // A bunch of coconuts slung under the crown: round-ish (short fat drums), big enough to see
-        // from the beach (Andrew's playtest #14; small cubes there were lost in the fronds).
         int nuts = rng.Next(3, 7);
         for (int c = 0; c < nuts; c++)
         {
@@ -63,7 +59,6 @@ public static class PropMesher
         return kit.ToMesh("Palm");
     }
 
-    // One frond: a spine arching out and down, with leaflets each side, both faces drawn.
     static void Frond(MeshKit kit, System.Random rng, Vector3 root, float yaw, float length, Color color)
     {
         var dir = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
@@ -76,7 +71,6 @@ public static class PropMesher
             float t = (float)i / steps;
             var p = root + dir * (length * t) + Vector3.up * (rise * t - droop * t * t);
             float w0 = 0.55f * Mathf.Sin(Mathf.PI * ((float)(i - 1) / steps * 0.9f + 0.1f)), w1 = 0.55f * Mathf.Sin(Mathf.PI * (t * 0.9f + 0.1f));
-            // Leaflets hang a little below the spine, so each frond has a V.
             var hang = Vector3.down * 0.12f;
             kit.Sheet(prev, p, p + side * w1 + hang, prev + side * w0 + hang, color);
             kit.Sheet(prev, prev - side * w0 + hang, p - side * w1 + hang, p, color * 0.92f);
@@ -84,7 +78,6 @@ public static class PropMesher
         }
     }
 
-    /// <summary>A glowbulb: a curling stalk with a lit bulb, a little taller than a wizard.</summary>
     public static Mesh Glowbulb(int seed)
     {
         var rng = new System.Random(seed);
@@ -110,36 +103,30 @@ public static class PropMesher
         return kit.ToMesh("Glowbulb");
     }
 
-    /// <summary>Where a seat's sitter's hips go, in the seat's frame.</summary>
     public static readonly Vector3 LoungerSeat = new(0f, 0.38f, -0.15f), BenchSeat = new(0f, 0.48f, 0f);
 
-    /// <summary>A beach lounger: a wooden frame, a striped cloth, its back raised at the -z end.</summary>
     public static Mesh Lounger(int seed)
     {
         var rng = new System.Random(seed);
         var kit = new MeshKit();
         var fabric = Fabrics[rng.Next(Fabrics.Length)];
-        // Legs and side rails.
         for (int sx = -1; sx <= 1; sx += 2)
         {
             kit.Box(new Vector3(sx * 0.3f, 0.32f, 0.2f), new Vector3(0.05f, 0.05f, 1.3f), Wood);
             for (int sz = -1; sz <= 1; sz += 2)
                 kit.Box(new Vector3(sx * 0.3f, 0.16f, 0.2f + sz * 0.6f), new Vector3(0.05f, 0.32f, 0.05f), Wood);
         }
-        // The flat part toward +z, in stripes across.
         for (int i = 0; i < 6; i++)
         {
             float z = -0.15f + i * 0.21f;
             kit.Box(new Vector3(0f, 0.36f, z + 0.1f), new Vector3(0.58f, 0.03f, 0.21f), i % 2 == 0 ? fabric : Cream);
         }
-        // The back, tilted up at the -z end.
         var turn = Quaternion.Euler(55f, 0f, 0f);
         for (int i = 0; i < 3; i++)
             kit.Box(new Vector3(0f, 0.36f, -0.2f) + turn * new Vector3(0f, 0f, -0.1f - i * 0.21f), new Vector3(0.58f, 0.03f, 0.21f), i % 2 == 0 ? Cream : fabric, turn);
         return kit.ToMesh("Lounger");
     }
 
-    /// <summary>A beach umbrella: a pole and a striped canopy.</summary>
     public static Mesh Umbrella(int seed)
     {
         var rng = new System.Random(seed);
@@ -162,7 +149,6 @@ public static class PropMesher
         return kit.ToMesh("Umbrella");
     }
 
-    /// <summary>A towel laid on the sand.</summary>
     public static Mesh Towel(int seed)
     {
         var rng = new System.Random(seed);
@@ -173,7 +159,6 @@ public static class PropMesher
         return kit.ToMesh("Towel");
     }
 
-    /// <summary>A wooden bench with a back, seat along x.</summary>
     public static Mesh Bench(int seed)
     {
         var rng = new System.Random(seed);
@@ -189,14 +174,8 @@ public static class PropMesher
         return kit.ToMesh("Bench");
     }
 
-    /// <summary>The dock's deck height above its foot, and its width (m).</summary>
     public const float DockDeck = 1.6f, DockWidth = 2.4f;
 
-    /// <summary>
-    /// A wooden dock running <paramref name="length"/> metres along +z from its foot on the shore:
-    /// planks on cross beams, posts down into the water, a rail along one side and a bollard at the end.
-    /// Its deck is DockDeck above the foot.
-    /// </summary>
     public static Mesh Dock(int seed, float length)
     {
         var rng = new System.Random(seed);
@@ -217,7 +196,6 @@ public static class PropMesher
         return kit.ToMesh("Dock");
     }
 
-    /// <summary>A bleached, twisting piece of driftwood lying on the sand.</summary>
     public static Mesh Driftwood(int seed)
     {
         var rng = new System.Random(seed);
@@ -237,7 +215,6 @@ public static class PropMesher
         return kit.ToMesh("Driftwood");
     }
 
-    /// <summary>A starfish (or a few shells' worth of colour) on the sand.</summary>
     public static Mesh Starfish(int seed)
     {
         var rng = new System.Random(seed);

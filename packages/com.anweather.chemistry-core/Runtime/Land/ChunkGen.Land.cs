@@ -14,46 +14,34 @@ namespace Chem
 {
     public sealed partial class ChunkGen
     {
-        /// <summary>The map's sea level in land units (map.json's): land under it is under water.</summary>
         public const int SeaLevel = -4;
         const long One = BiomeMath.One;
-        /// <summary>Land units per metre.</summary>
         const int PerMetre = 8;
-        /// <summary>Sub-units per land unit while land is worked out, rounded at the end.</summary>
         const long Q = 256;
         const int BandBlend = 300, ValleyBlend = 90, MeetWidest = 240, MeetPitch = 6, RiverFade = 73, ShoreRamp = 100, SeaRamp = 90, BeachCells = 5;
         const int RiverHalf = 4, LakeRadius = 30, MainRoadHalf = 3, RoadHalf = 2, RoadBank = 6;
-        // bands.json's wall: an east-west world's edge rows (none in the nine).
         const int WallMetres = 900;
-        // Land units: a face this steep (1.25 m a cell) a cell is bare dirt, no tree or brush; trees thin out above the
-        // tree line.
         const int SteepUnits = 10, TreeLine = 220 * PerMetre;
         internal const byte WetSea = 1, WetRiver = 2, WetLake = 3, WetShore = 4;
         const int SaltRelief = 0x0c61, SaltCell = 0x0c62, SaltSpot = 0x0c63, SaltShore = 0x0c64, SaltMassif = 0x0c66;
-        // Metres: the plain above which land is a massif, and the height of a terrace step its shoulders sit on.
         const int MassifFrom = 60, ShoulderMetres = 32;
 
         sealed class Shape
         {
-            public long Base, Relief; // land units × Q
+            public long Base, Relief;
             public int Kind, Lattice, Octaves, Salt;
-            public long Wx, Wy; // the wind's direction in Q16, for dunes
-            public long PeriodX, PeriodY; // the cells its noise repeats over in its own axes, round a world that wraps
+            public long Wx, Wy;
+            public long PeriodX, PeriodY;
         }
 
         static readonly string[] Kinds = { "hills", "ridged", "dunes" };
         Shape[] shapes;
-        // The world's grain, the way its ranges run: a seeded one of WindSin's sixteen directions, Q16.
         long grainX, grainY;
 
-        // Sixteen wind directions, (sin, −cos) in Q16, so a dune's crest needs no float.
         static readonly int[] WindSin = { 0, 25080, 46341, 60547, 65536, 60547, 46341, 25080, 0, -25080, -46341, -60547, -65536, -60547, -46341, -25080 };
 
-        // Cells round the world east-west where it wraps (0 where it doesn't): what every noise lattice repeats over.
         int Period => WrapX ? Plan.Grid.W * Square : 0;
 
-        // The periods of noise read at (across, along / div) for a direction (dx, dy) in Q16, Period along x: an
-        // axis-aligned direction (all a wrapped world allows) puts x in one of them.
         (long across, long along) Periods(long dx, long dy, int div)
         {
             if (!WrapX) return (0, 0);
@@ -61,8 +49,6 @@ namespace Chem
             return (across, along);
         }
 
-        // a / d, rounding down where the world wraps (so a point and its copy a world round agree bit for bit), toward
-        // zero where it doesn't (as it always has).
         long Div(long a, long d) => WrapX ? BiomeMath.FloorDiv(a, d) : a / d;
 
         void SetUpLand()
@@ -70,7 +56,6 @@ namespace Chem
             SetUpRim();
             SetUpShelf();
             int grain = (int)(WorldHash.Hash4(seed, SaltMassif, 0, 0) & 15);
-            // Round a world that wraps, ranges run along an axis: a slanted grain's noise can't repeat round it.
             if (WrapX) grain &= 12;
             grainX = WindSin[grain];
             grainY = WindSin[(grain + 12) & 15];
@@ -80,7 +65,7 @@ namespace Chem
                 var o = table.Rows[b].Shape;
                 string kind = (string)o?["kind"] ?? "hills";
                 int wind = (int)Math.Round(((double?)o?["wind"] ?? 0) / 22.5, MidpointRounding.AwayFromZero) & 15;
-                if (WrapX) wind &= 12; // dunes too, as the grain
+                if (WrapX) wind &= 12;
                 shapes[b] = new Shape
                 {
                     Base = (long)Math.Round(((double?)o?["baseElevation"] ?? 0) * PerMetre * Q, MidpointRounding.AwayFromZero),
@@ -98,8 +83,6 @@ namespace Chem
             SetUpPaths();
         }
 
-        // Where a river's water stands at a map cell: the bands and the biomes' base there, shaped as a massif, two metres
-        // down, without the biomes' relief.
         long Surface(int x, int y)
         {
             int px = x + OriginX * Square, py = y + OriginY * Square;
@@ -111,7 +94,6 @@ namespace Chem
 
         int FieldY(int py) => Plan.Grid.H * Square - 1 - py;
 
-        /// <summary>The biome most of a map cell is (a biomes.json id), from the field alone: no water, roads or landmarks.</summary>
         public string BiomeAt(int x, int y) => table.Rows[Field.At(x + OriginX * Square, FieldY(y + OriginY * Square)).Dominant].Id;
 
         struct LandPoint
@@ -121,7 +103,6 @@ namespace Chem
             public bool Road, Clear;
         }
 
-        /// <summary>The land at a map cell, in land units, before any landmark's stamps: a pure function of position.</summary>
         public int LandAt(int x, int y) => Hills != null ? HillsLandAt(x, y, out _) : Point(x, y, Nearby(x, y, x, y), out _).Land;
 
         LandPoint Point(int x, int y, List<Segment> near, out BiomeBlend blend)
@@ -130,7 +111,6 @@ namespace Chem
             bool road = false;
             if (wet == 0 || wet == WetShore)
             {
-                // A road's cells are levelled to the land at its middle, and the land either side leans back to where it was.
                 foreach (var s in near)
                 {
                     if (s.River) continue;
@@ -149,13 +129,10 @@ namespace Chem
                 }
             }
             g = MeetPinned(x, y, g, ref wet);
-            // A spawn's clearing levels a road through it too (a lay-by: its cells stay road), so a spawn beside a road
-            // that climbs still starts on flat ground.
             bool clear = (wet == 0 || wet == WetShore) && Clearing(x, y, ref g);
             return new LandPoint { Land = (int)BiomeMath.FloorDiv(g + Q / 2, Q), Wet = wet, Road = road, Clear = clear };
         }
 
-        // The land with its coast, rivers and lakes, before roads and the pinned square.
         long Wet(int x, int y, List<Segment> near, out byte wet, out BiomeBlend blend)
         {
             int px = x + OriginX * Square, py = y + OriginY * Square;
@@ -180,7 +157,6 @@ namespace Chem
                 wet = WetSea;
                 return shallow + (deep - shallow) * BiomeMath.Smoothstep(ShelfAt(px, py) / ShelfCells) / One;
             }
-            // Dry land stands above the shore: only the sea, a river or a lake is under it.
             g = Math.Max(g, shoreLand);
             if (shore < ShoreRamp * One) g = shoreLand + (g - shoreLand) * BiomeMath.Smoothstep(shore / ShoreRamp) / One;
             if (shore < BeachCells * One) wet = WetShore;
@@ -201,12 +177,6 @@ namespace Chem
             return g;
         }
 
-        // The pinned square's own land, met over at least 90 cells outside it: at its edge a cell is all the square's. The
-        // square's rim is read as a mean along it, over no cells either side for the first cell out (so it meets its pinned
-        // neighbour, #193) and half a cell more for each cell further, so its cell-to-cell roughness fades within a few
-        // cells instead of running out as a stripe per row or column, and no more than half of it a cell. Where the
-        // rim stands far above or below the land beside it, the meet widens (up to 240 cells) so its steepest pitch stays
-        // under MeetPitch, a slope, not a stone face along the rim.
         long MeetPinned(int x, int y, long g, ref byte wet)
         {
             if (Pinned == null) return g;
@@ -218,7 +188,6 @@ namespace Chem
             long d = BiomeMath.Sqrt((dx * dx + dy * dy) * One * One);
             if (d >= MeetWidest * One) return g;
             long v = RimMean(RimAt(cx - x0, cy - y0), Math.Max(0, d - One) / 2);
-            // Smoothstep's steepest pitch is 1.5 times the mean: wide enough that 1.5 × drop / width ≤ MeetPitch.
             long width = Math.Max(ValleyBlend * One, Math.Min(MeetWidest * One, Math.Abs(g - v) * 3 / 2 * One / (MeetPitch * Q)));
             if (d >= width) return g;
             g = v + (g - v) * BiomeMath.Smoothstep(d * One / width) / One;
@@ -227,8 +196,6 @@ namespace Chem
             return g;
         }
 
-        // The pinned square's rim as one loop, clockwise from its north-west cell (north, east, south, west sides), in land
-        // units × Q, and its running sums: what the meet reads its rim from.
         long[] rimSums;
 
         void SetUpRim()
@@ -245,8 +212,6 @@ namespace Chem
             }
         }
 
-        // A block's rim as its own generator makes it, round the loop: its edge chunks made once (on every thread), and
-        // each of them known for the known samples on the rim of the chunks beside it.
         int[] BlockRim()
         {
             int cw = Pinned.W * WorldPlan.ChunksPerSquare, ch = Pinned.H * WorldPlan.ChunksPerSquare;
@@ -277,10 +242,8 @@ namespace Chem
             return rim;
         }
 
-        // A block's edge chunks as its own generator knows them, by its own chunk.
         readonly Dictionary<(int x, int y), KnownChunk> blockKnown = new Dictionary<(int x, int y), KnownChunk>();
 
-        // The cell at place p round the pinned square's rim, clockwise from its north-west cell, in its own coordinates.
         (int x, int y) RimCell(int p)
         {
             int ew = PinnedW - 1, eh = PinnedH - 1;
@@ -290,7 +253,6 @@ namespace Chem
             return (0, eh - (p - 2 * ew - eh));
         }
 
-        // A rim cell's place in the loop, from the pinned square's own coordinates.
         int RimAt(int rx, int ry)
         {
             int ew = PinnedW - 1, eh = PinnedH - 1;
@@ -300,8 +262,6 @@ namespace Chem
             return 2 * ew + eh + (eh - ry);
         }
 
-        // The mean of the rim round place p, round the loop, over a reach of r (Q16 cells): between the means over the
-        // 2k + 1 and 2k + 3 cells round it, k the whole cells of r, by its fraction.
         long RimMean(int p, long r)
         {
             int k = (int)(r / One);
@@ -309,7 +269,6 @@ namespace Chem
             return f == 0 ? lo : lo + (RimMean(p, k + 1) - lo) * f / One;
         }
 
-        // The mean of the rim over the 2r + 1 cells round place p, round the loop.
         long RimMean(int p, int r)
         {
             int n = rimSums.Length - 1;
@@ -326,14 +285,8 @@ namespace Chem
             return rimSums[b] - rimSums[a];
         }
 
-        // The sea floor shelves by the distance out from the shore (#176; the shores paper's shelf, docs/design/world-squares.md
-        // "Shores"): from 1.5 m down at the shore to the sea band's depth 360 cells out, so a coast square's sea runs on into
-        // an open-sea square's instead of stepping down where they meet. The distance is a chamfer over a 16-cell grid of the
-        // plan, set up once: a sample of land starts at none, one of a coast square's sea at its distance out from that
-        // square's shore, and every sea sample takes the nearest of its neighbours' plus the way to them. Read between the
-        // samples, it is continuous, and near the shore, where it is roughest, the shelf is flattest.
         const int ShelfCells = 360, ShelfGrid = 16;
-        const long Root2 = 92682; // √2 in Q16
+        const long Root2 = 92682;
         long[] shelf;
         int shelfW, shelfH;
 
@@ -356,7 +309,6 @@ namespace Chem
                     }
                     shelf[j * shelfW + i] = d;
                 }
-            // Forward and back over the grid until nothing moves (a few times: the shelf is 23 samples wide).
             bool moved = true;
             while (moved)
             {
@@ -368,11 +320,8 @@ namespace Chem
             }
         }
 
-        // The four neighbours a forward pass has been to (west, north-west, north, north-east); a pass back, the others.
         static readonly int[] PassDx = { -1, -1, 0, 1 }, PassDy = { 0, -1, -1, -1 };
 
-        // Sample (i, j) takes the nearest of the four neighbours the pass has been to (way 1 forward, −1 back) plus the
-        // way to it, if that's nearer; whether it moved.
         bool Relax(int i, int j, int way)
         {
             long d = shelf[j * shelfW + i], was = d;
@@ -388,10 +337,9 @@ namespace Chem
             return d < was;
         }
 
-        // The distance out from the shore at a plan cell (Q16 cells), read between the grid's samples.
         long ShelfAt(int px, int py)
         {
-            const int span = 2 * ShelfGrid; // half cells between samples
+            const int span = 2 * ShelfGrid;
             long u = 2L * px + 1 - ShelfGrid, v = 2L * py + 1 - ShelfGrid;
             int i0 = (int)BiomeMath.FloorDiv(u, span), j0 = (int)BiomeMath.FloorDiv(v, span);
             long fx = u - (long)i0 * span, fy = v - (long)j0 * span;
@@ -406,8 +354,6 @@ namespace Chem
             return (top * (span - fy) + bottom * fy) / (span * span);
         }
 
-        // The bands of the four squares nearest, each square its own across its middle and blended with the next over
-        // the 300 cells either side of their border. A sea square counts as low land: the coast takes it down.
         long BandAt(int px, int py)
         {
             var (ax, ux) = Axis(px);
@@ -435,10 +381,6 @@ namespace Chem
             return (long)metres * PerMetre * Q;
         }
 
-        // What the land's plain (its bands and biomes' base, land units × Q) gains or loses as a massif at a point (Q16
-        // cells): land standing more than MassifFrom metres up is the uplift above that, and the uplift is shaped so a high
-        // band reads as mountains, not one cap: ridged noise raises crests and spurs with valleys between, broad noise
-        // drops some of it to saddles and lifts the rest to summits, and a soft terrace leaves shoulders on the slopes.
         long Massif(long plain, long xq, long yq)
         {
             long above = plain - MassifFrom * PerMetre * Q;
@@ -448,9 +390,6 @@ namespace Chem
                 long r = One - Math.Abs(n);
                 return r * r / One;
             }
-            // The crests run along where the noise crosses zero: stretched three times along the world's grain (a seeded
-            // direction) and warped, so they run on as ranges and wander instead of closing into rings. The finer crests
-            // ride on the coarse ones (spurs off a ridge), not on the valleys between.
             long p = Period;
             var (pa, pl) = Periods(grainX, grainY, 3);
             long wx = xq + BiomeMath.Centred(seed, SaltMassif + 3, xq, yq, 340, p, 0) * 90, wy = yq + BiomeMath.Centred(seed, SaltMassif + 4, xq, yq, 340, p, 0) * 90;
@@ -460,18 +399,14 @@ namespace Chem
             long finest = Crest(BiomeMath.Centred(seed, SaltMassif + 5, wx, wy, 45, p, 0)) * fine / One;
             long ridge = (4 * coarse + 3 * fine + finest) / 8;
             long broad = BiomeMath.Centred(seed, SaltMassif + 2, xq, yq, 430, p, 0);
-            // 0.25 + 0.85 ridge + 0.3 broad: from nothing in a deep saddle to 1.4 times the uplift on a summit.
             long shape = One / 4 + ridge * 85 / 100 + broad * 3 / 10;
             long lifted = Math.Max(0, above * shape / One);
-            // A quarter of the way to terraces ShoulderMetres high, eased: a slope eases to a shoulder, then steepens.
             const long step = ShoulderMetres * PerMetre * Q;
             long k = BiomeMath.FloorDiv(lifted, step), f = (lifted - k * step) * One / step;
             lifted += (k * step + step * BiomeMath.Smoothstep(f) / One - lifted) / 4;
             return lifted - above;
         }
 
-        // A biome's relief at a point (Q16 cells), land units × Q: hills a sum of octaves either side of the base, ridged
-        // the sharp crests of folded noise rising from it, dunes ridged crests stretched across the wind.
         long Relief(Shape sh, long xq, long yq)
         {
             if (sh.Relief == 0) return 0;
@@ -499,9 +434,6 @@ namespace Chem
             return sum * One / amps * sh.Relief / One;
         }
 
-        // Q16 cells from the shore, inland positive and out to sea zero or less; a large number with no coast near. Each
-        // open side's shoreline wobbles along it, the wobble gone at the square's corners so it runs on into the next
-        // square. Kept in fractions of a cell: a shore rounded to whole cells steps the land beside it column by column.
         long Shore(int px, int py)
         {
             var grid = Plan.Grid;
@@ -511,7 +443,6 @@ namespace Chem
             if (Plan.Band[i] == 0) return -SeaRamp * One;
             var c = Plan.Coasts[i];
             int lx = px - sx * Square, ly = py - sy * Square;
-            // On the stack: every land point reads its shore, and two arrays a point were most of a chunk's garbage.
             Span<int> from = stackalloc int[] { ly, Square - 1 - lx, Square - 1 - ly, lx };
             Span<int> along = stackalloc int[] { lx, ly, lx, ly };
             long best = long.MaxValue / 4;
@@ -533,7 +464,6 @@ namespace Chem
             return best;
         }
 
-        // Whether a landmark may build on a map cell: dry land off the beach and away from the rivers.
         bool Buildable(int x, int y)
         {
             if (x < 0 || y < 0 || x >= CellsW || y >= CellsH) return false;

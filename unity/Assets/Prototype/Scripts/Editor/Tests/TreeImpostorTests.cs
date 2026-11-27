@@ -27,7 +27,6 @@ public class TreeImpostorTests
         Assert.That(TreeImpostorMath.Decode(Vector2.zero).y, Is.EqualTo(1f).Within(1e-5f));
         foreach (var corner in new[] { new Vector2(-1, -1), new Vector2(1, -1), new Vector2(1, 1), new Vector2(-1, 1), new Vector2(1, 0) })
             Assert.That(TreeImpostorMath.Decode(corner).y, Is.EqualTo(0f).Within(1e-5f), corner.ToString());
-        // A view from below the horizon is taken from the horizon.
         Assert.That(TreeImpostorMath.Encode(new Vector3(1f, -0.5f, 0f)), Is.EqualTo(TreeImpostorMath.Encode(Vector3.right)));
     }
 
@@ -50,7 +49,6 @@ public class TreeImpostorTests
     [Test]
     public void ImpostorsAreOnUnlessTurnedOff()
     {
-        // On by default (J-091); outside play nothing has taken the terrains' trees away.
         Assert.That(TreeImpostors.On, Is.True);
         Assert.That(TreeImpostors.ShadowFar, Is.EqualTo(256f));
         Assert.That(MapTerrains.TreeDistance, Is.EqualTo(900f));

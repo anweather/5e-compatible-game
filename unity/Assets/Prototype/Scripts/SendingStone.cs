@@ -12,14 +12,12 @@ using UnityEngine;
 // heard it.
 public class SendingStone : ItemUse
 {
-    /// <summary>How long a ping marker stays up, in seconds.</summary>
     public const float PingSeconds = 8f;
 
     static readonly Color PingColor = new Color(0.55f, 0.8f, 1f);
 
     public override void Use(ItemHolder holder) => Send(holder);
 
-    /// <summary>Speaks the item's message into this stone; returns the marker the far end shows, or null.</summary>
     public PingMarker Send(ItemHolder from)
     {
         var other = Item.partner;
@@ -38,7 +36,6 @@ public class SendingStone : ItemUse
         }
         if (other.Holder != null)
         {
-            // Heard by the other stone's bearer, with a ping where the sender stands.
             EventLog.Add($"Sending: \"{message}\" (heard by {other.Holder.name}, {Distance(from, other):0} m away)");
             return PingMarker.Show(from.transform.position, $"\"{message}\"", PingColor, PingSeconds);
         }
@@ -46,7 +43,6 @@ public class SendingStone : ItemUse
         return PingMarker.Show(other.transform.position, $"\"{message}\"", PingColor, PingSeconds);
     }
 
-    /// <summary>Online: this stone's bearer hears a message <paramref name="sender"/> spoke into the other stone at <paramref name="from"/>.</summary>
     public static PingMarker Heard(Vector3 from, string message, string sender)
     {
         EventLog.Add($"Sending from {sender}: \"{message}\"");
@@ -57,7 +53,6 @@ public class SendingStone : ItemUse
 
     static float Distance(ItemHolder from, Carryable to) => Vector3.Distance(from.transform.position, to.transform.position);
 
-    // North is +z, as in the chemistry grid.
     static string Compass(Vector3 offset)
     {
         string[] names = { "north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west" };

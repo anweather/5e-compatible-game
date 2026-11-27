@@ -15,16 +15,12 @@ public class Seat : MonoBehaviour
 
     static readonly List<Seat> all = new();
 
-    /// <summary>Every seat in the scene now (the villages' folk sit on them too: ValleyFauna.Folk).</summary>
     public static IReadOnlyList<Seat> All => all;
 
-    /// <summary>Where the hips go, in the world.</summary>
     public Vector3 SeatPoint => transform.TransformPoint(seatAt);
 
-    /// <summary>Where a sitter's feet stand: the ground under the seat point.</summary>
     public Vector3 Foot => transform.TransformPoint(new Vector3(seatAt.x, 0f, seatAt.z));
 
-    /// <summary>The way a sitter faces, level.</summary>
     public Quaternion Facing
     {
         get
@@ -39,7 +35,6 @@ public class Seat : MonoBehaviour
 
     void OnDisable() => all.Remove(this);
 
-    /// <summary>The nearest seat whose seat point is within <paramref name="reach"/> of a point, or null.</summary>
     public static Seat Nearest(Vector3 at, float reach)
     {
         Seat best = null;
@@ -54,7 +49,6 @@ public class Seat : MonoBehaviour
         return best;
     }
 
-    /// <summary>The seat a wizard standing at <paramref name="foot"/> is sitting on (its feet where a sitter's go), or null.</summary>
     public static Seat SittingAt(Vector3 foot)
     {
         foreach (var seat in all)

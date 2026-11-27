@@ -66,7 +66,6 @@ public class WorldLooksProbe : LooksModProbe
         Metric($"{name}_seconds", film.Seconds);
     }
 
-    // The colours the view drew before they came from the rules, as literals.
     void DefaultsAreToday()
     {
         void Same(string name, Color drawn, float r, float g, float b) =>
@@ -85,7 +84,6 @@ public class WorldLooksProbe : LooksModProbe
         Check("default_fire_is_its_art", !grid.FireElementTint.Any);
     }
 
-    // Looks only, on top of the sky, as set_look writes them: a colour on the element, or the whole entry with its colour moved.
     IEnumerator Looks(JObject patch)
     {
         var mod = new ActiveMod("world-look", new JObject { ["patch"] = patch }.ToString());
@@ -119,7 +117,6 @@ public class WorldLooksProbe : LooksModProbe
         c.Fuel = 200;
     }
 
-    // Burning first, then the element's colour on what burns; then green fire with one blue Fireball in it.
     IEnumerator Flames()
     {
         for (int y = 0; y < Rows; y++)
@@ -142,8 +139,6 @@ public class WorldLooksProbe : LooksModProbe
     const float MostLanding = 10f;
     const int Reach = 4;
 
-    // J-052: a spell that chose a colour keeps it among fire of the element's; a fire already burning
-    // keeps its colour beside it; a new fire beside it catches its look.
     IEnumerator OneChoseItsOwn(Vector2Int blast)
     {
         yield return Wait(1f);
@@ -167,7 +162,6 @@ public class WorldLooksProbe : LooksModProbe
         Check("a_new_fire_beside_it_catches_its_look", World.At(beside.x, beside.y).Fire == 0 || grid.FireTint(beside.x, beside.y).Turn == own, $"{grid.FireTint(beside.x, beside.y).Turn:0.00}");
     }
 
-    // A slick on the lake alight, drawn orange, then every fire blue with one change to the fire element.
     IEnumerator BurningLake()
     {
         var shore = FindLake();
@@ -212,7 +206,6 @@ public class WorldLooksProbe : LooksModProbe
         return null;
     }
 
-    // A fresh patch of the meadow for each take, away from what burnt.
     void Back()
     {
         at += new Vector2Int(0, Fresh);
@@ -224,7 +217,6 @@ public class WorldLooksProbe : LooksModProbe
         Cut(mid + V(0f, 9f, -18f), mid);
     }
 
-    // Everything round a place out, the fire's smoke too, so one take stands clear of the last.
     void PutOut(Vector2Int middle)
     {
         for (int y = -Clear; y <= Clear; y++)
@@ -352,7 +344,6 @@ public class WorldLooksProbe : LooksModProbe
             for (int x = 0; x < Strip; x++) World.At(at.x + x, at.y + y).Water = 0;
     }
 
-    // With the mods off everything is its art again.
     IEnumerator AllBack()
     {
         var mods = new List<ActiveMod> { new(SkyMod, sky) };

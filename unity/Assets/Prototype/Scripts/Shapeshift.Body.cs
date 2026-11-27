@@ -10,7 +10,6 @@ using UnityEngine;
 // depth. All of it goes back as it was when the wizard changes back.
 public partial class Shapeshift
 {
-    // Sane limits for the controller: a frog is no smaller than this, a bear no bigger.
     const float MinHeight = 0.4f, MaxHeight = 2.2f, MinRadius = 0.12f, MaxRadius = 0.6f;
     static readonly Collider[] Overlaps = new Collider[16];
 
@@ -22,14 +21,12 @@ public partial class Shapeshift
     float height, radius, stepOffset, jump, swimDepth, floatDepth;
     Vector3 center, cameraRootAt;
 
-    /// <summary>The controller's walk and sprint speeds in an animal's shape: a trot (at least half its run) and its run.</summary>
     public static (float move, float sprint) SpeedsOf(CreatureBody b)
     {
         float scale = (b.Size.x + b.Size.y) * 0.5f;
         return (Mathf.Max(b.WalkSpeed, b.RunSpeed * 0.5f) * scale, b.RunSpeed * scale);
     }
 
-    /// <summary>How tall the wizard's capsule is in an animal's shape: to the top of its back and head, within limits.</summary>
     public static float HeightOf(CreatureBody b)
     {
         float scale = (b.Size.x + b.Size.y) * 0.5f;
@@ -45,7 +42,6 @@ public partial class Shapeshift
         cameraRoot = transform.Find(WizardRig.CameraRoot);
     }
 
-    // Takes on the animal's speeds, size and jump, keeping the wizard's own to put back.
     void ShapeBody(CreatureBody b)
     {
         if (body != null)
@@ -55,7 +51,6 @@ public partial class Shapeshift
             float scale = (b.Size.x + b.Size.y) * 0.5f;
             float r = Mathf.Clamp(Mathf.Min(h * 0.5f, b.BodyLength * scale * 0.4f), MinRadius, MaxRadius);
             float feet = center.y - height * 0.5f;
-            // Physics takes "height" here as the capsule's whole height: past it, the controller won't enable again.
             body.stepOffset = Mathf.Min(stepOffset, h - 0.05f);
             body.height = h;
             body.radius = r;
@@ -83,7 +78,6 @@ public partial class Shapeshift
         if (surface != null) surface.RestoreBaseSpeeds();
     }
 
-    // The follow camera looks from the animal's height, not the wizard's.
     void SetCamera(float k)
     {
         if (cameraRoot == null) return;
@@ -91,7 +85,6 @@ public partial class Shapeshift
         cameraRoot.localPosition = new Vector3(cameraRootAt.x, Mathf.Max(0.35f, cameraRootAt.y * k), cameraRootAt.z);
     }
 
-    // Afloat in water as deep, for its size, as the wizard is.
     void ScaleSwimming(float k)
     {
         if (surface == null) return;
@@ -107,7 +100,6 @@ public partial class Shapeshift
         jumpHeight.SetValue(mover, jump * k);
     }
 
-    // Room for the wizard's own capsule where the animal stands: nothing but itself in it.
     bool RoomToStand()
     {
         if (body == null) return true;

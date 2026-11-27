@@ -36,68 +36,41 @@ public partial class ChemGrid : MonoBehaviour
         private set
         {
             played = value;
-            ViewWrap.Set(value, cellSize); // the view draws across the seams of a world that wraps
+            ViewWrap.Set(value, cellSize);
         }
     }
 
     World played;
-    /// <summary>The world's props and items (world/things.json) with their stable ids; ThingSpawner spawns them.</summary>
     public WorldThings Things { get; private set; } = WorldThings.Empty;
     public Vector2Int PlayerStart { get; private set; }
 
-    /// <summary>When true, something else (NetChem in multiplayer) steps the world; the grid only draws it.</summary>
     public bool ExternalTicks { get; set; }
 
-    /// <summary>A whole tick has run, solo or online; not one finished from outside (World.FinishTick), so casts are read through FiredCastsHeard.</summary>
     public event System.Action TickDone;
 
-    /// <summary>Raises TickDone; NetChem calls it for the ticks it runs.</summary>
     public void NoteTickDone() => TickDone?.Invoke();
 
-    /// <summary>
-    /// Simulate only the chunks around the players (ChunkStreaming). Solo the grid applies the plan
-    /// before each tick; online NetChem's host stamps it into its batches.
-    /// </summary>
     public bool streamChunks = true;
 
-    /// <summary>Plans the chunks solo, lingering what is still live (ChunkPlanner); online the host keeps its own. New with each world.</summary>
     public ChunkPlanner ChunkPlanner { get; private set; } = new();
 
-    /// <summary>
-    /// A chunk of the current world activated or deactivated (ChunkSwitch: CX, CY, Active), after
-    /// it caught up; World.ChunkSwitched passed on, so it keeps working across ResetWorld. Solo and
-    /// online alike: switches reach the world only as commands (the solo plan, or the host's tick
-    /// batches on every peer), so every peer hears the same switches at the same tick. Chunk
-    /// coordinates are world cells / 64 (ChunkAt, ThingId's chunk). For the view only: a handler
-    /// mustn't change the world.
-    /// </summary>
     public event System.Action<ChunkSwitch> ChunkSwitched;
 
-    /// <summary>A new world was built (ResetWorld, or going online): the start's reach is active again (ChunkStreaming.StartPlan), with no ChunkSwitched for it.</summary>
     public event System.Action WorldReset;
 
-    /// <summary>
-    /// The dragon's breath put a chunk back as it started, and it has been redrawn (the frame after the tick that did it,
-    /// on every peer, a replaying late joiner too). World.ChunkFreshened passed on, so it keeps working across ResetWorld.
-    /// For the view only: a handler mustn't change the world.
-    /// </summary>
     public event System.Action<ChunkFresh> ChunkFreshened;
 
-    /// <summary>The chunk a scene position is in (world chunk coordinates, as ChunkSwitched and ThingId use).</summary>
     public Vector2Int ChunkAt(Vector3 p)
     {
         var cell = CellAt(p);
         return new Vector2Int(Chunks.ChunkOf(cell.x), Chunks.ChunkOf(cell.y));
     }
 
-    /// <summary>Whether a chunk is simulated now; false for one outside the world.</summary>
     public bool IsChunkActive(int cx, int cy) => World != null && World.HasChunk(cx, cy) && World.IsActive(cx, cy);
 
     readonly List<(int x, int y)> playerCells = new();
     readonly System.Diagnostics.Stopwatch timer = new();
 
-    /// <summary>Milliseconds the last frame spent stepping the world, drawing its cells, and placing the fire lights (the probe's wildfire scenario reads them).</summary>
-    /// <summary>The time the solo world owes in seconds: past a tick's worth, it's behind.</summary>
     public float OwedSeconds => tickTimer;
     public double StepMs { get; set; }
     public double RenderMs { get; private set; }
@@ -106,16 +79,13 @@ public partial class ChemGrid : MonoBehaviour
         ChunkPlanMarker = new("ChemGrid.ChunkPlan"), ChunkApplyMarker = new("ChemGrid.ChunkApply"), ChunkEventMarker = new("ChemGrid.ChunkEvent"),
         DetailChunksMarker = new("ChemGrid.DetailChunks");
 
-    // A world built (start-up, hosting, a reset): its parts, which the play log names when a rebuild stalls a frame.
     static readonly Unity.Profiling.ProfilerMarker BuildMarker = new("ChemGrid.BuildWorld"), BuildRulesMarker = new("ChemGrid.BuildWorld.Rules"),
         BuildCellsMarker = new("ChemGrid.BuildWorld.Cells"), BuildValleyMarker = new("ChemGrid.BuildWorld.Valley"),
         BuildDrawMarker = new("ChemGrid.BuildWorld.Draw"), BuildListenersMarker = new("ChemGrid.BuildWorld.Listeners");
     public double LightsMs { get; private set; }
 
-    // The chunks the dragon's breath has reset since the last frame (World.ChunkFreshened).
     readonly List<ChunkFresh> freshChunks = new();
 
-    /// <summary>Summons the dragon (the Reset, solo); online it goes through NetChem.SummonDragon, on every peer's same tick.</summary>
     public void SummonDragon() => World.ApplyDragon(new DragonCommand());
     SpellCaster[] wizards = System.Array.Empty<SpellCaster>();
     float nextWizardLookup;
@@ -134,7 +104,6 @@ public partial class ChemGrid : MonoBehaviour
         StartupTimeline.Mark("stood at spawn");
         LoadThings();
         StartupTimeline.Mark("things loaded");
-        // Live rules: the mods panel and, in the Editor and dev builds, the rules/ file watcher.
         if (!TryGetComponent<RuleSwitcher>(out _)) gameObject.AddComponent<RuleSwitcher>();
         if (!TryGetComponent<HoldShow>(out _)) gameObject.AddComponent<HoldShow>();
         if (!TryGetComponent<ProgressKeeper>(out _)) gameObject.AddComponent<ProgressKeeper>();
@@ -144,8 +113,6 @@ public partial class ChemGrid : MonoBehaviour
         StartupTimeline.Mark("grid's parts added (rule switcher, mods, row houses, holds, waystones)");
     }
 
-    // The things file is read once: it is the same for every world this scene starts (and online
-    // its fingerprint is part of the checksum, so every machine must have read the same one).
     void LoadThings()
     {
         try
@@ -160,23 +127,15 @@ public partial class ChemGrid : MonoBehaviour
         foreach (var problem in Things.Check(World.Rules)) Debug.LogWarning(problem);
     }
 
-    /// <summary>Throws away the current world and its visuals and starts again from the map.</summary>
     public void ResetWorld()
     {
         DropWorldView();
         BuildWorld();
     }
 
-    /// <summary>
-    /// Online: plays on from the host's snapshot (a late joiner, or a desync put right; LockstepSession): the save loaded
-    /// over this map, base rules and budgets, and the world's view built as ResetWorld builds one. SaveException, saying
-    /// why, if it doesn't fit; the world in play is kept then.
-    /// </summary>
     public void LoadSnapshot(JoinSnapshot snapshot)
     {
         var (world, rules) = snapshot.Join(CurrentRules.Base, World.Source, MapLandUnits(), Budgets);
-        // What the map gives a world that a save doesn't hold, as MapWorld gives it: the land's range, and the Hold's
-        // site (its run, saved, goes on over it: HoldTests.ASaveKeepsTheRun).
         world.SetLandRange(MapFile.Load(Folders.World).LandRange);
         SetHold(world);
         DropWorldView();
@@ -188,17 +147,13 @@ public partial class ChemGrid : MonoBehaviour
         HearRoom();
         CurrentRules = world.Room != null ? world.RoomRules : rules;
         RecolourWorld();
-        // The start the host picked (SpawnPoints, from its hello), on this map; the snapshot's chunks are active as the host's.
         PlayerStart = SpawnPoints.StartCell(mapStart);
         BindWorld(0);
         RulesChanged?.Invoke();
     }
 
-    /// <summary>Whether the world in play was loaded from a save (LoadSnapshot), not built from the map: it has its land already.</summary>
     public bool WorldLoaded { get; private set; }
 
-    // The map's land (land.json, as the valley gives the world), an int a cell, for a save to load over; null for none.
-    // A map made from its source (the Wide World) has none: the world's land is the source's, and a save loads over it so.
     int[] MapLandUnits()
     {
         if (World?.Source is IGeneratedSource) return null;
@@ -215,7 +170,6 @@ public partial class ChemGrid : MonoBehaviour
         return units;
     }
 
-    // The world's view goes: the blockers stay, for the new world to take again (CellBlockers.ReleaseAll).
     void DropWorldView()
     {
         foreach (Transform child in transform)
@@ -224,11 +178,9 @@ public partial class ChemGrid : MonoBehaviour
         freshChunks.Clear();
         lastLog = null;
         tickTimer = 0f;
-        // The old world's views go before the new one is built, so both worlds' views aren't held at once at the peak.
         views = null;
     }
 
-    // The map's own start, as the last world built from it had it.
     Vector2Int mapStart;
 
     void BuildWorld()
@@ -250,17 +202,13 @@ public partial class ChemGrid : MonoBehaviour
         double cellsMs = phase.Elapsed.TotalMilliseconds;
         using (BuildRulesMarker.Auto()) OpenRoom(roomWas);
         StartupTimeline.Mark("room and mods");
-        // The spawn the host picked (SpawnPoints), else the map's own.
         mapStart = start;
         PlayerStart = SpawnPoints.StartCell(start);
-        // Only the start's reach starts active (#209), before anything is drawn or spawned for the
-        // chunks: every peer builds from the same map and start, so all start alike.
         if (streamChunks) ChunkStreaming.Apply(World, ChunkStreaming.StartPlan(World, new[] { (PlayerStart.x, PlayerStart.y) }));
         StartupTimeline.Mark("start reach active");
         BindWorld(cellsMs);
     }
 
-    // The view's hold on a world just made or loaded: its events, the valley, the drawing, and WorldReset.
     void BindWorld(double cellsMs)
     {
         World.ChunkSwitched += OnChunkSwitched;
@@ -291,12 +239,9 @@ public partial class ChemGrid : MonoBehaviour
         phase.Restart();
         using (BuildListenersMarker.Auto()) WorldReset?.Invoke();
         StartupTimeline.Mark("world-reset listeners");
-        // What a world costs to build, by part (cell-memory: a big map's start and every reset pay it).
         Debug.Log($"WORLD BUILT {World.W} x {World.H}: cells {cellsMs:0} ms (keep start {KeepStartMs:0}), valley {valleyMs:0} ms, draw {drawMs:0} ms (visuals {initMs:0}, near {drawMs - initMs:0}), listeners {phase.Elapsed.TotalMilliseconds:0} ms");
     }
 
-    // Where the map's cells stand in the world (map.json's yard: its south-west cell at world 0, 0), when this grid plays a
-    // map (the yard scene's, with its valley's ground); a test's own small yard keeps its own.
     void TakeYard()
     {
         var land = MapLand.Current;
@@ -305,7 +250,6 @@ public partial class ChemGrid : MonoBehaviour
         yardCells = new RectInt(x, y, w, h);
     }
 
-    // The solo wizard is built standing at the valley's start; on another map it starts at that map's, on its ground.
     void StandAtSpawn()
     {
         var wizard = WizardRig.FindLocal();
@@ -328,17 +272,10 @@ public partial class ChemGrid : MonoBehaviour
         using (ChunkEventMarker.Auto()) ChunkSwitched?.Invoke(s);
     }
 
-    /// <summary>How long the last world took to keep its starting state, in milliseconds.</summary>
     public static double KeepStartMs { get; private set; }
 
-    /// <summary>
-    /// A world to play in: MapWorld, then its starting state kept for the dragon to put back. Every peer builds one this
-    /// way, a late joiner and an online reset too. Whatever lays cells at the start belongs in MapWorld (the puzzles, the
-    /// Gauntlet's booths among them, and golf), or the dragon wipes it: nothing may write cells between here and the first tick.
-    /// </summary>
     public static World StartWorld(Rules rules, string map, uint seed, out Vector2Int start) => Kept(MapWorld(rules, map, seed, out start));
 
-    /// <summary>StartWorld on the map being played: from its cells, or from its source when it's a folder of rows alone (the Wide World).</summary>
     public static World StartWorld(Rules rules, uint seed, out Vector2Int start) =>
         Kept(GeneratedMap.IsRowsOnly(Folders.World) ? SourceWorld(rules, seed, out start) : MapWorld(rules, CellMap(), seed, out start));
 
@@ -350,11 +287,6 @@ public partial class ChemGrid : MonoBehaviour
         return world;
     }
 
-    /// <summary>
-    /// A new world on a map too big to bake whole, played from a folder of its rows alone (MapBake.EnsureRows): made from
-    /// the map's generator as its source (PlayedSource), its land the source's, then the map's lays from the rows as MapWorld
-    /// lays them. Only the chunks the lays reach are made.
-    /// </summary>
     public static World SourceWorld(Rules rules, uint seed, out Vector2Int start)
     {
         var source = PlayedSource;
@@ -375,11 +307,6 @@ public partial class ChemGrid : MonoBehaviour
     static GeneratedSource playedSource;
     static string playedSourceOf;
 
-    /// <summary>
-    /// The source the map being played is made from when it's a folder of rows alone (a map too big to bake whole), or null:
-    /// one a map, so each world built on it and the view's land (MapLand) share the chunks it holds made. Its cells are laid
-    /// under the rules' files (rules/), as the base rules lay them; a scene's tuning is the sim's only.
-    /// </summary>
     public static GeneratedSource PlayedSource
     {
         get
@@ -392,11 +319,6 @@ public partial class ChemGrid : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// A new world from a map (one BakedSource.Legend character per cell, rows top to bottom), made from the map as its
-    /// source (the sparse World, D17): no chunk's cells are made until something reads it. The editor's ValleyBuilder
-    /// bakes the terrain from the same starting world.
-    /// </summary>
     public static World MapWorld(Rules rules, string map, uint seed, out Vector2Int start)
     {
         var source = BakedSource.FromText(map, rules);
@@ -405,7 +327,6 @@ public partial class ChemGrid : MonoBehaviour
         world.MakeFrom(source);
         start = new Vector2Int(source.Start.x, source.Start.y);
         LayPuzzles(world);
-        // The map's stamps before its rows: a row's pad is cut level on the stamped land (a village up a volcano's slope).
         LayStamps(world);
         LayRows(world);
         LayGolf(world);
@@ -413,7 +334,6 @@ public partial class ChemGrid : MonoBehaviour
         return world;
     }
 
-    // Spell golf's hole, the ball on its tee from the start on every machine alike (GolfCourse draws it).
     static void LayGolf(World world)
     {
         try
@@ -426,8 +346,6 @@ public partial class ChemGrid : MonoBehaviour
         }
     }
 
-    // The puzzles of world/puzzles.json (a coil and a gate by the golf course), over the map's cells:
-    // only in a world big enough to hold them (the valley, not a small test yard).
     static void LayPuzzles(World world)
     {
         try
@@ -442,7 +360,6 @@ public partial class ChemGrid : MonoBehaviour
         }
     }
 
-    // The map's rows its cells don't hold, laid over them: only in a world big enough (the valley, not a small test yard).
     static void LayRows(World world)
     {
         try
@@ -455,7 +372,6 @@ public partial class ChemGrid : MonoBehaviour
         }
     }
 
-    // The map's own land stamps (stamps.json), before its rows, which are laid on the stamped land: only on the map's whole world.
     static void LayStamps(World world)
     {
         var map = MapLand.Current?.Map;
@@ -470,7 +386,6 @@ public partial class ChemGrid : MonoBehaviour
         }
     }
 
-    // The map's Hold, only in a world big enough to hold it (the valley, not a small test yard).
     static void SetHold(World world)
     {
         try
@@ -486,7 +401,6 @@ public partial class ChemGrid : MonoBehaviour
         }
     }
 
-    // From the start of Play to the grid's first frame: what a start-up costs (view-rebuild's target).
     static readonly System.Diagnostics.Stopwatch SincePlay = new();
     static bool readyLogged;
 
@@ -516,7 +430,6 @@ public partial class ChemGrid : MonoBehaviour
         bool stepped;
         using (StepMarker.Auto()) stepped = StepWithinBudget();
         StepMs = timer.Elapsed.TotalMilliseconds;
-        // A frame whose ticks ran long (a big map's chunk plan) draws fewer new rows: they wait a frame or two.
         drawBudgetMs = System.Math.Clamp(DrawFrameMs - StepMs, LeastDrawMs, DrawBudgetMs);
         timer.Restart();
         using (RenderMarker.Auto()) Render(stepped);
@@ -530,8 +443,6 @@ public partial class ChemGrid : MonoBehaviour
 
     static GameFolders folders;
 
-    // Play mode without a domain reload keeps statics: each play starts on this copy's own map again (Temp/map may name
-    // another since).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ForgetFolders()
     {
@@ -546,16 +457,10 @@ public partial class ChemGrid : MonoBehaviour
         ValleyChemistry.ForgetLand();
     }
 
-    /// <summary>The map's cells, one Legend character each (cells.txt in its folder).</summary>
     public static string CellMap() => MapFile.ReadCells(Folders.World);
 
-    // A map picked in play (the Esc menu's map to host, or the host's map a joiner goes to): it outlives the scene's reload.
     static string chosenMap;
 
-    /// <summary>
-    /// Plays another map from here on: its folders (baked first, for a generated one) and the scene loaded again on it, as
-    /// the scene's terrains, places and sea are built for the map it starts on.
-    /// </summary>
     public static void PlayMap(string id)
     {
         chosenMap = id;
@@ -564,7 +469,6 @@ public partial class ChemGrid : MonoBehaviour
         UnityEngine.SceneManagement.SceneManager.LoadScene(UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex);
     }
 
-    /// <summary>The maps this copy has (world/maps), by id and name, the valley first.</summary>
     public static (string id, string name)[] Maps()
     {
         var game = NewFolders(GameFolders.DefaultMap);
@@ -576,14 +480,10 @@ public partial class ChemGrid : MonoBehaviour
             string id = Path.GetFileName(dir);
             maps.Add((id, MapFile.Load(dir).Name ?? id));
         }
-        // The valley first, then the rest by id.
         maps.Sort((a, b) => (a.id != GameFolders.DefaultMap).CompareTo(b.id != GameFolders.DefaultMap) is var first && first != 0 ? first : string.CompareOrdinal(a.id, b.id));
         return maps.ToArray();
     }
 
-    // The map this copy starts on, its own pick: the host's map when it hosts. A player takes -map <id>; the open Editor,
-    // which a shell can't pass a flag to, reads Temp/map (a probe on a second map). One picked in play comes first; a player build
-    // with no -map starts on the map its player last picked, else the hills (SoloMap.Start, #216).
     static string OwnMap
     {
         get
@@ -598,13 +498,8 @@ public partial class ChemGrid : MonoBehaviour
         }
     }
 
-    // An EditMode fixture's map in place of the Editor's own (OnMap): one that reads the valley's data says so.
     static string testMap;
 
-    /// <summary>
-    /// For an EditMode fixture (OnTheValleyAttribute): the Editor's folders are this map's until the scope ends, whatever
-    /// Temp/map names, so a test of the valley's data passes with the Editor pointed at another map.
-    /// </summary>
     public static System.IDisposable OnMap(string id)
     {
         var before = testMap;
@@ -628,24 +523,20 @@ public partial class ChemGrid : MonoBehaviour
         }
     }
 
-    /// <summary>The file that names the open Editor's map (its id), when there is one.</summary>
     public const string EditorMapFile = "Temp/map";
 
     static string mapHash, mapHashOf;
 
-    /// <summary>Why the host turns away a copy offering these maps, or null when it has this one.</summary>
     public static string MapRefusal(string offered)
     {
         if (mapHashOf != Folders.World)
         {
-            // A generated map's hash is of its inputs, read from the folder it's made from (a build's bake is elsewhere).
             mapHash = MapIdentity.Hash(MapSource);
             mapHashOf = Folders.World;
         }
         return MapIdentity.Refusal(MapId, MapFile.Load(Folders.World).Name, mapHash, offered);
     }
 
-    /// <summary>Back from a host's map to this copy's own, before the scene starts over.</summary>
     public static void BackToOwnMap()
     {
         if (OwnMap != MapId) SwitchFolders(OwnMap);
@@ -657,26 +548,17 @@ public partial class ChemGrid : MonoBehaviour
         ValleyChemistry.ForgetLand();
     }
 
-    /// <summary>The id of the map being played (world/maps/&lt;id&gt;, or a map folder's name), what peers know it by.</summary>
     public static string MapId => PlayedMaps.TryGetValue(Folders.World, out var m) ? m.id : Folders.Map;
 
-    /// <summary>The folder the map is made from: its own, unless it's a build's bake of a generated map.</summary>
     public static string MapSource => PlayedMaps.TryGetValue(Folders.World, out var m) ? m.source : Folders.World;
 
-    // Each played folder's map id and the folder it was made from, for a folder that isn't world/maps/<id> itself.
     static readonly Dictionary<string, (string id, string source)> PlayedMaps = new();
-    // Names said once not to be maps, so the Editor's every look at its folders doesn't say it again.
     static readonly HashSet<string> NotMaps = new();
 
-    /// <summary>The folder a map by this id is played from (a generated one baked first when playing).</summary>
     public static string PlayFolder(string id) => FoldersFor(id).World;
 
-    /// <summary>PlayFolder as Play mode has it (<paramref name="playing"/>: a generated map baked first, or its rows written), or as the Editor outside it.</summary>
     public static string PlayFolder(string id, bool playing) => FoldersFor(id, playing).World;
 
-    // A map's folders from its name in -map, the menu or Temp/map: an id under world/maps, or a map folder's path (absolute,
-    // or from the repo's root: test-fixtures/maps/flat-1728, #169). A generated map (the nine) is baked first when playing:
-    // into its own folder in the Editor (out of git), and into the player's data folder in a build (worlds/<inputs>/<id>).
     static GameFolders FoldersFor(string named) => FoldersFor(named, Application.isPlaying);
 
     static GameFolders FoldersFor(string named, bool playing)
@@ -696,16 +578,12 @@ public partial class ChemGrid : MonoBehaviour
         return game.WithMap(played == Path.Combine(game.Maps, id) ? id : played);
     }
 
-    // The folder to play a map from: its own, or a generated map's bake (made now if there's none of its inputs yet). A map
-    // too big to bake whole ("bake": false, the Wide World) gets its rows alone (MapBake.EnsureRows): its cells, land and
-    // things are made as they're read (GeneratedSource), never written.
     static string Baked(string dir, string id, GameFolders game)
     {
         if (!GeneratedMap.IsGenerated(dir)) return dir;
         var timer = System.Diagnostics.Stopwatch.StartNew();
         string into = dir;
         bool rowsOnly = !BakesWhole(dir);
-        // The folder is named for the map (MapCheck holds a map to its folder's name), under its inputs.
         if (!Application.isEditor && game.PlayerData != null) into = Path.Combine(game.PlayerData, "worlds", GeneratedMap.InputHash(dir), id);
         bool baked;
         if (rowsOnly) baked = MapBake.EnsureRows(dir, into);
@@ -715,13 +593,11 @@ public partial class ChemGrid : MonoBehaviour
         return into;
     }
 
-    /// <summary>Whether a generated map is baked whole to be played (its map.json's "bake", true unless it says false).</summary>
     public static bool BakesWhole(string dir) =>
         Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(Path.Combine(dir, MapFile.FileName)))[GeneratedMap.Key]?["bake"]?.ToObject<bool>() != false;
 
     static string checkedMap;
 
-    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetMapStatics()
     {
@@ -732,7 +608,6 @@ public partial class ChemGrid : MonoBehaviour
         KeepStartMs = 0;
     }
 
-    // A folder that's wrong stops the game here, by name, rather than start on the wrong land: once, not at every reset.
     static void CheckMap()
     {
         if (checkedMap == Folders.World) return;
@@ -741,29 +616,18 @@ public partial class ChemGrid : MonoBehaviour
         checkedMap = Folders.World;
     }
 
-    // The game's folders (rules/, world/, the player's data folder and mods), from the roots only Unity knows.
-    // Outside Play mode the Editor's map is read afresh each time: Temp/map may have named another since a play.
     public static GameFolders Folders => Application.isEditor && !Application.isPlaying ? FoldersFor(OwnMap) : folders ??= FoldersFor(OwnMap);
 
     static GameFolders NewFolders(string map) =>
         GameFolders.ForGame(Application.streamingAssetsPath, Application.dataPath, Application.isEditor, Application.persistentDataPath, map);
 
-    // Milliseconds of a frame the solo grid may spend on chemistry ticks: a tick that needs longer
-    // runs in slices over the next frames (World.StepSome) and the clock catches up after, rather
-    // than one frame stalling for the whole tick. Meanwhile the view may show a tick half done for
-    // a frame or two (fire spread this tick, say, but water not yet moved).
     const double StepBudgetMs = 6.0;
-    /// <summary>The most time the world may owe: a slower world just runs slow, and doesn't race to catch up after.</summary>
     public const float MostOwedSeconds = 1f;
-    // In a playtest run, slices instead (ExactFrames): a quiet valley tick is a hundred or so.
     const int ExactStepSlices = 256;
     readonly FrameBudget stepBudget = new(StepBudgetMs, ExactStepSlices);
 
-    /// <summary>A tick's allowance a frame from now on, for a performance pass (PerfScenario's -perf-step-ms); the game's own is 6 ms or 256 slices.</summary>
     public void SetStepBudget(double ms, int exactSlices) => stepBudget.Set(ms, exactSlices);
 
-    // Runs the ticks that are due, a tick in progress first, within the frame's budget: rule
-    // switches and the chunk plan apply only between whole ticks. True if a tick finished.
     bool StepWithinBudget()
     {
         float tick = 1f / Mathf.Max(1, World.Rules.Sim.TicksPerSecond);
@@ -809,7 +673,6 @@ public partial class ChemGrid : MonoBehaviour
         using (ChunkApplyMarker.Auto()) ChunkStreaming.Apply(World, plan);
     }
 
-    /// <summary>The cells every wizard in the scene stands on (the solo one, or every player's online), for ChunkStreaming.</summary>
     public IReadOnlyList<(int x, int y)> PlayerCells()
     {
         if (ChoreClock >= nextWizardLookup)
@@ -827,14 +690,10 @@ public partial class ChemGrid : MonoBehaviour
         return playerCells;
     }
 
-    // --- coordinates -----------------------------------------------------
-
     RectInt Yard => yardCells.width > 0 ? yardCells : new RectInt(0, 0, World.W, World.H);
 
-    /// <summary>World cell of a yard cell (yard maps and demos use yard coordinates).</summary>
     public Vector2Int YardCell(int x, int y) => new Vector2Int(x + Yard.x, y + Yard.y);
 
-    /// <summary>Centre of a yard cell, given in yard coordinates (as the demo scripts are).</summary>
     public Vector3 YardCellCenter(int x, int y)
     {
         var cell = YardCell(x, y);
@@ -843,10 +702,6 @@ public partial class ChemGrid : MonoBehaviour
 
     public Vector3 CellCenter(int x, int y) => ViewWrap.Near(CellCenterUnwrapped(x, y));
 
-    /// <summary>
-    /// A cell's centre as its coordinates put it, not moved to the copy nearest the camera: an origin to measure many
-    /// points from (each then moved with ViewWrap.Near), as cell (0, 0)'s nearest copy is a world away from a far cell's.
-    /// </summary>
     public Vector3 CellCenterUnwrapped(int x, int y)
     {
         var yard = Yard;
@@ -856,28 +711,21 @@ public partial class ChemGrid : MonoBehaviour
     public Vector2Int CellAt(Vector3 p)
     {
         var yard = Yard;
-        // Folded into the world where it wraps: the view walks on past a seam, the cells don't.
         return new Vector2Int(ViewWrap.FoldX(Mathf.RoundToInt(p.x / cellSize) + yard.x), ViewWrap.FoldY(yard.y + yard.height - 1 - Mathf.RoundToInt(p.z / cellSize)));
     }
 
-    /// <summary>Top of what stands on a cell: its ground, plus a stone block's or a tree's height.</summary>
     public float SurfaceY(int x, int y)
     {
         var c = World.At(x, y);
         return c == null ? 0f : GroundTop(x, y, c) + CellDressing.Look(World.Rules, c.T).height;
     }
 
-    /// <summary>
-    /// A cell's ground, before anything standing on it: the valley's own ground (0 without a
-    /// valley) plus its elevation and height, the same offset CellHeightfield shapes the terrain with.
-    /// </summary>
     public float GroundTop(int x, int y, Cell c)
     {
         float baseY = valley != null ? valley.BaseHeight(x, y) : 0f;
         return baseY + World.ElevationUnits(c) / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight;
     }
 
-    /// <summary>The ground drawn at a world point: the terrain's (between cell centres too), or its cell's without a valley.</summary>
     public float GroundAt(Vector3 p)
     {
         if (valley != null) return valley.GroundAt(p);
@@ -893,9 +741,6 @@ public partial class ChemGrid : MonoBehaviour
         return c != null && World.IsSlippery(c);
     }
 
-    // --- log ---------------------------------------------------------------
-
-    // Forward new entries from the world's log to the on-screen log.
     void PumpLog()
     {
         var log = World.Log;

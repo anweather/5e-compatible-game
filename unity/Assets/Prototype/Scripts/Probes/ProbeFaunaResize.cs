@@ -29,7 +29,6 @@ public class FaunaResizeProbe : RoomProbe
     bool filming;
     int frames;
 
-    /// <summary>Puts the probe's deer side by side ahead of a wizard, standing still; returns where the middle one is.</summary>
     public static Vector3 PlaceDeer(ValleyFauna fauna, ChemGrid grid, Vector3 wizard)
     {
         int kind = fauna.SpeciesIndex("deer");
@@ -43,7 +42,6 @@ public class FaunaResizeProbe : RoomProbe
         return new Vector3(m.x, grid.GroundAt(m), m.z);
     }
 
-    /// <summary>Each probe deer's scale, in order ("-" for one not out).</summary>
     public static string Scales(ValleyFauna fauna)
     {
         var scales = Individuals.Select(ind =>
@@ -55,7 +53,6 @@ public class FaunaResizeProbe : RoomProbe
         return string.Join(" ", scales);
     }
 
-    /// <summary>How many deer are out, and the most any one's scale is off the size its row gives it.</summary>
     public static (int count, float gap) Out(ValleyFauna fauna)
     {
         int kind = fauna.SpeciesIndex("deer"), count = 0;
@@ -75,7 +72,6 @@ public class FaunaResizeProbe : RoomProbe
         Check("serving", RulesMcpServer.Url != null, RulesMcpServer.ConnectLine);
         if (fauna == null || RulesMcpServer.Url == null) yield break;
         Metric("pace_at_3", CreatureBrain.Pace(Times));
-        // Small animals keep their pace one for one (a mire-spider is 0.35 of a spider); only giants are held back.
         Check("small_pace_one_for_one", Mathf.Abs(CreatureBrain.Pace(0.35f) - 0.35f) < 1e-6f && Mathf.Abs(CreatureBrain.Pace(1.25f) - 1.25f) < 1e-6f && Mathf.Abs(CreatureBrain.Pace(Times) - 1.5f) < 1e-6f,
             $"0.35 to {CreatureBrain.Pace(0.35f)}, 1.25 to {CreatureBrain.Pace(1.25f)}, {Times} to {CreatureBrain.Pace(Times)}");
         var wizard = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject;
@@ -120,7 +116,6 @@ public class FaunaResizeProbe : RoomProbe
         Metric("film_frames", frames);
     }
 
-    // Both sides' probe deer and every deer out, at one moment: the same three sizes on both, and each deer at its row's size.
     (string here, string there) Seen(string when)
     {
         string here = Scales(fauna);
@@ -133,7 +128,6 @@ public class FaunaResizeProbe : RoomProbe
         return (here, Theirs.deer);
     }
 
-    // Each scale in `after` is `times` the one in `before`.
     static bool Grew(string before, string after, float times)
     {
         var a = before.Split(' ');
@@ -147,7 +141,6 @@ public class FaunaResizeProbe : RoomProbe
         return true;
     }
 
-    // Frames of the three deer at 720p from in front, rendered off screen (no window needed), while the probe runs.
     IEnumerator Film()
     {
         if (string.IsNullOrEmpty(ScreenshotDir)) yield break;

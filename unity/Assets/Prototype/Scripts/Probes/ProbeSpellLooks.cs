@@ -33,7 +33,6 @@ public partial class SpellLooksProbe : ProbeScenario
             "{ 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 } }");
     }
 
-    // Ground in and round the yard for a w by h stage: no water, nothing built, no tree, clear of the stages before it.
     protected Vector2Int Spot(int w, int h)
     {
         const int Margin = 4;
@@ -47,7 +46,6 @@ public partial class SpellLooksProbe : ProbeScenario
                 taken.Add(rect);
                 return new Vector2Int(x, y);
             }
-        // Every stage is used: start over the ground again, where the last ones have cleared.
         Check("stage_found", taken.Count > 0, $"no free {w} by {h} round the yard");
         if (taken.Count == 0) return new Vector2Int(yard.x + 4, yard.y + 4);
         taken.Clear();
@@ -65,7 +63,6 @@ public partial class SpellLooksProbe : ProbeScenario
         return true;
     }
 
-    // Stands the wizard by a patch, the camera a little behind, looking at its middle.
     IEnumerator Stage(Vector2Int o, int w, int h, Vector3 from)
     {
         var mid = Mid(o, w, h);
@@ -130,7 +127,6 @@ public partial class SpellLooksProbe : ProbeScenario
         PutOutFires();
     }
 
-    // One whirlwind on each of the things it can carry, each on its own patch.
     IEnumerator Whirls()
     {
         yield return OneWhirl("sand", c => c.T = TerrainIds.Sand);
@@ -143,7 +139,7 @@ public partial class SpellLooksProbe : ProbeScenario
         yield return OneWhirl("snow", c =>
         {
             c.Cover = CoverIds.Snow;
-            c.Water = 0; // it melts in the noon sun, and water outranks it
+            c.Water = 0;
         });
         yield return OneWhirl("water", c => c.Water = 6);
     }
@@ -168,7 +164,6 @@ public partial class SpellLooksProbe : ProbeScenario
         string got = null;
         for (float t = 0f; t < 2.5f && got != carrying; t += Time.deltaTime)
         {
-            // Snow melts in the noon sun a tick before the whirl looks, and water outranks it: for the picture it's snow.
             if (carrying == "snow" && World.Whirls.Count > 0 && World.Whirls[0].Carrying == "water") World.Whirls[0].Carrying = carrying;
             got = World.Whirls.Count > 0 ? World.Whirls[0].Carrying : null;
             for (int y = 0; lay != null && y < 5; y++)
@@ -214,7 +209,6 @@ public partial class SpellLooksProbe : ProbeScenario
         yield return Wait(1.2f);
         Check("lava_pool", World.At(hit.x, hit.y).T == TerrainIds.LavaPool, World.At(hit.x, hit.y).T);
         yield return Picture("lava-pool");
-        // It cools from its edge: the ticks that are left, shown a moment before it turns.
         Metric("lava_heat", World.At(hit.x, hit.y).Heat);
         for (int y = 0; y < 5; y++)
             for (int x = 0; x < 5; x++)
@@ -274,7 +268,6 @@ public partial class SpellLooksProbe : ProbeScenario
         hands.PickUp(item);
         yield return Wait(0.3f);
         Check("pick_in_hand", hands.Held == item, "held");
-        // The crosshair on the rock, the camera over the shoulder.
         Cut(wizard.transform.position + V(-1.4f, 2.1f, 2f), mid);
         yield return Wait(0.2f);
         yield return Picture("pick-ready");

@@ -9,8 +9,6 @@ using UnityEngine;
 // over the frames after it (PERF LOOK SWITCH lines).
 public partial class PerfStage
 {
-    // From the nine's spawn to its east edge, in cells (its spawn (292, 1480) in a 1728-wide map); the walk starts four
-    // chunks in from it and walks a chunk a leg.
     const int SpawnToNineEastEdge = 1728 - 292, WalkOutStartIn = 4, WalkOutLegs = 16;
     const float SwitchesFromSeconds = 6f;
 
@@ -41,8 +39,6 @@ public partial class PerfStage
         return at;
     }
 
-    // A sim-only switch (fire spreads a little more: nothing drawn changes), then a look switch (blue grass: every grass
-    // cell's look), each on, held and off.
     IEnumerator Switches()
     {
         while (!Go) yield return null;

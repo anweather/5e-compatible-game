@@ -65,7 +65,6 @@ public class GesturesProbe : ProbeScenario
         yield return Wait(2f);
     }
 
-    // Faces the target, casts from the bar, and follows the hands until the gesture is over; two shots on the way.
     IEnumerator Perform(string label, string spellId, (int x, int y, int dir) at, CastGesture expected, float shotA, float shotB)
     {
         var (x, y, dir) = at;
@@ -100,7 +99,6 @@ public class GesturesProbe : ProbeScenario
             head.position.y - feet, shoulder.position.y - feet);
     }
 
-    // From the wizard's right, a little ahead, at chest height: the whole body and the arms in profile.
     void SideView()
     {
         var body = wizard.transform;
@@ -108,7 +106,6 @@ public class GesturesProbe : ProbeScenario
         Cut(chest + body.right * 4.5f + body.forward * 1.5f + Vector3.up * 0.6f, chest);
     }
 
-    // The first sample (after <paramref name="after"/> seconds) that passes, or null.
     Sample? First(Func<Sample, bool> test, float after = -1f)
     {
         foreach (var s in samples)

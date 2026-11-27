@@ -13,11 +13,8 @@ using UnityEngine.Rendering;
 // shadows until it backs out again.
 public class CameraClearance : CinemachineExtension
 {
-    // How far over the ground the lens keeps, and how near the head hides the wizard.
     const float OverGround = 0.35f, InsideWizard = 0.55f;
-    // How fast a lift eases off (m/s).
     const float SettleSpeed = 1.5f;
-    // A lift of many metres (a jump to somewhere higher) doesn't hang in the air: it goes at this share of itself a second.
     const float BigLiftRate = 5f;
 
     float lift;
@@ -31,8 +28,6 @@ public class CameraClearance : CinemachineExtension
     {
         if (stage != CinemachineCore.Stage.Finalize) return;
         var at = state.GetFinalPosition();
-        // Up at once (never into the ground), back down gently (the cells' ground steps by half a
-        // metre, which would jolt it).
         float need = Mathf.Max(0f, GroundUnder(at) + OverGround - at.y);
         lift = need >= lift || deltaTime < 0f ? need : Mathf.MoveTowards(lift, need, deltaTime * Mathf.Max(SettleSpeed, (lift - need) * BigLiftRate));
         if (lift > 0f) state.PositionCorrection += Vector3.up * lift;
@@ -42,8 +37,6 @@ public class CameraClearance : CinemachineExtension
         Hide(inside ? target.root : null);
     }
 
-    // The highest ground in the 3 × 3 cells round a point (the drawn ground is smoothed between
-    // cells, so the lens keeps over the highest of them), or far below off the land.
     float GroundUnder(Vector3 at)
     {
         if (grid == null) grid = ChemGrid.Current?.Grid;
@@ -60,7 +53,6 @@ public class CameraClearance : CinemachineExtension
         return top;
     }
 
-    // Hides this wizard (shadows only), or shows the one hidden before.
     void Hide(Transform wizard)
     {
         if (wizard == hiddenWizard) return;

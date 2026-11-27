@@ -9,10 +9,6 @@ using System.Text;
 
 namespace Chem.Mcp
 {
-    /// <summary>
-    /// Where the player asking stands: their name (as the core keys players), their slot (0, 1, 2... in
-    /// join order), their cell, and the cell they look at.
-    /// </summary>
     public readonly struct HereSpot
     {
         public HereSpot(string player, int x, int y, (int x, int y)? looking = null, int slot = 0)
@@ -25,29 +21,19 @@ namespace Chem.Mcp
         }
 
         public string Player { get; }
-        /// <summary>Their slot, 0 the host: what a look "by" a player names.</summary>
         public int Slot { get; }
         public int X { get; }
         public int Y { get; }
-        /// <summary>The cell under the player's aim, or null when they aim at nothing.</summary>
         public (int x, int y)? Looking { get; }
     }
 
-    /// <summary>
-    /// The player asking, as the running game knows them: the game fills this in (the view knows who is
-    /// at the keyboard and where they stand), and a headless run uses a StandInHere. Called off the
-    /// game's main thread, so the game answers from a copy it keeps up to date.
-    /// </summary>
     public interface IHere
     {
-        /// <summary>The player asking and where they stand; null when no player is in the game.</summary>
         HereSpot? Asking();
 
-        /// <summary>Whether this is a stand-in (no game attached), which here() says.</summary>
         bool StandIn { get; }
     }
 
-    /// <summary>A headless run's player: the host, at a cell given when the server starts (--here x,y).</summary>
     public sealed class StandInHere : IHere
     {
         readonly HereSpot? spot;
@@ -60,16 +46,10 @@ namespace Chem.Mcp
 
     public sealed partial class Workbench
     {
-        /// <summary>The world's places (world/places.json beside rules/): what places() lists and a look's where may name.</summary>
         public WorldPlaces Places => Budgets.Places;
 
-        /// <summary>
-        /// Where the asking player stands. A headless run stands in the host at the middle of the valley's
-        /// grid; the game sets its own.
-        /// </summary>
         public IHere Here { get; set; } = new StandInHere(new HereSpot(HostName, 288, 288));
 
-        /// <summary>places(): every named place, one line each.</summary>
         public string ListPlaces()
         {
             if (Places.Count == 0) return "The world has no named places (world/places.json is missing or empty).";
@@ -84,7 +64,6 @@ namespace Chem.Mcp
             return sb.ToString();
         }
 
-        /// <summary>here(): where the asking player stands, the place they're in, what's near, and what they look at.</summary>
         public string DescribeHere(int within = 120)
         {
             var spot = Here?.Asking();
@@ -113,7 +92,6 @@ namespace Chem.Mcp
             return sb.ToString();
         }
 
-        // The way to a place's nearest cell, in compass words (y grows south).
         static string Toward(int x, int y, Place place)
         {
             var (nx, ny) = place.Cells().OrderBy(c => (long)(c.x - x) * (c.x - x) + (long)(c.y - y) * (c.y - y)).ThenBy(c => c.y).ThenBy(c => c.x).First();
@@ -122,13 +100,11 @@ namespace Chem.Mcp
             return ways[(int)Math.Round((angle + 360) % 360 / 45) % 8];
         }
 
-        /// <summary>The slot "by": "me" means: the one asking's, or the reason there's none.</summary>
         int MySlot() =>
             Here?.Asking()?.Slot ?? throw new RulesToolException("No player is in the game, so \"by\": \"me\" has no one to colour for; give a slot or \"each\".");
 
         static string Article(string word) => !string.IsNullOrEmpty(word) && "aeiou".Contains(word[0]) ? "an" : "a";
 
-        /// <summary>The player "me" means: the one asking, or the reason there's none.</summary>
         string Me() =>
             Here?.Asking()?.Player ?? throw new RulesToolException("No player is in the game, so \"around\": \"me\" has no one to follow; give a place or a cell instead.");
     }

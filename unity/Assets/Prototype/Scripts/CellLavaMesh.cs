@@ -15,7 +15,6 @@ public sealed class CellLavaMesh
     const float Lift = 0.03f, FadeWidth = 0.3f;
     static readonly ContourSpec Outline = new(4, 0.5f, 0.6f, 53);
 
-    // Cells a tile's side, and how far past it a tile's outline reaches (an edge just past it is drawn in it).
     const int TileCells = 16, TileRing = 2;
 
     readonly ChemGrid grid;
@@ -38,15 +37,12 @@ public sealed class CellLavaMesh
         turnAt = (x, y) => grid.World.InBounds(x, y) && turns.TryGetValue(grid.World.Idx(x, y), out float t) ? t : null;
     }
 
-    /// <summary>How many cells of lava are drawn, for the probe.</summary>
     public int Cells => heat.Count;
 
     public static bool IsLava(Cell c) => c.T == TerrainIds.Lava || c.T == TerrainIds.LavaPool;
 
-    /// <summary>How far the glow on a cell is turned round the wheel, 0 to 1, for the probe.</summary>
     public float TurnOn(int x, int y) => turns.TryGetValue(grid.World.Idx(x, y), out float t) ? t : 0f;
 
-    /// <summary>A cell was redrawn: <paramref name="hot"/> is how hot it looks, 0 to 1, in <paramref name="tint"/>. True if it was lava and isn't now, so the crust it left can show.</summary>
     public bool Changed(int x, int y, Cell c, float hot, LookTint tint = default)
     {
         int key = grid.World.Idx(x, y);
@@ -62,16 +58,11 @@ public sealed class CellLavaMesh
         return had && !now;
     }
 
-    /// <summary>
-    /// The ground moved at a cell: the lava tiles its outline reaches follow it at the next Rebuild, and no others. Every
-    /// tile was, so a Fireball's crater on the nine redrew the start's whole lava pool, 30 ms of points (#212).
-    /// </summary>
     public void GroundChanged(int x, int y)
     {
         if (tiles.Count > 0) Dirty(x, y);
     }
 
-    /// <summary>Rebuilds the tiles round any cell that changed since the last time.</summary>
     public void Rebuild()
     {
         if (dirtyTiles.Count == 0 || material == null) return;
@@ -90,7 +81,6 @@ public sealed class CellLavaMesh
         }
     }
 
-    // The tiles whose outline a change at (x, y) reaches: its own, and a neighbour's within the ring.
     void Dirty(int x, int y)
     {
         int tx0 = Mathf.Max(0, (x - TileRing) / TileCells), tx1 = Mathf.Min(TilesX - 1, (x + TileRing) / TileCells);
@@ -107,7 +97,6 @@ public sealed class CellLavaMesh
         else lavaInTile.Remove(tile);
     }
 
-    // A tile's lava, made the first time it has any near it, and let go when it has none.
     void DrawTile(int tile)
     {
         var world = grid.World;
@@ -127,7 +116,6 @@ public sealed class CellLavaMesh
         surface.Build(box, (x, y) => heatAt(x, y) != null ? 1f : 0f, Height, Shade);
     }
 
-    // Whether this tile or one beside it holds lava (the ring is shorter than a tile, so that covers its outline).
     bool AnyNear(int tx, int ty)
     {
         for (int dy = -1; dy <= 1; dy++)

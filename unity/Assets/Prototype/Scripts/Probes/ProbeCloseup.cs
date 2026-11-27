@@ -11,7 +11,6 @@ using UnityEngine;
 // it, into a cabin through its gable, and a mesh's far inside.
 public class CloseupProbe : ProbeScenario
 {
-    // How far up the follow camera looks (degrees), and how far ahead of the lens the deer stands (m).
     const float LookUp = -17f, DeerOffLens = 0.25f;
 
     protected override IEnumerator Run()
@@ -26,19 +25,16 @@ public class CloseupProbe : ProbeScenario
         InsideOut();
     }
 
-    // Every readable mesh in the scene: its triangles' winding against its normals, turned scales allowed for.
     void InsideOut()
     {
         var seen = new System.Collections.Generic.HashSet<int>();
         var wrong = new System.Collections.Generic.List<string>();
         int checkedMeshes = 0;
-        // FindObjectsByType leaves out what's marked DontSave: the meshes built when a scene loads, the ones that matter here.
         foreach (var filter in Resources.FindObjectsOfTypeAll<MeshFilter>())
         {
             if (!filter.gameObject.scene.IsValid()) continue;
             var mesh = filter.sharedMesh;
             if (mesh == null || !mesh.isReadable) continue;
-            // Glass is drawn from both sides, so its winding shows nothing.
             if (filter.TryGetComponent<Renderer>(out var drawn) && drawn.sharedMaterial != null && drawn.sharedMaterial.shader.name == "Prototype/WindowGlass") continue;
             var s = filter.transform.lossyScale;
             bool mirrored = s.x * s.y * s.z < 0f;
@@ -61,8 +57,6 @@ public class CloseupProbe : ProbeScenario
         yield return null;
     }
 
-    // The game's own follow camera, nothing cut: looking up brings the lens down to a deer's height, and
-    // a deer stands across the view with its back just short of the lens.
     IEnumerator Follow()
     {
         var fauna = ValleyFauna.InPlay;
@@ -102,7 +96,6 @@ public class CloseupProbe : ProbeScenario
         Check("deer_drawn_again_past_the_lens", fauna.AtLens == 0, $"{fauna.AtLens} animals at the lens once it's walked on");
     }
 
-    // The share of the picture in a deer's tan, as drawn.
     static IEnumerator DeerInPicture(System.Action<float> got)
     {
         yield return new WaitForEndOfFrame();
@@ -162,11 +155,8 @@ public class CloseupProbe : ProbeScenario
         yield return Look("cabin-end", P(4.6f, 1.2f, 0.2f), P(3f, 1.4f, 0f));
     }
 
-    // A cabin's width, depth and rise under its ridge, as ValleyBuilder builds it.
     const float CabinWidth = 6f, CabinLength = 4.5f, CabinWallTop = 2.88f, CabinRise = 1.51f;
 
-    // Lines across the gable end, on a grid under the roof: each must meet something of the cabin's, or it
-    // looks straight in. The parts are boxes and cylinders, so their mesh bounds do.
     void GableClosed(Transform cabin)
     {
         var parts = cabin.GetComponentsInChildren<MeshFilter>().Where(f => f.sharedMesh != null && !f.name.StartsWith("Roof", System.StringComparison.Ordinal)).ToList();

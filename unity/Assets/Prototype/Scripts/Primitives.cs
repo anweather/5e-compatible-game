@@ -6,7 +6,6 @@ using UnityEngine;
 // at once when an editor builder is making a scene.
 public static class Primitives
 {
-    /// <summary>A primitive with no collider. <paramref name="name"/> null keeps Unity's default ("Cube", ...).</summary>
     public static GameObject Visual(PrimitiveType type, string name = null)
     {
         var go = GameObject.CreatePrimitive(type);

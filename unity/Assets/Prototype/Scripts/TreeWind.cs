@@ -6,10 +6,8 @@ using UnityEngine;
 // doesn't jerk the trees. Only drawn (D4): nothing reads it back.
 public sealed class TreeWind : MonoBehaviour
 {
-    /// <summary>The scene's wind (null before it starts).</summary>
     public static TreeWind Instance { get; private set; }
 
-    /// <summary>How hard it blows now (the WindZone's main), and how hard it's heading for.</summary>
     public float Main => zone != null ? zone.windMain : 0f;
     public float Target { get; private set; }
 
@@ -56,7 +54,6 @@ public sealed class TreeWind : MonoBehaviour
         float step = Time.deltaTime / EaseSeconds;
         zone.windMain = Mathf.MoveTowards(zone.windMain, Target, step * Storm);
         zone.windTurbulence = 0.3f + zone.windMain * 0.4f;
-        // Toward its direction: 0..3 N E S W, north +z (CloudSky's drift); without one, from the west-south-west.
         var toward = dir switch
         {
             0 => Vector3.forward,

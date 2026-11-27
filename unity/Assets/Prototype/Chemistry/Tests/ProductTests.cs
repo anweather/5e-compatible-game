@@ -1,14 +1,12 @@
+// Products by data (docs/design/primitives.md P3): what fire and water leave comes from the rules
+// (sim.json fire.ash and smoke, water.boils and freezes; a material's burn.ash and burn.smoke), so a
+// mod's material leaves a product of its own choosing with no code naming it.
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Products by data (docs/design/primitives.md P3): what fire and water leave comes from the rules
-    /// (sim.json fire.ash and smoke, water.boils and freezes; a material's burn.ash and burn.smoke), so a
-    /// mod's material leaves a product of its own choosing with no code naming it.
-    /// </summary>
     [Category("Simulation")]
     public class ProductTests
     {
@@ -20,7 +18,6 @@ namespace Chem.Tests
 
         static IReadOnlyList<string> ErrorsOf(string mod) => Assert.Throws<ModException>(() => With(mod)).Errors;
 
-        // Peat burns down to bog, leaving cinders and giving off reek: three names only the mod knows.
         const string Peat = @"{
             'terrain': { 'peat': { 'name': 'Peat', 'tags': ['ground'], 'burn': { 'catch': 1, 'fuel': 6, 'leaves': 'bog', 'ash': 'cinders', 'smoke': 'reek' } },
                          'bog': { 'name': 'Bog', 'tags': ['ground'] } },

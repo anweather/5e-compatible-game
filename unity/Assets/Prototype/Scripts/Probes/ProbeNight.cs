@@ -25,9 +25,7 @@ public class NightProbe : ProbeScenario
         if (village == null) yield break;
         var square = village.transform.position + village.wellAt;
 
-        // Afternoon: bright, no lamps.
         yield return Switch(At(16f) + Weather);
-        // Out of the village, on open ground away from its lamps, for the dark later.
         var away = square + new Vector3(40f, 0f, -40f);
         Teleport(new Vector3(away.x, grid.GroundAt(away) + 0.1f, away.z));
         Cut(square + V(-14f, 10f, -14f), square);
@@ -37,7 +35,6 @@ public class NightProbe : ProbeScenario
             $"{LitLamps(village)} lamps lit, windows {Shader.GetGlobalFloat(LampGlow):0.00}");
         Shot("afternoon");
 
-        // Dusk: dim, the lamps come on.
         int mark = ConsoleMark;
         yield return Switch(At(18.5f) + Weather);
         yield return Wait(5f);
@@ -46,7 +43,6 @@ public class NightProbe : ProbeScenario
             $"{LitLamps(village)} of {DoorLamps(village).Length} lamps lit, windows {Shader.GetGlobalFloat(LampGlow):0.00}");
         Shot("dusk");
 
-        // Night: dark, the stars and the fireflies out, the wizard told how to see.
         yield return Switch(At(21.5f) + Weather);
         yield return Wait(8f);
         Check("dark_at_night", World.IsNight, $"{World.Daylight}");
@@ -59,13 +55,11 @@ public class NightProbe : ProbeScenario
         Check("dark_hint", ConsoleSaid("It's dark:", mark), "the log tells the wizard, out in the dark with no light, how to see");
         Shot("night");
         yield return Wait(0.3f);
-        // Up at the sky over the village.
         Cut(square + V(-6f, 3f, -6f), square + V(20f, 40f, 20f));
         yield return Wait(1f);
         Shot("stars");
     }
 
-    // The lamps Village lights at dusk: the inn's and shop's door lights and the well lamp.
     static int LitLamps(Village village) => DoorLamps(village).Count(l => l.enabled);
 
     static Light[] DoorLamps(Village village) => village.GetComponentsInChildren<Light>(true).Where(l => l.name == "Door light" || l.name == "Well lamp").ToArray();

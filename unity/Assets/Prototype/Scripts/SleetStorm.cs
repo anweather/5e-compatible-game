@@ -15,25 +15,17 @@ using UnityEngine;
 // pellets and spray all take the spell's look (LookTint).
 public class SleetStorm : MonoBehaviour
 {
-    /// <summary>How long the storm rages when the spell has no duration of its own.</summary>
     public const float Seconds = 7f;
-    /// <summary>When the spell takes effect after the cast: the sleet has gathered and reached the ground.</summary>
     public const float LandSeconds = 1f;
     const float FadeIn = 0.8f, FadeOut = 1.6f, CloudHeight = 10f, SleetSpeed = 14f, PelletSpeed = 5f, Drift = 3f;
 
     static Material cloudMaterial, fallbackMaterial;
 
-    /// <summary>The icy rain streaks.</summary>
     public ParticleSystem Sleet { get; private set; }
-    /// <summary>The pellets of snow among them.</summary>
     public ParticleSystem Pellets { get; private set; }
-    /// <summary>The cloud over the storm.</summary>
     public ParticleSystem Cloud { get; private set; }
-    /// <summary>The ground in the middle of the spell's squares.</summary>
     public Vector3 Center { get; private set; }
-    /// <summary>Half the width of the square of ground it falls on, in metres.</summary>
     public float HalfWidth { get; private set; }
-    /// <summary>How hard it's falling now, 0 to 1, as it swells in and dies away.</summary>
     public float Strength { get; private set; }
 
     float t, seconds;
@@ -45,11 +37,6 @@ public class SleetStorm : MonoBehaviour
     ParticleSystem spray;
     AudioSource hiss, wind;
 
-    /// <summary>
-    /// Brings a storm down on the square of ground <paramref name="halfWidth"/> metres each way of
-    /// <paramref name="center"/> for <paramref name="seconds"/>, slanting across the view from
-    /// <paramref name="viewer"/> unless the wind blows. <paramref name="onArrive"/> runs once, LandSeconds in.
-    /// </summary>
     public static SleetStorm Launch(Vector3 center, float halfWidth, float seconds, Vector3 viewer, Action onArrive, UnityEngine.Object caster, LookTint look = default)
     {
         var go = new GameObject("Sleet Storm");
@@ -67,7 +54,6 @@ public class SleetStorm : MonoBehaviour
         return s;
     }
 
-    // Downwind if the wind blows (the world's weather), else across the viewer's line of sight.
     static Vector3 DriftOf(Vector3 center, Vector3 viewer)
     {
         var world = ChemGrid.Current?.World;
@@ -111,7 +97,6 @@ public class SleetStorm : MonoBehaviour
         main.startColor = new ParticleSystem.MinMaxGradient(look.Of(new Color(0.85f, 0.88f, 0.94f, 0.9f)), look.Of(new Color(1f, 1f, 1f, 0.95f)));
         Churn(Pellets, 0.5f, 0.6f);
 
-        // Spray whirling low over the ground: what makes it a blizzard rather than rain.
         spray = Particles("Spray", CloudMaterial(rain), 2.5f, 160);
         spray.transform.position = Center + Vector3.up * 0.8f;
         Box(spray, new Vector3(width, 0.6f, width));
@@ -128,8 +113,6 @@ public class SleetStorm : MonoBehaviour
         wind.Play();
     }
 
-    // Sleet or pellets: falling from just under the cloud to the ground, from upwind of the
-    // spell's squares by as far as the wind carries them on the way down, so they land on them.
     ParticleSystem Falling(string name, Material material, float speed, float width)
     {
         float fall = CloudHeight - 1f;
@@ -141,7 +124,6 @@ public class SleetStorm : MonoBehaviour
         return ps;
     }
 
-    // A particle system that lives in the world, emitting nothing until Update swells it in.
     ParticleSystem Particles(string name, Material material, float lifetime, int max)
     {
         var go = new GameObject(name);
@@ -181,7 +163,6 @@ public class SleetStorm : MonoBehaviour
         velocity.z = v.z;
     }
 
-    // Billows and flakes tumble about as they go.
     static void Churn(ParticleSystem ps, float strength, float frequency)
     {
         var noise = ps.noise;
@@ -190,7 +171,6 @@ public class SleetStorm : MonoBehaviour
         noise.frequency = frequency;
     }
 
-    // Soft blobs fade in and out over their lives rather than pop.
     static void FadeOverLife(ParticleSystem ps, float edge)
     {
         var fade = ps.colorOverLifetime;
@@ -202,7 +182,6 @@ public class SleetStorm : MonoBehaviour
         });
     }
 
-    // The precipitation shader's veil (very soft blobs), for the cloud and the spray.
     static Material CloudMaterial(Material rain)
     {
         if (cloudMaterial != null) return cloudMaterial;
@@ -211,7 +190,6 @@ public class SleetStorm : MonoBehaviour
         return cloudMaterial;
     }
 
-    // Without the weather's materials (a scene without WeatherFx): plain see-through particles.
     static Material Fallback()
     {
         if (fallbackMaterial == null) fallbackMaterial = UrpMaterials.NewUnlitParticles("Sleet", Color.white, additive: false);
@@ -221,7 +199,7 @@ public class SleetStorm : MonoBehaviour
     void Update()
     {
         t += Time.deltaTime;
-        if (onArrive != null && hasCaster && caster == null) onArrive = null; // its caster went first (Unity's null check)
+        if (onArrive != null && hasCaster && caster == null) onArrive = null;
         if (t >= LandSeconds && onArrive != null)
         {
             var land = onArrive;
@@ -236,7 +214,6 @@ public class SleetStorm : MonoBehaviour
         hiss.volume = 0.5f * Strength * GameVolume.Effects;
         wind.volume = 0.35f * Strength * GameVolume.Effects;
         if (t < seconds) return;
-        // Over: no more falls; what's in the air finishes and the storm goes.
         enabled = false;
         hiss.Stop();
         wind.Stop();

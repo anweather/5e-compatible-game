@@ -12,7 +12,6 @@ namespace Chem.Tests
     {
         static readonly string[] Animals = { "blight-deer", "gloom-wolf", "barrow-bear", "storm-bison" };
 
-        // The plain kinds a wave sends, in the order they come out.
         static List<string> KindsOfWave(int wave, int seed = 7)
         {
             var w = Running(seed);
@@ -41,7 +40,7 @@ namespace Chem.Tests
             {
                 var raider = R.Entity(kind)?.Raider;
                 Assert.That(raider, Is.Not.Null, kind);
-                if (raider.Route == World.FlyRoute && raider.Body == null) continue; // drawn with wings of its own
+                if (raider.Route == World.FlyRoute && raider.Body == null) continue;
                 Assert.That(raider.Body, Is.Not.Null, $"{kind} has a body");
                 Assert.That(fauna[raider.Body], Is.Not.Null, $"{kind}'s body {raider.Body} is a fauna.json species");
                 Assert.That(raider.Size, Is.GreaterThan(0), kind);
@@ -67,7 +66,6 @@ namespace Chem.Tests
             Assert.That(bison.Raider.AttackEvery, Is.EqualTo(others.Max(e => e.Raider.AttackEvery)), "but seldom");
         }
 
-        // A kind more each wave, in the spawner's order, round and round: an animal by wave 2 and all four by wave 8.
         [Test]
         public void TheWavesMixTheAnimalsIn()
         {
@@ -93,8 +91,6 @@ namespace Chem.Tests
             Until(w, () => w.Hold.Health < full, $"the {kind} strikes the keep");
         }
 
-        // The mixed waves on the valley's own rows, pinned: the kinds, their stats and their spawns are core state (D4). Moved for
-        // hold-east-path: the wave comes from two spawners now, by two roads.
         [Test]
         public void AMixedWaveHashesAsItDid()
         {

@@ -11,10 +11,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>
-    /// A switched-on mod: its id (the file name in rules/mods/ without .json) and its JSON as
-    /// text, so the exact patch can travel to other machines and into a late joiner's history.
-    /// </summary>
     public readonly struct ActiveMod : IEquatable<ActiveMod>
     {
         public ActiveMod(string id, string json)
@@ -42,29 +38,18 @@ namespace Chem
             Effective = effective;
         }
 
-        /// <summary>The rules before any mod: rules/*.json plus the scene's tuning (see <see cref="BaseOf"/>).</summary>
         public Rules Base { get; }
-        /// <summary>The switched-on mods, in the order they apply.</summary>
         public IReadOnlyList<ActiveMod> Mods { get; }
-        /// <summary>Base with every mod applied: what the world runs on.</summary>
         public Rules Effective { get; }
-        /// <summary>The same rules without the room's mixes (World.Mix.cs): what they compose over.</summary>
         internal RuleSet Unmixed => unmixed ?? this;
 
         RuleSet unmixed;
 
-        /// <summary>The effective rules' fingerprint, for the netcode checksum.</summary>
         public string Fingerprint => Effective.Fingerprint;
 
-        /// <summary>
-        /// The base rules for a scene: <paramref name="loaded"/> with the scene's own tuning (a mod,
-        /// e.g. a longer fire fade for a big valley) applied, so the tuning is in the fingerprint
-        /// and survives every later switch. Throws <see cref="ModException"/> if the tuning doesn't fit.
-        /// </summary>
         public static Rules BaseOf(Rules loaded, ModPatch tuning) =>
             tuning == null ? loaded : loaded.WithMods(new[] { tuning });
 
-        /// <summary>These rules with a room's derived rows over them, in order. Throws <see cref="ModException"/> if one doesn't fit.</summary>
         internal RuleSet WithMixes(IEnumerable<RoomMix> mixes)
         {
             var plain = Unmixed;
@@ -78,15 +63,9 @@ namespace Chem
             return new RuleSet(plain.Base, plain.Mods, plain.Effective.WithMods(new[] { ModPatch.Parse(patch.ToString()) })) { unmixed = plain };
         }
 
-        /// <summary>The rules with no mods switched on.</summary>
         public static RuleSet Plain(Rules baseRules) =>
             new RuleSet(baseRules ?? throw new ArgumentNullException(nameof(baseRules)), Array.Empty<ActiveMod>(), baseRules);
 
-        /// <summary>
-        /// <paramref name="baseRules"/> with <paramref name="mods"/> applied in order. Throws
-        /// <see cref="ModException"/> listing every problem, each prefixed with the mod it came from
-        /// when one mod's JSON can't be read, if they don't fit together.
-        /// </summary>
         public static RuleSet Compose(Rules baseRules, IEnumerable<ActiveMod> mods)
         {
             if (baseRules == null) throw new ArgumentNullException(nameof(baseRules));
@@ -107,30 +86,18 @@ namespace Chem
             return new RuleSet(baseRules, list, baseRules.WithMods(patches));
         }
 
-        /// <summary>The same base with a different list of mods (checked; see <see cref="Compose"/>).</summary>
         public RuleSet WithMods(IEnumerable<ActiveMod> mods) => Compose(Base, mods);
 
-        /// <summary>
-        /// These mods and one more, given the rules already composed with it over <see cref="Effective"/>: what
-        /// WithMods(Mods + mod) would make, without composing it again (#155). A mod's patches apply over the rules as
-        /// written, in order, so the two are the same rules (RoomTests pins that).
-        /// </summary>
         internal RuleSet Adding(ActiveMod mod, Rules composed) => new RuleSet(Base, Mods.Append(mod).ToArray(), composed);
 
-        /// <summary>
-        /// The same mods over new base rules, e.g. after rules/*.json changed. The new base is
-        /// checked too, even with no mods on, since it came from files someone just edited.
-        /// </summary>
         public RuleSet WithBase(Rules baseRules) =>
             Compose((baseRules ?? throw new ArgumentNullException(nameof(baseRules))).WithMods(Array.Empty<ModPatch>()), Mods);
 
         public bool IsOn(string id) => Mods.Any(m => m.Id == id);
 
-        /// <summary>The mod list with <paramref name="mod"/> switched: off if its id is on, else on at the end.</summary>
         public IReadOnlyList<ActiveMod> Toggled(ActiveMod mod) =>
             IsOn(mod.Id) ? Mods.Where(m => m.Id != mod.Id).ToArray() : Mods.Append(mod).ToArray();
 
-        /// <summary>The mod list with an active mod's JSON replaced (its file was edited); the order stays.</summary>
         public IReadOnlyList<ActiveMod> Replaced(ActiveMod mod) =>
             Mods.Select(m => m.Id == mod.Id ? mod : m).ToArray();
     }

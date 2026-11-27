@@ -12,7 +12,6 @@ public class HoldShow : MonoBehaviour
     const float HurtSeconds = 0.35f;
     static float hurtAt = -1f;
 
-    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -24,11 +23,9 @@ public class HoldShow : MonoBehaviour
     GameObject plate;
     HoldCrystal crystal;
 
-    /// <summary>The keep's crystal at the heart, or null with no Hold here: for the probe.</summary>
     public HoldCrystal Crystal => crystal;
     HoldTowers towers;
 
-    /// <summary>The towers' looks, or null with no Hold here: for the probe.</summary>
     public HoldTowers Towers => towers;
     TextMesh banner;
     string bannerText;
@@ -36,7 +33,6 @@ public class HoldShow : MonoBehaviour
     bool sawRun;
     float lostAt = -1f;
 
-    /// <summary>The HUD line, for the probe too; empty with no Hold here.</summary>
     public string HudLine()
     {
         var world = grid != null ? grid.World : null;
@@ -52,7 +48,6 @@ public class HoldShow : MonoBehaviour
         };
     }
 
-    /// <summary>The timer to the next wave while one's under way (timed waves), "Next wave in 0:42"; empty during its warning, on the last, or untimed. For the probe too.</summary>
     public string TimerLine()
     {
         var world = grid != null ? grid.World : null;
@@ -66,7 +61,6 @@ public class HoldShow : MonoBehaviour
         return $"{seconds / 60}:{seconds % 60:00}";
     }
 
-    /// <summary>What's coming while a wave waits: its number, theme, boss and how long; empty with a wave under way. For the probe too.</summary>
     public string WarningLine()
     {
         var world = grid != null ? grid.World : null;
@@ -77,7 +71,6 @@ public class HoldShow : MonoBehaviour
         return $"Wave {warning.plan.Wave}{theme}{boss}, in {(warning.ticks + world.Rules.Sim.TicksPerSecond - 1) / world.Rules.Sim.TicksPerSecond} s";
     }
 
-    /// <summary>The boss in the field, or null: for the HUD's bar.</summary>
     public static Raider BossOf(World world)
     {
         foreach (var r in world.Raiders)
@@ -85,7 +78,6 @@ public class HoldShow : MonoBehaviour
         return null;
     }
 
-    /// <summary>What a wizard's hands hold and whether they're ready, for the probe (the HUD shows it as CastHud's icons); empty with its hands off.</summary>
     public string HandsLine(string player)
     {
         var world = grid != null ? grid.World : null;
@@ -96,7 +88,6 @@ public class HoldShow : MonoBehaviour
     static string Holding(World world, string player, int hand) =>
         world.HandOpen(player, hand) ? $"{world.HandsOf(player).Holds[hand] ?? "nothing"}{Cooling(world, player, hand)}" : "locked";
 
-    /// <summary>At a tower: its element, and how a hand takes it (or what unlocks it).</summary>
     public static string TowerLine(World world, string player)
     {
         var tower = world.TowerOf(player);
@@ -137,7 +128,6 @@ public class HoldShow : MonoBehaviour
         }
     }
 
-    // Over the keep: its health, then what's coming, or the wave and the timer to the next.
     static string BannerText(HoldState hold, string warning, string timer)
     {
         string keep = $"THE KEEP {Mathf.Max(0, hold.Health)}";
@@ -184,7 +174,6 @@ public class HoldShow : MonoBehaviour
         banner.fontSize = 48;
     }
 
-    /// <summary>The local wizard took a blow: the screen flashes red for a moment.</summary>
     public static void Hurt() => hurtAt = Time.time;
 
     static void DrawHurt()
@@ -220,7 +209,6 @@ public class HoldShow : MonoBehaviour
         if (!EventLog.HudVisible || world?.HoldSite == null) return;
         var caster = EventLog.TrackedCaster;
         style ??= new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, richText = true };
-        // The hands' icons (CastHud) say what HandsLine says, so it isn't drawn (D16).
         if (caster != null && world.TowerOf(caster.CastPlayer) != null)
             GUI.Label(new Rect(HudScale.Width / 2f - 450f, HudScale.Height - 280f, 900f, 36f), $"<color=#bfe3ff>{TowerLine(world, caster.CastPlayer)}</color>", style);
         if (world.Hold == null) return;

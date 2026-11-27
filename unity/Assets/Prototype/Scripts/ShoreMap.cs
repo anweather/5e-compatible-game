@@ -10,13 +10,10 @@ using UnityEngine;
 // of the land: nothing here touches the chemistry (D4).
 public class ShoreMap : ScriptableObject
 {
-    /// <summary>How far in from the map's edges the waves die away (m), so they don't end at a line.</summary>
     public const float FadeMetres = 300f;
 
-    /// <summary>The side of the square a map's shore map covers (m).</summary>
     public const float Side = ShoreField.Texels * ShoreField.TexelMetres;
 
-    /// <summary>The shore map of this land, centred on <paramref name="middle"/>: held in memory, never saved.</summary>
     public static ShoreMap FromLand(System.Func<Vector2, bool> isLand, Vector2 middle)
     {
         const int n = ShoreField.Texels;
@@ -34,7 +31,7 @@ public class ShoreMap : ScriptableObject
             hideFlags = HideFlags.DontSave,
         };
         texture.SetPixels(ShoreField.Pixels(distance, n, ShoreField.TexelMetres));
-        texture.Apply(false, false); // stays readable: At reads it
+        texture.Apply(false, false);
         var map = CreateInstance<ShoreMap>();
         map.hideFlags = HideFlags.DontSave;
         map.texture = texture;
@@ -49,18 +46,11 @@ public class ShoreMap : ScriptableObject
     [Tooltip("The side of the square it covers (m).")]
     public float size = 1f;
 
-    /// <summary>For the shader: the corner in xy, one over the side in z, how many fades fit the side in w.</summary>
     public Vector4 Rect => new(origin.x, origin.y, 1f / size, size / FadeMetres);
 
-    /// <summary>
-    /// A point's way to the nearest land (level, at most 1 long), its signed distance from the shore
-    /// (m, negative on land), and how much of the waves reach it (1 to 0 toward the map's edge):
-    /// what the shader samples, with the texture's own filtering.
-    /// </summary>
     public (Vector2 toLand, float distance, float reach) At(Vector2 xz)
     {
         var uv = (xz - origin) / size;
-        // GetPixelBilinear has pixel i at i / width; a GPU's filtering at (i + 0.5) / width.
         float halfTexel = 0.5f / texture.width;
         var c = texture.GetPixelBilinear(uv.x - halfTexel, uv.y - halfTexel);
         float edge = Mathf.Clamp01(Mathf.Min(Mathf.Min(uv.x, 1f - uv.x), Mathf.Min(uv.y, 1f - uv.y)) * size / FadeMetres);

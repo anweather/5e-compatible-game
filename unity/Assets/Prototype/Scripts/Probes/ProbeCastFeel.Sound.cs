@@ -120,7 +120,6 @@ public partial class CastFeelProbe
         CheckChargedOrder();
     }
 
-    // Holds an element to the top level and a little past it, noting the hum's volume just before each step up.
     IEnumerator ClimbToTheTop(List<float> volumes)
     {
         LoadElement(ElementIds.Earth, held: true);
@@ -154,7 +153,7 @@ public partial class CastFeelProbe
     IEnumerator CancelledSound()
     {
         yield return HoldToCharge(ElementIds.Fire, 2);
-        yield return Wait(0.2f); // the last level's loop fades as this one takes over
+        yield return Wait(0.2f);
         Check("cancel_starts_humming", SoundVoices.Sounding.loops == 1, $"{SoundVoices.Sounding.loops} loops");
         heard.Clear();
         caster.DropCast();
@@ -166,21 +165,17 @@ public partial class CastFeelProbe
         Check("all_voices_free_after_a_cancel", SoundVoices.Sounding.all == 0, $"{SoundVoices.Sounding.all} voices");
     }
 
-    // The ways a hum could be left behind.
     IEnumerator NothingLeft()
     {
-        // A pause: quiet while the menu is up, back if the cast is still held after it.
         yield return HoldToCharge(ElementIds.Fire, 1);
         PauseMenu.Instance.SetOpen(true);
         yield return Wait(0.2f);
         Check("pause_quiets_the_hum", SoundVoices.Sounding.loops == 0, $"{SoundVoices.Sounding.loops} loops");
         PauseMenu.Instance.SetOpen(false);
         yield return Wait(0.2f);
-        // Two for a moment when a charge step lands here: the old loop fading as the new one takes over.
         Check("hum_back_after_a_pause", SoundVoices.Sounding.loops is 1 or 2 || beats.Now != Beat.Charge, $"{SoundVoices.Sounding.loops} loops, beat {beats.Now}");
         yield return UntilGone();
 
-        // CastBeats off, and a loop with nobody holding it.
         yield return HoldToCharge(ElementIds.Fire, 1);
         beats.enabled = false;
         yield return Wait(0.2f);
@@ -192,7 +187,6 @@ public partial class CastFeelProbe
         yield return Wait(0.6f);
         Check("a_loop_not_held_lets_go", SoundVoices.Sounding.loops == 0, $"{SoundVoices.Sounding.loops} loops");
 
-        // Shapeshift.
         yield return HoldToCharge(ElementIds.Fire, 1);
         if (wizard.TryGetComponent<Shapeshift>(out var shape))
         {
@@ -203,7 +197,6 @@ public partial class CastFeelProbe
         }
         yield return UntilGone();
 
-        // A fall, the real way.
         yield return HoldToCharge(ElementIds.Fire, 1);
         if (wizard.TryGetComponent<Vitals>(out var vitals))
         {
@@ -215,13 +208,11 @@ public partial class CastFeelProbe
         }
         yield return UntilGone();
 
-        // Quit: the pool's last act.
         yield return HoldToCharge(ElementIds.Fire, 1);
         SoundVoices.StopAll();
         Check("quit_stops_everything", SoundVoices.Sounding.all == 0, $"{SoundVoices.Sounding.all} voices");
         yield return UntilGone();
 
-        // A world reset last of these: the cast goes with the world.
         yield return HoldToCharge(ElementIds.Fire, 1);
         grid.ResetWorld();
         yield return Wait(0.4f);
@@ -229,7 +220,6 @@ public partial class CastFeelProbe
         yield return UntilGone();
     }
 
-    // Casts as fast as the buttons go: one voice per job, so they can't pile up.
     IEnumerator Fast()
     {
         int most = 0;
@@ -254,7 +244,6 @@ public partial class CastFeelProbe
         yield return UntilGone();
     }
 
-    // Volume, distance, and no garbage.
     IEnumerator Levels()
     {
         yield return Wait(0.6f);
@@ -277,7 +266,6 @@ public partial class CastFeelProbe
         var beyond = SoundVoices.Play(new Cue("probe", clip, 1f, 1f, 40f), Camera.main.transform.position + Vector3.right * 60f);
         Check("out_of_reach_takes_no_voice", beyond.Serial == 0);
 
-        // Through the same path as a cast; the probe's own listener is off for this.
         SoundVoices.Started -= Sounded;
         float made = -1f;
         yield return GarbagePerCall(() =>

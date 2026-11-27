@@ -22,7 +22,6 @@ using UnityEngine;
 [DefaultExecutionOrder(-10)]
 public class WizardStats : MonoBehaviour
 {
-    // How long a size that doesn't fit waits before it tries again (s).
     const float RetryRoom = 0.5f;
     static readonly Collider[] Overlaps = new Collider[16];
 
@@ -42,13 +41,10 @@ public class WizardStats : MonoBehaviour
     float roomAt;
     bool jumpWaits;
 
-    /// <summary>The stats this wizard has now (the size the last that fitted).</summary>
     public PlayerStats Applied { get; private set; } = PlayerStats.Normal;
 
-    /// <summary>The stats the rules give this wizard's slot, which Applied catches up to.</summary>
     public PlayerStats Wanted { get; private set; } = PlayerStats.Normal;
 
-    /// <summary>True while a bigger size waits for room to stand.</summary>
     public bool NoRoom { get; private set; }
 
     void Awake()
@@ -62,7 +58,6 @@ public class WizardStats : MonoBehaviour
         jumpHeight = WizardRig.Field(mover, "JumpHeight", isPublic: true);
     }
 
-    // The wizard as it's made, read once its other parts have woken (SurfaceEffects raises the step).
     void Know()
     {
         if (known) return;
@@ -91,7 +86,6 @@ public class WizardStats : MonoBehaviour
 
     bool Shifted => shape != null && shape.Shifted;
 
-    // A copy that isn't driven here (another player's, online) only draws at its size.
     bool Driven => !TryGetComponent<NetWizard>(out var net) || !net.IsSpawned || net.IsOwner;
 
     void Apply(PlayerStats want)
@@ -115,18 +109,15 @@ public class WizardStats : MonoBehaviour
         Applied = new PlayerStats(want.Speed, size, want.Jump, want.Jumps);
     }
 
-    // What Shapeshift keeps of the wizard's own shape: the jump, the step and the swimming depth.
     void Body(PlayerStats want, float size)
     {
         float k = (float)want.Jump;
         if (jumpHeight != null) jumpHeight.SetValue(mover, jump * k);
         if (airJumps != null) airJumps.height = airJump * k;
-        // The capsule scales with the transform; its step doesn't (it's in metres), so it's scaled here.
         if (body != null) body.stepOffset = Mathf.Min(step * size, body.height * transform.lossyScale.y - 0.05f);
         if (surface != null) (surface.swimDepth, surface.floatDepth) = (swimDepth * size, floatDepth * size);
     }
 
-    // Room for the capsule at a size where the wizard stands: nothing but its own parts in it.
     bool RoomFor(float size)
     {
         if (body == null) return true;

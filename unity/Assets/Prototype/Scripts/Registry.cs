@@ -25,11 +25,8 @@ using UnityEngine;
 // the way ChemGrid.Current is. Edit mode runs no Awake, so there a registry is empty (tests join by hand).
 public sealed class Registry<T> where T : Component
 {
-    // Every member, in join order, and its node there.
     readonly LinkedList<T> joined = new();
     readonly Dictionary<T, LinkedListNode<T>> joinedAt = new(ByReference.Instance);
-    // Each member is in exactly one of these lists: its chunk's, or loose (joined but in no chunk: not
-    // placed yet, or unplaced). spot is its node there, moved between lists without a new allocation.
     readonly Dictionary<Vector2Int, LinkedList<T>> byChunk = new();
     readonly Dictionary<T, Vector2Int> placed = new(ByReference.Instance);
     readonly LinkedList<T> loose = new();
@@ -37,7 +34,6 @@ public sealed class Registry<T> where T : Component
 
     public Registry() => Registries.Track(Forget);
 
-    /// <summary>In Awake.</summary>
     public void Join(T member)
     {
         if (member == null || joinedAt.ContainsKey(member)) return;
@@ -45,7 +41,6 @@ public sealed class Registry<T> where T : Component
         spot[member] = loose.AddLast(member);
     }
 
-    /// <summary>In OnDestroy.</summary>
     public void Leave(T member)
     {
         if (member is null || !joinedAt.Remove(member, out var node)) return;
@@ -56,7 +51,6 @@ public sealed class Registry<T> where T : Component
         placed.Remove(member);
     }
 
-    /// <summary>The first live member (FindAnyObjectByType), or null.</summary>
     public T First
     {
         get
@@ -67,7 +61,6 @@ public sealed class Registry<T> where T : Component
         }
     }
 
-    /// <summary>Every live member, as a new array (FindObjectsByType): safe to destroy members while walking it.</summary>
     public T[] All()
     {
         var all = new List<T>(joined.Count);
@@ -75,7 +68,6 @@ public sealed class Registry<T> where T : Component
         return all.ToArray();
     }
 
-    /// <summary>Every live member by instance id, lowest first (FindObjectsByType with FindObjectsSortMode.InstanceID).</summary>
     public T[] AllByInstanceId()
     {
         var all = All();
@@ -83,7 +75,6 @@ public sealed class Registry<T> where T : Component
         return all;
     }
 
-    /// <summary>Puts a joined member in a chunk (its chunk now). Cheap when it's already there.</summary>
     public void Place(T member, Vector2Int chunk)
     {
         if (member == null || !spot.TryGetValue(member, out var at)) return;
@@ -94,7 +85,6 @@ public sealed class Registry<T> where T : Component
         list.AddLast(at);
     }
 
-    /// <summary>Takes a member out of its chunk: it's in every Near answer until placed again.</summary>
     public void Unplace(T member)
     {
         if (member is null || !placed.Remove(member)) return;
@@ -103,11 +93,6 @@ public sealed class Registry<T> where T : Component
         loose.AddLast(at);
     }
 
-    /// <summary>
-    /// The live members placed in the chunks between <paramref name="from"/> and <paramref name="to"/> (corners, inclusive, either way round) and the
-    /// ring of chunks around them (a member re-placed each physics step can be a step behind), chunk by chunk, then
-    /// every live member in no chunk. It reads only those chunks, never every member.
-    /// </summary>
     public T[] Near(Vector2Int from, Vector2Int to)
     {
         var lo = Vector2Int.Min(from, to);
@@ -126,7 +111,6 @@ public sealed class Registry<T> where T : Component
             if (Live(m)) to.Add(m);
     }
 
-    /// <summary>The live members placed in one chunk, in the order they were placed there.</summary>
     public T[] InChunk(Vector2Int chunk)
     {
         if (!byChunk.TryGetValue(chunk, out var list)) return Array.Empty<T>();
@@ -147,7 +131,6 @@ public sealed class Registry<T> where T : Component
         spot.Clear();
     }
 
-    /// <summary>Keys by reference: Unity's Equals calls any two destroyed objects equal.</summary>
     sealed class ByReference : IEqualityComparer<T>
     {
         public static readonly ByReference Instance = new();
@@ -156,14 +139,12 @@ public sealed class Registry<T> where T : Component
     }
 }
 
-/// <summary>Every registry, to empty them all as Play mode starts (see Registry).</summary>
 public static class Registries
 {
     static readonly List<Action> forgets = new();
 
     internal static void Track(Action forget) => forgets.Add(forget);
 
-    /// <summary>Empties every registry. As Play mode starts; tests call it too.</summary>
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     public static void ForgetAll()
     {

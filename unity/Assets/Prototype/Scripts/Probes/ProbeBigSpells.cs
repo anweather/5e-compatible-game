@@ -39,7 +39,6 @@ public class BigSpellsProbe : AimedProbe
                 film.Roll();
             }
             yield return ThunderStrike();
-            // The clip leaves the Tornado out to stay under 30 s: its look is as the last clip (wow-spells) showed it.
             if (!Filming) yield return Tornado();
             yield return Spires();
             yield return Iceberg();
@@ -58,7 +57,6 @@ public class BigSpellsProbe : AimedProbe
         }
     }
 
-    // Both hands' buttons for a gesture: the triggers for a thrust, the bumpers for a throw.
     void Both(int gesture, bool down)
     {
         if (!down) Let();
@@ -66,7 +64,6 @@ public class BigSpellsProbe : AimedProbe
         else Pad(0f, 0f, GamepadButton.LeftShoulder, GamepadButton.RightShoulder);
     }
 
-    // The pair held a moment, merged on screen as the spell, then let go to fire it at the raider; what it fired, or null.
     IEnumerator Cast(string left, string right, int gesture, string spell, Raider at, string[] fired)
     {
         yield return Rested();
@@ -89,7 +86,6 @@ public class BigSpellsProbe : AimedProbe
         Check($"{spell}_fired", fired[0] == spell, fired[0]);
     }
 
-    // A big spell's rest is 90 ticks (15 s), longer than Cooled waits; the wait is cut from the clip.
     IEnumerator Rested()
     {
         if (film != null) film.Keeping = false;
@@ -102,7 +98,6 @@ public class BigSpellsProbe : AimedProbe
 
     const float RestWait = 20f;
 
-    // Blocking cells in the box from the wizard out to a raider, two cells either side.
     int BlockingTo(Vector2Int me, Raider r)
     {
         int n = 0;
@@ -112,8 +107,6 @@ public class BigSpellsProbe : AimedProbe
         return n;
     }
 
-    // In a run only a tower attunes (World.Attune): each hand that wants another element is attuned at that element's tower, a
-    // hand at a time as a player does it, and the wizard is back on the wall after.
     IEnumerator AtTowers(string left, string right)
     {
         var wall = Me2;
@@ -125,7 +118,7 @@ public class BigSpellsProbe : AimedProbe
             Check($"a_{element}_tower", tower != null);
             if (tower == null) yield break;
             var (x, y) = Core.TowerGround(tower)[0];
-            if (film != null) film.Keeping = false; // the walk to the towers is cut from the clip
+            if (film != null) film.Keeping = false;
             Stand(new Vector2Int(x, y));
             moved = true;
             for (float t = 0f; t < MostWait && Core.TowerOf(Me) != tower; t += Time.deltaTime) yield return null;
@@ -140,13 +133,12 @@ public class BigSpellsProbe : AimedProbe
     Raider Still(Vector2Int at)
     {
         var r = Put(RaiderIds.BoneHound, at, 400);
-        if (r != null) r.Wait = 120; // it stands, so the spell meets it where it was aimed
+        if (r != null) r.Wait = 120;
         return r;
     }
 
     Vector2Int Me2 => grid.CellAt(wizard.transform.position);
 
-    // Fire and air on the triggers: the mark, then the column of lightning and the thunder after.
     IEnumerator ThunderStrike()
     {
         var me = Me2;
@@ -173,13 +165,11 @@ public class BigSpellsProbe : AimedProbe
         Check("thunder_marks_first", marked);
         Check("thunder_bolts_from_the_sky", bolted, $"{ArcFx.Playing} arcs");
         Check("thunder_strikes_it", !r.Alive || r.Hp < hp, $"{hp - r.Hp} hurt");
-        // Its thunder rolls on a while: the clip keeps the boom and some of its tail.
         for (float t = 0f; t < 2.5f; t += Time.deltaTime) yield return null;
         GameSounds.Played -= Heard;
         Check("thunder_claps", clapped, "a thunderclap with the bolt");
     }
 
-    // Air and air on the bumpers: the funnel lifts the raider in its eye and flings it.
     IEnumerator Tornado()
     {
         var me = Me2;
@@ -214,12 +204,11 @@ public class BigSpellsProbe : AimedProbe
         Check("tornado_flings_it", most >= 6 && r.Hp < hp, $"{most} cells, {hp - r.Hp} hurt");
     }
 
-    // Earth and earth on the bumpers: the zigzag of spires from the wall out to the raider, which is thrown up.
     IEnumerator Spires()
     {
         var me = Me2;
-        var r = Still(new Vector2Int(me.x, me.y - 5)); // on the line: the zigzag steps off it at its second cell and every other after
-        var far = Still(new Vector2Int(me.x, me.y - 9)); // and another further along it, on the line again
+        var r = Still(new Vector2Int(me.x, me.y - 5));
+        var far = Still(new Vector2Int(me.x, me.y - 9));
         Check("spires_raider_comes", r != null);
         if (r == null) yield break;
         int hp = r.Hp, before = BlockingTo(me, r);
@@ -252,7 +241,6 @@ public class BigSpellsProbe : AimedProbe
         Check("spires_stand", standing >= 4, $"{standing} more blocking cells out to the raider");
     }
 
-    // Water and water on the bumpers: the wave of ice rolls out, crushes the raider and leaves ice to walk on.
     IEnumerator Iceberg()
     {
         var me = Me2;
@@ -286,7 +274,6 @@ public class BigSpellsProbe : AimedProbe
         Check("iceberg_leaves_walkable_ice", ice >= 5, $"{ice} more cells of ice round where it was cast");
     }
 
-    // Frozen cells a wizard can walk on, within the wave's reach of where it was cast.
     int IceRound(Vector2Int at)
     {
         const int Reach = 10;

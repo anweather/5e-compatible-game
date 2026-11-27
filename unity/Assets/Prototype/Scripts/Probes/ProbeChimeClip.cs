@@ -45,7 +45,6 @@ public class ChimeClipProbe : ProbeScenario
         {
             Place(13, 10);
             yield return Wait(1f);
-            // Close by, as a player casts: out on the hills it lands past where a sound carries.
             var aim = wizard.transform.position + wizard.transform.forward * AimMetres;
             aim.y = grid.GroundAt(aim);
             caster.AimOverride = aim;
@@ -75,7 +74,6 @@ public class ChimeClipProbe : ProbeScenario
         }
     }
 
-    // Two elements in the window, then the wait for the cast to land and its sound to die.
     IEnumerator Pair(string name, GamepadState first, GamepadState second)
     {
         int cast = caster.CastsStarted;

@@ -17,7 +17,6 @@ public partial class ChemGrid
             blocks = new View[across * ((height + Chunks.Size - 1) >> Chunks.Shift)][];
         }
 
-        /// <summary>A cell's view by its world index (y * W + x); null where none is made. Setting one makes its chunk's block.</summary>
         public View this[int index]
         {
             get
@@ -37,10 +36,8 @@ public partial class ChemGrid
             }
         }
 
-        /// <summary>Chunk (cx, cy)'s block goes (the chunk was undrawn): its views are made again as it next draws.</summary>
         public void Drop(int cx, int cy) => blocks[cy * across + cx] = null;
 
-        /// <summary>How many chunks have a block, for a check.</summary>
         public int Made
         {
             get

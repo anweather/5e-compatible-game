@@ -53,7 +53,6 @@ namespace Playtest.Runner
 
             var started = DateTime.Now;
             var clock = Stopwatch.StartNew();
-            // Started without taking the front (Launch); it logs to Player.log.
             string args = Arguments(paths, outDir, seconds, options) + " -playtest-hand-focus " + Launch.FrontWindow().ToString(CultureInfo.InvariantCulture);
             using var p = Launch.Start(exe, args);
             (bool hung, bool muted) watched;
@@ -63,11 +62,10 @@ namespace Playtest.Runner
             }
             finally
             {
-                // Whatever stops the watch, never leave the player running (it left three once).
                 if (!p.HasExited) p.Kill();
             }
             var (hung, muted) = watched;
-            System.Threading.Thread.Sleep(2000); // let Windows write any crash report
+            System.Threading.Thread.Sleep(2000);
             int took = (int)clock.Elapsed.TotalSeconds;
 
             var run = Report.Load(Path.Combine(outDir, "run.json"), id);
@@ -100,19 +98,16 @@ namespace Playtest.Runner
             if (options.TryGetValue("replay", out var replay)) a.AddRange(new[] { "-playtest-replay", Q(Path.GetFullPath(replay)) });
             if (options.TryGetValue("until-frame", out var until)) a.AddRange(new[] { "-playtest-until-frame", until });
             if (options.TryGetValue("goals", out var goals)) a.AddRange(new[] { "-playtest-goals", goals });
-            // GPU pipeline states (the Build lane's Scripts/Perf/PsoTrace.cs): record them, or warm them up at start.
             if (options.TryGetValue("pso-trace", out var trace)) a.AddRange(new[] { "-pso-trace", Q(Path.GetFullPath(trace)) });
             if (options.TryGetValue("pso-warmup", out var warmup)) a.AddRange(new[] { "-pso-warmup", Q(Path.GetFullPath(warmup)) });
             if (options.ContainsKey("no-pso-warmup")) a.Add("-no-pso-warmup");
             if (File.Exists(paths.Coverage)) a.AddRange(new[] { "-playtest-coverage", Q(paths.Coverage) });
-            // Performance findings only count from runs with no Unity Editor open.
             if (!Preflight.Now().Unity.Any(Preflight.IsEditor)) a.Add("-playtest-quiet");
             return string.Join(" ", a);
         }
 
         static string Q(string path) => "\"" + path + "\"";
 
-        // The run's folder name: given, or the time it starts (a replay says so).
         static string RunId(Dictionary<string, string> options, bool replay)
         {
             if (options.TryGetValue("id", out var given)) return given;
@@ -120,8 +115,6 @@ namespace Playtest.Runner
             return replay ? id + "-replay" : id;
         }
 
-        // Waits for the player, muting it as soon as it has a sound session; stops it if its
-        // heartbeat goes quiet for a minute or it overruns. Whether it hung, and whether it was muted.
         static (bool hung, bool muted) Watch(Process p, string heartbeat, Stopwatch clock, int limitSeconds)
         {
             bool muted = false;
@@ -133,7 +126,6 @@ namespace Playtest.Runner
                     muted = AppMute.Silenced(result);
                     if (result == AppMute.NoOutput) Console.WriteLine("No default audio output on this PC: nothing can play aloud, so the run goes on as muted.");
                 }
-                // The heartbeat file's age (a wall-clock difference, not a timing), or how long it has gone without one.
                 double age = File.Exists(heartbeat)
                     ? DateTime.UtcNow.Subtract(File.GetLastWriteTimeUtc(heartbeat)).TotalSeconds
                     : clock.Elapsed.TotalSeconds - HeartbeatSeconds;

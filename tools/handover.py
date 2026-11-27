@@ -10,7 +10,7 @@ import sys
 from PIL import Image
 
 LINE = re.compile(r"PERF HANDOVER shot=(\S+) x=(-?\d+) y=(-?\d+) w=(\d+) h=(\d+) metres=(\d+)")
-BOX = (0.03, 0.012)  # half the box, as a share of the picture's width and height
+BOX = (0.03, 0.012)
 
 
 def mean(path, x, y, w, h):

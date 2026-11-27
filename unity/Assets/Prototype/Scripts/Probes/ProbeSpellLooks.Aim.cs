@@ -22,14 +22,11 @@ public class AimLooksProbe : SpellLooksProbe
         var lockWas = Cursor.lockState;
         controls.enabled = true;
         caster.enabled = true;
-        // The crosshair at the screen's centre, focused or not (Aiming.Ray).
         Cursor.lockState = CursorLockMode.Locked;
         pad = InputSystem.AddDevice<Gamepad>("Aim pad");
         try
         {
             EverySpellHasAKind();
-            // A selected spell is marked only where Cast casts it, the radial layout: with the hands (D16) there is
-            // no marker until a hand is at work (SpellCaster.ShowAim; #166).
             RadialPad();
             yield return null;
             yield return Lanes(Spot(16, 11));
@@ -51,7 +48,6 @@ public class AimLooksProbe : SpellLooksProbe
         }
     }
 
-    // Aims a spell at a point through the crosshair's own path, and pictures what it marks.
     IEnumerator Aimed(string spell, Vector3 at, AimKind kind, string label)
     {
         Check($"selects_{spell}", caster.Select(spell));
@@ -67,11 +63,9 @@ public class AimLooksProbe : SpellLooksProbe
         var shown = marker?.Shown;
         Check($"marks_{spell}_as_{kind}", marker != null && marker.Kind == kind && shown != null && shown.activeSelf && marker.Vertices > 0, $"{marker?.Kind}, {marker?.Vertices} vertices");
         Metric($"vertices_{spell}", marker?.Vertices ?? 0);
-        // The old marker was a cube per cell: nothing like that any more, one mesh and one draw.
         Check($"one_mesh_{spell}", shown != null && shown.GetComponentsInChildren<Renderer>(true).Length == 1 && GameObject.Find("Aim") == null);
     }
 
-    // Every spell in the rules has a marker, and the ones that fit none of the four kinds have one too.
     void EverySpellHasAKind()
     {
         var none = World.Rules.Spells.Where(s => AimMarker.KindOf(s) == AimKind.None && !World.IsSkySpell(s)).Select(s => s.Id).ToList();
@@ -80,7 +74,6 @@ public class AimLooksProbe : SpellLooksProbe
             Metric($"spells_{kind}", World.Rules.Spells.Count(s => AimMarker.KindOf(s) == kind));
     }
 
-    // Casting by elements: the marker follows the cast under way, whatever spell is selected.
     IEnumerator FollowsTheCast(Vector2Int o)
     {
         Patch(o, 11, 9, TerrainIds.Dirt);
@@ -115,7 +108,6 @@ public class AimLooksProbe : SpellLooksProbe
         yield return Aimed(SpellIds.FallingStar, mid, AimKind.Ring, "falling-star");
         yield return Aimed(SpellIds.Thunderwave, mid, AimKind.Ring, "thunderwave");
         yield return Aimed(SpellIds.Fireball, mid, AimKind.Ring, "fireball-tap");
-        // Cast held on the pad's radial layout: the ring grows a level at a time.
         InputSystem.QueueStateEvent(pad, new GamepadState { rightTrigger = 1f });
         yield return Wait(0.2f);
         float tap = RingRadius();
@@ -130,7 +122,6 @@ public class AimLooksProbe : SpellLooksProbe
         Metric("ring_one_level", one);
         Metric("ring_two_levels", two);
         Check("ring_grows_with_charge", tap > 0f && one > tap && two > one, $"{tap:0.00} m, {one:0.00} m, {two:0.00} m");
-        // Letting go casts it; the next stage is clear of it.
         InputSystem.QueueStateEvent(pad, new GamepadState());
         yield return Wait(2.5f);
     }
@@ -159,14 +150,12 @@ public class AimLooksProbe : SpellLooksProbe
         yield return Aimed(SpellIds.Wave, mid + V(5f, 0f, 3f), AimKind.Lane, "water-wave");
     }
 
-    // Steps of raised ground, for a marker to lie over.
     IEnumerator OnAMound(Vector2Int o)
     {
         Patch(o, 13, 11, TerrainIds.Dirt);
         for (int y = 0; y < 11; y++)
             for (int x = 0; x < 13; x++)
                 World.At(o.x + x, o.y + y).Height = Mathf.Max(0, 4 - Mathf.Max(Mathf.Abs(x - 6), Mathf.Abs(y - 5)) / 2 * 2 + 1) / 2;
-        // The ground eases up to it.
         yield return Wait(1.5f);
         yield return Frame(o, 13, 11, V(-9f, 3.5f, -9f), 9f);
         var mid = Mid(o, 13, 11);
@@ -176,7 +165,6 @@ public class AimLooksProbe : SpellLooksProbe
         yield return Aimed(SpellIds.WallOfStone, mid + V(1f, 0f, 2f), AimKind.Rising, "mound-wall");
     }
 
-    // A deer held still 8 m off, the camera on it, as the crosshair sees it.
     IEnumerator LockOn()
     {
         caster.AimOverride = null;

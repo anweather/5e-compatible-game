@@ -1,12 +1,12 @@
+// The local wizard seen through what hides it, where that can't be dithered away (the
+// terrain's trees, a hill, a pack's rock): a copy of its body drawn after everything opaque,
+// in a screen-door pattern with a soft rim, only where the scene's depth shows something
+// standing well in front of it (so it never draws over the wizard's own body). OccluderFade
+// switches the copy on while something occludes; the pattern eases with the same global
+// fade as the occluder dither (OccluderDither.hlsl). Needs the camera's depth texture (on in
+// the PC render pipeline asset).
 Shader "Prototype/WizardSilhouette"
 {
-    // The local wizard seen through what hides it, where that can't be dithered away (the
-    // terrain's trees, a hill, a pack's rock): a copy of its body drawn after everything opaque,
-    // in a screen-door pattern with a soft rim, only where the scene's depth shows something
-    // standing well in front of it (so it never draws over the wizard's own body). OccluderFade
-    // switches the copy on while something occludes; the pattern eases with the same global
-    // fade as the occluder dither (OccluderDither.hlsl). Needs the camera's depth texture (on in
-    // the PC render pipeline asset).
     Properties
     {
         _Color ("Colour", Color) = (0.62, 0.82, 1, 1)
@@ -62,9 +62,7 @@ Shader "Prototype/WizardSilhouette"
                 float2 uv = GetNormalizedScreenSpaceUV(input.positionCS);
                 float scene = LinearEyeDepth(SampleSceneDepth(uv), _ZBufferParams);
                 float self = LinearEyeDepth(input.positionCS.z, _ZBufferParams);
-                // Only where something stands well in front of this part of the body.
                 clip(self - scene - _OccluderDitherShape.z);
-                // About half the pixels at full fade, offset from the occluder's own pattern.
                 clip(_OccluderDither.w * 0.67 - OccluderBayer(input.positionCS.xy + float2(2, 1)));
                 half3 n = normalize(input.normalWS);
                 half3 v = normalize(GetWorldSpaceViewDir(input.positionWS));

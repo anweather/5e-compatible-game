@@ -12,7 +12,6 @@ using UnityEngine;
 // Wind blows it away. Shots of the hastened sky, the rain, the snow and the fog.
 public class TimeWeatherProbe : ProbeScenario
 {
-    // The wizard's square, the fog's centre (radius 4: x 5..13) and a blink target past it, in yard squares.
     const int MeX = 4, MeY = 10, FogX = 9, FogY = 10, PastX = 15;
 
     WeatherFx fx;
@@ -23,7 +22,6 @@ public class TimeWeatherProbe : ProbeScenario
         Check("weather_fx", fx != null, "the Sky's WeatherFx");
         Place(MeX, MeY);
         Cut(Yard(MeX, MeY) + V(-6f, 6f, -12f), Yard(FogX, FogY) + V(0f, 3f, 0f));
-        // A clear morning to start from: clear natural weather, short ramps.
         yield return Switch(At(9f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, " +
             "'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 } }");
         yield return HastenTime();
@@ -46,7 +44,6 @@ public class TimeWeatherProbe : ProbeScenario
         yield return null;
         yield return null;
 
-        // Cast again while it runs: time settles back to its own pace.
         yield return CastFromBar(SpellIds.HastenTime, MeX, MeY, 1, 0.3f);
         long settled = World.Minutes;
         yield return Wait(3f);
@@ -57,7 +54,6 @@ public class TimeWeatherProbe : ProbeScenario
 
     IEnumerator ControlWeather()
     {
-        // From clear: rain, snow, storm, then clear again, a step a cast.
         var expected = new[] { WeatherKind.Rain, WeatherKind.Snow, WeatherKind.Storm, WeatherKind.Clear };
         foreach (var kind in expected)
         {
@@ -88,7 +84,6 @@ public class TimeWeatherProbe : ProbeScenario
         var spell = World.Rules.Spell(SpellIds.MistyStep);
         var me = grid.YardCell(MeX, MeY);
         var past = grid.YardCell(PastX, MeY);
-        // The storm's lightning may have lit something, and fire would burn the new fog off.
         PutOutFires();
         string before = MistyStep.Check(grid, spell, wizard.transform, past.x, past.y);
 
@@ -106,7 +101,6 @@ public class TimeWeatherProbe : ProbeScenario
         yield return null;
         yield return null;
 
-        // Misty Step aimed through it, from the bar: it won't go.
         string through = MistyStep.Check(grid, spell, wizard.transform, past.x, past.y);
         var from = wizard.transform.position;
         yield return CastFromBar(SpellIds.MistyStep, PastX, MeY, 1, 0.8f);
@@ -114,8 +108,6 @@ public class TimeWeatherProbe : ProbeScenario
         Check("blink_refused", through != null && through.Contains("fog", System.StringComparison.Ordinal) && now.x < past.x - 1,
             $"before the fog: {before ?? "ok"}; through it: {through ?? "ok"}; the wizard moved {Vector3.Distance(from, wizard.transform.position):0.0} m");
 
-        // A Fire Bolt into the middle burns the fog off there.
-        // The fog round it drifts straight back in, so the rule's own line in the log counts too.
         var mid = grid.YardCell(FogX, FogY);
         int boltTick = World.Tick;
         yield return CastFromBar(SpellIds.FireBolt, FogX, FogY, 1, 0.8f);
@@ -124,8 +116,6 @@ public class TimeWeatherProbe : ProbeScenario
         Check("fire_burns_fog", burnt || c.Gas != GasIds.Fog, $"burnt {burnt}; the middle square's gas now: {c.Gas ?? "none"} {c.GasAmt}");
         PutOutFires();
 
-        // A Gust of Wind east through it blows it away.
-        // As the core's test measures it: the fog's middle (weighted by how thick) moves east.
         float beforeGust = FogMiddleX(mid);
         yield return CastFromBar(SpellIds.GustOfWind, MeX + 3, MeY, 1, 2f);
         float afterGust = FogMiddleX(mid);
@@ -134,7 +124,6 @@ public class TimeWeatherProbe : ProbeScenario
         Check("gust_blows_fog", afterGust > beforeGust + 1f, $"the fog's middle from square x {beforeGust:0.0} to {afterGust:0.0}");
     }
 
-    // The x of the fog's middle round a square (20 squares each way), weighted by how thick it is.
     float FogMiddleX(Vector2Int around)
     {
         float sum = 0f, weight = 0f;

@@ -21,31 +21,22 @@ using Chem.Lockstep;
 
 namespace Chem
 {
-    /// <summary>
-    /// The host game's half of an open world (the port): where the characters are and what the ground is. Asked on the
-    /// host and in solo only, never on a client.
-    /// </summary>
     public interface IOpenGround
     {
-        /// <summary>Where each character is: who (for the host game's own use), its layer and its cell in that layer.</summary>
         IEnumerable<(string who, int layer, int x, int y)> Characters();
 
-        /// <summary>The ground of a chunk never filled before; the planner stamps it as a fill.</summary>
         ChunkGround Sample(ChunkKey key);
     }
 
-    /// <summary>One tick's plan for an open world: the chunks to fill, then the switches, each in key order.</summary>
     public sealed class OpenPlan
     {
         public List<ChunkFill> Fills { get; } = new List<ChunkFill>();
         public List<ChunkSwitch> Switches { get; } = new List<ChunkSwitch>();
     }
 
-    /// <summary>Plans an open world's fills and switches from its port (IOpenGround), tick by tick, on the host.</summary>
     public sealed class OpenWorldPlanner
     {
         readonly IOpenGround ground;
-        // What's been stamped and not yet run, by the tick it lands on: a fill, a switch (on or off).
         readonly Dictionary<ChunkKey, int> fillsComing = new Dictionary<ChunkKey, int>();
         readonly Dictionary<ChunkKey, (bool active, int tick)> switchesComing = new Dictionary<ChunkKey, (bool, int)>();
 
@@ -54,14 +45,8 @@ namespace Chem
             this.ground = ground ?? throw new ArgumentNullException(nameof(ground));
         }
 
-        /// <summary>The most chunks filled a tick (the nearest first): each is a sample on the host and ~1-4 KB on the wire.</summary>
         public int FillsPerTick { get; set; } = 16;
 
-        /// <summary>
-        /// The host's plan as a session's (LockstepSession.Stamping): at each tick it stamps, the fills on
-        /// <paramref name="fills"/> and the switches on <paramref name="chunks"/>, landing on that tick. Every peer registers
-        /// both channels; only the host plans.
-        /// </summary>
         public static OpenWorldPlanner Attach(LockstepSession session, IOpenGround ground, LockstepChannel<ChunkFill> fills, LockstepChannel<ChunkSwitch> chunks)
         {
             if (session == null) throw new ArgumentNullException(nameof(session));
@@ -77,10 +62,6 @@ namespace Chem
             return planner;
         }
 
-        /// <summary>
-        /// The plan for <paramref name="tick"/>, against an open world that has run to <paramref name="ran"/> (what was
-        /// stamped for later ticks counts as done). The plan is kept as coming until its tick has run.
-        /// </summary>
         public OpenPlan Plan(World world, int ran, int tick)
         {
             if (world == null) throw new ArgumentNullException(nameof(world));
@@ -92,7 +73,6 @@ namespace Chem
             var s = world.Rules.Sim.Streaming;
             int reach = Math.Max(0, s.Reach), keep = Math.Max(reach, s.Keep);
 
-            // The chunks to fill: within reach and a ring of a character, not filled or coming, nearest first.
             var wanted = Around(characters, reach + 1);
             foreach (var (key, _) in wanted.Where(w => !Filled(world, w.Key)).OrderBy(w => w.Value).ThenBy(w => w.Key).Take(Math.Max(0, FillsPerTick)))
             {
@@ -101,7 +81,6 @@ namespace Chem
                 fillsComing[key] = tick;
             }
 
-            // Switches: on within reach once the chunk and its ring are filled; off past the keep distance.
             var switches = new SortedDictionary<ChunkKey, bool>();
             foreach (var w in wanted)
                 if (w.Value <= reach && !Active(world, w.Key) && Filled(world, w.Key) && RingFilled(world, w.Key)) switches[w.Key] = true;
@@ -116,7 +95,6 @@ namespace Chem
             return plan;
         }
 
-        // What's been stamped for ticks that have run is in the world now.
         void Forget(int ran)
         {
             foreach (var k in fillsComing.Where(f => f.Value <= ran).Select(f => f.Key).ToList()) fillsComing.Remove(k);
@@ -138,7 +116,6 @@ namespace Chem
             return true;
         }
 
-        // The chunks active once what's coming has landed.
         IEnumerable<ChunkKey> ActiveNow(World world)
         {
             var now = new SortedSet<ChunkKey>(world.ActiveKeys);
@@ -148,7 +125,6 @@ namespace Chem
             return now;
         }
 
-        // Every chunk within distance chunks of a character (one a world holds), with how far the nearest character is.
         static Dictionary<ChunkKey, int> Around(List<ChunkKey> characters, int distance)
         {
             var around = new Dictionary<ChunkKey, int>();

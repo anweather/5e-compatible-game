@@ -1,3 +1,4 @@
+// The Gauntlet's rules (docs/BACKLOG.md 25; Play/CourseSystem.cs): spell zones, checkpoints, the clock, and the booths' material verbs.
 using System;
 using System.IO;
 using System.Linq;
@@ -5,7 +6,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>The Gauntlet's rules (docs/BACKLOG.md 25; Play/CourseSystem.cs): spell zones, checkpoints, the clock, and the booths' material verbs.</summary>
     [Category("Simulation")]
     public class CourseTests
     {
@@ -14,8 +14,6 @@ namespace Chem.Tests
 
         static string Last(World w) => w.Log[w.Log.Count - 1].Text;
 
-        // A little course, run east to west: the gate, a lava pit (water and air), a Misty Step booth, the bell.
-        // The same text was in sandbox/test/course.test.ts (frozen 2026-10-31).
         const string Little = @"{
             ""name"": ""The little gauntlet"", ""area"": [18, 0, 54, 11], ""gate"": [50, 2, 52, 8], ""bell"": [20, 2, 22, 8],
             ""booths"": [
@@ -34,7 +32,6 @@ namespace Chem.Tests
         [Test]
         public void ColdCrustsLavaThatCracksBackFireThawsAnIceWallIntoASlideAndAVentLifts()
         {
-            // Ported from sandbox/test/course.test.ts.
             var w = new World(R, 24, 8, 3, "dirt");
             for (int x = 3; x <= 7; x++) w.At(x, 3).T = "lava";
             for (int y = 2; y <= 4; y++)
@@ -68,7 +65,6 @@ namespace Chem.Tests
         [Test]
         public void ZonesSmotherWhatTheyDontAllowAndTheClockRunsGateToBellWithCheckpoints()
         {
-            // Ported from sandbox/test/course.test.ts.
             var w = LittleCourse();
             w.Cast("fireball", 44, 5, 1);
             Assert.That(Last(w), Is.EqualTo("The lava pit's charm smothers your Fireball"));

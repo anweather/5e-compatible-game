@@ -14,7 +14,6 @@ public class PlaytestChainTests
 {
     static Rules rules;
 
-    // The repo's rules/: above the Unity project, or above the test binary under dotnet test.
     static Rules R => rules ??= Rules.Load(GameFolders.InRepo(
 #if UNITY_5_3_OR_NEWER
         UnityEngine.Application.dataPath).Rules);
@@ -22,12 +21,9 @@ public class PlaytestChainTests
         TestContext.CurrentContext.TestDirectory).Rules);
 #endif
 
-    // The wizard stands at Me facing east; the bot aims a few cells ahead, at Target.
     static readonly (int x, int y) Me = (2, 5), Target = (8, 5);
     const int East = 1, Ticks = 40;
 
-    // Casts a combo the way SpellCaster aims one from the crosshair: a line from beside the
-    // wizard towards the cell, a burst round the wizard if it's cast from them, else on the cell.
     static void CastCombo(World w, string combo, (int x, int y) at, int charge = 1)
     {
         var def = R.Combos.Combo(combo);
@@ -75,7 +71,6 @@ public class PlaytestChainTests
     [TestCaseSource(nameof(ChainIds))]
     public void NoChainsCheckPassesWithoutItsTrigger(string id)
     {
-        // A fire left alone burns out, so "the fire is out" alone would pass: each check looks for what only the trigger does.
         var chain = Chains.ById(id);
         var w = new World(R, 16, 11, 3, "grass");
         CastCombo(w, chain.Setup, Target);

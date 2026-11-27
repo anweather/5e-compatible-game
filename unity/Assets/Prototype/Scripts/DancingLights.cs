@@ -15,19 +15,14 @@ using UnityEngine;
 [RequireComponent(typeof(ItemLight))]
 public class DancingLights : ItemUse
 {
-    /// <summary>How fast the mote flies, in m/s.</summary>
     public const float Speed = 25f;
-    // How far off a surface the mote hovers, in metres.
     const float Hover = 0.5f;
 
     ItemLight itemLight;
     GameObject mote;
-    // Online, someone else's mote: where their screen last had it.
     Vector3? shared;
 
-    /// <summary>True while the mote is out of the hand.</summary>
     public bool Out { get; private set; }
-    /// <summary>Where the mote is; the item's own position when it is in hand.</summary>
     public Vector3 MotePosition => Out ? itemLight.Lamp.transform.position : transform.position;
 
     protected override void Awake()
@@ -49,7 +44,6 @@ public class DancingLights : ItemUse
         if (back) CallBack();
     }
 
-    /// <summary>Online: someone else's mote is out at <paramref name="at"/>, or back in their hand.</summary>
     public void Follow(bool isOut, Vector3 at)
     {
         var lamp = itemLight.Lamp;
@@ -77,7 +71,6 @@ public class DancingLights : ItemUse
         CallBack();
     }
 
-    /// <summary>Where the crosshair points, no further than the reach from the hand.</summary>
     Vector3 Target(ItemHolder holder)
     {
         float reach = (float)(Item.Def.Reach * ItemLightDef.FeetToMetres);
@@ -90,7 +83,6 @@ public class DancingLights : ItemUse
     void SendOut(Light lamp)
     {
         Out = true;
-        // Out on its own at full size (in hand it is scaled with the little item).
         lamp.transform.SetParent(null, true);
         lamp.transform.localScale = Vector3.one;
         if (mote == null) mote = MakeMote(lamp);

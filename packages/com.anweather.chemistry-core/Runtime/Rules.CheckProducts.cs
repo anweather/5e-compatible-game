@@ -10,7 +10,6 @@ namespace Chem
     {
         sealed partial class Checker
         {
-            /// <summary>The sim.json keys that name a product, and the table each must be in.</summary>
             internal static readonly (string path, string table)[] SimProducts =
             {
                 ("fire.ash", "covers"), ("fire.smoke", "gases"), ("water.boils", "gases"), ("water.freezes", "terrain"),

@@ -11,7 +11,7 @@ using UnityEngine;
 // every screen, but only the local player's has controls. Picking up and
 // letting go are asked of the host (NetItem), which grants them; Grant and
 // Forget are how the answer arrives, on every machine.
-[DefaultExecutionOrder(120)] // after CastPose and Knockback have moved the arm and body
+[DefaultExecutionOrder(120)]
 [RequireComponent(typeof(SpellCaster))]
 public partial class ItemHolder : MonoBehaviour
 {
@@ -24,7 +24,6 @@ public partial class ItemHolder : MonoBehaviour
     public float gentleThrow = 4f, hardThrow = 12f;
     public float windUp = 0.6f;
 
-    // A throw goes a little above the crosshair, so a level aim still lobs.
     const float Loft = 0.15f;
 
     Transform hand;
@@ -33,25 +32,17 @@ public partial class ItemHolder : MonoBehaviour
     Shapeshift shape;
     CastBeats beats;
     float throwPressedAt = -1f;
-    // A throw under way: when it leaves the hand (the arm part way through its whip), and how fast.
     float releaseAt = -1f, releaseSpeed;
     const float ReleaseDelay = 0.1f;
     GUIStyle style, shadow;
 
     public Carryable Held { get; private set; }
-    /// <summary>The item E would pick up, or null.</summary>
     public Carryable InReach { get; private set; }
-    /// <summary>The wizard's colliders, which a held item ignores.</summary>
     public Collider[] Colliders { get; private set; }
-    /// <summary>Where the held item sits: the right hand, or in front of the chest.</summary>
     public Vector3 HandPosition => hand != null ? hand.position + transform.forward * 0.08f : transform.position + Vector3.up * 1.1f + transform.forward * 0.45f;
-    /// <summary>The way the wizard is aiming (through the crosshair).</summary>
     public Vector3 AimDirection => Aiming.Ray(controls).direction;
-    /// <summary>How far the current throw has wound up, 0..1 (0 when not throwing).</summary>
-    /// <summary>A throw just left the hand: how hard, 0 (a toss) to 1 (a full wind-up), for the arm's follow-through (ThrowPose).</summary>
     public event System.Action<float> Thrown;
 
-    /// <summary>The arm whips through as in a throw, the item staying in the hand: a tool's swing (Pick).</summary>
     public void Swing(float how) => Thrown?.Invoke(how);
 
     public float WindUp => throwPressedAt < 0f ? 0f : Mathf.Clamp01((Time.time - throwPressedAt) / windUp);
@@ -85,11 +76,8 @@ public partial class ItemHolder : MonoBehaviour
         else throwPressedAt = -1f;
     }
 
-    // Throw (hold to wind up, release to let fly) and use. B is also the spell radial's cancel:
-    // while the radial has it (open, or closed by it this frame) it doesn't throw.
     void HandleHeld()
     {
-        // Mid-throw: the item is on its way out of the hand.
         if (releaseAt >= 0f) return;
         if ((radial != null && radial.BusyThisFrame) || (TryGetComponent<SpellCaster>(out var casting) && casting.CastInProgress))
         {
@@ -106,7 +94,6 @@ public partial class ItemHolder : MonoBehaviour
             foreach (var use in Held.Uses) use.Use(this);
     }
 
-    // The nearest item lying about (not in anyone's hand) within reach. An animal has no hands (Shapeshift).
     Carryable Nearest()
     {
         if (Animal) return null;
@@ -123,8 +110,6 @@ public partial class ItemHolder : MonoBehaviour
         return best;
     }
 
-    // After the animation (and CastPose's gesture): the item rides in the hand, pointing where the
-    // wizard aims (someone else's wizard: the way it faces). Only the local player uses it.
     void LateUpdate()
     {
         if (Held == null) return;
@@ -134,10 +119,6 @@ public partial class ItemHolder : MonoBehaviour
         foreach (var use in Held.Uses) use.WhileHeld(this, useDown);
     }
 
-    /// <summary>
-    /// Puts the held item in the hand where it is now. Again after a pose has moved the arm (ThrowPose
-    /// draws it back and whips it through), so the item goes with the hand, not where it held still.
-    /// </summary>
     public void HoldInHand()
     {
         if (Held == null) return;
@@ -145,14 +126,10 @@ public partial class ItemHolder : MonoBehaviour
         Held.transform.SetPositionAndRotation(HandPosition, Quaternion.LookRotation(aim));
     }
 
-    // How far from straight ahead a held item may point (Andrew: the lantern pointed where the camera
-    // looked, back through the wizard when the camera came round in front).
     const float FrontArcDegrees = 70f;
 
-    // An aim kept within the front arc: turned toward the wizard's front where it points further round.
     Vector3 FrontArc(Vector3 aim) => Vector3.RotateTowards(transform.forward, aim, FrontArcDegrees * Mathf.Deg2Rad, 0f);
 
-    // In an animal's shape (Shapeshift): no picking things up.
     bool Animal => shape != null && shape.Shifted;
 
     public void PickUp(Carryable item)
@@ -166,10 +143,6 @@ public partial class ItemHolder : MonoBehaviour
         GrantSolo(item);
     }
 
-    /// <summary>
-    /// Mage Hand: picks up <paramref name="item"/> from up to <paramref name="reach"/> metres away
-    /// (online the host allows a spell's reach, within limits; see NetItem).
-    /// </summary>
     public void PickUpFromAfar(Carryable item, float reach)
     {
         if (Held != null || item.Holder != null) return;
@@ -181,14 +154,12 @@ public partial class ItemHolder : MonoBehaviour
         GrantSolo(item);
     }
 
-    // Online the host does this as it grants (NetItem).
     void GrantSolo(Carryable item)
     {
         Grant(item);
         if (item.Prop.FromMod) item.Grid.QueueRoom(RoomCommand.Found(Peers.Solo.Me, item.Prop.Thing));
     }
 
-    /// <summary>Mage Hand: lets go of what this hand holds at <paramref name="spot"/>, at rest.</summary>
     public void SetDownAt(Vector3 spot)
     {
         var item = Held;
@@ -199,7 +170,6 @@ public partial class ItemHolder : MonoBehaviour
         else item.ReleaseAt(spot, Vector3.zero);
     }
 
-    /// <summary>Puts <paramref name="item"/> in this hand (solo at once; online when the host says so, on every machine).</summary>
     public void Grant(Carryable item)
     {
         Held = item;
@@ -207,13 +177,11 @@ public partial class ItemHolder : MonoBehaviour
         if (controls != null) EventLog.Add($"You pick up the {item.Name.ToLowerInvariant()}");
     }
 
-    /// <summary>Online: <paramref name="item"/> has left this hand (the host let it go).</summary>
     public void Forget(Carryable item)
     {
         if (Held == item) Held = null;
     }
 
-    /// <summary>The wizard is leaving the game: whatever it holds drops where it is.</summary>
     public void LetGoOnLeaving()
     {
         var item = Held;
@@ -222,10 +190,8 @@ public partial class ItemHolder : MonoBehaviour
         item.Release(Vector3.zero);
     }
 
-    /// <summary>Lets go: it falls from the hand at the wizard's own pace.</summary>
     public void Drop() => Let(body != null ? body.velocity : Vector3.zero, "drop");
 
-    /// <summary>Throws the held item along the aim at <paramref name="speed"/> m/s, on top of the wizard's own pace.</summary>
     public void Throw(float speed)
     {
         if (Held == null) return;
@@ -235,7 +201,6 @@ public partial class ItemHolder : MonoBehaviour
         releaseSpeed = speed;
     }
 
-    // The throw's release, from the hand as the arm whips through (ThrowPose), along the aim then.
     void LetFly()
     {
         releaseAt = -1f;
@@ -245,8 +210,6 @@ public partial class ItemHolder : MonoBehaviour
         Let(pace + dir * releaseSpeed, releaseSpeed >= (gentleThrow + hardThrow) / 2f ? "hurl" : "toss");
     }
 
-    // Solo the item leaves the hand at once; online the host lets it go, from where this screen
-    // has the hand, and every machine follows (it stays in the hand until the host's answer arrives).
     void Let(Vector3 velocity, string verb)
     {
         var item = Held;
@@ -258,12 +221,10 @@ public partial class ItemHolder : MonoBehaviour
         EventLog.Add($"You {verb} the {item.Name.ToLowerInvariant()}");
     }
 
-    // --- hint by the crosshair -----------------------------------------------------
-
     void OnGUI()
     {
         HudScale.Apply();
-        if (!EventLog.HudVisible || controls == null || (radial != null && radial.IsOpen)) return; // the spell radial covers the middle
+        if (!EventLog.HudVisible || controls == null || (radial != null && radial.IsOpen)) return;
         string hint = Hint();
         if (hint == null) return;
         if (style == null)
@@ -272,7 +233,6 @@ public partial class ItemHolder : MonoBehaviour
             shadow = new GUIStyle(style);
             shadow.normal.textColor = new Color(0f, 0f, 0f, 0.7f);
         }
-        // Below the crosshair, with a dark shadow so it reads against the sky and the grass.
         var at = new Rect(0, HudScale.Height / 2f + 34, HudScale.Width, 28);
         GUI.Label(new Rect(at.x + 1, at.y + 1, at.width, at.height), hint, shadow);
         GUI.Label(at, hint, style);

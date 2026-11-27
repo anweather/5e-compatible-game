@@ -17,7 +17,6 @@ public class PadRumble : MonoBehaviour
 
     static PadRumble instance;
 
-    /// <summary>The probe's way past "the pad in use" and the focus check: the Editor it runs in isn't in front.</summary>
     public static bool Testing { get; set; }
 
     readonly List<Pulse> pulses = new();
@@ -34,7 +33,6 @@ public class PadRumble : MonoBehaviour
         instance = go.AddComponent<PadRumble>();
     }
 
-    /// <summary>A pulse, at this share of its strength; nothing if the setting is off or no pad is in use.</summary>
     public static void Play(in CastFeel.Thump thump, float share)
     {
         float scale = share * GameFeel.Shake;
@@ -42,7 +40,6 @@ public class PadRumble : MonoBehaviour
         instance.pulses.Add(new Pulse { low = thump.low * scale, high = thump.high * scale, seconds = thump.seconds, left = thump.seconds });
     }
 
-    /// <summary>Stops the motors now, and every pulse playing.</summary>
     public static void Stop()
     {
         if (instance != null) instance.Halt();

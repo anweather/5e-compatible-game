@@ -10,25 +10,16 @@ namespace Chem
 {
     public enum EffectKind
     {
-        /// <summary>A burning prop sets its cell alight (like a burning entity in the sandbox).</summary>
         Burn,
-        /// <summary>A prop burned away and left its fire behind.</summary>
         Embers,
-        /// <summary>A prop blew up (entities.json "explodes").</summary>
         Explode,
-        /// <summary>An item landed hard enough to break and spilled what it held (items.json "breaks").</summary>
         Spill,
-        /// <summary>A heavy thing hit a window pane hard (World.Shatter): it cracks, or if cracked shatters.</summary>
         Shatter,
-        /// <summary>A held tool swung at a cell (items.json "use": "dig").</summary>
         Dig,
-        /// <summary>A thing of a material that cracks took its first hard hit (shatter.cracks): cracked by its Thing id, not a cell.</summary>
         Crack,
-        /// <summary>Someone worked a gate (materials.json "swing"): its leaves swing to the other way (World.Swing).</summary>
         Swing,
     }
 
-    /// <summary>A prop's effect on one cell: small enough to send like a cast.</summary>
     public readonly struct EffectCommand
     {
         public EffectCommand(EffectKind kind, int x, int y, string entity) : this(kind, x, y, entity, ThingId.None) { }
@@ -45,26 +36,17 @@ namespace Chem
         public EffectKind Kind { get; }
         public int X { get; }
         public int Y { get; }
-        /// <summary>The prop's id in rules/entities.json, or the item's in rules/items.json.</summary>
         public string Entity { get; }
-        /// <summary>
-        /// Which prop or item did it: its stable id from world/things.json (WorldThings), the same on
-        /// every machine and for a late joiner, or ThingId.None. The kind's rules come from Entity.
-        /// </summary>
         public ThingId Thing { get; }
     }
 
     public sealed partial class World
     {
-        /// <summary>
-        /// Applies a prop's effect to the cells. An effect off the map, or for an entity or item the
-        /// rules don't know (a mod removed it), changes nothing, the same on every machine.
-        /// </summary>
         public void ApplyEffect(EffectCommand effect)
         {
-            FinishTick(); // effects land between whole ticks (StepSome)
+            FinishTick();
             if (!InBounds(effect.X, effect.Y)) return;
-            int x = FoldX(effect.X), y = FoldY(effect.Y); // a prop past the seam acts where it folds to
+            int x = FoldX(effect.X), y = FoldY(effect.Y);
             switch (effect.Kind)
             {
                 case EffectKind.Burn:

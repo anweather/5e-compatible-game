@@ -4,15 +4,8 @@ using System;
 
 namespace Chem
 {
-    /// <summary>
-    /// A chunk's land (World.SetLand: an int a cell, World.NoLand on water) in a few bytes, for a packed chunk: each cell
-    /// as its difference from what the cells before it predict (left + up − up-left, the left alone on the top row, the up
-    /// alone down the left side), zigzagged into a varint, and a run of cells the prediction gets exactly as one varint.
-    /// Smooth land is a byte or so a cell; a chunk of sea or of flat land, a few bytes. Exact for any ints.
-    /// </summary>
     internal static class LandCodec
     {
-        /// <summary>The most a chunk's land encodes to: five bytes a cell.</summary>
         public const int MostBytes = Chunks.Area * 5;
 
         static int Predict(int[] v, int i)
@@ -23,7 +16,6 @@ namespace Chem
             return unchecked(v[i - 1] + v[i - Chunks.Size] - v[i - Chunks.Size - 1]);
         }
 
-        /// <summary>A chunk's land, Area ints, as its bytes; <paramref name="scratch"/> (MostBytes) is written through.</summary>
         public static byte[] Encode(int[] v, byte[] scratch)
         {
             int n = 0;
@@ -47,7 +39,6 @@ namespace Chem
             return bytes;
         }
 
-        /// <summary>A chunk's land back from its bytes into <paramref name="v"/> (Area ints).</summary>
         public static void Decode(byte[] bytes, int[] v)
         {
             int at = 0;

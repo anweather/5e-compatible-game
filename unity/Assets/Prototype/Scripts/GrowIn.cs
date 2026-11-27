@@ -8,7 +8,6 @@ public class GrowIn : MonoBehaviour
     Vector3 from, to;
     float seconds, elapsed;
 
-    /// <summary>Grows <paramref name="go"/> from <paramref name="start"/> to <paramref name="end"/> (local scales) over <paramref name="duration"/> seconds.</summary>
     public static void Play(GameObject go, Vector3 start, Vector3 end, float duration)
     {
         var grow = go.AddComponent<GrowIn>();

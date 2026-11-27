@@ -1,9 +1,9 @@
+// The spell list's tabs: every spell by element, all of them, and the ones off the radial.
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>The spell list's tabs: every spell by element, all of them, and the ones off the radial.</summary>
     [Category("Unit")]
     public class SpellListTests
     {

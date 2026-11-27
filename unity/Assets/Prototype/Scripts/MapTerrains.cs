@@ -17,17 +17,10 @@ using UnityEngine;
 [DefaultExecutionOrder(-1000)]
 public sealed class MapTerrains : MonoBehaviour
 {
-    /// <summary>
-    /// How far a chunk terrain draws its details (grass), in metres, as made: where the grass material's own dither fade
-    /// ends (the pack's TerrainGrass, 40 to 80 m), so no tuft is drawn that shows no pixel. It was 120 m; 80 is 0.7 ms of
-    /// the nine's start on the Mac (docs/perf/2026-11-23-tufts.md, Andrew's choice with the grass's shadows off).
-    /// </summary>
     public const float DetailMetres = 80f;
 
-    /// <summary>How far a chunk terrain draws its trees, in metres (900 as made; the tree impostors' trial draws them nearer, TreeImpostors).</summary>
     public static float TreeDistance { get; private set; } = 900f;
 
-    /// <summary>Sets TreeDistance, on every terrain made now and on those made after.</summary>
     public static void SetTreeDistance(float metres)
     {
         TreeDistance = metres;
@@ -36,7 +29,6 @@ public sealed class MapTerrains : MonoBehaviour
             if (t != null) t.treeDistance = metres;
     }
 
-    /// <summary>The scene's chunk terrains (null before one starts).</summary>
     public static MapTerrains Instance { get; private set; }
 
     [Tooltip("The prototypes every chunk is built with: terrain layers, trees, grass (Generated/Ground/Template.asset).")]
@@ -49,7 +41,6 @@ public sealed class MapTerrains : MonoBehaviour
     TerrainGrid layout;
     Terrain[] chunks;
 
-    /// <summary>The builder the chunks were built with at the start; null when they wait for a world (land mode).</summary>
     public GroundBuilder Builder
     {
         get
@@ -61,7 +52,6 @@ public sealed class MapTerrains : MonoBehaviour
 
     GroundBuilder builder;
 
-    /// <summary>The chunk terrains, chunk (i, j) at j * ChunksX + i; made now if the scene hasn't started them yet.</summary>
     public Terrain[] Chunks
     {
         get
@@ -82,9 +72,6 @@ public sealed class MapTerrains : MonoBehaviour
         if (Instance == this) Instance = null;
     }
 
-    // A chunk past the camera's far plane isn't drawn, but Unity still culls every terrain each frame: on the nine (729)
-    // that was 9 ms. Those beyond it stop drawing (they stay terrains, for heights and collisions) and draw again as the
-    // camera nears; a few times a second, as the camera moves less than a chunk in that time.
     const float ReachEvery = 0.25f;
     float nextReach;
 
@@ -100,11 +87,7 @@ public sealed class MapTerrains : MonoBehaviour
         float reach = cam.farClipPlane + layout.ChunkSize, reachSq = reach * reach;
         var eye = cam.transform.position;
         float half = layout.ChunkSize * 0.5f;
-        // On a generated map the far ring says which draw: none past the known ring, and none it draws as a known chunk.
         var far = FarRing.Instance;
-        // Only the chunks that can change are visited (#208): those that drew at the last check, and those in the square
-        // round the camera's reach. Any other was off and stays off. The first check visits them all, as they start on, and
-        // so does the first with the far ring (which switches the off ones off, not only hidden).
         visit.Clear();
         if (lazy) visit.UnionWith(made);
         else if (!checkedOnce || withFar != (far != null))
@@ -132,9 +115,6 @@ public sealed class MapTerrains : MonoBehaviour
             float dx = p.x + half - eye.x, dz = p.z + half - eye.z;
             bool draw = dx * dx + dz * dz <= reachSq && (far == null || far.TerrainDraws(k % layout.ChunksX, k / layout.ChunksX));
             if (draw) drawn.Add(k);
-            // On a generated map a chunk that doesn't draw is switched off, not only hidden: Unity culls every enabled
-            // Terrain each frame whether it draws or not (729 on the nine, 8 ms of TerrainManager.CullAllTerrains in the
-            // Editor, #182). Its collider stays on, and SampleHeight still reads it. The valley's 81 stay as they were.
             if (far != null && t.enabled != draw) t.enabled = draw;
             if (t.drawHeightmap == draw) continue;
             t.drawHeightmap = draw;
@@ -144,13 +124,9 @@ public sealed class MapTerrains : MonoBehaviour
         HintDrawn();
     }
 
-    // The chunks that drew at the last check, and those this check visits.
     readonly System.Collections.Generic.HashSet<int> drawn = new(), visit = new();
     bool checkedOnce, withFar;
 
-    // The world's drawn hint (World.SetDrawn, D17): the chemistry chunks under the drawn terrains, so the core doesn't pack
-    // what the view draws. Given again only when the drawn terrains or the world change. The terrains are offset from the
-    // chemistry's chunks and run north to south the other way, so each terrain meets up to four of them.
     readonly HashSet<int> hinted = new();
     readonly HashSet<(int cx, int cy)> drawnCells = new();
     World hintedWorld;
@@ -168,7 +144,6 @@ public sealed class MapTerrains : MonoBehaviour
         world.SetDrawn(drawnCells);
     }
 
-    // The chemistry chunks under chunk terrain (i, j), and `ring` chunks round them.
     void CellChunksUnder(World world, int i, int j, int ring, HashSet<(int cx, int cy)> into)
     {
         int last = Chem.Chunks.Size - 1;
@@ -176,7 +151,6 @@ public sealed class MapTerrains : MonoBehaviour
         int y0 = Mathf.Max(0, layout.V0 - j * Chem.Chunks.Size - last), y1 = Mathf.Min(world.H - 1, layout.V0 - j * Chem.Chunks.Size);
         if (x0 > x1 || y0 > y1) return;
         int cxMax = (world.W - 1) >> Chem.Chunks.Shift, cyMax = (world.H - 1) >> Chem.Chunks.Shift;
-        // Round a world that wraps, the ring runs over the seam to the chunks it folds to.
         int cy0 = (y0 >> Chem.Chunks.Shift) - ring, cy1 = (y1 >> Chem.Chunks.Shift) + ring, cx0 = (x0 >> Chem.Chunks.Shift) - ring, cx1 = (x1 >> Chem.Chunks.Shift) + ring;
         if (!world.WrapY) (cy0, cy1) = (Mathf.Max(0, cy0), Mathf.Min(cyMax, cy1));
         if (!world.WrapX) (cx0, cx1) = (Mathf.Max(0, cx0), Mathf.Min(cxMax, cx1));
@@ -184,10 +158,6 @@ public sealed class MapTerrains : MonoBehaviour
             for (int cx = cx0; cx <= cx1; cx++) into.Add((world.FoldChunkX(cx), world.FoldChunkY(cy)));
     }
 
-    // The ground's arrays and heights are made side by side (Parallel.For, a worker), and they read the world's cells. A
-    // read of a packed chunk unpacks it (D17), which changes the world's lists and its pool of blocks: never safe off the
-    // main thread. So the chunks they read (those under the terrains and one round them, for the paint's and heights'
-    // neighbours) are unpacked here first, on the main thread, and held in the drawn hint until the work is taken.
     readonly HashSet<(int cx, int cy)> pinned = new();
     World pinnedWorld;
 
@@ -206,8 +176,6 @@ public sealed class MapTerrains : MonoBehaviour
         foreach (var (cx, cy) in pinned) world.At(cx << Chem.Chunks.Shift, cy << Chem.Chunks.Shift);
     }
 
-    // On a map made from its source (the Wide World): the chemistry chunks under these terrains and one round them (what
-    // Warm reads) that are packed and not made by the source yet; none on any other map.
     List<(int cx, int cy)> Unmade(IEnumerable<(int i, int j)> terrains)
     {
         var world = ground?.World;
@@ -222,7 +190,6 @@ public sealed class MapTerrains : MonoBehaviour
 
     readonly HashSet<(int cx, int cy)> unmadeScratch = new();
 
-    // On a map made from its source, what these terrains read made first on every core, not one at a time as Warm reads it.
     void MakeFirst(List<(int i, int j)> terrains)
     {
         if (Unmade(terrains) is { Count: > 0 } unmade) ground.World.MakeNow(unmade);
@@ -235,13 +202,10 @@ public sealed class MapTerrains : MonoBehaviour
         HintDrawn(now: true);
     }
 
-    /// <summary>A generated map's ground, once it's served (null before, and for a map whose terrains are all made at the start).</summary>
     public ValleyGround Ground => ground;
 
-    /// <summary>How many chunk terrains drew at the last check (the drawn tier, for the tiersweep probe).</summary>
     public int Drawing { get; private set; }
 
-    /// <summary>Works out which terrains draw at the next frame, not at the next quarter second (the far ring changed).</summary>
     public void ReachNow()
     {
         nextReach = 0f;
@@ -256,8 +220,6 @@ public sealed class MapTerrains : MonoBehaviour
         builder = GroundSwitch.Mode == GroundSwitch.On && GroundPack.In(dir)
             ? new GroundBuilder(GroundPack.Load(dir), template, layout.ChunkSize)
             : null;
-        // A generated map (no ground/: its ground is made from its land) makes its terrains as they're wanted, once the
-        // ground is served (ValleyChemistry's first Bind), none now.
         lazy = builder == null && Application.isPlaying && GeneratedMap.IsGenerated(ChemGrid.MapSource);
         chunks = lazy ? new Terrain[layout.ChunksX * layout.ChunksZ] : Place(transform, layout, builder, material);
         StartupTimeline.Mark("ground terrains placed");
@@ -265,8 +227,6 @@ public sealed class MapTerrains : MonoBehaviour
             ? $"GROUND TERRAINS for the drawn tier: none of {chunks.Length} chunks made yet, they're made as they're wanted"
             : $"GROUND TERRAINS {(builder != null ? "built" : "waiting for the land")}: {chunks.Length} chunks in {timer.Elapsed.TotalMilliseconds:0} ms");
     }
-
-    // ---------- the drawn tier's terrains (#205) ----------
 
     bool lazy;
     ValleyGround ground;
@@ -280,33 +240,21 @@ public sealed class MapTerrains : MonoBehaviour
     bool planNow;
     int createdEver;
 
-    // A chunk terrain is made within the drawn dial plus Margin of a character, and goes back to the pool past it plus
-    // KeepMargin (the two apart so a character on a chunk's edge doesn't make and drop the same row each step).
     const int Margin = 1, KeepMargin = 2;
-    // About this many ms a frame go to making terrains in play (at least one a frame while any is wanted and its arrays are
-    // made); the arrays of up to MostAtOnce chunks are made side by side on a worker.
     const double MakeBudgetMs = 4.0;
     const float BusyFrameSeconds = 0.022f;
     const int MostWaits = 3;
     int waited;
     const int MostAtOnce = 8;
 
-    /// <summary>Whether the terrains are made only for the drawn tier (a generated map's), not one for every chunk.</summary>
     public bool Lazy => lazy;
 
-    /// <summary>How many chunk terrains stand now, how many wait in the pool, and how many were ever made (the pool's size).</summary>
     public (int standing, int pooled, int created) Counts => lazy ? (made.Count, pool.Count, createdEver) : (chunks?.Length ?? 0, 0, chunks?.Length ?? 0);
 
-    /// <summary>What the first frame's terrains' arrays took (ms), made side by side.</summary>
     public double ArraysMs { get; private set; }
 
-    /// <summary>How many chunk terrains are wanted and not made yet.</summary>
     public int Waiting => toMake.Count;
 
-    /// <summary>
-    /// A generated map's ground is ready (ValleyChemistry's first Bind): the terrains the drawn tier wants are made now,
-    /// whole, before the first frame; then as the characters move, a few a frame.
-    /// </summary>
     public void Serve(ValleyGround served)
     {
         if (!lazy) return;
@@ -325,7 +273,6 @@ public sealed class MapTerrains : MonoBehaviour
         MakeSome(whole: false);
     }
 
-    /// <summary>The far ring's drawn dial in chunks (sim.json's streaming sight until it's read): how far round a character the terrains, and the sea's tiles, are made.</summary>
     public static int Sight()
     {
         var far = FarRing.Instance;
@@ -333,8 +280,6 @@ public sealed class MapTerrains : MonoBehaviour
         return sight > 0 ? sight : ChemGrid.Current?.Rules?.Sim.Streaming.Sight ?? 4;
     }
 
-    // Which terrains are wanted: round each character (and the camera), and under the active chunks. Those no longer
-    // wanted go back to the pool now; those wanted and not made wait, nearest first.
     void Plan()
     {
         using var marked = PlanMarker.Auto();
@@ -373,8 +318,6 @@ public sealed class MapTerrains : MonoBehaviour
         toMake.Sort((a, b) => Distance(a).CompareTo(Distance(b)));
     }
 
-    // Every so often, what the ground holds for chunks with no terrain far past the drawn cells (the known radius, where
-    // the cells' dressings stop, and a margin) is let go (ValleyGround.ForgetFar): their height offsets and arrays.
     void ForgetFar(int keep)
     {
         if (Time.unscaledTime < nextForget || arrays != null) return;
@@ -394,10 +337,8 @@ public sealed class MapTerrains : MonoBehaviour
         if (!focus.Contains(at)) focus.Add(at);
     }
 
-    // A chunk past a seam is the one it folds to (ViewWrap): terrains are kept by their folded chunk.
     (int i, int j) Fold((int i, int j) at) => ViewWrap.FoldChunk(at, layout.ChunksX, layout.ChunksZ);
 
-    // Where chunk (i, j)'s terrain stands: its corner at the copy nearest the camera (ViewWrap).
     Vector3 Corner((int i, int j) at)
     {
         var (cx, cz) = layout.ChunkCorner(at.i, at.j);
@@ -405,8 +346,6 @@ public sealed class MapTerrains : MonoBehaviour
         return new Vector3(ViewWrap.NearX(cx + half) - half, 0f, ViewWrap.NearZ(cz + half) - half);
     }
 
-    // On a world that wraps, the terrains standing moved to the copy of their place nearest the camera, where that
-    // changed (the camera went half a world round: none near it ever moves). Their height stays.
     void Replace()
     {
         foreach (int k in made)
@@ -419,7 +358,6 @@ public sealed class MapTerrains : MonoBehaviour
         }
     }
 
-    // The terrains under an active chunk of cells (cx, cy): the cells' chunks and the terrains' are offset.
     void AddActive(World world, int cx, int cy)
     {
         int x0 = cx << Chem.Chunks.Shift, y0 = cy << Chem.Chunks.Shift;
@@ -437,7 +375,6 @@ public sealed class MapTerrains : MonoBehaviour
         if (layout.HasChunk(at.i, at.j) && chunks[at.j * layout.ChunksX + at.i] == null && ground.HasChunk(at)) wantedNow.Add(at);
     }
 
-    // Chebyshev chunks to the nearest focus (0 for an active chunk, which must stand under what moves there).
     int Distance((int i, int j) at)
     {
         if (activeNow.Contains(at)) return 0;
@@ -447,16 +384,11 @@ public sealed class MapTerrains : MonoBehaviour
         return best;
     }
 
-    // The waiting terrains, nearest first: all of them (before the first frame), or as many as fit the frame's budget. In
-    // play their arrays are made on a worker, a few chunks side by side, while the frames go on: only a terrain whose
-    // arrays are made is made in a frame (or one under an active chunk, which waits for nothing).
     void MakeSome(bool whole)
     {
         using var marked = MakeMarker.Auto();
         TakeArrays();
         if (toMake.Count == 0) return;
-        // After a slow frame a terrain not about to be stood on waits a frame (a few at most): making one is a few ms, and
-        // the far ring's mesh shows there until it's drawn (FarRing.LetGo).
         if (!whole && Time.unscaledDeltaTime > BusyFrameSeconds && waited < MostWaits && Distance(toMake[0]) > 1)
         {
             waited++;
@@ -493,36 +425,27 @@ public sealed class MapTerrains : MonoBehaviour
             next++;
         }
         toMake.RemoveRange(0, next);
-        // The next ones' arrays start now, so they're likely made by the time their turn comes.
         if (toMake.Count > 0 && !whole) StartArrays(0);
         if (!any) return;
         nextReach = 0f;
     }
 
-    // In play, the height offsets of the next few chunks whose arrays are made, side by side: worked out one at a time as
-    // each terrain is made, they were a few milliseconds a terrain on the main thread (#206).
     void PrepareHeights()
     {
         var ready = new List<(int i, int j)>();
         for (int n = 0; n < toMake.Count && ready.Count < HeightsAFrame; n++)
         {
             if (!ground.Builder.Holds(toMake[n])) break;
-            // On a world that wraps, terrains either side of a seam are far apart by their folded chunks: their box would
-            // run the map's width. Only those near the first go together; the rest come in a later frame's box.
             if (ready.Count > 0 && Mathf.Max(Mathf.Abs(toMake[n].i - ready[0].i), Mathf.Abs(toMake[n].j - ready[0].j)) > NearBox) continue;
             ready.Add(toMake[n]);
         }
         if (ready.Count < 2) return;
-        // Their heights read the cells of one box round them all (CellHeightfield.Prepare): on a map made from its source,
-        // the chunks in the box between them made first on every core, not one a read as the box is read.
         MakeFirst(BoxOf(ready));
         ground.PrepareHeights(ready);
     }
 
-    // How far apart (chunks) terrains whose heights are worked out in one box may be.
     const int NearBox = 6;
 
-    // The terrains of the box round these (all of them, when it's no bigger than CellHeightfield.Prepare caches at once).
     static List<(int i, int j)> BoxOf(List<(int i, int j)> terrains)
     {
         int i0 = int.MaxValue, j0 = int.MaxValue, i1 = int.MinValue, j1 = int.MinValue;
@@ -542,15 +465,12 @@ public sealed class MapTerrains : MonoBehaviour
 
     const int HeightsAFrame = 8;
 
-    // The next chunks' arrays, made on a worker (one batch at a time).
     void StartArrays(int from)
     {
         if (arrays != null) return;
         var missing = ground.Builder.Missing(toMake.Skip(from).Take(MostAtOnce * 2));
         if (missing.Count > MostAtOnce) missing.RemoveRange(MostAtOnce, missing.Count - MostAtOnce);
         if (missing.Count == 0) return;
-        // On a map made from its source, the chunks they read are made ahead on the worker first: warming them here would
-        // make each on this thread, a stall of milliseconds a chunk. They're asked again until they're made.
         if (Unmade(missing) is { Count: > 0 } unmade)
         {
             ground.World.MakeAhead(unmade);
@@ -562,7 +482,6 @@ public sealed class MapTerrains : MonoBehaviour
         arrays = System.Threading.Tasks.Task.Run(() => builder.MakeArrays(missing));
     }
 
-    // A worker's arrays, kept on the main thread once they're done.
     void TakeArrays()
     {
         if (arrays == null || !arrays.IsCompleted) return;
@@ -580,7 +499,6 @@ public sealed class MapTerrains : MonoBehaviour
     System.Threading.Tasks.Task<GroundChunk[]> arrays;
     List<(int i, int j)> arraysFor;
 
-    // A terrain from the pool (or a new one) for chunk (i, j), given the chunk's ground.
     void Attach((int i, int j) at)
     {
         using var marked = AttachMarker.Auto();
@@ -616,7 +534,6 @@ public sealed class MapTerrains : MonoBehaviour
         MakeMarker = new("MapTerrains.MakeSome"), AttachMarker = new("MapTerrains.Attach"), AttachGroundMarker = new("MapTerrains.Attach.Ground"),
         BushesMarker = new("MapTerrains.Attach.Bushes"), ReleaseMarker = new("MapTerrains.Release");
 
-    // The bushes of the cells under a terrain just made, put on it (CellDressing.SeatBushes).
     void SeatBushes((int i, int j) at, Terrain t)
     {
         var grid = ChemGrid.Current?.Grid;
@@ -629,7 +546,6 @@ public sealed class MapTerrains : MonoBehaviour
             }
     }
 
-    // Chunk k's terrain back to the pool (its ground keeps what was changed on it).
     void Release(int k)
     {
         using var marked = ReleaseMarker.Auto();
@@ -647,9 +563,6 @@ public sealed class MapTerrains : MonoBehaviour
         pool.Push(t);
     }
 
-    // A terrain made or let go: it and the four round it told their neighbours (those standing, of the same detail, which
-    // Unity stitches). Done here rather than by Terrain.SetConnectivityDirty, whose AutoConnect went over every terrain
-    // and made garbage each time one was made, a few a second in flight.
     void Connect((int i, int j) at)
     {
         Neighbours(at);
@@ -675,7 +588,6 @@ public sealed class MapTerrains : MonoBehaviour
 
     Terrain Alike((int i, int j) at, bool high) => Standing(at) is { } t && layout.IsHighRes(at.i, at.j) == high ? t : null;
 
-    /// <summary>The chunk terrain standing under a world point, or null (none made there, or off the map).</summary>
     public Terrain TerrainAt(Vector3 p)
     {
         if (chunks == null) return null;
@@ -683,10 +595,6 @@ public sealed class MapTerrains : MonoBehaviour
         return layout.HasChunk(i, j) ? chunks[j * layout.ChunksX + i] : null;
     }
 
-    /// <summary>
-    /// The drawn ground's height under a point: its terrain's where one stands, else the ground's (the land, for a chunk
-    /// with no terrain made); null off the map.
-    /// </summary>
     public float? HeightAt(Vector3 p)
     {
         var t = TerrainAt(p);
@@ -696,10 +604,6 @@ public sealed class MapTerrains : MonoBehaviour
         return ground.GroundAt(p.x, p.z);
     }
 
-    /// <summary>
-    /// The chunks as Terrains under <paramref name="parent"/>, each from <paramref name="builder"/>'s arrays (or blank,
-    /// without one), standing where its step 0 is. Build Chemistry Yard uses the same to stand things on the ground.
-    /// </summary>
     public static Terrain[] Place(Transform parent, TerrainGrid layout, GroundBuilder builder, Material material)
     {
         var terrains = new Terrain[layout.ChunksX * layout.ChunksZ];
@@ -727,8 +631,6 @@ public sealed class MapTerrains : MonoBehaviour
         size = new Vector3(layout.ChunkSize, 1f, layout.ChunkSize),
     };
 
-    // Terrains connect to neighbours of the same group for LOD stitching, and Unity only stitches neighbours of the same
-    // resolution, so full-detail and coarse chunks are two groups (their shared edges match by construction).
     static Terrain Configure(Terrain terrain, bool fullDetail, Material material)
     {
         terrain.treeDistance = TreeDistance;

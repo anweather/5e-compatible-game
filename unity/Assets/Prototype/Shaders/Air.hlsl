@@ -16,7 +16,6 @@ half3 _AirHorizon;
 half3 _AirGlow;
 float3 _AirSun;
 
-// Punchy's skybox at the horizon: the glow round the sun falls off as the 12th power of how near the sun the bearing is.
 static const float AirGlowPower = 12.0;
 
 half AirSeen(float dist)
@@ -41,8 +40,6 @@ half3 Aired(half3 color, float3 positionWS)
     return lerp(AirToward(toward), color, AirSeen(length(toward)));
 }
 
-// A far shape's own colour paled toward the sky's on its bearing at its own brightness, more the farther it stands past
-// DullFrom (the boat game's I17): the far hills lose their green before the haze has taken them.
 static const float DullFrom = 3000.0, DullSpan = 8000.0;
 static const half3 DullLuma = half3(0.2126, 0.7152, 0.0722);
 

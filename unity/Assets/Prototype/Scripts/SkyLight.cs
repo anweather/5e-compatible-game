@@ -19,7 +19,6 @@ public class SkyLight : MonoBehaviour
 {
     static readonly Registry<SkyLight> registry = new();
 
-    /// <summary>The first SkyLight in play (what FindAnyObjectByType found), or null: see Registry.</summary>
     public static SkyLight InPlay => registry.First;
 
     void Awake() => registry.Join(this);
@@ -28,9 +27,7 @@ public class SkyLight : MonoBehaviour
 
     public Light sun;
     public Light moon;
-    /// <summary>The sun's compass bearing (degrees about up), as the yard was lit before the clock.</summary>
     public float bearing = -40f;
-    /// <summary>How far the sun's path leans from overhead: noon stands this many degrees short of straight up.</summary>
     public float tilt = 35f;
 
     ChemGrid.CurrentGrid grid;
@@ -38,33 +35,26 @@ public class SkyLight : MonoBehaviour
     float baseExposure = 1.15f, baseThickness = 0.9f;
     Color baseTint = new Color(0.45f, 0.55f, 0.75f);
     float baseFogStart, baseFogEnd;
-    // How long the shown clock takes to catch up with a jump of the world's clock (s).
     const float ClockGlide = 0.3f;
     double shownClock = -1;
     float cloud, fog, flash;
-    // The noon sky's ambient light, baked once (BakeDaylight); the hour and weather scale it.
     SphericalHarmonicsL2 daylightAmbient;
     bool ambientBaked;
     int bakeTries;
     GUIStyle style;
 
-    /// <summary>Lights the whole sky up for a moment (lightning; 1 is a strike close by).</summary>
     public void Flash(float amount) => flash = Mathf.Max(flash, amount);
 
-    /// <summary>How far the dragon has darkened the sky, 0..1 (eased toward the flight); CloudSky reads it for the clouds.</summary>
     public float Menace { get; private set; }
 
-    // How fast the dark comes on and lifts (a full swing a second, times this).
     const float MenaceEase = 0.2f;
 
-    /// <summary>0 at night to 1 by day, the sun's light on the land (for WeatherFx and anything that dims at night).</summary>
     public float Daylight { get; private set; } = 1f;
 
     void Start()
     {
         grid = ChemGrid.Current;
         if (sun == null) sun = RenderSettings.sun;
-        // A copy, so the time of day never writes to the sky material asset.
         if (RenderSettings.skybox != null)
         {
             sky = new Material(RenderSettings.skybox);
@@ -77,10 +67,6 @@ public class SkyLight : MonoBehaviour
         baseFogEnd = RenderSettings.fogEndDistance;
     }
 
-    // One bake of the sky at noon, at the first frames and before the hour moves the sun or
-    // dims the sky, held as a Custom ambient that Shine scales. UpdateEnvironment fills
-    // ambientProbe at once, so it's read straight away; in the scene's first frames it can still
-    // give the scene's stored (dark) probe, so a bake that dark is tried again next frame.
     void BakeDaylight()
     {
         Place(sun.transform, Sky.MinutesPerDay / 2f);
@@ -94,16 +80,8 @@ public class SkyLight : MonoBehaviour
         ambientBaked = true;
     }
 
-    /// <summary>
-    /// While true the sky leaves the sun, the ambient light, the haze and the sky material as they
-    /// are, for a recording that lights the scene itself (OvernightShowcase's dusk).
-    /// </summary>
     public bool Held { get; set; }
 
-    // The clock the sun is drawn at. The world's clock moves a whole tick at a time, and Hasten
-    // Time makes that dozens of ticks, so the sun and every shadow jumped at each tick; this one
-    // glides after it instead (Andrew's playtest #6). It snaps after a reset or a jump of more
-    // than a quarter of a day.
     double ShownClock(World world)
     {
         double target = world.ClockTick;
@@ -122,18 +100,14 @@ public class SkyLight : MonoBehaviour
         cloud = Mathf.MoveTowards(cloud, CloudOf(now), Time.deltaTime * 0.3f);
         Menace = Mathf.MoveTowards(Menace, DragonFlight.Darkness(world), Time.deltaTime * MenaceEase);
         fog = Mathf.MoveTowards(fog, now.Fog / 100f, Time.deltaTime * 0.2f);
-        // The clock, not the tick: Hasten Time runs it ahead (World.ClockTick).
         float minute = (float)(Sky.MinutesSmooth(world.Rules.Sim, ShownClock(world)) % Sky.MinutesPerDay);
         float sunUp = Place(sun.transform, minute);
         float moonUp = moon != null ? Place(moon.transform, minute + Sky.MinutesPerDay / 2f) : 0f;
-        // The procedural sky lights itself from RenderSettings.sun: the sun by day, the moon by night
-        // (with the moon in it by day, the daytime sky drew black).
         var lit = moon != null && sunUp < -0.05f ? moon : sun;
         if (RenderSettings.sun != lit) RenderSettings.sun = lit;
         Shine(sunUp, moonUp);
     }
 
-    /// <summary>How much the sky is overcast, 0..1.</summary>
     static float CloudOf(WeatherNow now) => now.Kind switch
     {
         WeatherKind.Cloudy => now.Strength / 100f * 0.8f,
@@ -145,7 +119,6 @@ public class SkyLight : MonoBehaviour
         _ => 0f,
     };
 
-    // Turns a body to where it stands at this minute (6:00 rising, 12:00 at its height); returns its height, -1..1.
     float Place(Transform body, float minute)
     {
         float turn = minute / Sky.MinutesPerDay * 360f - 90f;
@@ -153,7 +126,6 @@ public class SkyLight : MonoBehaviour
         return -body.forward.y;
     }
 
-    /// <summary>The sun's height (its forward's sine, about 3.4 degrees) under which it casts no shadows; they fade in to twice it.</summary>
     public const float LowSunShadows = 0.06f;
 
     void Shine(float sunUp, float moonUp)
@@ -162,8 +134,6 @@ public class SkyLight : MonoBehaviour
         float sunLight = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.04f, 0.25f, sunUp));
         sun.intensity = 1.6f * sunLight * clear;
         sun.color = Color.Lerp(new Color(1f, 0.55f, 0.32f), new Color(1f, 0.92f, 0.82f), Mathf.InverseLerp(0.02f, 0.45f, sunUp));
-        // The sun's shadows fade out as it nears the horizon and are off under LowSunShadows: a low sun's shadows run along
-        // the ground through a wood's trees (the hills' woods: the frame doubled in the last minutes before sunset).
         float shade = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(LowSunShadows, LowSunShadows * 2f, sunUp));
         sun.shadowStrength = shade;
         sun.shadows = sun.intensity > 0.02f && shade > 0.01f ? LightShadows.Soft : LightShadows.None;
@@ -186,9 +156,6 @@ public class SkyLight : MonoBehaviour
         }
     }
 
-    // The noon ambient, as the sky would give it now: dimmer with the hour and the cloud (as the sky's
-    // exposure falls) and the intensity above, bluer by night, greyer under cloud, warm at dawn
-    // and dusk.
     void Ambient(float sunUp, float sunLight)
     {
         float level = RenderSettings.ambientIntensity * Mathf.Lerp(0.25f, 1f, Daylight) * (1f - 0.45f * cloud) * (1f - 0.65f * Menace);
@@ -206,17 +173,13 @@ public class SkyLight : MonoBehaviour
         RenderSettings.ambientProbe = probe;
     }
 
-    /// <summary>How much the rain thickens the haze now, 0..1 (from the cloud past half); AirInPlay reads it.</summary>
     public float Rain => Mathf.Clamp01(cloud - 0.5f) * 2f;
 
-    /// <summary>How far fog has closed the haze in now, 0..1; AirInPlay reads it.</summary>
     public float Fog => fog;
 
-    /// <summary>The valley's linear haze now (m): the scene's own, closed in by rain partway and by fog right in.</summary>
     public (float start, float end) LinearHaze =>
         (Mathf.Lerp(Mathf.Lerp(baseFogStart, 40f, Rain), 0f, fog), Mathf.Lerp(Mathf.Lerp(baseFogEnd, 1200f, Rain), 90f, fog));
 
-    // Day, time and weather at the top right, under the online status line.
     void OnGUI()
     {
         var world = grid?.World;
@@ -227,7 +190,6 @@ public class SkyLight : MonoBehaviour
 
     static readonly string[] WindFrom = { "south", "west", "north", "east" };
 
-    /// <summary>"Day 1 · 09:00 · Rain · wind from the west": the wind blows toward its direction, so it comes from the opposite side.</summary>
     public static string ClockLine(World world)
     {
         long minutes = world.Minutes;

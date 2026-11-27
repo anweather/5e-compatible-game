@@ -21,24 +21,18 @@ using UnityEngine.Windows.Speech;
 // back says so, apart from one that heard nothing (#58).
 public sealed class WindowsDictation : ISpeech
 {
-    // SPERR_SPEECH_PRIVACY_POLICY_NOT_ACCEPTED: Windows' online speech recognition setting is off.
     const int SettingOff = unchecked((int)0x80045509);
     const string StillBusy = "Windows dictation is still busy with the last try. Give it a moment.";
     const string NoAnswer = "Windows dictation didn't answer, so nothing came through. Try again, or type.";
     const string NoWordsBack = "Windows' speech service got sound from the microphone but sent no words back. Try again, or type.";
     const float SilenceSeconds = 60f, MostStopSeconds = 4f;
     const int MeterRate = 16000, MeterSeconds = 1, MeterWindow = 800;
-    /// <summary>A peak over this is sound, not a quiet room: Andrew talking peaked at 0.059, his room at 0.001.</summary>
     public const float HeardSound = 0.02f;
 
-    /// <summary>Whether the level meter runs beside dictation.</summary>
     public static bool Metered { get; set; } = !Environment.GetCommandLineArgs().Contains("-voice-no-meter");
 
     readonly ConcurrentQueue<(SpeechHeard heard, string text)> heard = new();
     readonly float[] samples = new float[MeterWindow];
-    // Those that never said they'd finished, kept so no finaliser disposes them mid-game; those that
-    // since have, to dispose at the next press, never inside their own event. Windows runs one
-    // dictation at a time, so a new one can't start until a stuck one is done.
     static readonly List<DictationRecognizer> LeftBehind = new(), Spent = new();
 
     DictationRecognizer recogniser;
@@ -68,7 +62,7 @@ public sealed class WindowsDictation : ISpeech
         string off = WindowsSpeechSettings.Problem(settings);
         if (off != null)
         {
-            finished = true; // nothing was started
+            finished = true;
             Fail(off);
             return;
         }
@@ -89,7 +83,7 @@ public sealed class WindowsDictation : ISpeech
         catch (Exception e) when (e is UnityException or InvalidOperationException)
         {
             Debug.LogWarning("Voice: " + e.Message);
-            finished = true; // it never started, so there's nothing to wait for
+            finished = true;
             Fail(LeftBehind.Count > 0 ? StillBusy : "Windows speech isn't available on this PC.");
         }
     }
@@ -102,7 +96,6 @@ public sealed class WindowsDictation : ISpeech
         SendStop();
     }
 
-    // Only a running recogniser can stop; Take tries again until it is.
     void SendStop()
     {
         if (stopSent || recogniser == null || recogniser.Status != SpeechSystemStatus.Running) return;
@@ -111,7 +104,6 @@ public sealed class WindowsDictation : ISpeech
         VoiceTrace.Line("stop called");
     }
 
-    // Stop should bring DictationComplete; if none comes, the hold still ends.
     public bool Take(out (SpeechHeard heard, string text) line)
     {
         ShowDevice();
@@ -194,7 +186,6 @@ public sealed class WindowsDictation : ISpeech
         State = SpeechState.Unavailable;
     }
 
-    // Once a hold: Done comes out after anything it heard.
     void End()
     {
         if (!holding) return;

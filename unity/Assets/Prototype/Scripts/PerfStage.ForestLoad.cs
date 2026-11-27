@@ -31,9 +31,7 @@ public partial class PerfStage
         SpellIds.BurningHands, SpellIds.ShockingGrasp, SpellIds.CreateWater, SpellIds.FogCloud,
     };
 
-    /// <summary>Each cast's time from the release of Cast to the cast starting: seconds into the run, then ms.</summary>
     public List<(float at, float ms)> CastLatency { get; } = new();
-    /// <summary>Each stop's time from the stick to the wizard moving: seconds into the run, then ms.</summary>
     public List<(float at, float ms)> MoveLatency { get; } = new();
 
     Gamepad pad;
@@ -95,7 +93,6 @@ public partial class PerfStage
             yield return new WaitForSecondsRealtime(CastGapSeconds);
             if (Time.realtimeSinceStartup - wentAt >= rainDue)
             {
-                // A held Control Weather lasts 4 minutes, then four more steps of it come back to rain.
                 for (int step = rainDue > RainAtSeconds ? WeatherSteps : 1; step > 0; step--) yield return CastAt(SpellIds.ControlWeather, wizard.transform.position, Chem.World.MaxCharge);
                 rainDue += RainHoldsSeconds;
                 continue;
@@ -111,7 +108,6 @@ public partial class PerfStage
         }
     }
 
-    // As far towards the fire's start as a cast from here goes.
     Vector3 TowardsFire()
     {
         var at = Vector3.MoveTowards(wizard.transform.position, fire, MostCastMetres);
@@ -119,7 +115,6 @@ public partial class PerfStage
         return at;
     }
 
-    // "The fire near me green", on from the start, so the whole walk is with a moving scope.
     void NearMeGreen()
     {
         var switcher = grid.GetComponent<RuleSwitcher>();
@@ -129,8 +124,6 @@ public partial class PerfStage
         Debug.Log("PERF SCOPE " + switcher.Ask(RoomCommand.Apply(switcher.Me, "near-me-green", mod, "Near me green")));
     }
 
-    // What a look's rule switch costs: all fire blue and the grass recoloured, each on and off through
-    // the room as set_look's draft is, at the burn's height and well into the rain.
     IEnumerator LookSwitches()
     {
         var switcher = grid.GetComponent<RuleSwitcher>();
@@ -170,7 +163,6 @@ public partial class PerfStage
         Debug.Log($"PERF LOOK SWITCH {name} t={(Time.realtimeSinceStartup - wentAt).ToString("0", System.Globalization.CultureInfo.InvariantCulture)} worst_ms={worst.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)} mean_ms={(before / SwitchFrames).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}");
     }
 
-    // The pad's state, once a frame, as the steering asked for it.
     IEnumerator HoldThePad()
     {
         while (enabled && wizard != null)
@@ -191,7 +183,6 @@ public partial class PerfStage
         while (enabled && wizard != null)
         {
             degrees += RingStepDegrees;
-            // -perf-walk-through goes from fire to fire instead of walking round them.
             var target = Asked("-perf-walk-through") ? NearestFire(degrees) : RingPoint(degrees, RingStartMetres + (Time.realtimeSinceStartup - wentAt) * RingGrowthPerSecond);
             float best = float.MaxValue, stuckSince = Time.realtimeSinceStartup;
             while (enabled && wizard != null)
@@ -218,7 +209,6 @@ public partial class PerfStage
         }
     }
 
-    // The burning cell nearest the wizard and a few cells on, or the ring if nothing burns in reach.
     Vector3 NearestFire(float degrees)
     {
         var me = grid.CellAt(wizard.transform.position);
@@ -244,7 +234,6 @@ public partial class PerfStage
         return new Vector2(Mathf.Sin(rel), Mathf.Cos(rel));
     }
 
-    // Now and then the wizard stands still, then sets off, to time the stick.
     IEnumerator StopNowAndThen()
     {
         var shown = new WaitForEndOfFrame();
@@ -267,7 +256,6 @@ public partial class PerfStage
 
     static float Horizontal(Vector3 v) => new Vector2(v.x, v.z).magnitude;
 
-    // A tap of Cast at this point. Every spell charges, so it goes on the release.
     IEnumerator CastAt(string spell, Vector3 at, int charge = 1)
     {
         var shown = new WaitForEndOfFrame();

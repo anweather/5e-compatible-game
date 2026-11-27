@@ -46,7 +46,6 @@ namespace Chem.Tests
             Assert.That(framesA.Count, Is.GreaterThan(20));
             Assert.That(framesSmall.Count, Is.EqualTo(1), "a short message goes whole");
 
-            // Two messages' pieces interleaved, and a whole one between them, from one sender; and another sender's.
             var from = new PeerId(1);
             var got = new List<byte[]>();
             void Feed(PeerId p, byte[] frame)
@@ -118,7 +117,6 @@ namespace Chem.Tests
             Assert.That(Fnv1a64.Hash("a"), Is.EqualTo(0xaf63dc4c8601ec8cUL), "FNV-1a 64 of \"a\"");
         }
 
-        // A command written, read back and added to a batch, as a peer's session does.
         static TickBatch RoundTrip<T>(LockstepChannel<T> channel, T command)
         {
             var w = new LockstepWriter();

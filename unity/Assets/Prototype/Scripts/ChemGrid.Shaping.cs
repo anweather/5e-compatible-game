@@ -34,33 +34,23 @@ public partial class ChemGrid
     readonly Dictionary<Rigidbody, float> riders = new();
     Material plainDust;
 
-    // How close to the ground a body's foot counts as standing on it (m).
     const float StandingGap = 0.15f;
-    // How long a stamp's area stays carried once the ground is still: its colliders catch up a chunk a frame (s).
     const float LandQuietSeconds = 0.5f;
-    // Room past the land's lowest and highest for what stands on it (m).
     const float LandHeadroom = 10f;
 
-    // The areas of land stamps still moving, the ground each body stood on last frame, and how long it's been still.
     readonly List<(int x, int y, int reach)> landAreas = new();
     Dictionary<Rigidbody, float> landGround = new(), landGroundNext = new();
     readonly Collider[] landHits = new Collider[1024];
     float landQuiet;
 
-    /// <summary>The last frame a stamp's area was carried: that frame, its cost in milliseconds, the colliders its query found and the bodies it carried. For the probe.</summary>
     public (int frame, double ms, int found, int carried) LandCarryCost { get; private set; }
 
-    /// <summary>True while any reshaped ground is still easing to a new height.</summary>
     public bool IsShaping => shaping.Count > 0 || landAreas.Count > 0;
 
-    // The ground drawn at a cell now: the terrain's, which lags its target while it eases.
     float ShownGround(int x, int y, Cell c) => valley != null ? valley.ShownGround(x, y) : GroundTop(x, y, c);
 
-    // A raised wall built of rocks over flat terrain (ValleyChemistry.FlatUnderWalls): its top
-    // eases on its own, at the terrain's pace, since the terrain under it doesn't move.
     bool StandsAlone(Cell c) => valley != null && valley.FlatUnderWalls && c != null && World.IsRaisedWall(c);
 
-    // A cell's ground starts moving from where it is drawn now.
     void StartShaping(View v, int x, int y, float shown)
     {
         shaping.RemoveAll(s => s.view == v);
@@ -69,8 +59,6 @@ public partial class ChemGrid
         Dust(new Vector3(center.x, Mathf.Max(shown, GroundTop(x, y, World.At(x, y))), center.z));
     }
 
-    // Each frame: the valley eases its terrain, and each reshaped cell's dressing, blocker and
-    // riders follow the ground drawn at its centre, until it stops moving.
     void AnimateShaping()
     {
         if (valley != null) valley.AdvanceShaping(Time.deltaTime);
@@ -90,14 +78,12 @@ public partial class ChemGrid
         CarryOverLand();
     }
 
-    // A stamp moved the land, or one came off: what stands in its reach goes with the ground.
     void LandShaped(int x, int y, int reach)
     {
         landAreas.Add((x, y, reach));
         landQuiet = 0f;
     }
 
-    // Each frame a stamp's ground moves: everything on its areas, each by the ground under it.
     void CarryOverLand()
     {
         if (landAreas.Count == 0) return;
@@ -121,7 +107,6 @@ public partial class ChemGrid
         landGround.Clear();
     }
 
-    // Into riders: the free bodies on an area, and a body asleep with its chunk, which nothing else will move. Returns the colliders found.
     int FindOnLand((int x, int y, int reach) area)
     {
         float unit = stepHeight / World.Rules.Sim.WaterUnitsPerStep;
@@ -148,8 +133,6 @@ public partial class ChemGrid
         go.transform.position = new Vector3(p.x, y, p.z);
     }
 
-    // What stands on a cell whose ground moved from `was` to `now` this frame: bodies resting on
-    // rising ground go up with it; anything over sinking ground is woken so it drops.
     void Carry(Vector3 center, float was, float now)
     {
         float lo = Mathf.Min(was, now) - 0.3f, hi = Mathf.Max(was, now) + 2.5f;
@@ -168,11 +151,6 @@ public partial class ChemGrid
         foreach (var (body, bottom) in riders) CarryBody(body, bottom, was, now);
     }
 
-    /// <summary>
-    /// A body whose foot is at <paramref name="bottom"/>, over ground that went from <paramref name="was"/> to
-    /// <paramref name="now"/>: standing on rising ground it goes up with it; over sinking ground it's woken to fall. One
-    /// <paramref name="asleep"/> with its chunk has no physics to fall by, so it's moved with the ground both ways.
-    /// </summary>
     public static void CarryBody(Rigidbody body, float bottom, float was, float now, bool asleep = false)
     {
         bool standing = bottom <= was + StandingGap;
@@ -188,7 +166,6 @@ public partial class ChemGrid
         if (velocity.y < 0f) body.linearVelocity = new Vector3(velocity.x, 0f, velocity.z);
     }
 
-    // A CharacterController isn't pushed by a moving collider, so lift it onto the rising ground.
     static void LiftWalker(CharacterController walker, float ground)
     {
         var t = walker.transform;
@@ -198,11 +175,8 @@ public partial class ChemGrid
         walker.enabled = true;
     }
 
-    // --- dust ------------------------------------------------------------------------
-
     void Dust(Vector3 at) => Destroy(DustBurst(at), 2.5f);
 
-    // A short burst of earth-coloured dust over the cell, rising a little and settling back.
     GameObject DustBurst(Vector3 at)
     {
         var go = new GameObject("Dust");

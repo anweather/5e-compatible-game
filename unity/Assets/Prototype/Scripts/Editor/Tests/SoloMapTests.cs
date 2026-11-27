@@ -9,7 +9,7 @@ using UnityEngine.TestTools;
 // name that isn't a map is one clear error, then the valley.
 public class SoloMapTests
 {
-    const string Key = "solo-map"; // spelt out: a new key would lose players' picks
+    const string Key = "solo-map";
     bool had;
     string kept;
 
@@ -70,14 +70,12 @@ public class SoloMapTests
     [Test]
     public void ANameThatIsNotAMapIsOneErrorThenTheValley()
     {
-        // The error is said once per name (so the Editor's every look doesn't repeat it): a name of this run's own.
         string name = "test-fixtures/maps/nowhere-" + System.Guid.NewGuid().ToString("N");
         LogAssert.Expect(LogType.Error, new System.Text.RegularExpressions.Regex("MAP: " + name + " isn't a map"));
         string folder = ChemGrid.PlayFolder(name);
         Assert.That(folder, Is.EqualTo(ChemGrid.PlayFolder("")));
     }
 
-    // Andrew 2026-11-25: a player with no pick loads into the hills, the sparse island (the nine before).
     [Test]
     public void NothingSavedStartsOnTheHills()
     {

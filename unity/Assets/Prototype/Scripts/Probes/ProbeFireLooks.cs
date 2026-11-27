@@ -52,10 +52,8 @@ public class FireLooksProbe : ProbeScenario
         yield return Crate();
     }
 
-    // A crate stood in fire: when it catches and when it's gone.
     IEnumerator Crate()
     {
-        // On dry ground: the pond's crates float, and fire doesn't reach them.
         var crate = PhysicsProp.All.FirstOrDefault(p => p.kind == EntityIds.Crate && p.State != null && Dry(p));
         if (crate == null)
         {
@@ -67,7 +65,6 @@ public class FireLooksProbe : ProbeScenario
         float start = Time.time, caught = -1f;
         while (Time.time - start < 60f && crate != null && !crate.State.Destroyed)
         {
-            // Oil under it, kept alight: the dirt it may stand on doesn't burn.
             if (World.At(cell.x, cell.y).Fire == 0)
             {
                 World.SetCover(cell.x, cell.y, CoverIds.Oil);
@@ -88,7 +85,6 @@ public class FireLooksProbe : ProbeScenario
         return World.At(cell.x, cell.y).Water == 0;
     }
 
-    // The sandbox's paint brushes: a terrain, then a cover on it (or none).
     void Lay(int x, int y, string terrain, string cover)
     {
         World.Paint(x, y, terrain);

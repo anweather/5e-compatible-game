@@ -14,7 +14,6 @@ using UnityEngine;
 // destroyed as before. The code-made bursts (BurstFx) are readied here too. Presentation only.
 public static class ShowPool
 {
-    /// <summary>What a kept copy was made as: the prefab, the look's tint and, for a tinted show, its colour.</summary>
     public readonly struct Look : IEquatable<Look>
     {
         public readonly GameObject Prefab;
@@ -33,9 +32,7 @@ public static class ShowPool
         public override int GetHashCode() => HashCode.Combine(Prefab != null ? Prefab.GetInstanceID() : 0, Tint, Colour);
     }
 
-    // Copies kept free for one look; more than this back at once and the rest go.
     const int MostKept = 4;
-    // Where a copy is made ahead of its cast, out of sight.
     static readonly Vector3 Away = new(0f, -10000f, 0f);
 
     static readonly Dictionary<Look, Stack<PooledShow>> free = new();
@@ -56,11 +53,6 @@ public static class ShowPool
         holder = null;
     }
 
-    /// <summary>
-    /// A show of <paramref name="look"/> at a point: a kept copy if one is free, else a new one, dressed by
-    /// <paramref name="dress"/> (only a new one: a kept copy is dressed already). Its scale is the prefab's, or
-    /// <paramref name="size"/> all round, then <paramref name="scale"/> times that (SpellVisuals.Scale).
-    /// </summary>
     public static GameObject Take(Look look, Vector3 at, Quaternion turn, Action<GameObject> dress, float scale = 1f, float? size = null)
     {
         if (!Keeps(look.Prefab))
@@ -88,7 +80,6 @@ public static class ShowPool
         return show.gameObject;
     }
 
-    /// <summary>Ends a show after <paramref name="seconds"/>: a kept copy goes back to be taken again, any other is destroyed.</summary>
     public static void Release(GameObject show, float seconds)
     {
         if (show == null) return;
@@ -96,7 +87,6 @@ public static class ShowPool
         else UnityEngine.Object.Destroy(show, seconds);
     }
 
-    /// <summary>Has a copy of <paramref name="look"/> made ahead of its first cast (by ReadyNext), unless one is already.</summary>
     public static void Ready(Look look, Action<GameObject> dress)
     {
         if (look.Prefab == null || !Keeps(look.Prefab) || !readied.Add(look)) return;
@@ -110,16 +100,13 @@ public static class ShowPool
         foreach (BurstFx.Kind kind in Enum.GetValues(typeof(BurstFx.Kind))) toReady.Enqueue(() => BurstFx.Ready(kind));
     }
 
-    /// <summary>Makes the next copy waiting to be readied, if any: one a frame, so readying never makes a long frame.</summary>
     public static void ReadyNext()
     {
         if (toReady.Count > 0) toReady.Dequeue()();
     }
 
-    /// <summary>How many copies of a look are free now (for the tests).</summary>
     public static int FreeCount(Look look) => free.TryGetValue(look, out var kept) ? kept.Count : 0;
 
-    /// <summary>Puts a copy back now: stopped, cleared and switched off, or destroyed if enough are free already.</summary>
     public static void Back(PooledShow show)
     {
         if (show == null) return;
@@ -136,7 +123,6 @@ public static class ShowPool
         kept.Push(show);
     }
 
-    // Whether a prefab's show can be kept: nothing in it but particle systems, lights and meshes (colliders are removed).
     static bool Keeps(GameObject prefab)
     {
         if (prefab == null) return false;
@@ -148,7 +134,6 @@ public static class ShowPool
         return keepable[prefab] = keeps;
     }
 
-    // A free copy of a look, skipping any a scene change destroyed.
     static PooledShow Pop(Look look)
     {
         if (!free.TryGetValue(look, out var kept)) return null;

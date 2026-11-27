@@ -56,7 +56,6 @@ public class VoiceProbe : ProbeScenario
         }
     }
 
-    // A script standing in for claude: it notes what came on stdin, waits, then answers.
     string StandInClaude(string name, int seconds)
     {
         string script = Path.Combine(folder, name + ".cmd");
@@ -187,7 +186,6 @@ public class VoiceProbe : ProbeScenario
         Check("box_stays_closed", !chat.Open);
     }
 
-    // A whole hold from a sample: the words come one by one on its timing, then it goes.
     IEnumerator Sample(GameChat chat, GameVoice voice)
     {
         var speech = Play(voice, SampleGreen);
@@ -210,7 +208,6 @@ public class VoiceProbe : ProbeScenario
         Check("the_sample_reaches_claude", Asked().Contains(speech.Text), Asked());
     }
 
-    // Letting go mid-sentence sends what was heard, and only that.
     IEnumerator Early(GameChat chat, GameVoice voice)
     {
         var speech = Play(voice, SampleDay);
@@ -223,7 +220,6 @@ public class VoiceProbe : ProbeScenario
         yield return Until(() => !chat.Busy);
     }
 
-    // With Claude busy, spoken and typed words wait in order, on one line, up to the cap.
     IEnumerator Queue(GameChat chat, GameVoice voice)
     {
         const string Typing = "first typed", Second = "second typed", Third = "third typed", TooMany = "one too many";

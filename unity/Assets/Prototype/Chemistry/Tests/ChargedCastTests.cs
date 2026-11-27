@@ -20,7 +20,6 @@ namespace Chem.Tests
             for (int i = 0; i < ticks; i++) w.Step();
         }
 
-        // Steps until a cast goes off, and says how many ticks that took.
         static int UntilFired(World w)
         {
             for (int t = 1; t <= 60; t++)
@@ -32,7 +31,6 @@ namespace Chem.Tests
             return 0;
         }
 
-        // Holds a combo's elements until the meter has reached this charge, then lets go.
         static ComboFired Charged(World w, string combo, int charge)
         {
             foreach (var element in combo.Split('+')) Hold(w, element);
@@ -108,7 +106,6 @@ namespace Chem.Tests
         [Test]
         public void ChargeNeverSwapsTheSpell()
         {
-            // D16: Stone Ramp and Sleet Storm are rows of their own now, and charge only makes a spell stronger.
             foreach (var combo in new[] { "earth+earth", "water+air", "fire+fire" })
                 for (int charge = 1; charge <= World.MaxCharge; charge++)
                     Assert.That(Base.Combos.Combo(combo).SpellAt(charge, World.MaxCharge), Is.EqualTo(Base.Combos.Combo(combo).Spell), combo);
@@ -277,7 +274,6 @@ namespace Chem.Tests
         [Test]
         public void AChargedStoneRampClimbs()
         {
-            // Stone Ramp was Wall of Stone held to the full; now it's earth and earth thrown (D16), and charge still lengthens it.
             var w = new World(Base, 24, 12, 7, "dirt");
             w.Cast("stone-ramp", 4, 6, 1, World.MaxCharge);
             var heights = Enumerable.Range(4, 12).Select(x => w.At(x, 6).Height).ToList();
@@ -295,7 +291,6 @@ namespace Chem.Tests
             Assert.That(w.At(5, 5).Height, Is.EqualTo(3), "as high as a wall");
         }
 
-        // Plant Growth by elements on burnt ground and meadow: what a tap can't reach.
         static int Saplings(int charge)
         {
             var w = ChemistryTests.Room(19, 19, 7, Base);
@@ -316,8 +311,6 @@ namespace Chem.Tests
             Assert.That(Saplings(1), Is.EqualTo(0));
             Assert.That(Saplings(World.MaxCharge), Is.GreaterThan(5));
         }
-
-        // The goldens (first taken from sandbox/test/charged.test.ts, frozen 2026-10-31).
 
         [Test]
         public void GoldenChargedPlantGrowth()
@@ -344,7 +337,6 @@ namespace Chem.Tests
         [Test]
         public void GoldenFrostHeldStaysFrost()
         {
-            // Frost held to full charge was Sleet Storm; now it's a stronger Frost (D16), and Sleet Storm is water's sweep.
             var w = new World(Base, 20, 20, 7);
             for (int y = 3; y <= 6; y++) w.At(5, y).T = "grass";
             w.At(7, 8).Water = 8;

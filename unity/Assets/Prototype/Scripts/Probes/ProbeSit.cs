@@ -53,7 +53,6 @@ public class SitProbe : ProbeScenario
         }
     }
 
-    // The bench or lounger nearest the yard.
     static Seat Pick(bool lounge)
     {
         Seat best = null;

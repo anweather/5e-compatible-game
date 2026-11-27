@@ -36,7 +36,6 @@ public class RowHouses : MonoBehaviour
         public System.Func<Vector2Int, RowRuin.CellNow> cells;
         public ParticleSystem[] smoke;
         public List<Vector2Int> walls;
-        // The chunks its cells are in (cx, cy): while every one is packed, nothing on it changes (LookAtOne).
         public Vector2Int[] chunks;
     }
 
@@ -50,23 +49,17 @@ public class RowHouses : MonoBehaviour
     bool closing;
     readonly System.Diagnostics.Stopwatch timer = new();
 
-    /// <summary>How long the longest redraw of a house has taken (ms), and how many redraws so far.</summary>
     public double WorstRedrawMs { get; private set; }
     public int Redraws { get; private set; }
 
-    /// <summary>Each house and its stretches down, for the probe: two peers should say the same.</summary>
     public string Ruins => string.Join(" ", order.Select(d => $"{d.row.Id}:{d.ruin.Down}/{d.ruin.Stretches}"));
 
-    /// <summary>A house's ruin, for the probe; null if it isn't drawn.</summary>
     public RowRuin Ruin(string id) => drawn.TryGetValue(id, out var d) ? d.ruin : null;
 
-    /// <summary>How many buildings are drawn from their rows now.</summary>
     public int Count => drawn.Count;
 
-    /// <summary>A building drawn from its row, for the probe; null if it isn't.</summary>
     public GameObject Root(string id) => drawn.TryGetValue(id, out var d) ? d.root : null;
 
-    /// <summary>The scene's own building this row hid, for the probe; null if none.</summary>
     public Transform Hidden(string id) => drawn.TryGetValue(id, out var d) ? d.hidden : null;
 
     void Awake()
@@ -75,8 +68,6 @@ public class RowHouses : MonoBehaviour
         grid.WorldReset += Dropped;
     }
 
-    // A new world (a reset, or one loaded from the host's snapshot) took the houses drawn with the grid's children: they're
-    // let go of now, their panes unbound before any cell is drawn again, and drawn afresh for the new world.
     void Dropped()
     {
         foreach (var d in drawn.Values) Remove(d);
@@ -89,7 +80,6 @@ public class RowHouses : MonoBehaviour
     {
         if (grid != null) grid.WorldReset -= Dropped;
         Hook(null);
-        // The grid goes with this: it's no time to dress the cells again (a rejoin hit that).
         closing = true;
         foreach (var d in drawn.Values) Remove(d);
         drawn.Clear();
@@ -109,7 +99,6 @@ public class RowHouses : MonoBehaviour
         LookAtOne();
     }
 
-    // One house a frame: its cells read, and redrawn only if they show something new.
     void LookAtOne()
     {
         if (order.Count == 0) return;
@@ -121,7 +110,7 @@ public class RowHouses : MonoBehaviour
         Redraws++;
         WorstRedrawMs = System.Math.Max(WorstRedrawMs, timer.Elapsed.TotalMilliseconds);
         if (d.roofCollider != null) d.roofCollider.enabled = !d.ruin.RoofHurt;
-        if (d.walkCollider != null) d.walkCollider.sharedMesh = d.walkMesh; // cooked again, as it now stands
+        if (d.walkCollider != null) d.walkCollider.sharedMesh = d.walkMesh;
         if (d.railCollider != null) d.railCollider.sharedMesh = d.railMesh;
         d.panes.Darken(i => d.ruin.Out(d.paneOn[i]));
         foreach (var puff in d.smoke) puff.gameObject.SetActive(!d.ruin.RoofHurt);
@@ -130,10 +119,6 @@ public class RowHouses : MonoBehaviour
         EventLog.Add($"The {d.row.Id} falls");
     }
 
-    // Whether every chunk a house stands on is packed: its cells are as they were when it was last looked at unpacked, and
-    // reading them would unpack them. Read every frame by turns, the houses of a whole map kept their villages' chunks
-    // unpacked however far off they were (the island's, 7 or 8 chunks each, all the way across; view-mem). A house far off
-    // whose chunk packed is looked at again once something unpacks it (a character coming near, the view drawing it).
     bool AllPacked(Drawn d)
     {
         var world = hooked;
@@ -152,7 +137,6 @@ public class RowHouses : MonoBehaviour
         return new RowRuin.CellNow { blocking = world.IsBlocking(c), burning = c.Fire > 0, ashen = c.Cover == CoverIds.Ash };
     }
 
-    // The dragon's breath put a chunk back: its walls forget the fire.
     void PutBack(ChunkFresh fresh)
     {
         foreach (var d in order)
@@ -169,9 +153,6 @@ public class RowHouses : MonoBehaviour
         if (hooked != null) grid.ChunkFreshened += PutBack;
     }
 
-    // On a map made from its source (the Wide World, 120 squares of villages) only the rows within NearCells of a character
-    // are drawn, and drawn or taken down as the characters move: every row of the map was tens of thousands of objects and
-    // their walls' blockers, far past the haze (J-086). Every other map draws all its rows, as it always has.
     const int NearCells = 640, NearChunkMoved = 2;
     const float NearEvery = 1f;
     float nextNear;
@@ -179,7 +160,6 @@ public class RowHouses : MonoBehaviour
 
     static bool DrawsNearOnly(World world) => world.Source is IGeneratedSource;
 
-    // Whether a character has gone a couple of chunks from where the near rows were last picked.
     bool NearMoved(World world)
     {
         if (!DrawsNearOnly(world) || Time.unscaledTime < nextNear) return false;
@@ -221,7 +201,6 @@ public class RowHouses : MonoBehaviour
             string json = row.Json.ToString(Formatting.None);
             if (drawn.TryGetValue(row.Id, out var old))
             {
-                // A reset took what was drawn with the grid's children, and its blockers with it.
                 if (old.json == json && old.on == world) continue;
                 Remove(old);
                 order.Remove(old);
@@ -262,7 +241,6 @@ public class RowHouses : MonoBehaviour
         if (valley != null) valley.BindPanes(panes);
         var laid = world.BuildingCellsOf(row);
         var cells = new HashSet<Vector2Int>(laid.Where(c => c.Part != BuildingPart.Fill).Select(c => new Vector2Int(c.X - row.X, c.Y - row.Y)));
-        // What the scene's own box covers (a cabin's cells) keeps it; the rest needs a blocker to meet.
         var walls = laid.Where(c => c.Part != BuildingPart.Built && c.Part != BuildingPart.Road).Select(c => new Vector2Int(c.X, c.Y)).ToList();
         float tall = (float?)row.Json["wall"]?["height"] ?? DefaultWall;
         foreach (var c in walls) grid.BuiltWall(c.x, c.y, level ? TopOver(made, row, c, rootY) : tall);
@@ -290,8 +268,6 @@ public class RowHouses : MonoBehaviour
         };
     }
 
-    // A row's great trees (its "great-tree" details, rules/buildings.json): the valley's own tree of the detail's kind (or the
-    // cell's), scaled up and stood at a join, a stand-in until a great tree is modelled. The row's cells (its trunk, its roots) are what blocks.
     void GreatTrees(GameObject root, BuildingRow row, Vector3 corner)
     {
         if (!(row.Json["parts"] is JArray parts) || !(row.Json["joins"] is JObject joins)) return;
@@ -308,7 +284,6 @@ public class RowHouses : MonoBehaviour
             var tree = Instantiate(prefab, at, Quaternion.Euler(0f, (cx * 37 + cy * 11) % 360, 0f), root.transform);
             tree.name = "Great tree";
             tree.AddComponent<GroundedTree>();
-            // Its scale is times the valley's tallest tree there, however tall its own kind is drawn.
             float own = Height(tree), tallest = valley.TreeKinds(cx, cy).Select(Measured).DefaultIfEmpty(own).Max();
             tree.transform.localScale = (((float?)part["scale"] ?? 3f) * tallest / Mathf.Max(0.1f, own)) * size;
         }
@@ -316,13 +291,9 @@ public class RowHouses : MonoBehaviour
 
     const string GreatTree = "great-tree";
 
-    // The drawn terrain's height under a point, or null off every terrain: a great tree stands on the ground drawn, which the
-    // grid only reports once the valley has bound it (a row is drawn before that). Every chunk's terrain, the ones switched
-    // off out of sight too (MapTerrains, #182), so a row drawn far off still stands on its ground.
     static float? TerrainY(Vector3 p)
     {
         var map = Object.FindAnyObjectByType<MapTerrains>();
-        // A generated map's terrains stand only in the drawn tier (#205): its ground answers for the rest.
         if (map != null && map.Lazy) return map.HeightAt(p);
         foreach (var t in map != null ? map.Chunks : Terrain.activeTerrains)
         {
@@ -334,7 +305,6 @@ public class RowHouses : MonoBehaviour
         return null;
     }
 
-    // How tall a tree is drawn, from its renderers.
     static float Height(GameObject tree)
     {
         var all = tree.GetComponentsInChildren<Renderer>();
@@ -344,7 +314,6 @@ public class RowHouses : MonoBehaviour
         return bounds.size.y;
     }
 
-    // A tree kind's height, from a copy made and dropped.
     static float Measured(GameObject prefab)
     {
         var copy = Instantiate(prefab, new Vector3(0f, -10000f, 0f), Quaternion.identity);
@@ -353,7 +322,6 @@ public class RowHouses : MonoBehaviour
         return h;
     }
 
-    // A chimney smokes as a village's does: the same puff, copied from one, at each chimney's top.
     static ParticleSystem[] Smoke(GameObject root, Vector3[] chimneys)
     {
         var from = FindObjectsByType<VillageHouse>(FindObjectsInactive.Include, FindObjectsSortMode.None).Select(h => h.GetComponentInChildren<ParticleSystem>(true)).FirstOrDefault(p => p != null);
@@ -367,17 +335,14 @@ public class RowHouses : MonoBehaviour
         }).ToArray();
     }
 
-    // A level row's blocker stops at the wall's top, however far down its cell's ground lies.
     float TopOver(RowMesher.Result made, BuildingRow row, Vector2Int c, float rootY)
     {
         float top = made.tops.TryGetValue(new Vector2Int(c.x - row.X, c.y - row.Y), out float wall) ? wall : RowMesher.WalkTop(row.Json);
         return rootY + top - grid.GroundTop(c.x, c.y, grid.World.At(c.x, c.y));
     }
 
-    // TransparentFX: a wizard meets it, and the follow camera's obstacle check, which looks at Default alone, doesn't.
     const int CameraPassesLayer = 1;
 
-    // Collides, and nothing draws it.
     static MeshCollider Walk(GameObject root, Mesh mesh, string name, int layer)
     {
         if (mesh.vertexCount == 0) return null;
@@ -395,7 +360,6 @@ public class RowHouses : MonoBehaviour
     static bool RoofBurns(World world, BuildingRow row) =>
         (row.Json["roofs"] as JObject)?.Properties().Any(r => world.Rules.Terrain.TryGetValue((string)r.Value["cover"] ?? "", out var cover) && cover.Burns) ?? false;
 
-    // How far down the lowest ground under the walls lies from the house's floor, and a little more.
     float Footing(World world, BuildingRow row, float floor)
     {
         float lowest = floor;
@@ -422,7 +386,6 @@ public class RowHouses : MonoBehaviour
         return collider;
     }
 
-    // An edited building with no baked cells replaces the scene's; a new one, or a cabin's, stands beside.
     static Transform HideBase(World world, BuildingRow row, Vector3 corner)
     {
         var house = SceneHouse(world, row, corner);
@@ -430,10 +393,8 @@ public class RowHouses : MonoBehaviour
         return house;
     }
 
-    /// <summary>The scene's house an edit of this row would replace, or null: a cabin, the castle or a landmark's own house has none.</summary>
     public Transform SceneHouseOf(BuildingRow row) => SceneHouse(grid.World, row, Corner(row));
 
-    // A row's (0, 0) join: its at cell's north-west corner.
     Vector3 Corner(BuildingRow row) => grid.CellCenter(row.X, row.Y) + new Vector3(-grid.cellSize / 2f, 0f, grid.cellSize / 2f);
 
     static Transform SceneHouse(World world, BuildingRow row, Vector3 corner)
@@ -466,13 +427,11 @@ public class RowHouses : MonoBehaviour
         var valley = ValleyChemistry.InPlay;
         if (valley != null && d.panes != null) valley.UnbindPanes(d.panes);
         if (d.root == null) return;
-        // Only the meshes made for it: a landmark's model (a great tree on the nine) shares its asset's, which stays.
         foreach (var filter in d.root.GetComponentsInChildren<MeshFilter>())
             if (filter.sharedMesh != null && filter.sharedMesh.GetInstanceID() < 0) Destroy(filter.sharedMesh);
         Destroy(d.root);
     }
 
-    // The valley's own materials, so a drawn house sits in the same light as a village's.
     void FindMaterials()
     {
         if (material != null) return;
@@ -481,7 +440,6 @@ public class RowHouses : MonoBehaviour
         glass = house != null ? house.glass : null;
     }
 
-    // The nearest cell to stand on past what was laid: inside a hollow house would shut a player in.
     Vector2Int? Outside(BuildingsChange change, Vector2Int at)
     {
         for (int ring = 1; ring <= FarthestNudge; ring++)
@@ -493,7 +451,6 @@ public class RowHouses : MonoBehaviour
 
     bool Open(BuildingsChange change, int x, int y) => hooked.InBounds(x, y) && !change.Covers(x, y) && !hooked.IsBlocking(hooked.At(x, y));
 
-    // Raised after the cells are laid: this peer's own player moves off a new wall.
     void Moved(BuildingsChange change)
     {
         var caster = EventLog.TrackedCaster;
@@ -504,7 +461,7 @@ public class RowHouses : MonoBehaviour
         var to = grid.CellCenter(free.x, free.y);
         to.y = grid.GroundAt(to);
         bool hasBody = wizard.TryGetComponent<CharacterController>(out var body);
-        if (hasBody) body.enabled = false; // a controller would undo a direct move
+        if (hasBody) body.enabled = false;
         if (wizard.TryGetComponent<NetWizard>(out var net) && net.IsSpawned) net.Teleport(to);
         else wizard.position = to;
         if (hasBody) body.enabled = true;

@@ -9,13 +9,6 @@ using UnityEngine;
 // so the tree stays clean (a release still bumps bundleVersion in git itself).
 public static class UpdateBuild
 {
-    /// <summary>
-    /// Builds Builds/Update/osx/Spell Chemistry Valley.app (unless <paramref name="mac"/> is false:
-    /// an Editor without Mac Build Support) and Builds/Update/win/SpellChemistryValley.exe (unless
-    /// <paramref name="windows"/> is false: the Mac's half of a release the PC builds for Windows)
-    /// at the given version. Refuses a dirty git tree. Returns a one-line summary that starts
-    /// "Update build: OK" on success.
-    /// </summary>
     public static string Players(string version, bool mac = true, bool windows = true)
     {
         string refused = Refusal(version, mac, windows);
@@ -46,7 +39,6 @@ public static class UpdateBuild
         return done;
     }
 
-    // Why the build can't start, or null when it can.
     static string Refusal(string version, bool mac, bool windows)
     {
         if (!mac && !windows) return "nothing to build: both macOS and Windows are off.";
@@ -56,8 +48,6 @@ public static class UpdateBuild
         return dirty.Length > 0 ? $"the git tree has changes ({string.Join(", ", dirty.Take(8))}). Commit them first." : null;
     }
 
-    // The Windows folder, without Burst's debug information (for us, not players: "DoNotShip")
-    // and with the credits beside the exe.
     static string BuildWindows(string folder, string version)
     {
         string line = BuildOnce(BuildTarget.StandaloneWindows64, $"{folder}/SpellChemistryValley.exe");
@@ -74,7 +64,6 @@ public static class UpdateBuild
         return mac ? "macOS" : "Windows";
     }
 
-    // The first build after switching platform can fail on an import; once more fixes it.
     static string BuildOnce(BuildTarget target, string path)
     {
         string line = PrototypeBuild.Build(target, path);

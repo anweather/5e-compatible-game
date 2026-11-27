@@ -12,7 +12,6 @@ public class RockWake : MonoBehaviour
     [Tooltip("The river's surface here (world y), and the rock's half width at it (m).")]
     public float waterY, radius = 0.8f;
 
-    // Foam a second, how fast it's carried off (m/s), and how near the camera it's drawn (m).
     const float Rate = 30f, Carry = 1.4f, Near = 70f;
     ParticleSystem foam;
     float owed;
@@ -27,7 +26,6 @@ public class RockWake : MonoBehaviour
         var across = Vector3.Cross(Vector3.up, downstream);
         for (; owed >= 1f; owed -= 1f)
         {
-            // Round the upstream half of the rock, then off downstream, spreading a little.
             float a = Random.Range(-1f, 1f) * Mathf.PI * 0.5f;
             var round = -downstream * Mathf.Cos(a) + across * Mathf.Sin(a);
             var at = new Vector3(transform.position.x, waterY + 0.03f, transform.position.z) + round * radius;

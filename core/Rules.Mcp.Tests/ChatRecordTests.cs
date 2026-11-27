@@ -1,3 +1,6 @@
+// One prompt's record (docs/design/chat-telemetry.md). The fixtures are real stream-json from claude -p with
+// the private fields taken out: blue (an apply), refuse (nothing it can do), denied (a tool denied, an apply
+// refused, then one that went in), badmodel (an API failure). Each line "arrives" 100 ms after the last.
 using System;
 using System.IO;
 using System.Linq;
@@ -10,18 +13,12 @@ using static Chem.Tests.ChatFixtures;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// One prompt's record (docs/design/chat-telemetry.md). The fixtures are real stream-json from claude -p with
-    /// the private fields taken out: blue (an apply), refuse (nothing it can do), denied (a tool denied, an apply
-    /// refused, then one that went in), badmodel (an API failure). Each line "arrives" 100 ms after the last.
-    /// </summary>
     [Category("Unit")]
     public class ChatRecordTests
     {
         [Test]
         public void APlayersRecordsGoOutsideWhatTheyAreToldToSend()
         {
-            // On Windows the data folder is the one Player.log is in; on a Mac they're apart.
             string data = Path.Combine("c", "LocalLow", "Spell Chemistry Valley");
             string home = ChatLog.Home(data, null);
             Assert.That(home, Is.EqualTo(Path.Combine(data, ChatLog.RecordsFolder)));
@@ -263,7 +260,6 @@ namespace Chem.Tests
             }
         }
 
-        // A prompt that fixes an earlier one writes that line and its own record at once: the first real follow-up lost its record that way.
         [Test]
         public void LinesWrittenAtOnceAllLand()
         {
@@ -281,8 +277,6 @@ namespace Chem.Tests
             }
         }
 
-        // chat-report's test reads this log: the bench's five records, then one record of each stream fixture and a
-        // later line. Set CHAT_FIXTURES_WRITE to write the fixture part again after changing the record.
         [Test]
         public void TheReportsLogIsWhatTheRecorderBuilds()
         {

@@ -16,7 +16,6 @@ public partial class DefenseField : MonoBehaviour
 {
     static readonly Registry<DefenseField> registry = new();
 
-    /// <summary>The first DefenseField in play (what FindAnyObjectByType found), or null: see Registry.</summary>
     public static DefenseField InPlay => registry.First;
 
     void Awake() => registry.Join(this);
@@ -42,11 +41,9 @@ public partial class DefenseField : MonoBehaviour
 
     public World World => grid != null ? grid.World : null;
 
-    /// <summary>The gate's square and the flag's.</summary>
     public Vector2Int GateCell => grid.CellAt(gate.position);
     public Vector2Int FlagCell => grid.CellAt(flag.position);
 
-    /// <summary>The command this field's plate sends: start the waves from its gate toward its flag.</summary>
     public DefenseCommand StartCommand
     {
         get
@@ -56,13 +53,10 @@ public partial class DefenseField : MonoBehaviour
         }
     }
 
-    /// <summary>Whether waves are coming now.</summary>
     public bool Running => World?.Defense != null && World.Defense.Phase == DefensePhase.Running;
 
-    /// <summary>Starts the waves (or again, after a win or a loss), solo at once or online through the host.</summary>
     public void RequestStart() => Request(grid, StartCommand);
 
-    /// <summary>The one door for defense commands: solo the world runs it now; online the host stamps it for every machine.</summary>
     public static void Request(ChemGrid grid, DefenseCommand command)
     {
         if (grid == null || grid.World == null) return;
@@ -92,7 +86,6 @@ public partial class DefenseField : MonoBehaviour
             if (body.name == WizardRig.Name) local = body;
     }
 
-    // Standing on the plate a moment (while no waves come) calls them; stepping off arms it again.
     void Plate()
     {
         bool on = local != null && Flat(local.transform.position - startPlate) < plateRadius && Mathf.Abs(local.transform.position.y - startPlate.y) < 1.5f;
@@ -121,7 +114,6 @@ public partial class DefenseField : MonoBehaviour
         banner.text = text;
     }
 
-    /// <summary>The HUD line: the wave, raiders left and lives, or how it ended, or how to start.</summary>
     public string HudLine()
     {
         var d = World?.Defense;

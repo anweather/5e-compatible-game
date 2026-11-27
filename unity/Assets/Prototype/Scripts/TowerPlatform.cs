@@ -39,23 +39,18 @@ public class TowerPlatform : MonoBehaviour
     public float solidPart = 0.6f;
     public Material solid, ghost;
 
-    /// <summary>How long a collapsing platform shakes before it falls, and how long it is gone (s).</summary>
     public const float ShakeSeconds = 0.5f, GoneSeconds = 4f;
     const float FallSpeed = 9f, FlickerBefore = 0.6f;
 
     BoxCollider box;
     Renderer drawn;
     Vector3 home;
-    // A collapse: when it started (local time), or below 0 while it stands.
     float collapsedAt = -1f;
 
-    /// <summary>Whether it can be stood on now (its box is on).</summary>
     public bool Solid => box != null && box.enabled;
 
-    /// <summary>A collapsing platform that has dropped away and not come back yet.</summary>
     public bool Fallen => collapsedAt >= 0f && Time.time - collapsedAt >= ShakeSeconds;
 
-    /// <summary>The top of its box, in the world.</summary>
     public float Top => transform.position.y + (box != null ? box.size.y / 2f : 0f);
 
     void Awake()
@@ -77,7 +72,6 @@ public class TowerPlatform : MonoBehaviour
         }
     }
 
-    // Where in its cycle (0 to 1) the shared clock has it.
     float Cycle() => (float)((course.Now / period + phase) % 1.0);
 
     void Move()
@@ -93,7 +87,6 @@ public class TowerPlatform : MonoBehaviour
         if (delta.sqrMagnitude < 1e-10f) return;
         var rider = course.LocalRider;
         bool carry = rider != null && rider.enabled && StandingOn(rider.transform.position);
-        // Going up, the wizard is lifted first so the box doesn't come up through its feet; going down, the box goes first.
         if (carry && delta.y > 0f) rider.Move(delta);
         transform.position = home + offset;
         Physics.SyncTransforms();
@@ -110,7 +103,6 @@ public class TowerPlatform : MonoBehaviour
         float t = Time.time - collapsedAt;
         if (t < ShakeSeconds)
         {
-            // A shake that grows toward the fall.
             float k = 0.06f * t / ShakeSeconds;
             look.localPosition = new Vector3(Random.Range(-k, k), Random.Range(-k, k), Random.Range(-k, k));
             return;
@@ -134,14 +126,12 @@ public class TowerPlatform : MonoBehaviour
         float c = Cycle();
         bool on = c < solidPart;
         if (box.enabled != on) box.enabled = on;
-        // Flickers in its last moments before it fades.
         float left = (solidPart - c) * period;
         bool flicker = on && left < FlickerBefore && Mathf.Repeat(Time.time * 8f, 1f) < 0.5f;
         var mat = on && !flicker ? solid : ghost;
         if (drawn.sharedMaterial != mat) drawn.sharedMaterial = mat;
     }
 
-    /// <summary>Whether feet at <paramref name="feet"/> stand on this platform's top (its box, a little either way).</summary>
     public bool StandingOn(Vector3 feet)
     {
         if (box == null || !box.enabled) return false;

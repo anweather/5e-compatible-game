@@ -23,7 +23,6 @@ public class FaunaProbe : ProbeScenario
         Metric("animals_out", fauna.Count);
         Check("animals_out", fauna.Count >= 10, $"{fauna.Count} animals round the camera");
 
-        // Their days: after a while, they're up to several different things (grazing, resting, drinking...).
         yield return Wait(20f);
         var doing = Enumerable.Range(0, fauna.Count).Select(k => fauna.State(k).Mode).GroupBy(m => m)
             .OrderBy(g => g.Key).Select(g => $"{g.Key} {g.Count()}").ToList();
@@ -31,7 +30,6 @@ public class FaunaProbe : ProbeScenario
         Metric("activities", kinds);
         Check("activities", kinds >= 2, string.Join(", ", doing));
 
-        // A deer eight metres north of the wizard (open meadow), facing it: deer run from anyone within 18 m.
         var w = wizard.transform.position;
         int deer = fauna.SpeciesIndex("deer");
         var start = new float3(w.x, w.y, w.z + 8f);
@@ -46,7 +44,6 @@ public class FaunaProbe : ProbeScenario
         yield return Cornered(fauna, deer);
         yield return Leashed(fauna, deer);
 
-        // A little parade in the meadow, under the probe's control, for the picture.
         var origin = V(27f, 0f, 26f);
         string[] parade = { "deer", "rabbit", "turkey", "red-fox", "deer" };
         for (int k = 0; k < parade.Length; k++)
@@ -67,7 +64,6 @@ public class FaunaProbe : ProbeScenario
 
     const float MillSeconds = 10f, MillSettle = 3f, LeashMetres = 7f, LeashSlack = 2f;
 
-    // A deer put in a corner of the valley with the wizard in the way out: it mills about in there.
     IEnumerator Cornered(ValleyFauna fauna, int deer)
     {
         var w = wizard.transform.position;
@@ -89,7 +85,6 @@ public class FaunaProbe : ProbeScenario
         Check("cornered_deer_mills", watch.Mills, watch.Summary);
     }
 
-    // A deer on a leash in the open, the wizard at its home: it runs to the end and mills about there.
     IEnumerator Leashed(ValleyFauna fauna, int deer)
     {
         var home = MillPlaces.Meadow;

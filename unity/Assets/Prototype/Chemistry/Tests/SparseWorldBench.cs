@@ -1,3 +1,11 @@
+// What the sparse World costs and saves (World.Pack.cs; docs/design/sparse-world.md, "Step 2, measured"), on the nine
+// baked (27 x 27 chunks) and built as ChemGrid.MapWorld builds it: its cells.txt the World's source (BakedSource),
+// then its land and whatever the bake lays (puzzles, stamps, rows, golf, the Hold). The World's memory with every
+// chunk unpacked (what the World held before step 2, less World.Cells) and as play leaves it packed; then a walk
+// across it, a character's reach activating ahead and deactivating behind with the view's drawn hint round it, timed
+// tick by tick with packing on and off, and the two worlds' hashes compared. Not a check and not in CI (Explicit):
+// run it by name in Release and read the lines it prints.
+// dotnet test core -c Release --filter "FullyQualifiedName~SparseWorldBench" --logger "console;verbosity=detailed"
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -7,23 +15,12 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// What the sparse World costs and saves (World.Pack.cs; docs/design/sparse-world.md, "Step 2, measured"), on the nine
-    /// baked (27 x 27 chunks) and built as ChemGrid.MapWorld builds it: its cells.txt the World's source (BakedSource),
-    /// then its land and whatever the bake lays (puzzles, stamps, rows, golf, the Hold). The World's memory with every
-    /// chunk unpacked (what the World held before step 2, less World.Cells) and as play leaves it packed; then a walk
-    /// across it, a character's reach activating ahead and deactivating behind with the view's drawn hint round it, timed
-    /// tick by tick with packing on and off, and the two worlds' hashes compared. Not a check and not in CI (Explicit):
-    /// run it by name in Release and read the lines it prints.
-    /// <code>dotnet test core -c Release --filter "FullyQualifiedName~SparseWorldBench" --logger "console;verbosity=detailed"</code>
-    /// </summary>
     [Explicit("a benchmark: run it by name")]
     [Category("Simulation")]
     public class SparseWorldBench
     {
         static Rules R => ChemistryTests.R;
 
-        // The nine's bake, made once into a folder of the bench's own (the inputs copied as ScaleIslandTests copies them).
         static string baked;
 
         internal static string Baked()
@@ -43,8 +40,6 @@ namespace Chem.Tests
             return baked = dir;
         }
 
-        // The Scale Island's bake (9,720 chunks, a row of chunks at a time: bake-lean), made once into a folder of the bench's
-        // own, the nine baked first for its rows.
         static string islandBaked;
 
         internal static string IslandBaked()
@@ -69,23 +64,18 @@ namespace Chem.Tests
             return islandBaked = dir;
         }
 
-        /// <summary>A world as ChemGrid.MapWorld builds one from a map folder (BuiltWorlds.Build).</summary>
         internal static World Build(string dir, Rules rules, out BakedSource source) => BuiltWorlds.Build(dir, rules, out source);
 
-        // What's live on the heap, collected first: a measuring test's only use of the collector (as ScaleIslandTests).
 #pragma warning disable S1215
         static long Heap() => GC.GetTotalMemory(true);
 #pragma warning restore S1215
 
         static double Mb(long bytes) => bytes / 1024.0 / 1024.0;
 
-        // A block's bytes: 4,096 Cell objects of 40 bytes (64-bit .NET, no Rare) and its arrays (cells, fire generations,
-        // marks, the still-water snapshot), headers left out.
         const int BlockBytes = Chunks.Area * (40 + 8 + 4 + 1 + 4 + 4 + 1 + 1 + 8);
 
         static Rules With(string streaming) => R.WithMods(new[] { ModPatch.Parse("{ \"sim\": { \"streaming\": " + streaming + " } }") });
 
-        // The drawn tier round a cell: the chunks within radius (FarRing.SetView's drawn 4).
         static IEnumerable<(int cx, int cy)> Drawn(World w, int x, int y, int radius)
         {
             int cx = Chunks.ChunkOf(x), cy = Chunks.ChunkOf(y);
@@ -94,8 +84,6 @@ namespace Chem.Tests
                     if (w.HasChunk(i, j)) yield return (i, j);
         }
 
-        // late-join-snapshot (docs/design/player-saves.md, step 6): what a snapshot costs on the valley and the nine, taken
-        // after 60 ticks of play (casts at the spawn's middle, the reach active), and joined over the same map and land.
         [TestCase("valley")]
         [TestCase("nine")]
         public void ASnapshotsBytesAndTime(string map)
@@ -109,11 +97,11 @@ namespace Chem.Tests
             w.Cast("create-water", mx + 20, my, 1);
             for (int t = 0; t < 60; t++) w.Step();
             var rules = RuleSet.Plain(R);
-            JoinSnapshot.Take(w, source, rules); // warm
+            JoinSnapshot.Take(w, source, rules);
             var take = Stopwatch.StartNew();
             string text = JoinSnapshot.Take(w, source, rules).Text();
             double takeMs = take.Elapsed.TotalMilliseconds;
-            JoinSnapshot.Parse(text).Join(R, source, land); // warm
+            JoinSnapshot.Parse(text).Join(R, source, land);
             var join = Stopwatch.StartNew();
             var (joined, _) = JoinSnapshot.Parse(text).Join(R, source, land);
             double joinMs = join.Elapsed.TotalMilliseconds;
@@ -129,12 +117,9 @@ namespace Chem.Tests
             Assert.That(joined.CellHash(), Is.EqualTo(w.CellHash()));
         }
 
-        // island-startup: two parts of the Scale Island's start the PC's player timed (STARTUP lines): the map check (4.0 s)
-        // and setting its land (3.7 s), here under .NET on the baked island.
         [Test]
         public void TheIslandsStartUp()
         {
-            // The bake's folder by the map's own name, as a player build has it (MapCheck checks the two agree).
             string bake = IslandBaked(), dir = Path.Combine(Path.GetDirectoryName(bake), "scale-12x10");
 #if UNITY_5_3_OR_NEWER
             if (!Directory.Exists(dir)) Assert.Ignore("Unity's .NET has no Directory.CreateSymbolicLink; dotnet test core runs this");
@@ -169,9 +154,6 @@ namespace Chem.Tests
             Assert.That(errors, Is.Empty);
         }
 
-        // core-mem-scale: what the core holds, part by part, that grows with the map, on the nine and the Scale Island, as the
-        // game starts one: the source, the World (its chunks packed), the land rows, the land set a chunk at a time, the sea
-        // mask, the start kept for the dragon; then in play round the spawn.
         [TestCase("nine")]
         [TestCase("island")]
         public void WhatTheCoreHoldsByMapSize(string which)
@@ -238,8 +220,6 @@ namespace Chem.Tests
             GC.KeepAlive(sea);
         }
 
-        // planner-reach: ChunkPlanner.Plan visiting every chunk against only those it can touch, on the nine and the Scale
-        // Island, a character flying east from the spawn at ~10 cells a tick: the same plan every tick, its time and garbage.
         [TestCase("nine")]
         [TestCase("island")]
         public void APlansCostByMapSize(string which)
@@ -275,15 +255,13 @@ namespace Chem.Tests
                 + $"what it can touch {nearMs / ticks:0.000} ms and {nearBytes / ticks / 1024.0:0.0} KB; the same plan every tick");
         }
 
-        // sea-land-speed: on the Scale Island, land.json read a chunk at a time, its sea mask made from that, and the coarse
-        // sea asking near-water round 70,000 cells spread over every chunk (Ocean's vertices), each timed.
         [Test]
         public void TheIslandsSeaAndLandTimes()
         {
             string dir = IslandBaked();
             var map = MapFile.Load(dir);
             string json = File.ReadAllText(Path.Combine(dir, MapFile.LandName));
-            LandChunks.Read(json, map.W, map.H); // warm
+            LandChunks.Read(json, map.W, map.H);
             var read = Stopwatch.StartNew();
             var land = LandChunks.Read(json, map.W, map.H);
             double readMs = read.Elapsed.TotalMilliseconds;
@@ -305,7 +283,6 @@ namespace Chem.Tests
                     if (byChunk[x, y]) wet++;
                 }
             double nearMs = near.Elapsed.TotalMilliseconds;
-            // The answers are Near's: a sample checked against the window worked out cell by cell.
             for (int y = 3; y < map.H; y += 22 * 37)
                 for (int x = 5; x < map.W; x += 25 * 29)
                     Assert.That(byChunk[x, y], Is.EqualTo(sea.NearIn(x, y, 1, 1, 12, true)[0]), $"({x}, {y})");
@@ -326,7 +303,6 @@ namespace Chem.Tests
             TestContext.Out.WriteLine($"SPARSE the nine, {w.W} x {w.H}, {chunks} chunks: built in {buildMs:0} ms; the source holds {Mb(source.Bytes):0.0} MB "
                 + $"({source.UniformChunks} chunks all one character); {w.UnpackedCount} chunks unpacked by the build (its lays), the world {Mb(asBuilt):0.0} MB");
 
-            // As play starts: the reach round the spawn active, the rest let go, the drawn tier hinted; then the hold runs out.
             var spawn = MapFile.Load(dir).Spawn;
             ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { spawn }));
             w.SetDrawn(Drawn(w, spawn.x, spawn.y, 4));
@@ -335,7 +311,6 @@ namespace Chem.Tests
             for (int t = 0; t < settled; t++)
             {
                 w.Step();
-                // The view reads what it draws (ChunkCells, At), which unpacks the drawn tier.
                 foreach (var (cx, cy) in drawn) _ = w.ChunkCells(cx, cy).Length;
             }
             w.TrimPackPool(0);
@@ -346,7 +321,6 @@ namespace Chem.Tests
                 + $"{chunks - w.UnpackedCount} packed holding {Mb(changes):0.00} MB of changes: the world {Mb(playing):0.0} MB, of which the blocks ~{Mb(blocks):0.0} MB, "
                 + $"the source {Mb(source.Bytes):0.0} MB and the map-sized arrays step 3 moves {Mb(w.MapArrayBytes):0.0} MB");
 
-            // Every chunk unpacked: what the World held before step 2 (with World.Cells, 8 bytes a cell more).
             foreach (var (cx, cy) in w.ChunkCoords) w.Unpack(cx, cy);
             long all = Heap() - before;
             double cellsArray = 8.0 * w.W * w.H / 1024 / 1024;
@@ -399,7 +373,6 @@ namespace Chem.Tests
             var on = Build(dir, R, out _);
             var off = Build(dir, With("{ \"packsPerTick\": 0 }"), out _);
             var spawn = MapFile.Load(dir).Spawn;
-            // East along the spawn's row at walking pace, 4.5 m/s: 3 cells a second, half a cell a tick; then back west.
             const int ticks = 3600;
             int x0 = spawn.x, y = spawn.y, reach = 10 * Chunks.Size;
             (int x, int y) At(int t)
@@ -412,12 +385,10 @@ namespace Chem.Tests
             var plannerOff = new ChunkPlanner();
             ChunkStreaming.Apply(on, ChunkStreaming.StartPlan(on, new[] { spawn }));
             ChunkStreaming.Apply(off, ChunkStreaming.StartPlan(off, new[] { spawn }));
-            // Off is the World before step 2: every chunk's Cell objects made, none packed.
             foreach (var (cx, cy) in off.ChunkCoords) off.Unpack(cx, cy);
             double packMs = on.PackMs, unpackMs = on.UnpackMs;
             int packs = on.Packs, unpacks = on.Unpacks;
             var times = new List<double>[] { new List<double>(), new List<double>() };
-            // The ticks a chunk activated on: their switches (unpacking, making fit, catching up) and the whole frame.
             var switching = new List<double>[] { new List<double>(), new List<double>() };
             var crossing = new List<double>[] { new List<double>(), new List<double>() };
             int mostUnpacked = 0;
@@ -431,7 +402,6 @@ namespace Chem.Tests
                     var w = k == 0 ? on : off;
                     var planner = k == 0 ? plannerOn : plannerOff;
                     long at = Stopwatch.GetTimestamp();
-                    // What a frame does: the plan's switches (unpacking what activates), the hint, the tick (packing what's due).
                     var plan = planner.Plan(w, me);
                     ChunkStreaming.Apply(w, plan);
                     long switched = Stopwatch.GetTimestamp();

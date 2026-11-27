@@ -9,10 +9,6 @@ using UnityEngine;
 // the legs move through the robe as they would on the road. View only.
 public static class ClothCrowd
 {
-    /// <summary>
-    /// Makes <paramref name="count"/> copies of <paramref name="wizard"/> standing in a row at these
-    /// points, facing <paramref name="facing"/>. Destroy them with <see cref="Clear"/>.
-    /// </summary>
     public static List<GameObject> Make(GameObject wizard, IReadOnlyList<Vector3> at, Quaternion facing)
     {
         var crowd = new List<GameObject>();
@@ -21,7 +17,6 @@ public static class ClothCrowd
         for (int i = 0; i < at.Count; i++)
         {
             var copy = Object.Instantiate(wizard, at[i], facing, holder.transform);
-            // Not found as the local wizard.
             copy.name = $"Cloth crowd wizard {i + 1}";
             copy.tag = "Untagged";
             Strip(copy);
@@ -43,7 +38,6 @@ public static class ClothCrowd
         crowd.Clear();
     }
 
-    // Everything but the look off; the outfit's built parts dropped (the copy's outfit builds its own).
     static void Strip(GameObject copy)
     {
         foreach (var t in copy.GetComponentsInChildren<Transform>(true))
@@ -54,7 +48,6 @@ public static class ClothCrowd
         if (copy.TryGetComponent<CharacterController>(out var body)) body.enabled = false;
     }
 
-    // The walk's animation without the walking (its parameters set once it's awake).
     static void WalkOnTheSpot(GameObject copy)
     {
         if (copy.TryGetComponent<Animator>(out var animator))

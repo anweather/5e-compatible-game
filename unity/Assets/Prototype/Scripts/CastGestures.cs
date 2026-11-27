@@ -18,40 +18,25 @@ using UnityEngine;
 // a row in Of.
 public enum CastGesture
 {
-    /// <summary>Chosen from the spell's rules (CastGestures.For).</summary>
     Auto,
-    /// <summary>The casting hand reaches toward the target and settles back.</summary>
     Reach,
-    /// <summary>The casting arm thrust at the target and held there while a bolt or beam goes.</summary>
     Thrust,
-    /// <summary>An overhand throw: wound back over the shoulder, whipped through, released at the top.</summary>
     Throw,
-    /// <summary>Both arms raised overhead and gathered, then a heavy two-handed pull down, the body dipping.</summary>
     CallDown,
-    /// <summary>Both hands sweep up from near the ground to overhead, the knees bent at the start.</summary>
     Raise,
-    /// <summary>Both hands raised, then pressed down low, the body crouching.</summary>
     Press,
-    /// <summary>Both hands drawn in to the chest, then shoved forward.</summary>
     Shove,
 }
 
 public static class CastGestures
 {
-    /// <summary>How a gesture moves into a key: smoothly, gathering speed (a heavy pull), or snapping then slowing (a shove).</summary>
     public enum Ease { InOut, In, Out }
 
-    /// <summary>
-    /// One moment of a gesture. Hands are in the caster's frame: x to its right, y up from its feet, z toward
-    /// the target, in metres for a wizard whose shoulders stand 1.45 m up (CastPose scales them to the rig).
-    /// </summary>
     public struct Key
     {
         public float time;
         public Vector3 right, left;
-        /// <summary>How far each hand goes to its spot (0 leaves the animation's arm).</summary>
         public float weight, leftWeight;
-        /// <summary>The hips lowered (m, the knees bending), the spine leaned forward (degrees, back if negative) and turned (degrees, the right shoulder back if positive).</summary>
         public float dip, lean, twist;
         public Ease ease;
 
@@ -65,15 +50,11 @@ public static class CastGestures
         }
     }
 
-    /// <summary>A gesture: its keys in time order, the wind-up a charge holds, and when the spell leaves the hands.</summary>
     public sealed class Gesture
     {
         public readonly Key[] keys;
-        /// <summary>Seconds in: the wind-up pose a held Cast keeps while it charges.</summary>
         public readonly float hold;
-        /// <summary>Seconds in: when the spell leaves the hands (the throw, the pull).</summary>
         public readonly float release;
-        /// <summary>Whether the hands point up or down at the target as well as toward it.</summary>
         public readonly bool aims;
 
         public Gesture(Key[] keys, float hold, float release, bool aims = false)
@@ -86,7 +67,6 @@ public static class CastGestures
 
         public float Duration => keys[keys.Length - 1].time;
 
-        /// <summary>The pose <paramref name="t"/> seconds in, between the keys either side of it.</summary>
         public Key At(float t)
         {
             if (t <= keys[0].time) return keys[0];
@@ -125,7 +105,6 @@ public static class CastGestures
         };
     }
 
-    // Where a hand hangs at rest, so a gesture starts and ends from the arm's natural place.
     static readonly Vector3 Hang = new Vector3(0.22f, 0.85f, 0.08f);
 
     static readonly Gesture reach = new Gesture(new[]
@@ -192,7 +171,6 @@ public static class CastGestures
         Rest(0.9f),
     }, hold: 0.2f, release: 0.3f);
 
-    /// <summary>A gesture's keys and timing (Auto is Reach).</summary>
     public static Gesture Of(CastGesture gesture) => gesture switch
     {
         CastGesture.Thrust => thrust,
@@ -204,7 +182,6 @@ public static class CastGestures
         _ => reach,
     };
 
-    /// <summary>The gesture a spell is cast with: its look's, or one chosen from its rules if that is Auto.</summary>
     public static CastGesture For(SpellDef spell, SpellVisuals.Entry look)
     {
         if (look != null && look.gesture != CastGesture.Auto) return look.gesture;

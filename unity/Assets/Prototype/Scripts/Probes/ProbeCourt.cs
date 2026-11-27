@@ -25,7 +25,6 @@ public class CourtProbe : ProbeScenario
         yield return Out();
     }
 
-    // The middle of the court: a dirt cell, painted bare earth on the terrain, no grass on it.
     void Floor()
     {
         var at = court.centre;
@@ -39,7 +38,6 @@ public class CourtProbe : ProbeScenario
         Check("floor_no_grass", grass == 0, $"{grass} grass and plant details at the centre spot");
     }
 
-    // The Earth layer's weight in the terrain's paint at a point, and the details growing there.
     static float EarthWeight(Vector3 p, out int details)
     {
         details = -1;
@@ -61,7 +59,6 @@ public class CourtProbe : ProbeScenario
         return 0f;
     }
 
-    // From 9 m west of the gate, the wizard walks through it onto the court and on, then waits.
     IEnumerator Gate()
     {
         var middle = gate.Middle;
@@ -102,7 +99,6 @@ public class CourtProbe : ProbeScenario
         Shot("gate-shut-again");
     }
 
-    // The ball sent at the east goal from 3 m out: one goal there, on the board, then back to the spot.
     IEnumerator Goal()
     {
         for (float t = 0f; t < 3f && court.Ball == null; t += Time.deltaTime) yield return null;
@@ -126,7 +122,6 @@ public class CourtProbe : ProbeScenario
         Check("ball_back_after_goal", off < 1.5f, $"{off:0.0} m from the centre spot");
     }
 
-    // The ball left outside the south rail: back on the spot a couple of seconds later.
     IEnumerator Out()
     {
         if (court.Ball == null) yield break;

@@ -20,7 +20,6 @@ public static class ManagedCensus
     static readonly Dictionary<Type, FieldInfo[]> FieldsOf = new();
     static readonly Dictionary<Type, bool> Plain = new();
 
-    /// <summary>The top owners, one per line, biggest first: level-one roots then level-two paths.</summary>
     public static string Report(string label)
     {
         var top = new Dictionary<string, long>();
@@ -84,10 +83,6 @@ public static class ManagedCensus
         return s.ToString();
     }
 
-    /// <summary>
-    /// The world's unpacked chunks by how far (in chunks, the larger axis) they are from a cell, split by whether the
-    /// view's drawn hint holds them: who keeps them unpacked.
-    /// </summary>
     public static string Unpacked(Chem.World world, Vector2Int cell)
     {
         if (world == null) return "UNPACKED none";
@@ -169,7 +164,6 @@ public static class ManagedCensus
         }
     }
 
-    // A struct with no references in it (nothing to follow).
     static bool IsPlain(Type t)
     {
         if (Plain.TryGetValue(t, out bool p)) return p;

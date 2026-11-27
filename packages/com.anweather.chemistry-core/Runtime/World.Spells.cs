@@ -7,34 +7,16 @@ namespace Chem
 {
     public sealed partial class World
     {
-        /// <summary>The most a cast can be charged (held before release): 1 is a tap.</summary>
         public const int MaxCharge = 3;
 
-        /// <summary>
-        /// Whether holding a cast makes this spell stronger: every spell does. In the cells (World.Cast) a
-        /// line reaches further, a spot, square or burst grows, water and earth shaping go further; in
-        /// what moves (SpellForces) a push is harder, Misty Step and Mage Hand reach further, Levitate lasts.
-        /// </summary>
         public static bool Chargeable(SpellDef spell) => spell != null;
 
-        /// <summary>A cast's charge, kept to 1..MaxCharge.</summary>
         public static int ClampCharge(int charge) => System.Math.Max(1, System.Math.Min(MaxCharge, charge));
 
-        /// <summary>A line spell's length at a charge: half again for each level past a tap.</summary>
         public static int ChargedLength(int length, int charge) => length + length * (ClampCharge(charge) - 1) / 2;
 
-        /// <summary>
-        /// How many squares a charged spot, square or burst grows by: one for each level past a tap
-        /// (a bolt spreads to the squares round it, a burst's radius and a square's side grow).
-        /// Earth shaping digs or raises more steps instead, so its patch stays the same.
-        /// </summary>
         public static int ChargedGrowth(SpellDef s, int charge) => s.Effect == "terraform" ? 0 : ClampCharge(charge) - 1;
 
-        /// <summary>
-        /// An aim (a whole-number vector on the grid, x east and y south) snapped to the grid's four
-        /// ways when it's within about 5 degrees of one (its smaller part under a 11th of its
-        /// larger), so a nearly straight line comes out straight. (0, 0) stays (0, 0).
-        /// </summary>
         public static (int x, int y) SnapAim(int aimX, int aimY)
         {
             if (System.Math.Abs(aimY) * 11 < System.Math.Abs(aimX)) return (System.Math.Sign(aimX), 0);
@@ -42,7 +24,6 @@ namespace Chem
             return (aimX, aimY);
         }
 
-        /// <summary>The grid way (0 north, 1 east, 2 south, 3 west) nearest an aim; ties go east or west. <paramref name="fallback"/> for (0, 0).</summary>
         public static int DirOf(int aimX, int aimY, int fallback = 1)
         {
             if (aimX == 0 && aimY == 0) return fallback;
@@ -50,16 +31,9 @@ namespace Chem
             return aimY > 0 ? 2 : 0;
         }
 
-        /// <summary>
-        /// Cells a spell would touch, in the order it touches them (for previews too). A line or a
-        /// cone points along <paramref name="dir"/>, or along an aim off the grid's four ways
-        /// (<paramref name="aimX"/>, <paramref name="aimY"/>; SnapAim) when one is given.
-        /// </summary>
         public List<(int x, int y)> SpellCells(SpellDef s, int x, int y, int dir, int charge = 1, int aimX = 0, int aimY = 0) =>
-            // The time spells (Hasten Time, Control Weather) change the sky, not squares.
             IsSkySpell(s) ? new List<(int x, int y)>() : ShapeCells(s, x, y, dir, charge, aimX, aimY);
 
-        /// <summary>Whether a spell changes the sky for everyone (Hasten Time, Control Weather) rather than squares.</summary>
         public static bool IsSkySpell(SpellDef s) => s != null && (s.Effect == HasteEffect || s.Effect == WeatherEffect);
 
         List<(int x, int y)> ShapeCells(SpellDef s, int x, int y, int dir, int charge, int aimX, int aimY)
@@ -90,8 +64,6 @@ namespace Chem
                     break;
                 case "cone":
                 {
-                    // From the square in front of the caster, widening a square each side per square
-                    // out (a 15 ft cone: 1, 3, then 5 squares); it washes over walls.
                     int len = ChargedLength(s.Length, charge), px = DirY(dir), py = DirX(dir);
                     for (int k = 0; k < len; k++)
                         for (int o = -k; o <= k; o++) Add(x + DirX(dir) * k + px * o, y + DirY(dir) * k + py * o);
@@ -115,11 +87,6 @@ namespace Chem
             return output;
         }
 
-        /// <summary>
-        /// A jagged line (spells.json jagged: Earth Spires): its second cell and every fourth after steps Jagged cells off to
-        /// one side, across the aim's longer part, its fourth and every fourth after to the other, so the line zigzags; the
-        /// rest stay on it. A step off the world is dropped. A straight line is left as it is.
-        /// </summary>
         void Jag(SpellDef s, int dir, int aimX, int aimY, List<(int x, int y)> cells)
         {
             if (s.Jagged <= 0) return;
@@ -138,7 +105,6 @@ namespace Chem
             cells.AddRange(jagged);
         }
 
-        /// <summary>A spot and every square within <paramref name="r"/> steps of it (a diamond), row by row: a charged bolt.</summary>
         static void SpotCells(int x, int y, int r, System.Action<int, int> add)
         {
             for (int dy = -r; dy <= r; dy++)
@@ -148,13 +114,8 @@ namespace Chem
             }
         }
 
-        // While set, a line runs its whole length, through what would stop it (OverheadFlyers).
         bool overhead;
 
-        /// <summary>
-        /// Flyers are above what stops a line (a wall, a tree): a line's spell still reaches the flyers along its whole length,
-        /// its element and its hit, as it reaches a raider in its cells; Lightning reaches those a cell beside it too.
-        /// </summary>
         void OverheadFlyers(SpellDef s, List<(int x, int y)> cells, CastCommand c)
         {
             if (s.Shape != "line" || !RaiderSystem.List.Exists(Flying)) return;
@@ -162,7 +123,6 @@ namespace Chem
             var whole = ShapeCells(s, c.X, c.Y, c.Dir, c.Charge, c.AimX, c.AimY);
             overhead = false;
             var reached = new HashSet<(int x, int y)>(cells);
-            // Lightning arcs to a flyer beside its way too, as it leaps to metal and water (it auto-targets, D16).
             int arc = s.Element == "lightning" ? 1 : 0;
             foreach (var (lx, ly) in whole)
                 for (int dy = -arc; dy <= arc; dy++)
@@ -176,19 +136,9 @@ namespace Chem
                     }
         }
 
-        /// <summary>
-        /// Whether a line from the caster is cast from up on a wall (the caster's cell, behind (x, y), is blocking: a castle's
-        /// wall walk), so it goes out over the wall's top: the blocking cells it starts on don't stop it, and it doesn't touch
-        /// them. Not a trench, which cuts into what's under it.
-        /// </summary>
         bool FromAWall(SpellDef s, int x, int y, int dir) =>
             s.Origin == "self" && s.Effect != "terraform" && dir >= 0 && At(x - DirX(dir), y - DirY(dir)) is { } under && IsBlocking(under);
 
-        /// <summary>
-        /// A line from (x, y) up to its first blocking cell. A terraform line from the caster
-        /// (Earthen Trench) starts under their feet, one square behind the aim, so a trench cut
-        /// from a pond's bank opens into the pond. Cast from a wall, it passes over the wall first (FromAWall).
-        /// </summary>
         void LineCells(SpellDef s, int x, int y, int dir, int length, List<(int x, int y)> output)
         {
             bool overWall = FromAWall(s, x, y, dir);
@@ -206,8 +156,6 @@ namespace Chem
             }
         }
 
-        // A slanted line's next cell: added to output if it is in the world; true while the line goes on (it isn't blocking).
-        // Still over the wall it was cast from (overWall), a blocking cell is passed over, and the line goes on.
         bool VisitSlant(int cx, int cy, List<(int x, int y)> output, ref bool overWall)
         {
             var c = At(cx, cy);
@@ -218,13 +166,6 @@ namespace Chem
             return overhead || !IsBlocking(c);
         }
 
-        /// <summary>
-        /// A line along a slanted aim, like LineCells: from (x, y) (for a trench, from the caster's
-        /// square behind it first), out to <paramref name="length"/> squares as the crow flies, up
-        /// to its first blocking cell. Each square shares a side with the one before (a corner is
-        /// turned through the square along the aim's longer part), so water runs along a slanted
-        /// trench and a slanted wall has no gaps.
-        /// </summary>
         void SlantCells(SpellDef s, int x, int y, int dir, int length, (int x, int y) aim, List<(int x, int y)> output)
         {
             bool overWall = FromAWall(s, x, y, dir);
@@ -243,10 +184,6 @@ namespace Chem
             }
         }
 
-        /// <summary>
-        /// A cone along a slanted aim, from its apex (x, y): every square within 45 degrees of the aim
-        /// and nearer than <paramref name="length"/> squares along it, in row order.
-        /// </summary>
         static void SlantCone(int x, int y, int length, int aimX, int aimY, System.Action<int, int> add)
         {
             long reach = (long)length * length * ((long)aimX * aimX + (long)aimY * aimY);
@@ -258,34 +195,20 @@ namespace Chem
                 }
         }
 
-        /// <summary>n / d (d &gt; 0) rounded to the nearest whole number, halves up, in whole numbers.</summary>
         static int RoundDiv(int n, int d) => FloorDivInt(2 * n + d, 2 * d);
 
         static int FloorDivInt(int a, int b) => a / b - (a % b != 0 && (a < 0) != (b < 0) ? 1 : 0);
 
         static int FloorDiv(int a, int b) => (int)System.Math.Floor((double)a / b);
 
-        /// <summary>
-        /// Applies the spell's element to its cells, like castSpell's cell part. Gust of
-        /// Wind (air + wind) also sets the world's wind. A terraform spell raises or digs
-        /// its cells first (World.Terraform.cs). The other effects (levitate, carry,
-        /// teleport, shapeshift) do nothing to cells. A charged cast (held: charge 2 or 3) is that many
-        /// times as strong, raises or digs that many times the steps, a line reaches half
-        /// again as far per level, and a spot, square or burst grows (ChargedGrowth). A line or cone may be aimed off the grid's four ways
-        /// (SpellCells); <paramref name="dir"/> is then the nearest of them (DirOf), which the
-        /// element pushes along. A spell with a crater (Fireball) blows it out of the
-        /// ground before its element lands. Cast into a spell zone that doesn't allow it
-        /// (Play/CourseSystem.cs), it fizzles.
-        /// </summary>
         public void Cast(string spellId, int x, int y, int dir, int charge = 1, int aimX = 0, int aimY = 0)
         {
-            FinishTick(); // casts land between whole ticks (StepSome)
+            FinishTick();
             var s = Rules.Spell(spellId);
             if (s == null || !InBounds(x, y)) return;
             _ = Release(s, (x, y), dir, charge, (aimX, aimY), s.Delay, $"You cast {s.Name}");
         }
 
-        /// <summary>A batch's cast, with who cast it.</summary>
         public void Cast(CastCommand c)
         {
             castBy = c.By;
@@ -295,23 +218,16 @@ namespace Chem
             castPower = 100;
         }
 
-        // The player of the cast going off now, when the batch names one: golf's turns (Play/GolfSystem.cs).
         string castBy;
 
-        // Who cast the spell going off now, null for a delayed one (a star, a wave): for the golf ball's turns.
         internal string CastBy => castBy;
 
-        // The percent of its damage the cast going off now does: a wizard's upgrades (World.Progress.cs).
         int castPower = 100;
-        // The cast's power in percent, for the raiders' damage (RaiderSystem).
         internal int CastPower => castPower;
 
-        // A cast once its spell is known: smothered by a spell zone against it, else it goes off, after delay
-        // ticks under a target mark when there is one. A trigger's casts come in here too (World.Triggers.cs).
-        // False when it didn't go off.
         bool Release(SpellDef s, (int x, int y) at, int dir, int charge, (int x, int y) aim, int delay, string log)
         {
-            var (x, y) = (FoldX(at.x), FoldY(at.y)); // a cast past the seam lands where it folds to
+            var (x, y) = (FoldX(at.x), FoldY(at.y));
             var (aimX, aimY) = aim;
             var zone = CourseSystem.ZoneAgainst(s, x, y);
             if (zone != null)
@@ -331,10 +247,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>
-        /// A delayed cast (Falling Star, aimStar in the TS): the cells round where it will land wear a target
-        /// mark (Cell.Star) until it lands, Delay ticks on (LandStars).
-        /// </summary>
         void AimStar(SpellDef s, int x, int y, int dir, int charge, int delay)
         {
             var star = new Star { Spell = s.Id, X = x, Y = y, Dir = dir, Charge = charge, Radius = s.Radius + ChargedGrowth(s, charge), Lands = Tick + delay };
@@ -342,7 +254,6 @@ namespace Chem
             MarkStar(star, 1);
         }
 
-        // Adds to the mark on the square round a star; taking it off reaches ground that has gone inactive since.
         void MarkStar(Star star, int by)
         {
             int r = star.Radius;
@@ -355,7 +266,6 @@ namespace Chem
                 }
         }
 
-        // Stars whose tick has come land, in the order cast; one over inactive ground leaves no mark.
         void LandStars()
         {
             if (stars.Count == 0) return;
@@ -371,7 +281,6 @@ namespace Chem
             stars.RemoveAll(st => st.Lands <= Tick);
         }
 
-        /// <summary>A spell's burning rock (spells.json scatter; scatter in the TS): each try lays the cover, alight, on open dry ground off the middle.</summary>
         void Scatter(ScatterDef sc, int x, int y)
         {
             if (sc == null) return;
@@ -388,14 +297,8 @@ namespace Chem
             }
         }
 
-        /// <summary>The Light spell's effect (SRD Light).</summary>
         public const string LightEffect = "light";
 
-        /// <summary>
-        /// Light (SRD 5.2.1): the object touched sheds bright light for the spell's duration. The core keeps
-        /// the ticks on its cell (Cell.Lit, counting down in the timer pass); the view draws the spell's light
-        /// { bright, dim } round it.
-        /// </summary>
         void LightUp(SpellDef s, int x, int y)
         {
             if (!IsActiveAt(x, y)) return;
@@ -403,7 +306,6 @@ namespace Chem
             c.Lit = System.Math.Max(c.Lit, s.Duration);
         }
 
-        /// <summary>The direction from (dx, dy) off a burst's middle back toward it, -1 at the middle: along the longer axis, east or west on a tie (Whirlwind's inward).</summary>
         static int InwardDir(int dx, int dy)
         {
             if (dx == 0 && dy == 0) return -1;
@@ -411,10 +313,6 @@ namespace Chem
             return dy > 0 ? 0 : 2;
         }
 
-        /// <summary>
-        /// The next cell clockwise round the square ring d out from a whirlwind's middle, from (dx, dy) on it
-        /// (ringNext in the TS): east along the top, south down the right, west along the bottom, north up the left.
-        /// </summary>
         static int RingNext(int dx, int dy, int d)
         {
             if (dy == -d && dx < d) return 1;
@@ -423,11 +321,6 @@ namespace Chem
             return 0;
         }
 
-        /// <summary>
-        /// Each whirlwind, in the order cast (tickWhirlwinds in the TS): every Every ticks it whirls once
-        /// (Spin), every Travel ticks it moves a cell (Travel), and once its ticks are up it drops what it
-        /// carries and is gone.
-        /// </summary>
         void TickWhirlwinds()
         {
             foreach (var ww in whirls)
@@ -440,14 +333,12 @@ namespace Chem
             whirls.RemoveAll(ww => ww.Age >= ww.Ticks);
         }
 
-        // A cell with the wind, or in still air the way it was cast; a wall or an inactive chunk holds it up.
         void Travel(Whirl ww)
         {
             int dir = WindDir >= 0 ? WindDir : ww.Dir;
             if (dir < 0) return;
             int nx = ww.X + DirX(dir), ny = ww.Y + DirY(dir);
             if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny))) return;
-            // What it holds up round its eye goes with it, the furthest along the way first.
             int dx = nx - ww.X, dy = ny - ww.Y;
             var held = RaiderSystem.List.Where(r => r.Alive && r.StatusOf(LiftedStatus) > 0 && System.Math.Max(System.Math.Abs(DeltaX(ww.X, r.X)), System.Math.Abs(DeltaY(ww.Y, r.Y))) <= EyeOf(ww))
                 .OrderByDescending(r => DeltaX(ww.X, r.X) * dx + DeltaY(ww.Y, r.Y) * dy).ThenBy(r => r.Id).ToList();
@@ -462,14 +353,11 @@ namespace Chem
             ww.Y = FoldY(ny);
         }
 
-        // How far from its eye a whirlwind takes things on and sheds what it carries, in cells (spells.json eye).
         int EyeOf(Whirl ww) => Rules.Spell(ww.Spell)?.Eye ?? 1;
 
         CarryDef CarriedBy(Whirl ww) =>
             ww.Carrying == null ? null : Rules.Spell(ww.Spell)?.Carries.FirstOrDefault(c => c.Id == ww.Carrying);
 
-        // The first of its spell's carries (strongest first) that the eye is over, stopping at what it already
-        // carries: a fire's smoke reaches it first, and the fire still makes it a fire tornado.
         void TakeOn(Whirl ww)
         {
             var carries = Rules.Spell(ww.Spell)?.Carries;
@@ -492,7 +380,6 @@ namespace Chem
             return false;
         }
 
-        // Applies what it carries over the square of cells within reach of its eye, row by row.
         void Shed(Whirl ww, CarryDef carry, int reach, int power)
         {
             for (int dy = -reach; dy <= reach; dy++)
@@ -507,12 +394,6 @@ namespace Chem
             Shed(ww, carry, ww.Radius, Rules.Spell(ww.Spell).DropPower);
         }
 
-        /// <summary>
-        /// One turn of a whirlwind (spin in the TS), over the square of cells round its middle: fire burning
-        /// on a ring lights the next cell clockwise round it; gas moves a cell in toward the middle, the inner
-        /// rings first, each gas once; creatures of MaxMass or less, nearest first, step a cell in where it's
-        /// open. Things (props, items) are the view's, not the core's.
-        /// </summary>
         void Spin(Whirl ww)
         {
             int r = ww.Radius;
@@ -564,10 +445,7 @@ namespace Chem
             }
         }
 
-        /// <summary>A raider a whirlwind holds up round its eye (it can't walk, and the view lifts it); thrown out when it runs out.</summary>
         public const string LiftedStatus = "lifted";
-        // A creature in the eye or the ring round it is lifted off its feet for its spell's lift.ticks, then flung lift.fling cells out the way
-        // the whirlwind was cast and dropped, hurt by the fall (FallDamage times lift.hurt, more off a cliff: World.Hurl).
         void LiftInTheEye(Whirl ww, Raider r)
         {
             var def = Rules.Entity(r.Kind);
@@ -591,10 +469,6 @@ namespace Chem
             LogOnce($"flung#{r.Id}", $"The whirlwind flings the {name} away", LogKind.Notable);
         }
 
-        /// <summary>
-        /// The nearest active cell within SeekRange (in steps either way) of (x, y) that matches SeekIf, by distance as the
-        /// crow flies, the first in row order on a tie (seek in the TS); null for none.
-        /// </summary>
         (int x, int y)? Seek(SpellDef s, int x, int y)
         {
             (int x, int y)? best = null;
@@ -610,20 +484,15 @@ namespace Chem
             return best;
         }
 
-        /// <summary>The cell a spell that seeks would strike if aimed at (x, y), or null, for the view's bolt.</summary>
         public (int x, int y)? Sought(SpellDef s, int x, int y) => s != null && s.SeekRange > 0 ? Seek(s, x, y) : null;
 
-        /// <summary>What a spell does to cells where it lands, without the cast's log line (a meteor's landing too).</summary>
         void Land(SpellDef s, int x, int y, int dir, int charge, int aimX, int aimY)
         {
-            x = FoldX(x); // every landing (a cast, a star, a meteor, a prop's blast) is on the world's own cells
+            x = FoldX(x);
             y = FoldY(y);
             var cells = SpellCells(s, x, y, dir, charge, aimX, aimY);
-            // Squares in paused chunks are left alone (World.Chunks.cs).
             cells.RemoveAll(c => !IsActiveAt(c.x, c.y));
-            // A spell that seeks (Lightning) strikes the nearest cell it seeks near where it's aimed instead of its shape.
             if (s.SeekRange > 0 && Seek(s, x, y) is (int, int) sought) cells = new List<(int x, int y)> { sought };
-            // A spell that acts on what's already there (Geyser on water) lands only where that is, and fizzles where it isn't.
             if (s.Needs != null)
             {
                 cells.RemoveAll(c => !Matches(At(c.x, c.y), s.Needs));
@@ -633,7 +502,6 @@ namespace Chem
                     return;
                 }
             }
-            // A spell with wind (Gust of Wind, Flame Wave) sets the world's wind along its direction.
             if (s.Wind > 0) Wind = (dir, s.Wind);
             if (s.Inward && s.PullEvery > 0 && s.Duration > 0)
                 whirls.Add(new Whirl { X = x, Y = y, Radius = s.Radius + ChargedGrowth(s, charge), Ticks = s.Duration, Every = s.PullEvery, MaxMass = s.MaxMass, Spell = s.Id, Dir = dir, Travel = s.TravelEvery });
@@ -645,7 +513,6 @@ namespace Chem
             var forced = new HashSet<int>();
             if (s.Element == null)
             {
-                // A spell with force and no element (Raise Earth) still throws what it lands under: the golf ball.
                 foreach (var (cx, cy) in cells) RaiderSystem.Force(s, cx, cy, dir, forced);
                 Place(s, cells, x, y);
                 return;

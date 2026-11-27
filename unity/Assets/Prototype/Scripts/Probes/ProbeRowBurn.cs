@@ -30,7 +30,7 @@ public class RowBurnProbe : RowHousesProbe
         Check("row_houses_here", houses != null && RulesMcpServer.Url != null, RulesMcpServer.Url);
         if (houses == null || RulesMcpServer.Url == null) yield break;
         yield return Tool("find_site", new JObject { ["width"] = 14, ["depth"] = 8, ["near"] = "lake", ["side"] = "north", ["within"] = 40 });
-        var site = Regex.Matches(answer ?? "", @"\[(\d+), ?(\d+)\]").Cast<Match>().LastOrDefault() ?? Match.Empty; // on grass; the nearest stand on the shore's banks
+        var site = Regex.Matches(answer ?? "", @"\[(\d+), ?(\d+)\]").Cast<Match>().LastOrDefault() ?? Match.Empty;
         Check("a_site", site.Success, answer);
         if (!site.Success) yield break;
         int x = int.Parse(site.Groups[1].Value, CultureInfo.InvariantCulture), y = int.Parse(site.Groups[2].Value, CultureInfo.InvariantCulture);
@@ -53,7 +53,6 @@ public class RowBurnProbe : RowHousesProbe
         yield return RevertAll();
     }
 
-    /// <summary>The fixture, of stucco that burns, with more details than the plain one for the frames.</summary>
     public static string Mod(int x, int y)
     {
         var json = JObject.Parse(ModJson(x, y, Timbered));
@@ -61,7 +60,6 @@ public class RowBurnProbe : RowHousesProbe
         return json.ToString(Newtonsoft.Json.Formatting.None);
     }
 
-    // Sets the wizard down and walks it north as far as it'll go.
     IEnumerator WalkNorth(int x, int fromY, int toY)
     {
         Stand(x, fromY);
@@ -71,7 +69,6 @@ public class RowBurnProbe : RowHousesProbe
         puppet.Move(Vector2.zero);
     }
 
-    // A wall and a shut door stop a wizard where they're drawn; a door that's gone lets it in.
     IEnumerator Walks(int x, int y)
     {
         var world = grid.World;
@@ -96,7 +93,6 @@ public class RowBurnProbe : RowHousesProbe
         Stand(x + 7, y + 11);
     }
 
-    // A shattered pane leaves a hole to see through, in a wall that stands.
     IEnumerator Pane(int y)
     {
         var world = grid.World;
@@ -104,7 +100,7 @@ public class RowBurnProbe : RowHousesProbe
         var glass = houses.Root(House).GetComponent<WindowPanes>();
         int lit = glass.LampsLit;
         int folded() => houses.Root(House).GetComponentsInChildren<MeshFilter>().Where(f => f.name == "Panes").Sum(f => f.sharedMesh.vertices.Where((v, i) => i % 4 == 0 && v == f.sharedMesh.vertices[i + 2]).Count());
-        ChemEffects.Request(grid, new EffectCommand(EffectKind.Shatter, pane.X, pane.Y, "", ThingId.None)); // the first hit only cracks it
+        ChemEffects.Request(grid, new EffectCommand(EffectKind.Shatter, pane.X, pane.Y, "", ThingId.None));
         yield return Wait(1f);
         ChemEffects.Request(grid, new EffectCommand(EffectKind.Shatter, pane.X, pane.Y, "", ThingId.None));
         yield return Until(() => folded() > 0);
@@ -184,7 +180,6 @@ public class RowBurnProbe : RowHousesProbe
         film = null;
     }
 
-    // One frame from a wizard's height, to <ScreenshotDir>/<label>/.
     void Still(string label, Vector3 eye, Vector3 aim)
     {
         if (film == null) return;

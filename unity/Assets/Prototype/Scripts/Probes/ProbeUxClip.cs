@@ -12,7 +12,6 @@ using UnityEngine.InputSystem.LowLevel;
 // on a virtual gamepad, with the HUD on, each take into a folder under --shots.
 public class UxClipProbe : ProbeScenario
 {
-    // How far between two ticks the casts are pressed, in ticks (ComboProbe.BarRunsEven).
     const float LateInTheTick = 0.8f;
     const int Casts = 3;
     const float Pitch = 12f, WalkSeconds = 3.5f, HoldSeconds = 1.5f, StartOut = 6f;
@@ -63,7 +62,6 @@ public class UxClipProbe : ProbeScenario
         Check($"{name}_filmed", film.Saved > 0, $"{film.Saved} of {film.Frames} frames");
     }
 
-    // The d-pad's grimoire and Back, then the menu's button to the grimoire and Back.
     IEnumerator GrimoireBack()
     {
         var menu = PauseMenu.Instance;
@@ -77,7 +75,6 @@ public class UxClipProbe : ProbeScenario
         menu.SetOpen(false);
     }
 
-    // Casts pressed just before a tick, when the first tick comes almost at once.
     IEnumerator CastBar()
     {
         for (int i = 0; i < Casts; i++)
@@ -91,7 +88,6 @@ public class UxClipProbe : ProbeScenario
         }
     }
 
-    // Into a house from out in the open, and held against its wall, as a player walks.
     IEnumerator House()
     {
         var village = Village.All.First(v => v.villageName == "Hollowmere");

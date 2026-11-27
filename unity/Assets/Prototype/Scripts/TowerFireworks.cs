@@ -18,7 +18,6 @@ public class TowerFireworks : MonoBehaviour
         new(1f, 0.35f, 0.3f), new(1f, 0.85f, 0.3f), new(0.4f, 0.9f, 1f), new(0.6f, 1f, 0.45f), new(0.95f, 0.5f, 1f), new(1f, 1f, 1f),
     };
 
-    /// <summary>Sets off a show of fireworks round a point.</summary>
     public static void Launch(Vector3 at)
     {
         var go = new GameObject("Tower fireworks");
@@ -50,7 +49,6 @@ public class TowerFireworks : MonoBehaviour
         main.startLifetime = new ParticleSystem.MinMaxCurve(1.1f, 1.8f);
         main.startSpeed = new ParticleSystem.MinMaxCurve(7f, 10f);
         main.startSize = new ParticleSystem.MinMaxCurve(0.6f, 0.9f);
-        // Its own colour (over a bright sky, additive light much past 1 burns out to white).
         main.startColor = new ParticleSystem.MinMaxGradient(colour * 1.3f, Color.Lerp(colour, Color.white, 0.35f) * 1.3f);
         main.gravityModifier = 0.35f;
         var emission = ps.emission;
@@ -80,7 +78,6 @@ public class TowerFireworks : MonoBehaviour
     {
         if (sparks == null)
         {
-            // Round, soft-edged sparks rather than the bare quad's squares.
             sparks = UrpMaterials.NewUnlitParticles("Firework sparks", Color.white, additive: true);
             var puff = ProceduralTextures.SoftPuff(64);
             if (sparks.HasProperty("_BaseMap")) sparks.SetTexture("_BaseMap", puff);
@@ -89,7 +86,6 @@ public class TowerFireworks : MonoBehaviour
         return sparks;
     }
 
-    // A light in the burst's colour, bright at once and dying away.
     static IEnumerator Flash(GameObject burst, Color colour)
     {
         var glow = burst.AddComponent<Light>();

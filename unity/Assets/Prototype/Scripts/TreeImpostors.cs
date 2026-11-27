@@ -23,14 +23,10 @@ using UnityEngine.Rendering;
 // its place nearest the camera (ViewWrap), moved there when that copy changes.
 public sealed class TreeImpostors : MonoBehaviour
 {
-    /// <summary>The Resources folder the baker writes the species' materials to (a material a species, named as its prefab).</summary>
     public const string ResourceFolder = "TreeImpostors";
 
-    /// <summary>Whether the impostors draw (on unless turned off).</summary>
     public static bool On { get; set; } = true;
-    /// <summary>Nearer than this (m) a tree is its prefab, with wind; from here out the impostor.</summary>
     public static float Near { get; set; } = DefaultNear;
-    /// <summary>How far out the impostors draw (m) on a map without the far ring's haze, or once set (-tree-impostors-far, a probe).</summary>
     public static float Far
     {
         get => farMetres;
@@ -40,65 +36,41 @@ public sealed class TreeImpostors : MonoBehaviour
             farSet = true;
         }
     }
-    // Unset, on a generated map the impostors draw out to where the haze hides them (#220).
     static float farMetres = 500f;
     static bool farSet;
 
-    /// <summary>
-    /// How near the prefabs draw and how far the impostors draw this frame (m): Near and FarNow, or nearer where the forest
-    /// is dense (TreeBudget, from the trees round the camera last frame).
-    /// </summary>
     public static float PrefabsWithin { get; private set; } = DefaultNear;
     public static float ImpostorsWithin { get; private set; } = 500f;
-    /// <summary>The trees within Near (and Keep) and those within FarNow, every way, round the camera last frame (TreeBudget's counts).</summary>
     public static int NearAround { get; private set; }
     public static int AllAround { get; private set; }
-    /// <summary>Whether the tree budget is kept (off with -no-tree-budget, to compare).</summary>
     public static bool Budget { get; set; } = true;
-    /// <summary>The budget's counts (TreeBudget.MostNear, MostAround), or a run's (-tree-budget near around).</summary>
     public static int MostNear { get; set; } = TreeBudget.MostNear;
     public static int MostAround { get; set; } = TreeBudget.MostAround;
-    /// <summary>The budget's floor for the impostors' reach (TreeBudget.FarFloor, or a run's -tree-budget-floor M).</summary>
     public static float FarFloor { get; set; } = TreeBudget.FarFloor;
 
-    /// <summary>How far out the impostors draw now (m).</summary>
     public static float FarNow => !farSet && FarRing.Instance is { HazeMetres: > 0f } ring ? ring.HazeHides : Far;
-    /// <summary>How far out the impostors cast shadows (m): the drawn tier (J-091).</summary>
     public static float ShadowFar { get; set; } = 256f;
-    /// <summary>Trees this says yes to aren't drawn (a probe clears a view with it); null for none.</summary>
     public static Func<Vector3, bool> Skip { get; set; }
-    /// <summary>Whether they cast shadows at all.</summary>
     public static bool Shadows { get; set; } = true;
 
-    /// <summary>The trees drawn as impostors in the last frame, and the instanced calls that drew them.</summary>
     public static int Drawn { get; private set; }
     public static int Calls { get; private set; }
-    /// <summary>The trees standing as their prefab now, and how many of those were ever made (the pool's size).</summary>
     public static int NearDrawn { get; private set; }
-    /// <summary>The trees within the prefabs' distance still drawn as impostors, waiting for their prefab (a still waits them out).</summary>
     public static int NearWaiting { get; private set; }
     public static int NearMade { get; private set; }
-    /// <summary>The chunks' trees read so far, and what reading them cost (ms) all told.</summary>
     public static int ChunksRead { get; private set; }
     public static double ReadMs { get; private set; }
-    /// <summary>Of the chunks read, the packed ones with changes (their changes read from their save record), and the pinned ones read from their ground.</summary>
     public static int ChangedRead { get; private set; }
     public static int PinnedRead { get; private set; }
 
     public static TreeImpostors Instance { get; private set; }
 
-    // Cell-made chunks read a frame, terrain chunks re-read a frame (a burnt tree drops out within a second or so).
     const int ReadsPerFrame = 4, RefreshesPerFrame = 2, Batch = 1023;
     const float TerrainTreeDistance = 900f;
-    // Out to here a tree is its prefab (#220: at 60 m the swap showed in a sparse wood, where nothing in front hides it;
-    // SpeedTree's own LODs are meshes to past 500 m for the grown trees, so 150 m is still a full tree, not its billboard).
     const float DefaultNear = 150f;
-    // A near tree keeps its prefab out to Near + Keep, so one on the edge doesn't swap each step.
     const float Keep = 8f;
-    // About this many ms a frame go to making near trees' prefabs (at least one a frame); all of them when none stands.
     const double SpawnBudgetMs = 1.0;
 
-    // Play mode without a domain reload keeps statics: every play starts as made.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void Reset()
     {
@@ -132,7 +104,6 @@ public sealed class TreeImpostors : MonoBehaviour
 
     static string BudgetSaid() => Budget ? $"{MostNear} prefabs, {MostAround} trees round" : "off";
 
-    // The command line's tree switches.
     static void ReadArgs(string[] args)
     {
         for (int i = 0; i < args.Length; i++)
@@ -156,7 +127,6 @@ public sealed class TreeImpostors : MonoBehaviour
         }
     }
 
-    // A switch that takes metres: -tree-impostors-far, -tree-impostors-flat-from, -tree-budget-floor, -tree-impostors-shadow-far.
     static void Metres(string flag, float m)
     {
         if (flag == "-tree-impostors-far") Far = m;
@@ -165,7 +135,6 @@ public sealed class TreeImpostors : MonoBehaviour
         else if (flag == "-tree-impostors-shadow-far") ShadowFar = m;
     }
 
-    // -tree-budget near around: the budget's counts.
     static void Counts(string[] args, int i)
     {
         if (i + 2 >= args.Length || !int.TryParse(args[i + 1], out int most) || !int.TryParse(args[i + 2], out int all)) return;
@@ -179,20 +148,16 @@ public sealed class TreeImpostors : MonoBehaviour
 
     static bool TryMetres(string s, out float m) => float.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out m);
 
-    // One terrain chunk's trees, by species, as instance matrices.
     sealed class Block
     {
         public Matrix4x4[][] ByKind;
         public int[] Counts;
         public Bounds Bounds;
-        // How far its trees stand from their chunk's own place (a whole number of the world's periods): on a world that
-        // wraps, a chunk's trees are moved to the copy nearest the camera (ViewWrap) when it moves.
         public Vector2 Shift;
-        public Terrain Terrain; // the terrain they were read from; null when made from the cells or the pinned ground
+        public Terrain Terrain;
         public bool Any;
     }
 
-    // A near tree standing as its prefab.
     sealed class Standing
     {
         public GameObject Tree;
@@ -204,9 +169,9 @@ public sealed class TreeImpostors : MonoBehaviour
     readonly List<int> wanted = new(), stale = new();
     readonly Plane[] planes = new Plane[6];
     readonly Matrix4x4[] scratch = new Matrix4x4[Batch];
-    Material[] materials; // by the template's tree kind
-    Material[] flat; // the same, keeping the quad's own depth (_IMPOSTOR_FLAT): for chunks wholly past FlatFrom
-    GameObject[] prefabs; // by kind
+    Material[] materials;
+    Material[] flat;
+    GameObject[] prefabs;
     string[] kinds;
     Mesh quad;
     World world;
@@ -214,7 +179,6 @@ public sealed class TreeImpostors : MonoBehaviour
     int refreshAt, frame;
     readonly Cell made = new();
 
-    // The near trees: those standing by where they stand, those wanted this frame and not standing yet, and the pool.
     readonly Dictionary<long, Standing> standing = new();
     readonly List<(long key, int kind, Matrix4x4 m, float d2)> toStand = new();
     readonly List<long> leaving = new();
@@ -246,8 +210,6 @@ public sealed class TreeImpostors : MonoBehaviour
         var cam = Camera.main;
         if (!Ready(terrains, layout, cam)) return;
         var chunks = terrains.Chunks;
-        // The terrains are made for the map the scene started on: a joiner that takes the host's map has the new map's
-        // layout before its terrains, and the old map's chunks can't be read by the new layout's numbers.
         if (chunks.Length != layout.ChunksX * layout.ChunksZ) return;
         var eye = cam.transform.position;
         wanted.Clear();
@@ -262,12 +224,9 @@ public sealed class TreeImpostors : MonoBehaviour
         pending.Clear();
         for (int j = j0; j <= j1; j++)
             for (int i = i0; i <= i1; i++) Visit(layout, chunks, i, j, eye);
-        // Nearest first, so the nearer trees' depth hides the ones behind them before those are shaded.
         pending.Sort(NearestFirst);
         foreach (var d in pending) Draw(d.b, eye, d.whole, d.shadows, d.flat, ImpostorsWithin * ImpostorsWithin);
         StandNear();
-        // The next frame's distances from this frame's trees round the camera (counted out to Near and FarNow, so how far
-        // they draw never feeds back into the counts).
         NearAround = nearD2.Count;
         AllAround = 0;
         foreach (var c in around) AllAround += c.trees;
@@ -278,17 +237,12 @@ public sealed class TreeImpostors : MonoBehaviour
         Forget(layout, eye, reach);
     }
 
-    // The chunks along one axis within reach of the eye: round a world that wraps that way they run on over the seam (to
-    // those they fold to, ViewWrap), else within the map.
     static (int lo, int hi) Span(float eye, float reach, float origin, float size, int chunks, bool wraps)
     {
         int lo = Mathf.FloorToInt((eye - reach - origin) / size), hi = Mathf.FloorToInt((eye + reach - origin) / size);
         return wraps ? (lo, hi) : (Mathf.Max(0, lo), Mathf.Min(chunks - 1, hi));
     }
 
-    // The chunks' trees held past Far and LetGoPast chunks more are let go, every LetGoEvery frames: kept, every chunk
-    // flown past stayed held (a crossing of the island held thousands, hundreds of MB). The margin is so turning back
-    // reads none again at once; one coming back within Far is read again, nearest first, as at the start.
     void Forget(TerrainGrid layout, Vector3 eye, float reach)
     {
         if (frame % LetGoEvery != 0 || blocks.Count == 0) return;
@@ -305,12 +259,9 @@ public sealed class TreeImpostors : MonoBehaviour
 
     readonly List<int> gone = new();
     const int LetGoEvery = 30, LetGoPast = 2;
-    // This frame's counts for the tree budget: the squared distance of each tree within Near and Keep, and each chunk's
-    // nearest squared distance and trees within FarNow.
     readonly List<float> nearD2 = new();
     readonly List<(float d2, int trees)> around = new();
 
-    // Whether there's a world, a map, a camera and a baked species to draw with; the terrains' trees off once there are.
     bool Ready(MapTerrains terrains, TerrainGrid layout, Camera cam)
     {
         var w = ChemGrid.Current?.World;
@@ -327,8 +278,6 @@ public sealed class TreeImpostors : MonoBehaviour
         return true;
     }
 
-    // Chunk (i, j): its trees drawn if it's within Far and they've been read; asked to be read (or read again) if not.
-    // Chunk k's corner at the copy nearest the camera (its own place on a world that doesn't wrap).
     static (float x, float z) NearCorner(TerrainGrid layout, int k)
     {
         var (cx, cz) = layout.ChunkCorner(k % layout.ChunksX, k / layout.ChunksX);
@@ -336,7 +285,6 @@ public sealed class TreeImpostors : MonoBehaviour
         return (ViewWrap.NearX(cx + half) - half, ViewWrap.NearZ(cz + half) - half);
     }
 
-    // A block's trees moved to stand at shift from their chunk's own place.
     static void MoveTo(Block b, Vector2 shift)
     {
         var d = shift - b.Shift;
@@ -354,7 +302,6 @@ public sealed class TreeImpostors : MonoBehaviour
         b.Shift = shift;
     }
 
-    // Chunk k's trees as read, asked to be read (or read again: its terrain came or went, or in turn); null if never read.
     Block Known(Terrain[] chunks, int k)
     {
         var t = chunks[k];
@@ -383,28 +330,17 @@ public sealed class TreeImpostors : MonoBehaviour
         around.Add((nearestSq, trees));
         if (nearestSq > drawSq) return;
         bool reachesNear = nearestSq < keepSq;
-        // A chunk reaching into Near sorts its trees even out of sight: its near trees stand as they are.
         if (!reachesNear && !GeometryUtility.TestPlanesAABB(planes, b.Bounds)) return;
         bool whole = !reachesNear && Far2(eye, cx, cz, size) <= drawSq;
         bool shadows = Shadows && nearestSq < ShadowFar * ShadowFar;
         pending.Add((nearestSq, b, whole, shadows, !reachesNear && nearestSq > FlatFrom * FlatFrom));
     }
 
-    // This frame's chunks to draw: how near, its trees, whether whole (all within the impostors' reach, none near), with
-    // shadows, and flat (wholly past FlatFrom).
     readonly List<(float d2, Block b, bool whole, bool shadows, bool flat)> pending = new();
     static readonly Comparison<(float d2, Block b, bool whole, bool shadows, bool flat)> NearestFirst = (a, c) => a.d2.CompareTo(c.d2);
 
-    /// <summary>
-    /// Past this (m) a chunk's impostors keep their quads' own depth (the flat material): far off the depth the impostor
-    /// works out for each pixel changes nothing that shows, and writing it stopped the GPU testing depth before shading, so
-    /// in a dense wood every tree behind another was shaded too (the hills' woods, 10 ms of a frame at a wood's heart).
-    /// </summary>
     public static float FlatFrom { get; set; } = 100f;
 
-    // The terrain chunks whose trees changed (ValleyGround.TreesChanged: a fire, a felling) read again, a few a frame; and
-    // in turn, one every RefreshEvery frames, the rest (for a writer that doesn't say). Every chunk's twice a frame read
-    // all its trees into new arrays: a fifth of the flyover's garbage.
     void Refresh(Terrain[] chunks)
     {
         int read = 0;
@@ -437,10 +373,8 @@ public sealed class TreeImpostors : MonoBehaviour
         if (!changed.Contains(k)) changed.Add(k);
     }
 
-    /// <summary>Every chunk's trees read again (a probe that changed the terrains' trees itself, or Skip).</summary>
     public void ReadAgain() => blocks.Clear();
 
-    // The squared distance from the eye to a chunk's farthest corner (in plan).
     static float Far2(Vector3 eye, float cx, float cz, float size)
     {
         float fx = Mathf.Max(Mathf.Abs(cx - eye.x), Mathf.Abs(cx + size - eye.x)), fz = Mathf.Max(Mathf.Abs(cz - eye.z), Mathf.Abs(cz + size - eye.z));
@@ -466,8 +400,6 @@ public sealed class TreeImpostors : MonoBehaviour
         }
     }
 
-    // A chunk's trees of one species that reaches within Near: those nearer stand as their prefab (or wait to, drawn as
-    // impostors meanwhile), the rest out to Far are drawn as impostors.
     void Sorted(RenderParams rp, int kind, Matrix4x4[] all, int count, Vector3 eye, float farSq)
     {
         float near = PrefabsWithin, nearSq = near * near, keepSq = (near + Keep) * (near + Keep), countSq = (Near + Keep) * (Near + Keep);
@@ -488,7 +420,6 @@ public sealed class TreeImpostors : MonoBehaviour
         if (n > 0) Instanced(rp, scratch, 0, n);
     }
 
-    // A tree within Near (and Keep): true if it stands as its prefab now; if not, and it's within Near, it's wanted to.
     bool Stands(int kind, Matrix4x4 m, float d2, float nearSq)
     {
         long key = Key(m.GetColumn(3));
@@ -501,7 +432,6 @@ public sealed class TreeImpostors : MonoBehaviour
         return false;
     }
 
-    // A tree by where it stands (to the centimetre).
     static long Key(Vector4 p) => ((long)Mathf.RoundToInt(p.x * 100f) << 32) ^ (uint)Mathf.RoundToInt(p.z * 100f);
 
     void Instanced(RenderParams rp, Matrix4x4[] list, int start, int count)
@@ -511,8 +441,6 @@ public sealed class TreeImpostors : MonoBehaviour
         Drawn += count;
     }
 
-    // The near trees: those not seen this frame go back to the pool (or straight to a tree that wants one), and the wanted
-    // ones stand, nearest first, as many as the frame's budget makes (all when none stands, as play starts).
     void StandNear()
     {
         leaving.Clear();
@@ -553,7 +481,6 @@ public sealed class TreeImpostors : MonoBehaviour
     readonly List<Standing> freed = new();
     static readonly Comparison<(long key, int kind, Matrix4x4 m, float d2)> ByDistance = (a, b) => a.d2.CompareTo(b.d2);
 
-    // A tree of a species for a near tree: one just let go, else one from the pool, else a new one if it may be made.
     GameObject Take(int kind, List<Standing> free, bool make)
     {
         int at = -1;
@@ -574,8 +501,6 @@ public sealed class TreeImpostors : MonoBehaviour
         return make ? Make(kind) : null;
     }
 
-    // A species' prefab, made for the pool: its LOD group and wind as the terrain drew it, without its colliders (the
-    // terrain's tree colliders stand there already).
     GameObject Make(int kind)
     {
         var go = Instantiate(prefabs[kind], transform);
@@ -596,7 +521,6 @@ public sealed class TreeImpostors : MonoBehaviour
         NearDrawn = 0;
     }
 
-    // Reads the nearest of the wanted chunks, up to budget of those made from cells (a terrain's trees are cheap to read).
     void Read(List<int> list, TerrainGrid layout, Terrain[] chunks, Vector3 eye, int budget)
     {
         if (list.Count == 0) return;
@@ -631,7 +555,6 @@ public sealed class TreeImpostors : MonoBehaviour
         return dx * dx + dz * dz;
     }
 
-    // A terrain's trees, into <paramref name="reuse"/>'s arrays when there's one (read again: no new garbage).
     Block FromTerrain(int k, Terrain t, Block reuse = null)
     {
         var data = t.terrainData;
@@ -639,7 +562,6 @@ public sealed class TreeImpostors : MonoBehaviour
         var b = reuse != null && reuse.ByKind.Length == kinds.Length ? Emptied(reuse) : NewBlock();
         b.Terrain = t;
         var origin = t.transform.position;
-        // The terrain stands at a copy of its chunk's place (MapTerrains.Corner): its trees are read there.
         var layout = MapLand.Current?.Layout;
         if (k >= 0 && layout != null)
         {
@@ -659,9 +581,6 @@ public sealed class TreeImpostors : MonoBehaviour
         return b;
     }
 
-    // On a map made from its source (the Wide World), whether the chunk under a terrain square isn't made yet: reading its
-    // cells and land here would make it on this thread (milliseconds a chunk), so it's asked for on the worker and read once
-    // it's made.
     bool NotMadeYet(TerrainGrid layout, int i, int j)
     {
         if (world.Source is not GeneratedSource source) return false;
@@ -678,8 +597,6 @@ public sealed class TreeImpostors : MonoBehaviour
     {
         var b = NewBlock();
         int seed = unchecked((int)world.Seed);
-        // The ground from the map's land, not the drawn ground: a chunk with no terrain has its ground made from its cells,
-        // which would unpack it (and those round it).
         var land = MapLand.Current?.Land;
         float unit = ChemGrid.Current.Grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep;
         var cells = new CellsNow(this);
@@ -695,9 +612,6 @@ public sealed class TreeImpostors : MonoBehaviour
         return b;
     }
 
-    // A pinned chunk with no terrain made: its own ground's trees, as its terrain will draw them (#213), standing on its
-    // ground; but a tree whose cell was a tree as the world started and isn't now (burnt, felled) is gone, as the terrain
-    // would have it.
     Block FromPinned(TerrainGrid layout, GroundChunk chunk)
     {
         var b = NewBlock();
@@ -721,8 +635,6 @@ public sealed class TreeImpostors : MonoBehaviour
         return b;
     }
 
-    // The cells' terrain now, a chunk at a time, read where it lies: an unpacked chunk's own cells, a packed one's from the
-    // world's source with its changes laid over (from its save record, which reads a packed chunk without unpacking it).
     struct CellsNow
     {
         readonly TreeImpostors owner;
@@ -759,7 +671,6 @@ public sealed class TreeImpostors : MonoBehaviour
             return StartTerrain(x, y);
         }
 
-        // The terrain the world's source makes at a cell: how it started.
         public string StartTerrain(int x, int y)
         {
             var w = owner.world;
@@ -769,7 +680,6 @@ public sealed class TreeImpostors : MonoBehaviour
             return owner.made.T;
         }
 
-        // A packed chunk's changed cells' terrains by local index; null when it has none.
         static Dictionary<int, string> ChangesOf(World w, int cx, int cy)
         {
             var p = w.PackedOf(cx, cy);
@@ -784,10 +694,8 @@ public sealed class TreeImpostors : MonoBehaviour
 
     int[] protoMap = Array.Empty<int>();
 
-    // Chunk k's block as read last (its arrays to read into again), or null.
     Block ReadBefore(int k) => blocks.TryGetValue(k, out var b) ? b : null;
 
-    // A terrain's tree prototypes as indices into kinds (-1: none), in a kept array.
     int[] KindsOf(TreePrototype[] protos)
     {
         if (protoMap.Length != protos.Length) protoMap = new int[protos.Length];
@@ -829,7 +737,6 @@ public sealed class TreeImpostors : MonoBehaviour
 
     static readonly int RadiusId = Shader.PropertyToID("_Radius"), CentreId = Shader.PropertyToID("_Centre");
 
-    // The species' materials by the template's tree kinds; false (and off) when none was baked.
     bool Load(TerrainData template)
     {
         var protos = template.treePrototypes;
@@ -870,7 +777,6 @@ public sealed class TreeImpostors : MonoBehaviour
         flat = null;
     }
 
-    // A quad of corners (-1, -1) to (1, 1), its bounds left wide: the shader stands it up and sizes it.
     static Mesh Quad()
     {
         var m = new Mesh { name = "Tree impostor" };
@@ -880,7 +786,6 @@ public sealed class TreeImpostors : MonoBehaviour
         return m;
     }
 
-    /// <summary>The trees read so far by species name (every chunk read, near or far), for a count.</summary>
     public Dictionary<string, int> Totals()
     {
         var totals = new Dictionary<string, int>();
@@ -891,10 +796,8 @@ public sealed class TreeImpostors : MonoBehaviour
         return totals;
     }
 
-    /// <summary>How many chunks' trees are held now.</summary>
     public int Held => blocks.Count;
 
-    /// <summary>Whether a tree stands within a metre of a point in the trees held now (a probe's check), and as which species.</summary>
     public bool TreeNear(Vector3 p, float metres, out string kind)
     {
         kind = null;
@@ -913,7 +816,6 @@ public sealed class TreeImpostors : MonoBehaviour
         return false;
     }
 
-    /// <summary>A tree held now between min and max metres (in plan) from a point, in a chunk with no terrain made (a probe's far tree); null if none.</summary>
     public Vector3? FarTree(Vector3 from, float min, float max)
     {
         if (kinds == null) return null;
@@ -932,11 +834,6 @@ public sealed class TreeImpostors : MonoBehaviour
         return null;
     }
 
-    /// <summary>
-    /// For a probe (#213): a pinned chunk with its terrain made, its trees as the pinned ground has them (what it draws far
-    /// off, before its terrain is made) against the terrain's: how many the terrain has, and how many of those the pinned
-    /// read has within 5 cm, of the same species. False for any other chunk.
-    /// </summary>
     public bool PinnedAgainstTerrain(int k, out int terrainTrees, out int matched)
     {
         terrainTrees = matched = 0;
@@ -970,7 +867,6 @@ public sealed class TreeImpostors : MonoBehaviour
         return false;
     }
 
-    /// <summary>Forgets every chunk's trees, so they're read again (after a bake, or to time the reads).</summary>
     public void Forget()
     {
         blocks.Clear();

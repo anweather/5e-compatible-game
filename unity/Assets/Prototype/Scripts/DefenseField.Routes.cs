@@ -9,7 +9,6 @@ using UnityEngine;
 // boss is only bigger here: it holds one cell like any raider. Only the show: the core decides everything.
 public partial class DefenseField
 {
-    /// <summary>How high a flyer is drawn (SpellCaster's lock-on aims there).</summary>
     public const float FlyHeight = 11f;
     const float WhirlLift = 2.5f;
     const float LiftRate = 2.6f, FlapRate = 9f, FlapReach = 0.55f, Hover = 0.35f;
@@ -20,7 +19,6 @@ public partial class DefenseField
     const float Rounding = 7f, Turning = 8f, LungeReach = 1.1f, LungeSeconds = 0.45f, RearAngle = 0.75f;
     static readonly float3 BlowTint = new(1f, 0.25f, 0.12f);
 
-    // A raider's blow on the body: up on its back end, then down onto what it strikes, flushing red.
     void Blow(Shown s, int from, int to)
     {
         if (s.lunge <= 0f) return;
@@ -38,7 +36,6 @@ public partial class DefenseField
         }
     }
 
-    // A blow, seen: the core gives a raider its wait as it strikes, so a wait that jumps up is a blow, and the raider lunges.
     void Struck(Shown s)
     {
         int wait = s.raider?.Wait ?? 0;
@@ -52,7 +49,6 @@ public partial class DefenseField
         s.lunge = Mathf.Max(0f, s.lunge - Time.deltaTime / LungeSeconds);
     }
 
-    // A raider striking beside the Hold's heart turns to it: it's the crystal it's hitting (HoldCrystal), not the way it came.
     void FaceTheHeart(Shown s)
     {
         var world = World;
@@ -68,20 +64,16 @@ public partial class DefenseField
 
     static bool Boss(World world, Raider r) => r != null && world.Rules.AdjectiveOf(r.Kind)?.Boss == true;
 
-    /// <summary>The boss raiders drawn now: for the probe and the HUD.</summary>
     public int BossesDrawn { get; private set; }
 
-    // How high this raider should be: eased, so one the core brings down falls out of the air.
     void Lift(Shown s, World world)
     {
-        // One riding up on an Earth Spire goes where its point is (ChemGrid.SpireRide).
         float? ride = s.raider != null ? grid.SpireRide(s.raider.Id) : null;
         if (ride.HasValue)
         {
             s.lift = ride.Value;
             return;
         }
-        // A flyer flies; one a whirlwind holds in its eye is lifted off its feet (World.LiftInTheEye).
         float wanted = 0f;
         if (s.raider != null && world.Flying(s.raider)) wanted = FlyHeight;
         else if (s.raider != null && s.raider.StatusOf(World.LiftedStatus) > 0) wanted = WhirlLift;
@@ -110,7 +102,6 @@ public partial class DefenseField
         shadowMaterial.mainTexture = soft;
     }
 
-    // A body, a head, a tail and two wings of two segments, flapping in the air and folded on the ground.
     int Wings(Shown s, int at)
     {
         const int Segments = 7;
@@ -150,7 +141,6 @@ public partial class DefenseField
         Color = Ash,
     };
 
-    // A climber's body turned the rest of the way onto the slope, about where it stands.
     void OntoTheSlope(Shown s, int from, int to)
     {
         var forward = new Vector3(Mathf.Sin(s.state.Yaw), 0f, Mathf.Cos(s.state.Yaw));

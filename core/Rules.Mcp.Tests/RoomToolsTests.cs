@@ -1,14 +1,13 @@
+// The rules MCP's room tools (core/Rules.Mcp/Workbench.Room.cs): apply, revert and room, on a world in memory.
 using System.Linq;
 using Chem.Mcp;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>The rules MCP's room tools (core/Rules.Mcp/Workbench.Room.cs): apply, revert and room, on a world in memory.</summary>
     [Category("Simulation")]
     public class RoomToolsTests
     {
-        // Each test its own bench: the room is state.
         static Workbench NewBench() => new Workbench(ChemistryTests.Folders);
 
         [Test]

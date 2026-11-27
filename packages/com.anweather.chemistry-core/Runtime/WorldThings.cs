@@ -25,14 +25,8 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>
-    /// A thing's stable id: its chunk and its index in that chunk's list, packed into 64 bits
-    /// (16 bits each for the chunk's x and y, 32 for the index). Distinct by construction, the
-    /// same on every machine, and the chunk can be read back from it.
-    /// </summary>
     public readonly struct ThingId : IEquatable<ThingId>
     {
-        /// <summary>No thing (all bits set: chunk (-1, -1), an index no list reaches).</summary>
         public static readonly ThingId None = new ThingId(ulong.MaxValue);
 
         public ThingId(ulong value) { Value = value; }
@@ -45,20 +39,14 @@ namespace Chem
             Value = ((ulong)(ushort)(short)chunkX << 48) | ((ulong)(ushort)(short)chunkY << 32) | (uint)index;
         }
 
-        /// <summary>
-        /// The id of the <paramref name="n"/>th thing a spell placed (World.Placed): its index has the top bit set,
-        /// above every file's and mod's (ModIndexes), so it never clashes with one. Its Index reads negative.
-        /// </summary>
         public static ThingId Placed(int chunkX, int chunkY, int n) =>
             new ThingId(new ThingId(chunkX, chunkY, 0).Value | 0x80000000u | ((uint)n & 0x7FFFFFFFu));
 
-        /// <summary>The packed id, for the wire.</summary>
         public ulong Value { get; }
         public int ChunkX => (short)(ushort)(Value >> 48);
         public int ChunkY => (short)(ushort)(Value >> 32);
         public int Index => (int)(uint)Value;
         public bool IsNone => Value == ulong.MaxValue;
-        /// <summary>A spell placed it (<see cref="Placed"/>); <see cref="PlacedN"/> is then its place in the world's count.</summary>
         public bool IsPlaced => !IsNone && (Value & 0x80000000u) != 0;
         public int PlacedN => (int)(Value & 0x7FFFFFFFu);
 
@@ -68,7 +56,6 @@ namespace Chem
         public static bool operator ==(ThingId a, ThingId b) => a.Value == b.Value;
         public static bool operator !=(ThingId a, ThingId b) => a.Value != b.Value;
 
-        /// <summary>"cx,cy#index", e.g. "1,0#3"; a placed thing's "cx,cy#placed n", e.g. "1,0#placed 4".</summary>
         public override string ToString()
         {
             if (IsNone) return "none";
@@ -78,43 +65,28 @@ namespace Chem
         }
     }
 
-    /// <summary>One thing in the world's data: what it is, where, and its id.</summary>
     public sealed class ThingSpawn
     {
         public ThingId Id { get; internal set; }
-        /// <summary>Its id in rules/entities.json or rules/items.json.</summary>
         public string Kind { get; internal set; }
         public int ChunkX { get; internal set; }
         public int ChunkY { get; internal set; }
-        /// <summary>The cell inside its chunk, 0..Chunks.Size-1.</summary>
         public int LocalX { get; internal set; }
         public int LocalY { get; internal set; }
-        /// <summary>The world cell: chunk * Chunks.Size + local.</summary>
         public int CellX => ChunkX * Chunks.Size + LocalX;
         public int CellY => ChunkY * Chunks.Size + LocalY;
-        /// <summary>Turn about the vertical, in degrees.</summary>
         public int Rotation { get; internal set; }
-        /// <summary>Things sharing a link go together (a pair of sending stones); null for none.</summary>
         public string Link { get; internal set; }
-        /// <summary>How likely it is to be in a given world at all, 0 to 1 (<see cref="ThingChance"/>).</summary>
         public double Chance { get; internal set; } = 1;
-        /// <summary>A mod added it (the rules' "world" section): its first pick-up is logged (RoomCommand.Found).</summary>
         public bool FromMod { get; internal set; }
-        /// <summary>A spell placed it (World.Placed): it's there from the tick of the cast, and lapses at <see cref="Lapses"/>.</summary>
         public bool Placed { get; internal set; }
-        /// <summary>The tick a placed thing goes, 0 for one that stays (and every thing not placed).</summary>
         public int Lapses { get; internal set; }
     }
 
-    /// <summary>
-    /// Whether a thing with a chance is in a world: decided once by a hash of the world's seed and the thing's
-    /// id, with no draw from the world's generator, so every peer agrees at any tick and the cells don't move.
-    /// </summary>
     public static class ThingChance
     {
         const int Salt = 0x7468696e;
 
-        /// <summary>The chance in 65536ths, so what's compared is whole.</summary>
         public static bool Holds(uint seed, ThingId id, double chance)
         {
             if (chance >= 1) return true;
@@ -123,7 +95,6 @@ namespace Chem
         }
     }
 
-    /// <summary>The world's things (world/things.json), by chunk, with stable ids.</summary>
     public sealed class WorldThings
     {
         public const string FileName = "things.json";
@@ -137,41 +108,29 @@ namespace Chem
 
         WorldThings() { }
 
-        /// <summary>No things at all (a world without a things file).</summary>
         public static WorldThings Empty => new WorldThings();
 
-        /// <summary>Every thing, chunk by chunk in file order.</summary>
         public IReadOnlyList<ThingSpawn> All => all;
         public int Count => all.Count;
 
-        /// <summary>The chunks that have things, in file order.</summary>
         public IEnumerable<(int x, int y)> ChunkCoords => byChunk.Keys.Select(k => (k.Item1, k.Item2));
 
-        /// <summary>The things in one chunk, in id order (empty if none).</summary>
         public IReadOnlyList<ThingSpawn> InChunk(int cx, int cy) =>
             byChunk.TryGetValue((cx, cy), out var list) ? list : NoThings;
 
-        /// <summary>The thing with this id, or null.</summary>
         public ThingSpawn Find(ThingId id) => byId.TryGetValue(id, out var t) ? t : null;
 
-        /// <summary>The first thing standing on a world cell, or null.</summary>
         public ThingSpawn At(int x, int y) => all.FirstOrDefault(t => t.CellX == x && t.CellY == y);
 
-        /// <summary>The other things sharing <paramref name="thing"/>'s link (none without one).</summary>
         public IEnumerable<ThingSpawn> LinkedTo(ThingSpawn thing) =>
             thing?.Link == null ? Enumerable.Empty<ThingSpawn>() : all.Where(t => t.Link == thing.Link && t.Id != thing.Id);
 
-        /// <summary>Reads world/things.json from <paramref name="worldDir"/>; no file means no things.</summary>
         public static WorldThings Load(string worldDir)
         {
             var path = Path.Combine(worldDir, FileName);
             return File.Exists(path) ? FromJson(File.ReadAllText(path)) : Empty;
         }
 
-        /// <summary>
-        /// Builds the table from the file's text. Throws <see cref="FormatException"/> for a file
-        /// that can't be read (not JSON, a chunk listed twice, a cell outside its chunk, a thing without a kind).
-        /// </summary>
         public static WorldThings FromJson(string json)
         {
             JObject doc;
@@ -220,10 +179,6 @@ namespace Chem
             return ((int)a[0], (int)a[1]);
         }
 
-        /// <summary>
-        /// What doesn't fit the rules: kinds that are neither an entity nor an item, and links
-        /// that don't join exactly two things. Empty when all is well.
-        /// </summary>
         public List<string> Check(Rules rules)
         {
             var errors = new List<string>();
@@ -236,12 +191,6 @@ namespace Chem
             return errors;
         }
 
-        /// <summary>
-        /// These things as they stand in a world under these rules: the ones the mods on add, appended to
-        /// their chunks' lists, and without any whose chance didn't hold for this seed. A pure function, so
-        /// a revert is only working it out again. This table when there's nothing to change, so the
-        /// fingerprint of a world with no mod's things is the file's.
-        /// </summary>
         public WorldThings With(Rules rules, uint seed)
         {
             if (rules.ModThings.Count == 0 && all.TrueForAll(t => t.Chance >= 1)) return this;
@@ -271,7 +220,6 @@ namespace Chem
             return next;
         }
 
-        /// <summary>These things and <paramref name="placed"/> after them (World.Placed); this table when there are none.</summary>
         public WorldThings Plus(IReadOnlyList<ThingSpawn> placed)
         {
             if (placed.Count == 0) return this;
@@ -290,9 +238,6 @@ namespace Chem
             byId[thing.Id] = thing;
         }
 
-        // Mods come and go: reverting one mustn't renumber what a later one added to the same chunk, which
-        // would move its id, its chance and who found it. So a mod's thing doesn't count places in the list:
-        // its index, above any a file reaches, is a hash of the row (and which of several like it this is).
         const uint ModIndexes = 0x40000000;
 
         static ThingId ModThingId((int, int) chunk, ModThing row, Dictionary<string, int> seen, HashSet<ThingId> taken)
@@ -311,15 +256,9 @@ namespace Chem
             return id;
         }
 
-        /// <summary>What's here and not in <paramref name="before"/>, and what's gone: what the view spawns and despawns at a rule switch, by id.</summary>
         public (IReadOnlyList<ThingSpawn> added, IReadOnlyList<ThingId> removed) ChangesFrom(WorldThings before) =>
             (all.Where(t => before.Find(t.Id) == null).ToList(), before.all.Where(t => Find(t.Id) == null).Select(t => t.Id).ToList());
 
-        /// <summary>
-        /// A stable hash of every thing (id, kind, cell, turn, link), for the netcode checksum. Two
-        /// machines with the same file get the same value; whitespace, notes and the order the
-        /// chunks are listed in don't count.
-        /// </summary>
         public string Fingerprint => fingerprint ??= Fnv1a.Hash(Canonical());
 
         string Canonical()

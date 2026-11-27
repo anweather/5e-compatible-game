@@ -12,9 +12,6 @@ namespace Chem.Mcp
     {
         public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", Rules.LiquidsKey, "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks", FaunaTable, PartsTable, DragonTable, BuildingsTable, ThingsTable, LayTable, TriggersTable, PlayersTable, "openings", "floors", "roofs", "details", "styles" };
 
-        // ---------- list ----------
-
-        /// <summary>Ids and one-line summaries for a table.</summary>
         public string List(string table)
         {
             table = Table(table);
@@ -138,9 +135,6 @@ namespace Chem.Mcp
             }
         }
 
-        // ---------- describe ----------
-
-        /// <summary>The full entry in force, plus every place the rules refer to it, which mods changed it and, for a spell, how a player reaches it.</summary>
         public string Describe(string table, string id, string draft = null)
         {
             (table, id) = DragonPath(table, id);
@@ -160,7 +154,6 @@ namespace Chem.Mcp
                 (table == "spells" ? "\n" + ReachOf(drafted, id) : "");
         }
 
-        // An entry as a draft has it (its looks included), else as the rules in force have it.
         JToken DraftEntry(Draft draft, string table, string id)
         {
             if (LookTables.Contains(table)) return Current(draft, table, id) ?? Find(table, id);
@@ -178,8 +171,7 @@ namespace Chem.Mcp
             return EntryIn(Raw, table, id) ?? JValue.CreateNull();
         }
 
-#pragma warning disable S1168 // a JToken is a collection to the analyser; null here means "no such entry"
-        // An entry in one layer of the written rules, or null.
+#pragma warning disable S1168
         static JToken EntryIn(Dictionary<string, JToken> raw, string table, string id)
         {
             switch (table)
@@ -208,7 +200,6 @@ namespace Chem.Mcp
         }
 #pragma warning restore S1168
 
-        // Where a string equal to id appears (outside the entry itself), as "file: entry path".
         static void References(JToken t, string where, string id, JToken self, List<string> refs)
         {
             if (ReferenceEquals(t, self)) return;
@@ -227,13 +218,6 @@ namespace Chem.Mcp
             }
         }
 
-        // ---------- explain ----------
-
-        /// <summary>
-        /// What happens when an element reaches a cell holding a material: the cell rules for the element,
-        /// top to bottom, that can hold for it, and the one that decides. Material may be a terrain, a
-        /// cover, a gas, "water" or "ice". With a draft, under the draft's rules.
-        /// </summary>
         public string Explain(string element, string material, string draft = null)
         {
             element = Required(element, "element");
@@ -241,7 +225,6 @@ namespace Chem.Mcp
             var doc = string.IsNullOrEmpty(draft) ? Doc : JObject.Parse(RulesWith(PatchJson(draft)).ToJson());
             if (!IsElement(doc, element))
             {
-                // Either way round: explain(grass, fire) means fire on grass.
                 var (swappedElement, swappedMaterial) = (material, element);
                 if (IsElement(doc, swappedElement)) return Explain(swappedElement, swappedMaterial, draft);
                 throw new RulesToolException($"{element} isn't an element; the elements are {string.Join(", ", doc["elements"].Select(e => (string)e))}.");
@@ -258,7 +241,6 @@ namespace Chem.Mcp
 
         static bool IsElement(JObject doc, string id) => doc["elements"].Any(e => (string)e == id);
 
-        /// <summary>The element's cell rules that can hold on the material, top to bottom, and the one that decides (if one does).</summary>
         static (List<string> lines, string decided) RulesFor(JObject doc, string element, string kind, string material)
         {
             var lines = new List<string>();
@@ -281,7 +263,6 @@ namespace Chem.Mcp
             return verbs != null && verbs.Count > 0 ? $"\nThe {material}'s own verbs: {string.Join("; ", verbs)}." : "";
         }
 
-        /// <summary>Whether a rule's conditions can hold on a cell of this material, and the conditions that depend on the moment.</summary>
         static (bool holds, List<string> needs) Match(JObject doc, JObject cond, string kind, string material)
         {
             var needs = new List<string>();
@@ -292,7 +273,6 @@ namespace Chem.Mcp
             return (true, needs);
         }
 
-        /// <summary>Whether one condition can hold on the material; one that depends on the moment goes in needs.</summary>
         static bool Holds(JObject doc, JProperty p, string kind, string material, List<string> tags, List<string> needs)
         {
             switch (p.Name)
@@ -329,8 +309,6 @@ namespace Chem.Mcp
         }
 
         static List<string> Tags(JToken entry) => (entry["tags"] as JArray)?.Select(t => (string)t).ToList() ?? new List<string>();
-
-        // ---------- helpers ----------
 
         static string Table(string table)
         {

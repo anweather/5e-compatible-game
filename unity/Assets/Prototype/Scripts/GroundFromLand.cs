@@ -8,30 +8,24 @@ using Chem;
 // holds, so GroundBuilder draws either alike, and it's only drawn: nothing here decides anything shared (D4).
 public static class GroundFromLand
 {
-    /// <summary>What a map's ground is made from.</summary>
     public sealed class Source
     {
         public World World;
         public LandChunks Land;
         public TerrainGrid Layout;
         public float StepHeight, Unit;
-        /// <summary>The map's lowest land, in land units: the terrain reaches at least this far down.</summary>
         public int Lowest;
         public string[] Layers, Grasses, TreeKinds;
-        /// <summary>Grass texels along a chunk's side.</summary>
         public int DetailResolution;
-        /// <summary>A generated map's biomes, whose ground the grass is painted as; null for any other map.</summary>
         public BiomeGround Biomes;
     }
 
-    // Room below and above the drawable range for a cell's own height, in metres: the valley's chunks have this.
     const float RoomBelow = 5f, RoomAbove = 6f, RoomUnderBed = 1f;
     const int TreeSalt = 8101, GrassSalt = 8102, SizeSalt = 8103, TurnSalt = 8104;
     const int GrassEvery = 3, MostClumps = 3;
     const float TreeSmallest = 0.85f, TreeSpread = 0.5f, TreeInset = 0.2f;
     const uint White = 0xffffffffu;
 
-    /// <summary>The ground a map's land and cells draw.</summary>
     public static GroundPack Build(Source s)
     {
         var pack = Shared(s);
@@ -39,9 +33,6 @@ public static class GroundFromLand
         var trees = TreesByChunk(s);
         int across = s.Layout.ChunksX, chunks = across * s.Layout.ChunksZ;
         var built = new GroundChunk[chunks];
-        // The chunks side by side (view-rebuild: 729 of them one after another were 5 s of a big map's start). Each reads
-        // the world, the land and the layout, which nothing changes meanwhile, and writes only its own chunk, so the order
-        // they run in changes nothing; they're added in order after.
         void One(int n)
         {
             int i = n % across, j = n / across;
@@ -53,11 +44,6 @@ public static class GroundFromLand
         return pack;
     }
 
-    /// <summary>
-    /// The same ground a chunk at a time (#205): the pack holds what the chunks share and no chunk, and the function makes
-    /// chunk (i, j) as Build would, from the world <paramref name="s"/> holds when it's asked (a new world on the same map
-    /// sets it). Safe to call side by side while nothing changes the world.
-    /// </summary>
     public static (GroundPack pack, Func<(int i, int j), GroundChunk> make) Lazy(Source s)
     {
         var pack = Shared(s);
@@ -65,7 +51,6 @@ public static class GroundFromLand
         return (pack, at => Chunk(s, field, pack, at.i, at.j, TreesIn(s, at.i, at.j)));
     }
 
-    // What the chunks share: the heights' range and the names.
     static GroundPack Shared(Source s)
     {
         var (low, high) = s.World.LandRange;
@@ -83,7 +68,6 @@ public static class GroundFromLand
         return chunk;
     }
 
-    // One chunk's tree cells, in the order TreesByChunk lists them (row by row of the grid).
     static List<(int x, int y)> TreesIn(Source s, int i, int j)
     {
         var list = new List<(int x, int y)>();
@@ -92,15 +76,11 @@ public static class GroundFromLand
         return list;
     }
 
-    /// <summary>Whether Build works the chunks out side by side (the default); off, one after another, for comparison: both give the same arrays.</summary>
     public static bool Threaded { get; set; } = true;
 
-    // A reader of the land for this thread (LandChunks.At keeps one chunk buffer, so one reader at a time): the chunks are
-    // made side by side.
     [ThreadStatic] static LandChunks.Reader reader;
     [ThreadStatic] static LandChunks readerOf;
 
-    /// <summary>The land at a cell, in land units, safe to read from any thread (a reader of its own each).</summary>
     public static int LandUnits(LandChunks land, int x, int y)
     {
         if (!ReferenceEquals(readerOf, land))
@@ -111,8 +91,6 @@ public static class GroundFromLand
         return reader.At(x, y);
     }
 
-    // The land at a world cell, the nearest on the grid past its edge (or, over a seam of a world that wraps, the land
-    // it folds to: the ground runs on over the seam).
     static float LandAt(Source s, int u, int v)
     {
         var (x, y) = s.Layout.GridCell(u, v);
@@ -120,7 +98,6 @@ public static class GroundFromLand
         return LandUnits(s.Land, x, y);
     }
 
-    // A cell on the grid: folded over a seam where the world wraps, else the nearest at its edge.
     static (int x, int y) OnGrid(Source s, int x, int y)
     {
         var g = s.Layout;
@@ -129,7 +106,6 @@ public static class GroundFromLand
         return (x, y);
     }
 
-    // Between the cells' centres, in world cells.
     static float Smooth(Source s, float u, float v)
     {
         int u0 = (int)Math.Floor(u - 0.5f), v0 = (int)Math.Floor(v - 0.5f);
@@ -139,7 +115,6 @@ public static class GroundFromLand
         return south * (1f - fv) + north * fv;
     }
 
-    // Along a coarse chunk's edge: its samples, one a cell, and straight between them.
     static float AlongCoarse(Source s, float u, float v)
     {
         int u0 = (int)Math.Floor(u), v0 = (int)Math.Floor(v);
@@ -147,8 +122,6 @@ public static class GroundFromLand
         return fu > 0f ? LandAt(s, u0, v0) * (1f - fu) + LandAt(s, u0 + 1, v0) * fu : LandAt(s, u0, v0) * (1f - fv) + LandAt(s, u0, v0 + 1) * fv;
     }
 
-    // A sample's land. A coarse chunk's sample is its cell's; a full-detail chunk's runs smoothly between the cells' centres,
-    // and on an edge it shares with a coarse chunk it follows that chunk's, so no crack opens between them.
     static float SampleLand(Source s, int i, int j, int sx, int sz)
     {
         var g = s.Layout;
@@ -175,7 +148,6 @@ public static class GroundFromLand
         return heights;
     }
 
-    // The map's cells, as CellPaint paints them over their own mix, by the layers' place in the pack.
     static byte[] Paint(Source s, int i, int j)
     {
         var g = s.Layout;
@@ -202,7 +174,6 @@ public static class GroundFromLand
         return paint;
     }
 
-    // Grass on grassy cells, off every few texels by the cell's hash, so it stands in tufts rather than in rows.
     static byte[] Details(Source s, int i, int j)
     {
         var g = s.Layout;
@@ -235,10 +206,6 @@ public static class GroundFromLand
         return chunks;
     }
 
-    /// <summary>
-    /// Where in its cell, how big and which way a tree cell's tree stands, and which kind it is, as the ground draws it:
-    /// Inset and Across are the offsets into the world cell (u, v) along x and z, in cells.
-    /// </summary>
     public readonly struct TreeSpot
     {
         public readonly float Inset, Across, Size, Rotation;
@@ -254,7 +221,6 @@ public static class GroundFromLand
         }
     }
 
-    /// <summary>The tree grid cell (x, y) draws on a world of this seed with this many tree kinds (Placed's, for any view that draws it too).</summary>
     public static TreeSpot Spot(int seed, int x, int y, int kinds)
     {
         kinds = Math.Max(1, kinds);
@@ -264,7 +230,6 @@ public static class GroundFromLand
             (int)(WorldHash.Hash4(seed, TreeSalt + 2, x, y) % (uint)kinds));
     }
 
-    // One tree in each tree cell, somewhere inside it, so the view's tree of a cell is that cell's.
     static GroundTree[] Placed(Source s, GroundPack pack, GroundChunk chunk, List<(int x, int y)> cells)
     {
         int seed = unchecked((int)s.World.Seed), kinds = s.TreeKinds.Length;

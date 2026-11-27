@@ -20,7 +20,6 @@ public class RowMesherTests
         Tiled = _ => false,
     };
 
-    // A box 6 × 4.5 m of 3 m walls.
     static JObject Box(string roof, string openings = "") => JObject.Parse(
         "{ \"wall\": { \"height\": 3, \"thickness\": 0.3 }, \"joins\": { \"a\": [0, 0], \"b\": [8, 0], \"c\": [8, 6], \"d\": [0, 6] }," +
         " \"walls\": { \"n\": { \"from\": \"a\", \"to\": \"b\"" + openings + " }, \"e\": { \"from\": \"b\", \"to\": \"c\" }, \"s\": { \"from\": \"c\", \"to\": \"d\" }, \"w\": { \"from\": \"d\", \"to\": \"a\" } }," +
@@ -110,7 +109,6 @@ public class RowMesherTests
             Tiled = _ => false,
         };
         var made = RowMesher.Make(Box("\"shape\": \"flat\"", ", \"openings\": [{ \"kind\": \"window\", \"at\": 0 }, { \"kind\": \"window\", \"at\": 3, \"lamp\": \"#0000ff\" }, { \"kind\": \"window\", \"at\": 6, \"lamp\": \"off\" }]"), lit);
-        // A window across two cells is a pane in each, so it goes dark a cell at a time.
         var lamps = made.panes.OrderBy(p => p.at.x).Select(p => p.lamp).Distinct().ToList();
         CollectionAssert.AreEqual(new[] { new Color(1f, 128f / 255f, 0f, 1f), Color.blue, Color.clear }, lamps, "the table's, its own, off");
         Assert.AreEqual(made.panes.Length, made.paneStretches.Length);

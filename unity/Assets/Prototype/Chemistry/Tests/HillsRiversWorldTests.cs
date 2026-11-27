@@ -50,8 +50,6 @@ namespace Chem.Tests
             }
             var host = Peer(Source());
             var other = Peer(Source());
-            // Down the main river from its spring, a character on it, a fire bolt now and then
-            // into the water ahead.
             var gen = map.Gen;
             var path = HillsRiversTests.Along(Main).Select(p => (x: PlanGrid.Mod(p.x, host.W), y: gen.WrapCellY(p.y))).ToList();
             int from = path.FindIndex(p => gen.HillsCellAt(p.x, p.y, out char kind, out _) > 0 && kind == 'r' && map.Hills.Massif.Ring(map.Hills.Massif.Radius(p.x, p.y)) > 0);

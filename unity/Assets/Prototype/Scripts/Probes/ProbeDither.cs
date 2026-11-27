@@ -18,7 +18,6 @@ public class DitherProbe : ProbeScenario
         Check("dither_parts", fade != null && found, fade == null ? "no OccluderFade on the wizard" : parts);
         if (fade == null || !found) yield break;
 
-        // The wizard 2.5 m beyond the tree, the camera 7 m before it and 6 m up, looking at the wizard's chest.
         var away = Flat(tree - wizard.transform.position);
         away = away.sqrMagnitude > 0.01f ? away.normalized : Vector3.forward;
         var spot = tree + away * 2.5f;
@@ -37,7 +36,6 @@ public class DitherProbe : ProbeScenario
         Check("silhouette_on", fade.SilhouetteShown);
         Shot("behind-tree");
 
-        // Round to the open side: the tree is behind the wizard now.
         var open = wizard.transform.position + away * 6f;
         Cut(new Vector3(open.x, TerrainGround(open) + 3f, open.z), chest);
         yield return Wait(0.8f);
@@ -50,7 +48,6 @@ public class DitherProbe : ProbeScenario
         Shot("open-side");
     }
 
-    // The terrain tree nearest a point, at its foot.
     static bool NearestTree(Vector3 near, out Vector3 foot)
     {
         foot = Vector3.zero;

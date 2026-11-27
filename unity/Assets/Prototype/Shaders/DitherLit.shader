@@ -1,10 +1,10 @@
+// URP's own Lit, with the occluder dither (OccluderDither.hlsl) cut into its colour and depth
+// passes. It has Lit's properties, keywords and per-material buffer, and runs Lit's own pass
+// code, so a Lit material switched onto it (OccluderFade does this to a cabin, a rock or a prop
+// that stands between the camera and the wizard) looks exactly the same until the dither
+// reaches it. Forward and Forward+ only (no deferred GBuffer pass); shadows stay whole.
 Shader "Prototype/DitherLit"
 {
-    // URP's own Lit, with the occluder dither (OccluderDither.hlsl) cut into its colour and depth
-    // passes. It has Lit's properties, keywords and per-material buffer, and runs Lit's own pass
-    // code, so a Lit material switched onto it (OccluderFade does this to a cabin, a rock or a prop
-    // that stands between the camera and the wizard) looks exactly the same until the dither
-    // reaches it. Forward and Forward+ only (no deferred GBuffer pass); shadows stay whole.
     Properties
     {
         _WorkflowMode("WorkflowMode", Float) = 1.0

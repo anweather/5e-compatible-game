@@ -18,9 +18,7 @@ public class FeelProbe : SpellLooksProbe
 {
     const int LaneLong = 30, LaneWide = 7, RunUp = 12;
     const float StopSeconds = 2.5f;
-    // A dropped crate has stopped by this speed (m/s), within this long (s): it can still be rocking 0.8 s on.
     const float Settled = 0.02f, SettleLimit = 3f;
-    // How far a crate went before the punch was made 2.5 times as strong (0.35 to 0.42 m), and how near the hand must come (m): the fist's length and a bit.
     const float CrateWentBefore = 0.42f, FistTolerance = 0.25f;
     Gamepad pad;
     Keyboard keys;
@@ -78,8 +76,6 @@ public class FeelProbe : SpellLooksProbe
         landed = landing;
     }
 
-    // --- footing ---
-
     IEnumerator Footing()
     {
         var o = Spot(LaneLong, LaneWide);
@@ -120,7 +116,6 @@ public class FeelProbe : SpellLooksProbe
         Check(name + "_slows", Mathf.Abs(speed / free - share) < 0.1f, $"{speed / free:0.00} of its speed, the rules say {share}");
     }
 
-    // A run east along the lane with this underfoot past the run-up: its speed there, and how far it runs on after letting go.
     IEnumerator RunOn(Vector2Int o, System.Action<int, int> lay, System.Action<float, float> measured)
     {
         Patch(o, LaneLong, LaneWide, TerrainIds.Dirt);
@@ -146,8 +141,6 @@ public class FeelProbe : SpellLooksProbe
         measured(speed, Vector3.Distance(let, wizard.transform.position));
     }
 
-    // --- the punch ---
-
     IEnumerator Punches()
     {
         yield return PunchPane();
@@ -169,12 +162,10 @@ public class FeelProbe : SpellLooksProbe
         var ball = PhysicsProp.All.FirstOrDefault(p => p.kind == "ball" && p.State != null);
         Check("ball_found", ball != null, "the court's ball");
         if (ball == null) yield break;
-        // In its court: dropped outside it, the court would put it back. No stick, so it isn't kicked.
         var at = ball.transform.position;
         var by = at + Vector3.left * 1f;
         Teleport(new Vector3(by.x, grid.GroundAt(by) + 0.05f, by.z));
         puppet.Face(at);
-        // The fist goes where the camera aims, within the wizard's front arc: straight at the ball.
         Cut(at + V(-6f, 3f, 0f), at);
         yield return Wait(0.5f);
         var from = ball.transform.position;
@@ -209,7 +200,6 @@ public class FeelProbe : SpellLooksProbe
             fastest = Mathf.Max(fastest, body.linearVelocity.magnitude);
             yield return null;
         }
-        // A push sends a crate off at 2.5 m/s (Forces); the frame or two before the speed is read, it slows a little.
         float asked = beats.feel.punchShove * Forces.ImpulsePerPush / body.mass;
         Metric(name + "_speed_ms", fastest);
         Check(name + "_strength_from_the_tuning", Mathf.Abs(fastest - asked) < asked * 0.2f, $"{fastest:0.0} m/s, the tuning's {beats.feel.punchShove} pushes make {asked:0.0}");
@@ -230,7 +220,6 @@ public class FeelProbe : SpellLooksProbe
         yield return null;
     }
 
-    // Square only picks up and sits: no item or seat in reach, it does nothing to a crate.
     IEnumerator SquareLeavesIt(PhysicsProp crate, Vector3 at)
     {
         Drop(crate, new Vector3(at.x, grid.GroundAt(at) + 0.6f, at.z));
@@ -245,7 +234,6 @@ public class FeelProbe : SpellLooksProbe
         Check("square_doesnt_punch", went < 0.1f, $"it went {went:0.00} m");
     }
 
-    // The Shake and rumble slider at off: the same punch, the same knock, no stop and no kick.
     IEnumerator OffIsStill(PhysicsProp crate, Vector3 at)
     {
         Drop(crate, new Vector3(at.x, grid.GroundAt(at) + 0.6f, at.z));
@@ -261,7 +249,6 @@ public class FeelProbe : SpellLooksProbe
         Check("off_punch_is_still", beats.Stops == stops && CastImpact.Kicks == kicks, $"{beats.Stops - stops} stops, {CastImpact.Kicks - kicks} kicks");
     }
 
-    // Nothing in reach: the arm still goes out, straight ahead, and it lands once, on nothing, with no stop.
     IEnumerator Miss()
     {
         var west = wizard.transform.position + Vector3.left * 3f;
@@ -279,7 +266,6 @@ public class FeelProbe : SpellLooksProbe
         Check("arm_handed_back", !arm.Playing, "the pose is over");
     }
 
-    // The same world run on with and without the hit-stop of a punch on a crate: the same ticks, the same cells, in the same time.
     IEnumerator PunchTicks()
     {
         (int tick, string hash, float seconds) settled = default, with = default, without = default;
@@ -359,8 +345,6 @@ public class FeelProbe : SpellLooksProbe
         return null;
     }
 
-    // --- charged casts ---
-
     IEnumerator Charged()
     {
         yield return PlantGrowth("keys", false);
@@ -371,7 +355,6 @@ public class FeelProbe : SpellLooksProbe
         yield return Sleet();
     }
 
-    // A level every World.SecondsPerLevel past the meter, and the whole held cast, first press to landing.
     IEnumerator Timing()
     {
         var o = Spot(13, 9);
@@ -399,12 +382,10 @@ public class FeelProbe : SpellLooksProbe
         Metric("full_charge_s", full);
         Metric("held_cast_landed_s", landedAt);
         Check("a_level_takes_half_a_second", Mathf.Abs(third - second - (float)World.SecondsPerLevel) < 0.12f, $"{third - second:0.00} s, the rules say {World.SecondsPerLevel:0.00}");
-        // A hand's wind-up, then a level each SecondsPerLevel (the old meter took 2 to 3 s; the hands are quicker).
         Check("full_charge_under_three_seconds", full >= 2f * World.SecondsPerLevel && full <= 3.2f, $"{full:0.00} s to full charge, landed at {landedAt:0.0} s");
         yield return Wait(1f);
     }
 
-    // Water then air held to full is Sleet Storm: a field that slides the wizard.
     IEnumerator Sleet()
     {
         var o = Spot(13, 13);
@@ -420,8 +401,6 @@ public class FeelProbe : SpellLooksProbe
         Metric("sleet_slippery_cells", slick);
         Check("sleet_field_slippery", slick >= 30, $"{slick} of 169 cells slippery");
         var mid = grid.CellCenter(o.x + 6, o.y + 6);
-        // On the ground: put a little above it, the wizard isn't grounded for a frame, so not slipping,
-        // and SurfaceEffects takes the jump here for that frame's momentum (100 m/s, off the field and onto dirt).
         Teleport(new Vector3(mid.x - 4f, grid.GroundAt(mid), mid.z));
         Cut(mid + V(-9f, 3f, 0f), mid);
         yield return Wait(0.3f);
@@ -438,7 +417,6 @@ public class FeelProbe : SpellLooksProbe
         yield return null;
     }
 
-    // Stands west of a patch with the crosshair on its middle.
     IEnumerator Aimed(Vector2Int o, int w, int h)
     {
         var mid = grid.CellCenter(o.x + w / 2, o.y + h / 2);
@@ -450,7 +428,6 @@ public class FeelProbe : SpellLooksProbe
         yield return Wait(0.5f);
     }
 
-    // Water and earth thrown together, held: Plant Growth (the hands' table, water+earth throw).
     IEnumerator PlantGrowth(string on, bool onPad)
     {
         var o = Spot(11, 11);
@@ -471,8 +448,6 @@ public class FeelProbe : SpellLooksProbe
         yield return null;
     }
 
-    // Both hands of earth thrust together, held: Wall of Stone at full charge. Since D16 a charge only makes a spell stronger
-    // (unified-casting.md), so it's a wall still, not Stone Ramp.
     IEnumerator Ramp(string on, bool onPad)
     {
         var o = Spot(13, 9);
@@ -490,10 +465,8 @@ public class FeelProbe : SpellLooksProbe
         yield return null;
     }
 
-    // The charge the hands have built (SpellCaster.HeldHandCharge: a merge's is the lower of the two).
     int Charge => SpellCaster.HeldHandCharge(World, me);
 
-    // Each hand to its element from the spell list (null: nothing, so the other's is on both), one at a time, as a player would.
     IEnumerator Attune(string left, string right)
     {
         foreach (var (hand, element) in new[] { (HandsDef.Left, left), (HandsDef.Right, right) })
@@ -507,8 +480,6 @@ public class FeelProbe : SpellLooksProbe
             $"{World.HandsOf(me).Holds[HandsDef.Left]}, {World.HandsOf(me).Holds[HandsDef.Right]}");
     }
 
-    // A gesture's buttons down on these hands (PlayerControls.HandPad): on the pad a trigger thrusts and a bumper throws; on the
-    // keys a click thrusts and Q or E throws; both of a hand's buttons are its sweep.
     void Press(bool onPad, int gesture, bool left, bool right)
     {
         bool thrust = gesture != HandsDef.Throw, thrown = gesture != HandsDef.Thrust;
@@ -536,7 +507,6 @@ public class FeelProbe : SpellLooksProbe
         InputSystem.QueueStateEvent(mouse, clicks);
     }
 
-    // Every hand's button up.
     void Let()
     {
         InputSystem.QueueStateEvent(pad, new GamepadState());
@@ -544,7 +514,6 @@ public class FeelProbe : SpellLooksProbe
         InputSystem.QueueStateEvent(mouse, new MouseState());
     }
 
-    // The charge the last Charge3 held to before letting go.
     int heldTo;
 
     IEnumerator Cooled()
@@ -553,8 +522,6 @@ public class FeelProbe : SpellLooksProbe
             yield return null;
     }
 
-    // A gesture held to full charge (3), then let go, and the cast waited out. First the hands cool: a press while they do
-    // is dropped (handCooldown, and bothCooldown after a merge).
     IEnumerator Charge3(bool onPad, int gesture, bool left, bool right)
     {
         yield return Cooled();
@@ -567,8 +534,6 @@ public class FeelProbe : SpellLooksProbe
         for (float t = 0f; t < 4f && World.CastOf(me).Casting; t += Time.deltaTime) yield return null;
     }
 
-    // --- swimming ---
-
     IEnumerator Swimmer()
     {
         var surface = wizard.GetComponent<SurfaceEffects>();
@@ -580,7 +545,6 @@ public class FeelProbe : SpellLooksProbe
         Cut(at + V(-7f, 5f, -7f), at + V(0f, top - at.y, 0f));
         yield return Wait(2.5f);
         Check("swims", surface.Swimming, "afloat in the lake");
-        // Frost along the row over the swimmer, cast from the side as another player's would be.
         caster.Cast(SpellIds.Frost, deep.x - 4, deep.y, 1, 1);
         yield return Wait(1.5f);
         var water = World.At(deep.x, deep.y);
@@ -598,7 +562,6 @@ public class FeelProbe : SpellLooksProbe
         yield return ClimbOut(surface, roll, deep);
     }
 
-    // Left Ctrl held (the dive) and pressed again while swimming to the bank and kicking out: it never rolls.
     IEnumerator ClimbOut(SurfaceEffects surface, DodgeRoll roll, Vector2Int deep)
     {
         int x = deep.x;
@@ -619,7 +582,6 @@ public class FeelProbe : SpellLooksProbe
         }
         int rollsHeld = roll.Count - rolls;
         Check("left_the_water", !surface.Swimming, "out of the lake");
-        // Let go and pressed again as it lands on the bank, as a hand does.
         InputSystem.QueueStateEvent(keys, new KeyboardState());
         yield return null;
         yield return Tap(Key.LeftCtrl);
@@ -633,8 +595,6 @@ public class FeelProbe : SpellLooksProbe
         yield return Wait(0.2f);
         Check("rolls_again_on_land", roll.Count > rolls, $"{roll.Count - rolls} rolls with a press 2 s later");
     }
-
-    // --- presses ---
 
     IEnumerator Tap(Key key)
     {

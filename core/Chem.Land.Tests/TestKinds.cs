@@ -7,7 +7,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>Every fixture here is Unit or Simulation (as Chem.Shared.Tests/TestKinds.cs).</summary>
     [Category("Unit")]
     public sealed class LandTestKinds
     {

@@ -1,3 +1,6 @@
+// The world's props and items as data (world/things.json, WorldThings.cs): stable ids from
+// chunk + index, the same however often and wherever the file is read, and carried by the
+// lockstep effects a prop hands the chemistry.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -6,11 +9,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The world's props and items as data (world/things.json, WorldThings.cs): stable ids from
-    /// chunk + index, the same however often and wherever the file is read, and carried by the
-    /// lockstep effects a prop hands the chemistry.
-    /// </summary>
     [Category("Unit")]
     public class ThingTests
     {
@@ -32,7 +30,6 @@ namespace Chem.Tests
             Assert.That(things.All.Count(t => R.Item(t.Kind) != null), Is.EqualTo(10));
             Assert.That(things.ChunkCoords, Is.EquivalentTo(new[] { (4, 4), (4, 5), (5, 5), (2, 5) }), "the old yard straddles two chunks; the court is east of it; the castle stable north of the castle");
 
-            // The crate the online probe throws: yard cell (16, 6), the yard at world cell (279, 315).
             var crate = things.At(279 + 16, 315 + 6);
             Assert.That(crate.Kind, Is.EqualTo("crate"));
             Assert.That(crate.Id.ToString(), Is.EqualTo("4,5#2"));
@@ -134,14 +131,11 @@ namespace Chem.Tests
         [Test]
         public void HostAndClientNameTheSameThingsAndReplayTheirEffectsAlike()
         {
-            // Each machine reads its own copy of the file.
             var hostThings = WorldThings.FromJson(FileText);
             var clientThings = WorldThings.FromJson(FileText);
             Assert.That(clientThings.All.Select(t => t.Id), Is.EqualTo(hostThings.All.Select(t => t.Id)));
             Assert.That(clientThings.Fingerprint, Is.EqualTo(hostThings.Fingerprint));
 
-            // The host's barrel in the oil blows up and a crate burns: effects keyed by the things' ids,
-            // on a world shaped like the yard (the things' world cells, offset into a small field).
             var barrel = hostThings.All.First(t => t.Kind == "barrel");
             var crate = hostThings.All.First(t => t.Kind == "crate");
             int ox = barrel.CellX - 10, oy = barrel.CellY - 5;

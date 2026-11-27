@@ -41,8 +41,6 @@ public class RollProbe : ProbeScenario
         Metric("end_tilt_deg", tilt);
         Check("rolls", roll.Count >= before + 1, $"{roll.Count - before} rolls from the stick click");
         Check("quick", past3m > 0f && past3m < 0.6f, past3m > 0f ? $"3 m in {past3m:0.00} s" : "never 3 m from the start");
-        // The pose's own turn (RollPose.Angle); the bones' turn as read here is a metric, as when the
-        // probe's frame comes before the pose is laid on it reads nothing.
         Metric("pose_turn_deg", posed);
         Check("tumbles_once", posed > 300f && posed < 420f, $"the pose turned {posed:0} degrees (the bones as read: {turned:0})");
         Check("ends_upright", tilt < 25f, $"hips to head {tilt:0} degrees off upright");
@@ -53,8 +51,6 @@ public class RollProbe : ProbeScenario
     float turned, past3m, posed;
     bool secondPressed;
 
-    // Clicks the stick and follows the roll for Watch seconds: how far the body turns, when it's 3 m
-    // out, and a second pull just after the roll, inside its wait.
     IEnumerator WatchRoll(Vector2 up, Transform head, Transform hips)
     {
         var from = wizard.transform.position;
@@ -69,7 +65,6 @@ public class RollProbe : ProbeScenario
         var endOfFrame = new WaitForEndOfFrame();
         while (Time.time - start < Watch)
         {
-            // The tumble is laid on the bones late in the frame (RollPose): read them after it.
             yield return endOfFrame;
             float t = Time.time - start;
             bool second = t >= SecondPress && !secondPressed;

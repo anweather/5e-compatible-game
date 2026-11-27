@@ -17,7 +17,6 @@ public sealed class CellVines
     readonly MaterialCache materials;
     readonly List<Mesh> drapes = new(), mats = new();
 
-    /// <summary>The rules switched: what stands takes the cover's colour now.</summary>
     public void Recolour() => materials.Lit("Vines", Vine, 0.2f).color = grid.CoverColor(CoverIds.Vines, Vine);
 
     public CellVines(ChemGrid grid, MaterialCache materials)
@@ -26,7 +25,6 @@ public sealed class CellVines
         this.materials = materials;
     }
 
-    /// <summary>Vines on a cell, under the grid: a mat over low ground, else hung over what stands there.</summary>
     public GameObject Build(int x, int y, Cell c, Vector3 center)
     {
         if (drapes.Count == 0) MakeMeshes();
@@ -49,7 +47,6 @@ public sealed class CellVines
         return go;
     }
 
-    // A wall's top as drawn, or for a mat the highest ground beside it.
     float Top(int x, int y, Cell c, bool low)
     {
         float ground = grid.GroundTop(x, y, c);
@@ -60,7 +57,6 @@ public sealed class CellVines
         return rim - MatDrop;
     }
 
-    // The lowest ground beside a cell, its own too: how far down they hang.
     float Foot(int x, int y, Cell c)
     {
         float foot = grid.GroundTop(x, y, c);
@@ -87,7 +83,6 @@ public sealed class CellVines
         }
     }
 
-    // Stems down one face of a 1.5 m cell from its top (y 0) to its foot (y -1), wandering side to side, leaves along them.
     static void Side(MeshKit kit, ref Unity.Mathematics.Random rng, Quaternion turn)
     {
         const int Segments = 6;
@@ -106,10 +101,8 @@ public sealed class CellVines
         }
     }
 
-    // A quarter turn about the cell's middle.
     static Vector3 Turned(Vector3 p) => Quaternion.Euler(0f, 90f, 0f) * p;
 
-    // Stems across the cell at a height, crossing, with leaves.
     static void Strands(MeshKit kit, ref Unity.Mathematics.Random rng, int count, float y)
     {
         for (int i = 0; i < count; i++)
@@ -133,7 +126,6 @@ public sealed class CellVines
         }
     }
 
-    // One leaf: a pointed sheet off a stem, lying near its surface.
     static void Leaf(MeshKit kit, ref Unity.Mathematics.Random rng, Vector3 at, Vector3 outward)
     {
         var along = Vector3.Cross(outward, Random3(ref rng)).normalized;
@@ -146,7 +138,6 @@ public sealed class CellVines
 
     static Vector3 Random3(ref Unity.Mathematics.Random rng) => new(rng.NextFloat(-1f, 1f), rng.NextFloat(-1f, 1f), rng.NextFloat(-1f, 1f));
 
-    /// <summary>Frees the meshes.</summary>
     public void Destroy()
     {
         foreach (var m in drapes) Object.Destroy(m);

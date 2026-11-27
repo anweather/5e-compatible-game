@@ -14,7 +14,6 @@ public class PingMarker : MonoBehaviour
     Material material;
     GUIStyle style, shadow;
 
-    /// <summary>The marker most recently shown, or null.</summary>
     public static PingMarker Latest { get; private set; }
 
     public static PingMarker Show(Vector3 at, string label, Color color, float seconds)
@@ -40,7 +39,6 @@ public class PingMarker : MonoBehaviour
         return marker;
     }
 
-    /// <summary>The spot it marks (the foot of the column).</summary>
     public Vector3 Spot => transform.position - Vector3.up * (ColumnHeight / 2f);
 
     void Update()
@@ -72,19 +70,15 @@ public class PingMarker : MonoBehaviour
         }
         var p = cam.WorldToScreenPoint(Spot + Vector3.up * ColumnHeight);
         var centre = new Vector2(Screen.width / 2f, Screen.height / 2f);
-        // GUI y runs down; behind the camera the projection mirrors, so flip it back.
         var screen = new Vector2(p.x, Screen.height - p.y);
         if (p.z < 0f) screen = centre - (screen - centre);
         string text = $"<b>{label}</b>  {Mathf.RoundToInt(Vector3.Distance(cam.transform.position, Spot))} m";
-        // Clear of the help lines at the top and the log at the bottom.
         var inset = new Rect(60, 100, Screen.width - 120, Screen.height - 240);
         if (p.z > 0f && inset.Contains(screen))
         {
             Label(new Rect(screen.x - 200, screen.y - 30, 400, 30), text);
             return;
         }
-        // Off screen: an arrow on the edge pointing the way, the message just inside it. The edge is
-        // kept below the HUD at the top (help, spell bar, the online status line) and centred.
         inset = new Rect(60, 200, Screen.width - 120, Screen.height - 400);
         var dir = (screen - centre).normalized;
         float scale = Mathf.Min(inset.width / 2f / Mathf.Max(1e-3f, Mathf.Abs(dir.x)), inset.height / 2f / Mathf.Max(1e-3f, Mathf.Abs(dir.y)));
@@ -97,7 +91,6 @@ public class PingMarker : MonoBehaviour
         Label(new Rect(at.x - 200, at.y - 15, 400, 30), text);
     }
 
-    // With a dark shadow, so it reads against the sky and the grass.
     void Label(Rect r, string text)
     {
         GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), text, shadow);

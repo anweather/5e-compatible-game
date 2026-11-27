@@ -13,27 +13,19 @@ public class BeardChain : MonoBehaviour
 {
     const float Step = 1f / 60f, Gravity = 9.81f;
     const int MaxStepsPerFrame = 3;
-    // The velocity kept per step, how much of the way back to its rest place a joint goes each step,
-    // and the hair's half-thickness against the chest.
     const float Damping = 0.88f, Keep = 0.1f, Skin = 0.02f;
     const float SnapDistance = 2f;
 
     Transform head;
-    // Per chain: its root on the head (in the head's space), then its joints.
     Vector3[] roots;
     Transform[] joints;
-    Vector3[] rest;          // each joint's place in the head's space
-    float[] lengths;         // from the joint above (or the root)
-    Vector3[] at, before;    // in the world
+    Vector3[] rest;
+    float[] lengths;
+    Vector3[] at, before;
     (Transform bone, Vector3 offset, float radius)[] chest;
     float clock;
     Vector3 lastHead;
 
-    /// <summary>
-    /// Sets up the chains: for each, its root on the head and its joints (two each, in order; all in
-    /// the head's space as built), and the spheres on the chest it keeps out of (a bone, an offset in
-    /// the bone's space, a radius).
-    /// </summary>
     public void Init(Transform head, Vector3[] roots, Transform[] joints, (Transform bone, Vector3 offset, float radius)[] chest)
     {
         this.head = head;

@@ -46,13 +46,11 @@ namespace Chem.PlaytestText
                 logPath = Path.Combine(outDir, "commands.jsonl");
                 findingsPath = Path.Combine(outDir, "findings.jsonl");
             }
-            Run("fresh", new JObject()); // in the log: a session of several segments replays as one
+            Run("fresh", new JObject());
         }
 
-        /// <summary>The world's state in one word: what a replay compares.</summary>
         public string State => $"{world.Tick}:{world.CellHash()}:{world.CastHash()}";
 
-        /// <summary>Runs one command by name: its text, then the time line. An exception out of the core is an answer, not a stop.</summary>
         public string Run(string name, JObject args)
         {
             string answer;
@@ -116,7 +114,6 @@ namespace Chem.PlaytestText
             return $"A fresh world, seed {seed}, {world.W} x {world.H} cells. You stand at {at.x},{at.y}.";
         }
 
-        // Chunks stay active round the tester, as they do round a player.
         void Reach(int x, int y)
         {
             at = (x, y);
@@ -136,7 +133,6 @@ namespace Chem.PlaytestText
 
         static string Short(string text) => (text ?? "").Length <= 70 ? text ?? "" : text.Substring(0, 70);
 
-        // One character a cell: what a player would notice first there.
         char Glyph(Cell c, Dictionary<string, char> legend)
         {
             if (c.Fire > 0) return '*';
@@ -206,7 +202,6 @@ namespace Chem.PlaytestText
             return string.Join(" ", counts.Select(k => $"{k.Key}={k.Value}"));
         }
 
-        // The rows of the rules naming an id: what a player's expectation can be checked against.
         string RulesOf(string id)
         {
             var doc = JObject.Parse(rules.ToJson());
@@ -236,8 +231,6 @@ namespace Chem.PlaytestText
             return "Cast. " + CellText(x, y) + NewLines();
         }
 
-        // World.Cast's x, y is where a spell starts and its aim an offset, so the target goes through what the view
-        // does (SpellCaster.Aim): a spell from the caster starts a step beside them, pointed at the cell.
         void CastAsAPlayer(SpellDef s, int x, int y, int dir, int charge)
         {
             if (s.Origin != "self")
@@ -289,7 +282,6 @@ namespace Chem.PlaytestText
             return "\nlog: " + string.Join(" | ", lines.Take(MostLines)) + (lines.Count > MostLines ? $" | ...{lines.Count - MostLines} more" : "");
         }
 
-        /// <summary>Keeps a finding: nothing in the world changes, and it isn't a command of the log.</summary>
         public string Note(JObject finding)
         {
             finding["atCommand"] = commands;

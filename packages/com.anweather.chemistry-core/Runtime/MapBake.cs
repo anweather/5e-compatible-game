@@ -21,26 +21,17 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>Writes a generated map (GeneratedMap) as a map folder: whole (Bake), or its rows alone (EnsureRows).</summary>
     public static class MapBake
     {
-        /// <summary>
-        /// Writes the whole map as a map folder into <paramref name="outDir"/> (its map.json too, unless it's the map's own
-        /// folder): the chunks' land and cells, the pinned valley's in its place, every chunk's things, and the valley's
-        /// rows moved to the valley's place with the landmarks' rows added. Its chunks are made as it writes, on
-        /// <paramref name="threads"/> threads (all of them for 0), or taken from <paramref name="chunks"/> (MakeAll's).
-        /// </summary>
         public static BakeReport Bake(this GeneratedMap m, string outDir, GeneratedChunk[] chunks = null, int threads = 0)
         {
             if (!m.Bakes) throw new InvalidOperationException(NoBake(m));
             var timer = Stopwatch.StartNew();
-            // A pinned block's rows are read from its own bake, as a pinned map's are from its folder.
             if (m.Inner != null && !GeneratedMap.IsBaked(m.PinnedDir)) m.Inner.Bake(m.PinnedDir);
             int w = m.Gen.ChunksW, h = m.Gen.ChunksH;
             if (chunks != null && chunks.Length != w * h) throw new ArgumentException($"a bake of {w} x {h} chunks, given {chunks.Length}", nameof(chunks));
             Directory.CreateDirectory(outDir);
             var report = new BakeReport { W = m.Gen.CellsW, H = m.Gen.CellsH };
-            // The rows first: the places.json they write says which water bodies the land is read for as it goes.
             WriteRows(m, outDir);
             var water = WaterRuns.For(outDir, m.Gen.CellsW, m.Gen.CellsH);
             var options = new ParallelOptions { MaxDegreeOfParallelism = threads > 0 ? threads : Environment.ProcessorCount };
@@ -67,7 +58,6 @@ namespace Chem
                 }
                 finally
                 {
-                    // A row still being written when making one threw: let it finish before its files close.
                     if (!writing.IsCompleted) writing.ContinueWith(_ => { }, TaskScheduler.Default).Wait();
                 }
                 files.Finish();
@@ -80,9 +70,6 @@ namespace Chem
             return report;
         }
 
-        // cells.txt, land.json and things.json, written a row of chunks at a time from the north: what the bake once
-        // gathered whole (a char and an int a cell of the map, and every chunk's things) and wrote at the end, the same
-        // bytes. Its two row buffers are a row of chunks' cells and land.
         sealed class ChunkRows : IDisposable
         {
             const int Size = ChunkGen.Size;
@@ -106,13 +93,11 @@ namespace Chem
                 cells = new char[w * Size];
                 land = new int[w * Size];
                 var utf8 = new UTF8Encoding(false);
-                // cells.txt is put in place only if it changed (MapFile.WriteCells), so it's written beside it first.
                 cellsPath = Path.Combine(dir, MapFile.CellsName);
                 cellsTemp = cellsPath + ".baking";
                 cellsOut = new StreamWriter(cellsTemp, false, utf8, 1 << 16);
                 landOut = new FileStream(Path.Combine(dir, MapFile.LandName), FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16);
                 landRows = new LandFile.Writer(landOut, w, h, 0.125);
-                // As JObject.ToString(Formatting.Indented) wrote the whole file: the same writer, a chunk at a time.
                 thingsOut = new StreamWriter(Path.Combine(dir, "things.json"), false, utf8, 1 << 16);
                 things = new JsonTextWriter(thingsOut) { Formatting = Formatting.Indented };
                 things.WriteStartObject();
@@ -122,7 +107,6 @@ namespace Chem
                 things.WriteStartArray();
             }
 
-            /// <summary>The next row of chunks, west to east.</summary>
             public void Add(GeneratedChunk[] row)
             {
                 foreach (var c in row)
@@ -143,7 +127,6 @@ namespace Chem
                     if (c.Things.Count > 0) new JObject { ["chunk"] = new JArray(c.X, c.Y), ["things"] = c.Things }.WriteTo(things);
             }
 
-            /// <summary>Ends the three files, every row written.</summary>
             public void Finish()
             {
                 if (y != h) throw new InvalidOperationException($"a bake wrote {y} of its {h} rows");
@@ -154,7 +137,6 @@ namespace Chem
                 landRows.Finish();
                 finished = true;
                 Dispose();
-                // As MapFile.WriteCells: the file is left as it is when it holds these cells already.
                 if (File.Exists(cellsPath) && Same(cellsPath, cellsTemp)) File.Delete(cellsTemp);
                 else
                 {
@@ -195,13 +177,6 @@ namespace Chem
             }
         }
 
-        /// <summary>
-        /// Writes a map's rows into <paramref name="outDir"/> unless it holds this map's already: everything a bake writes
-        /// but its cells, land and things (cells.txt, land.json, things.json), which play makes a chunk at a time from the
-        /// world file (GeneratedSource), so a map too big to bake whole ("bake": false) can be played. Its map.json too,
-        /// unless it's the map's own folder; places.json without the water bodies, which only the whole map's land finds.
-        /// Whether it wrote them.
-        /// </summary>
         public static bool EnsureRows(string mapDir, string outDir)
         {
             string path = Path.Combine(outDir, GeneratedMap.BakeName);
@@ -214,7 +189,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>EnsureRows's writing, made already: a pinned block's own map is baked first, as Bake does.</summary>
         public static void WriteRowsOnly(this GeneratedMap m, string outDir)
         {
             if (m.Inner != null && !GeneratedMap.IsBaked(m.PinnedDir)) m.Inner.Bake(m.PinnedDir);
@@ -235,7 +209,6 @@ namespace Chem
             }));
         }
 
-        /// <summary>Bakes the map into its own folder unless it already holds a bake of the same inputs; whether it baked.</summary>
         public static bool EnsureBaked(string mapDir)
         {
             if (GeneratedMap.IsBaked(mapDir)) return false;
@@ -245,10 +218,6 @@ namespace Chem
             return true;
         }
 
-        /// <summary>
-        /// Bakes the map into <paramref name="outDir"/>, a folder away from the map's own (a build bakes into the player's
-        /// data), unless it already holds a bake of the same inputs in this format; whether it baked.
-        /// </summary>
         public static bool EnsureBakedInto(string mapDir, string outDir)
         {
             string path = Path.Combine(outDir, GeneratedMap.BakeName);
@@ -261,10 +230,6 @@ namespace Chem
             return true;
         }
 
-        // The map's map.json for a bake away from its folder. The pinned maps are found from the map's own folder
-        // (PinnedSquares: ../../maps/<id>) and can't be from there, so what map.json takes from them is written in: the
-        // chunks drawn in full detail (MapFile.FullDetailOf). Without it the bake's layout had none, the pinned ground laid
-        // into it (PinnedGround) kept its own 257 samples a chunk, and a build's world was never made (#183).
         static string OwnMapFile(GeneratedMap m)
         {
             var o = JObject.Parse(File.ReadAllText(Path.Combine(m.MapDir, MapFile.FileName)));
@@ -279,7 +244,6 @@ namespace Chem
 
         static string Json(JToken o) => o.ToString(Formatting.Indented) + "\n";
 
-        // The pinned map's file, or a new one holding an empty list under <paramref name="list"/>.
         static JObject ReadPinned(GeneratedMap m, string name, string list) => TryReadPinned(m, name, out var o) ? o : new JObject { [list] = new JArray() };
 
         static bool TryReadPinned(GeneratedMap m, string name, out JObject o)
@@ -289,18 +253,11 @@ namespace Chem
             return path != null && File.Exists(path);
         }
 
-        /// <summary>
-        /// The map's spawn places, one per square in the plan's order: kind "spawn", a circle of the spawn's clearing round
-        /// its cell, the map square it's in ("square", from the north-west) and what it stands near. Each is named for its
-        /// square: the pinned map's name for the valley (whose is the map's own spawn, "start"), the village's name where
-        /// one was made, else the square's template (a filler's biome), with a compass word where two names would meet.
-        /// </summary>
         public static List<JObject> SpawnPlaces(this GeneratedMap m)
         {
             var list = new List<JObject>();
             if (m.Hills != null) return new List<JObject> { HillsSpawn(m) };
             var names = new HashSet<string>(StringComparer.Ordinal);
-            // A pinned block's spawn places come with its own rows (WriteRows), named already: none here takes their names.
             if (m.Inner != null && TryReadPinned(m, WorldPlaces.FileName, out var own))
                 foreach (var p in ((JArray)own["places"]).OfType<JObject>().Where(p => (string)p["kind"] == "spawn")) names.Add((string)p["name"]);
             foreach (var s in m.Gen.Spawns)
@@ -331,7 +288,6 @@ namespace Chem
             return list;
         }
 
-        // A hills map's one spawn place: its map.json's spawn, named for the map.
         static JObject HillsSpawn(GeneratedMap m)
         {
             var spawn = MapFile.Load(m.MapDir).Spawn;
@@ -355,7 +311,6 @@ namespace Chem
             return null;
         }
 
-        // Where a map square lies in the map, as a compass word ("north-west", "middle", "east").
         static string Compass(GeneratedMap m, int sx, int sy)
         {
             string ns = (sy * 3 / m.SquaresH) switch { 0 => "north", 2 => "south", _ => "" };
@@ -364,7 +319,6 @@ namespace Chem
             return ns.Length + ew.Length > 0 ? ns + ew : "middle";
         }
 
-        // The valley's rows moved to its place in the map, and the landmarks' rows after them.
         static void WriteRows(GeneratedMap m, string outDir)
         {
             int dx = m.Gen.PinnedX, dy = m.Gen.PinnedY;
@@ -445,7 +399,6 @@ namespace Chem
             foreach (string same in new[] { "hold.json", "looks.json" })
                 if (TryReadPinned(m, same, out var o)) Write(outDir, same, Json(o));
 
-            // The hand-written places moved; the generated ones are made again from the folder (GeneratedPlaces.Generate).
             var places = ReadPinned(m, WorldPlaces.FileName, "places");
             var kept = new JArray();
             foreach (var p in ((JArray)places["places"]).OfType<JObject>())
@@ -473,10 +426,8 @@ namespace Chem
         }
     }
 
-    /// <summary>What a bake took, and the size of the map it wrote.</summary>
     public sealed class BakeReport
     {
-        /// <summary>The time making its chunks (written as the next row is made) and the whole bake's.</summary>
         public double MakeMs, TotalMs;
         public int W, H;
     }

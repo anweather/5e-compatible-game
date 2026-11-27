@@ -43,7 +43,6 @@ namespace Chem.Tests
             w.KeepStart();
             ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { start }));
 
-            // A walk east over the seam: the chunks ahead made on the worker, none read packed.
             var planner = new ChunkPlanner();
             var me = new (int x, int y)[] { start };
             ChunkStreaming.Apply(w, planner.Plan(w, me));

@@ -17,7 +17,6 @@ public partial class ProgressKeeper
     string summary = "";
     float summaryAt = float.NegativeInfinity;
 
-    /// <summary>The last run's end as the HUD shows it; empty before one ends (the probe).</summary>
     public string Summary => summary;
 
     void AddPage()
@@ -37,7 +36,6 @@ public partial class ProgressKeeper
         if (grid != null && grid.World?.HoldSite != null && PauseMenu.Button("The Hold: your progress")) showPage = true;
     }
 
-    /// <summary>The page's lines: points, then every unlock with whether it's yours or how far away (the probe too).</summary>
     public string PageText()
     {
         var world = grid != null ? grid.World : null;
@@ -65,7 +63,6 @@ public partial class ProgressKeeper
         if (HoldMoments.Offered && PauseMenu.Button(FromTheSave ? "Play with everything unlocked (F7)" : "Play with your own unlocks (F7)")) PlayFromTheSave(!fromTheSave);
     }
 
-    // A run starting and ending, from what the core says: the end's summary is worked out once, as it happens.
     void WatchRun(World world, string me)
     {
         if (showPage)

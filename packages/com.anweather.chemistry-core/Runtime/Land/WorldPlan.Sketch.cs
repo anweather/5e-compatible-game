@@ -10,16 +10,12 @@ using System.Collections.Generic;
 
 namespace Chem
 {
-    /// <summary>What a world sketch puts under one world square, and the band it asks.</summary>
     public sealed class SketchReading
     {
-        /// <summary>Chunk middles drawn (of 81), and drawn as each biome.</summary>
         public int Drawn;
         public Dictionary<string, int> Counts = new Dictionary<string, int>(StringComparer.Ordinal);
-        /// <summary>The land biome drawn most (null for none), and whether a quarter or more is drawn.</summary>
         public string Land;
         public bool On;
-        /// <summary>The band it asks (0 for the sea), if <see cref="On"/>.</summary>
         public int Ask;
 
         public int Of(string biome) => Counts.TryGetValue(biome, out int n) ? n : 0;
@@ -29,10 +25,8 @@ namespace Chem
     {
         const int Middles = ChunksPerSquare * ChunksPerSquare;
 
-        /// <summary>Per square, what the world sketch puts under it (null where nothing is drawn or there's no sketch).</summary>
         public SketchReading[] Sketch;
 
-        // A quarter of a square's chunks: drawn enough to ask, or to count as a biome's.
         static bool Quarter(int n) => n * 4 >= Middles;
 
         (int lo, int hi) SketchBands(string biome)
@@ -93,7 +87,6 @@ namespace Chem
                 if (!r.On || i == Valley || ForcedSea[i]) continue;
                 Raw[i] = vLand.Exists(l => l.i == i) ? Math.Max(1, r.Ask) : r.Ask;
             }
-            // Foothills: a drawn high square lifts the squares round it, before the envelope.
             int Cap(int j)
             {
                 if (Wall[j] != 0 || ForcedSea[j] || j == Valley) return -1;
@@ -119,7 +112,6 @@ namespace Chem
             }
         }
 
-        /// <summary>Whether square <paramref name="i"/> is drawn enough to ask its band of the sketch.</summary>
         bool SketchOn(int i) => Sketch != null && Sketch[i] != null && Sketch[i].On;
     }
 }

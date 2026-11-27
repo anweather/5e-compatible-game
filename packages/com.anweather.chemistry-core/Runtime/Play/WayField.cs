@@ -7,23 +7,18 @@ using System.Collections.Generic;
 
 namespace Chem
 {
-    /// <summary>The scratch of a Dijkstra search over a field's cells (DefenseState's X0..X1, Y0..Y1).</summary>
     internal sealed class WayField
     {
-        /// <summary>A cell the search never reached.</summary>
         public const int Unreached = int.MaxValue;
 
-        /// <summary>The cost of the way from each cell of the field, row by row; resized for a field of another size.</summary>
         public int[] Cost = Array.Empty<int>();
 
-        /// <summary>The search's heap of cost * n + cell.</summary>
         public readonly List<long> Heap = new List<long>();
 
         public static bool InField(DefenseState d, int x, int y) => x >= d.X0 && x <= d.X1 && y >= d.Y0 && y <= d.Y1;
 
         public static int Index(DefenseState d, int x, int y) => (y - d.Y0) * (d.X1 - d.X0 + 1) + (x - d.X0);
 
-        // A min-heap of cost * n + square: no two keys alike, so it pops in one order everywhere.
         public void Push(int cell, int n)
         {
             Heap.Add((long)Cost[cell] * n + cell);

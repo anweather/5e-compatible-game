@@ -16,7 +16,6 @@ public class CurrentRider : MonoBehaviour
     Sitter sitter;
     ChemGrid grid;
 
-    /// <summary>The push the water gave the wizard last frame (m/s).</summary>
     public Vector3 Current { get; private set; }
 
     void Awake()
@@ -38,12 +37,10 @@ public class CurrentRider : MonoBehaviour
         var cell = grid.CellAt(transform.position);
         float depth = grid.WaterSurfaceY(cell.x, cell.y) - transform.position.y;
         bool swimming = surface != null && surface.Swimming;
-        // On a bridge or a dock the feet are above the water: no push.
         if (!swimming && (depth < WadeDepth || depth > 3f)) return;
         Current = currents.At(transform.position) * (swimming ? 1f : 0.5f);
         if (Current.sqrMagnitude < 1e-4f) return;
         body.Move(Current * Time.deltaTime);
-        // A zero move, so the controller doesn't read the carry as running (as Knockback does).
         body.Move(Vector3.zero);
     }
 }

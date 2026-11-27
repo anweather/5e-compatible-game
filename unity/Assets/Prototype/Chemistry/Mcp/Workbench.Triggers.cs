@@ -16,13 +16,11 @@ namespace Chem.Mcp
     {
         const string TriggersTable = Rules.TriggersKey;
 
-        /// <summary>add_trigger(): a trigger row in a draft, checked against the rules at once; the answer says how often it can fire.</summary>
         public string AddTrigger(string draftId, string id, string on, string who, string does, int? every, double? chance)
         {
             id = Required(id, "id");
             on = string.IsNullOrEmpty(on) ? "step" : on.ToLowerInvariant();
             if (!Rules.TriggerEvents.Contains(on)) throw new RulesToolException($"A trigger reacts to step (a player stepping onto another cell), holed (a golf ball going in the cup), tick (time passing: a shower) or called (a named act), not {on}.");
-            // Whoever sinks it, unless a player is named: a ball is everyone's.
             if (string.IsNullOrEmpty(who) && on != "step" && on != "tick") who = TriggerDef.Each;
             who = string.IsNullOrEmpty(who) || who == "me" ? AskerForTrigger() : who;
             var list = TriggerActions(does, on == "called");
@@ -57,11 +55,9 @@ namespace Chem.Mcp
                 id, who == TriggerDef.Each ? "everyone" : who, gap, perSecond, (int)Budgets.Number("triggers.maxPerTick", World.DefaultMaxFiringsPerTick));
         }
 
-        // The asker's name, which matches their steps alone and online (TriggerDef.IsFor), or the reason there's none.
         string AskerForTrigger() =>
             Here?.Asking()?.Player ?? throw new RulesToolException("No player is in the game to name, so give who: a player's name, or each for everyone.");
 
-        // do: one action or a list of them, each an object.
         static JArray TriggerActions(string does, bool called)
         {
             var actions = Value(Required(does, "do"));
@@ -72,7 +68,6 @@ namespace Chem.Mcp
             return list;
         }
 
-        // What a shower comes to: how often round whom, and that it goes on until it's reverted.
         string TickWords(string id, string who, int? every, double? chance)
         {
             int gap = Math.Max(TriggerDef.MinTickEvery, every ?? TriggerDef.MinTickEvery);
@@ -91,7 +86,6 @@ namespace Chem.Mcp
             if (chance.HasValue && !(chance.Value > 0 && chance.Value <= 1)) throw new RulesToolException("chance is above 0 and at most 1; leave it out for every time.");
         }
 
-        // list triggers: each trigger in force, in words.
         IEnumerable<string> TriggerLines() =>
             ((Raw.TryGetValue(TriggersTable, out var t) ? t : null) as JObject ?? new JObject()).Properties().Select(p => $"{p.Name}: {TriggerWords(p.Value)}");
 
@@ -125,14 +119,12 @@ namespace Chem.Mcp
             return $"place {(int?)p?["count"] ?? 1} {what} {where}";
         }
 
-        // apply's words for a trigger of the draft.
         static string TriggerChange(Draft draft, string id)
         {
             var row = draft.Patch[TriggersTable]?[id];
             return row is JObject ? $"a trigger, {id}: {TriggerWords(row)}" : $"the trigger {id} taken out";
         }
 
-        /// <summary>Whether a patch has a step or tick trigger, so simulate walks a loop (a shower needs a player standing).</summary>
         static bool HasStepTrigger(JObject patch) =>
             (patch[TriggersTable] as JObject)?.PropertyValues().Any(t => t is JObject && ((Str(t["on"]) ?? "step") == "step" || Str(t["on"]) == "tick")) == true;
     }

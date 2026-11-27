@@ -12,7 +12,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>A feature's kind where it crosses a side.</summary>
     public enum EdgeKind
     {
         River,
@@ -21,14 +20,11 @@ namespace Chem
         Canyon,
     }
 
-    /// <summary>One feature at one slot of a side; a river flows in or out of the square it's on.</summary>
     public sealed class EdgeFeature
     {
         public EdgeKind Kind;
         public int Slot;
-        /// <summary>For a river: +1 flows into this square, -1 out of it; 0 for the rest.</summary>
         public int Flow;
-        /// <summary>For a road: part of a main road, or only a trail.</summary>
         public bool Main, Trail;
 
         public EdgeFeature Copy() => new EdgeFeature { Kind = Kind, Slot = Slot, Flow = Flow, Main = Main, Trail = Trail };
@@ -40,36 +36,27 @@ namespace Chem
         internal string Token => Letter.ToString() + Slot.ToString(CultureInfo.InvariantCulture) + FlowLetter;
     }
 
-    /// <summary>A landmark intent a template asks for, and where it may go.</summary>
     public sealed class TemplateLandmark
     {
         public string Intent;
-        /// <summary>"water", "land" or null: what the site wants beside it.</summary>
         public string Near;
-        /// <summary>The band a site wants, or -1.</summary>
         public int Band = -1;
-        /// <summary>A fixed site in the square's cells (the valley's castle), or null.</summary>
         public int[] At;
     }
 
-    /// <summary>One world/squares/&lt;id&gt;.json.</summary>
     public sealed class SquareTemplate
     {
         public string Id;
         public int[] Bands = Array.Empty<int>();
         public string Biome;
-        /// <summary>Its weight in the roll, in thousandths.</summary>
         public int Weight;
         public List<TemplateLandmark> Landmarks = new List<TemplateLandmark>();
-        /// <summary>Per side, n e s w unturned, what it offers: (feature, must).</summary>
         public List<(EdgeFeature feature, bool must)>[] Offers = { new List<(EdgeFeature, bool)>(), new List<(EdgeFeature, bool)>(), new List<(EdgeFeature, bool)>(), new List<(EdgeFeature, bool)>() };
         public bool[] Coast = new bool[4];
         public bool RiverEndsInLake, RangeFades, CanyonCloses;
         public bool Rotate, Repeats, Filler, Pinned, Pass;
-        /// <summary>0, or the wall it is: 1 north (ice), 2 south (a dune sea).</summary>
         public int Wall;
 
-        /// <summary>Its first village intent's want: "water", "land", "spire", "castle" or null.</summary>
         public string Lm
         {
             get
@@ -87,34 +74,25 @@ namespace Chem
         public bool AsksFor(string intent) => Landmarks.Any(l => l.Intent == intent);
     }
 
-    /// <summary>A template on one band, turned, with its "may" features chosen: what the solver picks per square.</summary>
     public sealed class SquareOption
     {
         public int Index;
         public SquareTemplate Template;
         public int Band;
-        /// <summary>Quarter turns clockwise.</summary>
         public int Turn;
-        /// <summary>Per side (n e s w as it lies), its features but roads, by slot.</summary>
         public EdgeFeature[][] Features;
-        /// <summary>Per side, an id for its features (equal ids, equal sides); <see cref="SquareLibrary.Wild"/> fits any.</summary>
         public int[] Sig;
         public bool[] Coast;
-        /// <summary>Per side, the slots it offers a road that happens to cross it.</summary>
         public int[][] RoadOffer;
-        /// <summary>Its weight in thousandths, with each "may" it keeps counting extra.</summary>
         public long Weight;
         public bool Sea, Filler;
     }
 
-    /// <summary>The bands and templates, and every option made from them.</summary>
     public sealed class SquareLibrary
     {
         public const string Folder = "squares";
         public const int Sides = 4;
-        /// <summary>A side id that fits any (a filler's).</summary>
         public const int Wild = -1;
-        /// <summary>A side id of the sea.</summary>
         public const int SeaSide = -2;
 
         public string[] BandIds = Array.Empty<string>();
@@ -123,17 +101,10 @@ namespace Chem
         public int[] Shore = { 48, 112 };
         public List<SquareTemplate> Templates = new List<SquareTemplate>();
         public List<SquareOption> Options = new List<SquareOption>();
-        /// <summary>Per band, the options a square of it may take (not the valley, a wall or a filler).</summary>
         public List<int>[] ByBand = Array.Empty<List<int>>();
         public int ValleyOption = -1;
         public int[] FillerOption = Array.Empty<int>(), WallOption = { -1, -1, -1 };
-        /// <summary>The village intent, to name a site's form by biome; null if world/landmarks has none.</summary>
         public LandmarkIntent Village;
-        /// <summary>
-        /// world/biomes.json, which the land's biome comes from (J-085): with it, the plan weighs each template by how much
-        /// of its world square the world's biome field puts in the template's biome; null (a library read from text) for
-        /// latitude's weights alone.
-        /// </summary>
         public BiomeTable Biomes;
 
         readonly List<string> sigs = new List<string>();
@@ -142,7 +113,6 @@ namespace Chem
 
         public int Lands => BandIds.Length;
 
-        /// <summary>The lowest and highest land or sea band a biome's templates come in, or (−1, −1) for a biome none has.</summary>
         public (int lo, int hi) BandsOf(string biome)
         {
             int lo = int.MaxValue, hi = -1;
@@ -157,7 +127,6 @@ namespace Chem
             return hi < 0 ? (-1, -1) : (lo, hi);
         }
 
-        /// <summary>world/bands.json, world/squares/*.json, world/landmarks/ and world/biomes.json under <paramref name="worldDir"/>.</summary>
         public static SquareLibrary Load(string worldDir)
         {
             var files = Directory.GetFiles(Path.Combine(worldDir, Folder), "*.json").OrderBy(f => f, StringComparer.Ordinal);
@@ -169,7 +138,6 @@ namespace Chem
             return lib;
         }
 
-        /// <summary>The bands' text and every template's. Throws <see cref="FormatException"/> for one it can't use.</summary>
         public static SquareLibrary Parse(string bandsJson, IEnumerable<string> templateJsons)
         {
             var lib = new SquareLibrary();
@@ -268,7 +236,6 @@ namespace Chem
             return t;
         }
 
-        /// <summary>Where a side's slot lands after <paramref name="turns"/> quarter turns clockwise.</summary>
         public int TurnSide(int side, int slot, int turns, out int turnedSlot)
         {
             for (int k = 0; k < turns; k++)
@@ -290,11 +257,6 @@ namespace Chem
             return id;
         }
 
-        /// <summary>
-        /// Whether side ids <paramref name="x"/> (on a square of band <paramref name="bx"/>) and <paramref name="y"/> (its
-        /// neighbour's, band <paramref name="by"/>) meet: the same slots and kinds, and a river leaving one enters the other,
-        /// never uphill.
-        /// </summary>
         public bool Compatible(int x, int y, int bx, int by)
         {
             if (x < 0 || y < 0) return true;
@@ -329,10 +291,6 @@ namespace Chem
             return m;
         }
 
-        /// <summary>
-        /// Whether a template's features make sense inside it: a river in needs a way out or a lake, a spring is in the
-        /// hills or higher, and a lone range or canyon end needs the template to let it fade or close.
-        /// </summary>
         internal static bool WholeInside(SquareTemplate t, EdgeFeature[][] feats, int band)
         {
             int ri = 0, ro = 0, g = 0, c = 0;

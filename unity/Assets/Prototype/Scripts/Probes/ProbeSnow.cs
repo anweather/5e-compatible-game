@@ -29,14 +29,12 @@ public class SnowProbe : ProbeScenario
         Check("snow_lies", snowy > 500, $"{snowy} squares under snow");
         Check("banks_drift", banks > 20, $"{banks} snow banks against walls and trees");
 
-        // The valley's snow is painted a few dozen cells a frame: wait for it, for the pictures.
         var valley = ValleyChemistry.InPlay;
         var ground = valley != null ? valley.Ground : null;
         float waited = 0f;
         for (; ground != null && (ground.Repainting > 0 || ground.Shaping) && waited < 60f; waited += 1f) yield return Wait(1f);
         Metric("paint_settle_s", waited);
 
-        // A bank stands over the ground beside it (the terrain eases toward its new height).
         var bank = BankCell();
         if (bank.HasValue)
         {
@@ -57,7 +55,6 @@ public class SnowProbe : ProbeScenario
         yield return null;
         yield return null;
 
-        // The wizard walks south through the yard's snow.
         var from = wizard.transform.position;
         yield return WalkFor(13, 3, 3f);
         var prints = FindAnyObjectByType<Footprints>();
@@ -71,21 +68,17 @@ public class SnowProbe : ProbeScenario
         yield return null;
         yield return null;
 
-        // A Fire Bolt into the snow: it melts where it lands (a bank to snow); nothing catches.
-        // The snow stops first (this snowfall would cover the spot again within the second), and nothing thaws.
         yield return Switch(At(12.5f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, " +
             "'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 }, 'snow': { 'thawChance': 0 } }");
         var target = grid.YardCell(20, 8);
         string before = World.At(target.x, target.y).Cover;
         yield return CastFromBar(SpellIds.FireBolt, 20, 8, 0, 1f);
         var hit = World.At(target.x, target.y);
-        // A bank slumps to snow (its slush boiled off by the rest of the bolt); snow melts away.
         bool melted = before == World.BankCover ? hit.Cover != World.BankCover : before == World.SnowCover && !Snowy(hit);
         Check("fire_melts_snow", melted && hit.Fire == 0,
             $"cover before {before ?? "none"}, after {hit.Cover ?? "none"}, water {hit.Water}, fire {hit.Fire}");
     }
 
-    // A snow bank on open ground (a wall or tree beside it), nearest the yard.
     (int x, int y)? BankCell()
     {
         var yard = grid.YardCell(13, 6);

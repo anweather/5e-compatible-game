@@ -61,7 +61,6 @@ public class RowLightProbe : RowHousesProbe
             " \"walls\": { \"n\": { \"from\": \"a\", \"to\": \"b\" }, \"e\": { \"from\": \"b\", \"to\": \"c\" }," +
             " \"s\": { \"from\": \"c\", \"to\": \"d\", \"openings\": [{ \"kind\": \"door\", \"at\": 5 }, { \"kind\": \"window\", \"at\": 8 }] }, \"w\": { \"from\": \"d\", \"to\": \"a\" } }," +
             " \"roofs\": { \"main\": { \"over\": [\"a\", \"b\", \"c\", \"d\"], \"shape\": \"gable\", \"pitch\": [6, 12], \"overhang\": 0.4, \"cover\": \"slate\" } } }");
-        // A gatehouse back to back with its wall: the nearest a castle's parts can come, since the core refuses a shared cell.
         mod["world"]["buildings"][Gatehouse] = JObject.Parse(
             "{ \"at\": [" + (StoneX + 2) + ", " + (StoneY + 5) + "], \"seed\": 8, \"fill\": \"hollow\", \"wall\": { \"material\": \"stone\", \"height\": 4, \"thickness\": 0.6 }," +
             " \"joins\": { \"a\": [0, 0], \"b\": [4, 0], \"c\": [4, 4], \"d\": [0, 4] }," +

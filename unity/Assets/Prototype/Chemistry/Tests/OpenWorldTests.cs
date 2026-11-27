@@ -14,11 +14,9 @@ namespace Chem.Tests
     {
         static Rules R => ChemistryTests.R;
 
-        /// <summary>A host game: a grass meadow on every layer with a tree here and there, its characters set by the test.</summary>
         sealed class Ground : IOpenGround
         {
             public readonly Dictionary<string, (int layer, int x, int y)> Where = new Dictionary<string, (int, int, int)>();
-            // Every sample asked for, and the character nearest each chunk when it was.
             public readonly List<ChunkKey> Samples = new List<ChunkKey>();
             public readonly Dictionary<ChunkKey, string> Grown = new Dictionary<ChunkKey, string>();
 
@@ -59,7 +57,6 @@ namespace Chem.Tests
             public int Tick => Session.NetTick;
         }
 
-        /// <summary>The loopback, its host (which plans, from the ground) and clients, a frame at a time.</summary>
         sealed class Net
         {
             public readonly LockstepLoopback Loop;
@@ -132,12 +129,10 @@ namespace Chem.Tests
                 }
             }
 
-            /// <summary>Casts as a peer at a layer's cell.</summary>
             public static void Cast(Peer p, string spell, int layer, int x, int y) =>
                 p.Session.Request(p.Casts, new CastCommand(spell, x, ChunkKey.Row(layer, y), 1));
         }
 
-        // Every tick a peer ran from `from` on agrees with the host's checksum; the first that doesn't, or null.
         static string FirstDifference(Net net, Peer peer, int from)
         {
             var ticks = peer.Sums.Keys.Where(t => t >= from).OrderBy(t => t).ToList();
@@ -156,7 +151,6 @@ namespace Chem.Tests
             Assert.That(peer.World.CellHash(), Is.EqualTo(net.Host.World.CellHash()));
         }
 
-        // Cells of a chunk that aren't their ground any more (burnt, burning, wet...), read without unpacking it.
         static int Changed(World w, ChunkKey key)
         {
             var ground = w.GroundOf(key);
@@ -203,7 +197,6 @@ namespace Chem.Tests
             int between = net.Host.World.Filled.Count(k => k.X > 10 && k.X < 990);
             Assert.That(between, Is.Zero, "nothing between the two is filled");
 
-            // The client walks 20 chunks south: its meadow goes inactive and stays as it was, then it walks back.
             net.Ground.Where["p1"] = (0, Far + 32, 20 * Chunks.Size + 32);
             net.RunFor(30);
             Assert.That(net.Host.World.IsActive(theirs), Is.False, "its reach left the meadow");
@@ -231,7 +224,6 @@ namespace Chem.Tests
             var home = ChunkKey.OfCell(0, 10, 10);
             Assert.That(net.Host.World.IsActive(home), Is.True);
 
-            // A jump of 500 chunks east and 300 north (negative rows).
             int x = 500 * Chunks.Size + 20, y = -300 * Chunks.Size + 20;
             var there = ChunkKey.OfCell(0, x, y);
             net.Ground.Where["p0"] = (0, x, y);
@@ -260,7 +252,6 @@ namespace Chem.Tests
             net.Ground.Where["a"] = (0, 32, 32);
             net.Ground.Where["b"] = (0, 14 * Chunks.Size + 32, 32);
             net.RunFor(10);
-            // They walk toward each other a chunk at a time until their active reaches touch.
             int a = 0, b = 14;
             int reach = R.Sim.Streaming.Reach;
             while (b - a > 2 * reach + 1)
@@ -273,7 +264,6 @@ namespace Chem.Tests
             }
             net.RunFor(5);
 
-            // The seam: a chunk grown from a's side beside one grown from b's, both active.
             var w = net.Host.World;
             int seam = Enumerable.Range(a, b - a).First(cx => net.Ground.Grown[new ChunkKey(0, cx, 0)] == "a" && net.Ground.Grown[new ChunkKey(0, cx + 1, 0)] == "b");
             var west = new ChunkKey(0, seam, 0);
@@ -281,7 +271,6 @@ namespace Chem.Tests
             Assert.That(w.IsActive(west) && w.IsActive(east), Is.True, "both sides of the seam are active");
             Assert.That(BurntOrBurning(w, east), Is.Zero);
 
-            // A line of fire just west of the seam: it crosses into b's chunk.
             int edge = (seam + 1) * Chunks.Size - 2;
             for (int y = 8; y < 56; y += 8) Net.Cast(net.Host, "fire-bolt", 0, edge, y);
             net.RunFor(80);
@@ -347,7 +336,6 @@ namespace Chem.Tests
             Assert.That(w.At(-1, 5), Is.Null);
             Assert.That(w.InBounds(-1, 5), Is.False);
 
-            // Fire lit on row -1 crosses into row 0 and stops at the edge of what's filled.
             for (int x = 2; x < 62; x += 4) w.Cast(new CastCommand("fire-bolt", x, -1, 2));
             for (int t = 0; t < 120; t++) w.Step();
             Assert.That(BurntOrBurning(w, south), Is.GreaterThan(5), "the fire crossed from chunk (0, -1) into (0, 0)");

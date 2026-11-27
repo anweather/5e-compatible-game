@@ -24,7 +24,6 @@ public class NetWizard : NetworkBehaviour
 {
     static readonly Registry<NetWizard> registry = new();
 
-    /// <summary>Every NetWizard in play (what FindObjectsByType found), as a new array: see Registry.</summary>
     public static NetWizard[] All => registry.All();
 
     void Awake() => registry.Join(this);
@@ -81,28 +80,17 @@ public class NetWizard : NetworkBehaviour
         if (grid != null) grid.WorldReset += BackToStart;
     }
 
-    /// <summary>
-    /// Keeps a wizard's Animator writing its bones while no camera sees it (playtest 2026-11-08 B1). The rig culls its
-    /// transforms when unseen, but the poses laid over the animation each LateUpdate (CastBeats' dip and recoil, CastPose,
-    /// SwimPose, DownedPose, RollPose, SitPose) move the bones from where the Animator left them, so with nothing writing
-    /// them back they piled up frame on frame: another player casting out of sight had its hips carried tens of metres
-    /// under the ground, its bounds with them (the body's bounds follow the hips), so it was never seen again and never
-    /// animated again. A few wizards animating unseen cost little.
-    /// </summary>
     public static void KeepAnimating(GameObject wizard)
     {
         if (wizard.TryGetComponent<Animator>(out var animator)) animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
     }
 
-    /// <summary>This wizard's player in the core's casts, on every machine (CastBeats reads their cast).</summary>
     public string CastPlayer => Peers.PlayerOf(checked((int)OwnerClientId));
 
-    /// <summary>This machine's own wizard while online; null solo.</summary>
     public static NetWizard Local { get; private set; }
 
     ChemGrid startGrid;
 
-    // A wizard that leaves lets go of what it holds first, or the item (riding in its hand) would go with it.
     public override void OnNetworkDespawn()
     {
         if (Local == this) Local = null;
@@ -112,13 +100,11 @@ public class NetWizard : NetworkBehaviour
         if (TryGetComponent<ItemHolder>(out var hands)) hands.LetGoOnLeaving();
     }
 
-    /// <summary>Owner only: the animal shape this wizard has now (Shapeshift.Pack, or Shapeshift.None), for everyone else.</summary>
     public void SetForm(int value)
     {
         if (IsOwner) form.Value = value;
     }
 
-    /// <summary>Owner only: wears this look and sends it to everyone (WizardOutfit).</summary>
     public void SetLook(int seed)
     {
         if (!IsOwner) return;
@@ -126,25 +112,18 @@ public class NetWizard : NetworkBehaviour
         if (TryGetComponent<WizardOutfit>(out var outfit)) outfit.Wear(seed);
     }
 
-    // Someone else's wizard changed its look: dress it the same here.
     void LookChanged(int was, int now)
     {
         if (!IsOwner && now != NoLook && TryGetComponent<WizardOutfit>(out var outfit)) outfit.Wear(now);
     }
 
-    // Someone else's wizard changed shape: draw it as that animal (or itself again) here.
     void FormChanged(int was, int now)
     {
         if (!IsOwner && TryGetComponent<Shapeshift>(out var shape)) shape.Show(now);
     }
 
-    /// <summary>Sends a shove to this wizard's owner, whose machine moves it.</summary>
     public void PushOwner(Vector3 impulse) => PushRpc(impulse);
 
-    /// <summary>
-    /// Owner only: moves this wizard straight to a point (Misty Step), flagged as a teleport so
-    /// the other machines jump it there instead of sliding it across.
-    /// </summary>
     public void Teleport(Vector3 to)
     {
         if (TryGetComponent<Unity.Netcode.Components.NetworkTransform>(out var net) && net.CanCommitToTransform)
@@ -152,10 +131,6 @@ public class NetWizard : NetworkBehaviour
         else transform.position = to;
     }
 
-    /// <summary>
-    /// Owner only: tells the other machines this wizard has started a dodge roll (DodgeRoll), so
-    /// they play its tumble too (RollPose). The roll's ground covered comes with the NetworkTransform.
-    /// </summary>
     public void Rolled(float seconds) => RollRpc(seconds);
 
     [Rpc(SendTo.NotOwner)]
@@ -164,7 +139,6 @@ public class NetWizard : NetworkBehaviour
         if (TryGetComponent<RollPose>(out var pose)) pose.Play(seconds);
     }
 
-    /// <summary>Owner only: tells the other machines this wizard fell or got up, so they lay it down too (DownedPose).</summary>
     public void Downed(bool lying) => DownedRpc(lying);
 
     [Rpc(SendTo.NotOwner)]
@@ -173,16 +147,12 @@ public class NetWizard : NetworkBehaviour
         if (TryGetComponent<DownedPose>(out var pose)) pose.Lying = lying;
     }
 
-    /// <summary>Owner, a client: asks the host to reset the world (OnlineReset); the host's log says who asked.</summary>
     public void AskForReset() => AskForResetRpc();
 
     [Rpc(SendTo.Server)]
     void AskForResetRpc() =>
         EventLog.Add($"Player {OwnerClientId + 1} asks to reset the world: <b>R</b> calls the dragon, holding it rebuilds the valley at once");
 
-    // The owner, at an online reset (OnlineReset.Happened): up from any seat, back in its own shape,
-    // vitals full, back at its start. What it held is the world's and comes back at its own spot
-    // (ThingSpawner), so the hand just lets go.
     void BackToStart()
     {
         if (!OnlineReset.Happened(Peers.Of(startGrid))) return;
@@ -193,13 +163,10 @@ public class NetWizard : NetworkBehaviour
         JumpToStart();
     }
 
-    /// <summary>Owner only: straight back to this player's place at the yard.</summary>
     public void JumpToStart() => JumpTo(SpawnPoint(startGrid));
 
-    /// <summary>Owner only: straight to a spot (a checkpoint of the Gauntlet, WizardDown).</summary>
     public void JumpTo(Vector3 at)
     {
-        // The character controller keeps its own idea of where it is: off for the jump.
         bool hasBody = TryGetComponent<CharacterController>(out var body) && body.enabled;
         if (hasBody) body.enabled = false;
         Teleport(at);
@@ -213,7 +180,6 @@ public class NetWizard : NetworkBehaviour
         if (TryGetComponent<Knockback>(out var knockback)) knockback.Push(impulse);
     }
 
-    // Players are spread around the start cell so they don't spawn inside each other.
     Vector3 SpawnPoint(ChemGrid grid)
     {
         float angle = OwnerClientId * 90f * Mathf.Deg2Rad;

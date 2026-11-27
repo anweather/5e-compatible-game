@@ -1,3 +1,5 @@
+// J-055's test of the tools: "put a rare golden squirrel somewhere in the woods for us to find", from a client
+// of the MCP, ends as one mod. The row lives here and in the mod it makes, nowhere in the code or the base rules.
 using System;
 using System.IO;
 using System.Linq;
@@ -8,20 +10,14 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// J-055's test of the tools: "put a rare golden squirrel somewhere in the woods for us to find", from a client
-    /// of the MCP, ends as one mod. The row lives here and in the mod it makes, nowhere in the code or the base rules.
-    /// </summary>
     [Category("Simulation")]
     public class HiddenThingTests
     {
-        // Family creature's note (rules/looks.json), which is all a model hears of what a glow means.
         const string GlowHint = "glow 0.1 is a soft glow";
 
         string data, dir;
         GameFolders folders;
 
-        // A player's data folder; dir is their mods in it, where a save goes.
         [SetUp]
         public void MakeDir()
         {
@@ -33,7 +29,6 @@ namespace Chem.Tests
         [TearDown]
         public void RemoveDir() => Directory.Delete(data, true);
 
-        // What the asking player's Claude calls, in order. Returns the kept mod's text.
         string Ask(Workbench bench, string file = "golden-squirrel")
         {
             var client = new HouseToolsTests.Client(bench);
@@ -76,14 +71,12 @@ namespace Chem.Tests
             var bench = new Workbench(folders);
             string kept = Ask(bench);
 
-            // One mod: an item with a creature look, added at the spot the tools gave. Nothing else.
             var patch = (JObject)JObject.Parse(kept)["patch"];
             Assert.That(patch.Properties().Select(p => p.Name), Is.EquivalentTo(new[] { "items", "world" }));
             Assert.That((string)patch["items"]["golden-squirrel"]["look"]["family"], Is.EqualTo("creature"));
             Assert.That((double)patch["items"]["golden-squirrel"]["look"]["glow"], Is.EqualTo(0.1));
             Assert.That(((JArray)patch["world"]["add"]).Single()["kind"].ToString(), Is.EqualTo("golden-squirrel"));
 
-            // Switched on, it stands in the world; the tools see it; it leaves the cells alone.
             var plain = new Workbench(folders).LiveWorld;
             int things = plain.ThingsNow.Count;
             var (thing, world) = On(bench);
@@ -97,7 +90,6 @@ namespace Chem.Tests
             Assert.That(client.Call("whats_on", new { }), Does.Contain("a golden-squirrel at"));
             Assert.That(client.Call("find_site", new { width = 1, depth = 1, near = $"[{thing.CellX}, {thing.CellY}]", within = 0 }), Does.Contain("No site"), "nothing else may stand on it");
 
-            // Save and reload: the world's save, then a new session from the kept file.
             var source = bench.LiveSource;
             string save = world.Save(source);
             var loaded = World.Load(save, bench.Base, source, bench.Budgets);
@@ -107,7 +99,6 @@ namespace Chem.Tests
             var (again, _) = On(new Workbench(folders));
             Assert.That(again.Id, Is.EqualTo(thing.Id));
 
-            // A revert takes it all away.
             Assert.That(client.Call("revert", new { mod = "golden-squirrel" }), Does.Contain("switched off"));
             Assert.That(world.ThingsNow.Find(thing.Id), Is.Null);
             Assert.That(world.Rules.Item("golden-squirrel"), Is.Null);
@@ -138,7 +129,6 @@ namespace Chem.Tests
         public void TwoPeersAndALateJoinerAgreeOnWhereItIsAndWhoFoundIt()
         {
             string kept = Ask(new Workbench(folders));
-            // Candidates at a chance as well, which is the "rare": each peer decides them alone.
             var mod = JObject.Parse(kept);
             var rows = (JArray)mod["patch"]["world"]["add"];
             var at = (JArray)rows[0]["cell"];
@@ -171,7 +161,6 @@ namespace Chem.Tests
             Assert.That(b.Log.Count(l => l.Text == "Bo found the golden squirrel"), Is.EqualTo(1));
             Assert.That(a.Log.Any(l => l.Text.StartsWith("Ana found", StringComparison.Ordinal)), Is.False);
 
-            // A late joiner: the room as its history starts, then the commands since.
             var late = new Workbench(folders).LiveWorld;
             var batches = TickBatch.Timeline(Array.Empty<(int, CastCommand)>(), null, 30);
             TickBatch.AddRoom(batches, new[] { (3, RoomCommand.Apply("Ana", "golden-squirrel", json)), (9, RoomCommand.Found("Bo", found)) });
@@ -181,7 +170,6 @@ namespace Chem.Tests
             Assert.That(late.Room.Found, Is.EqualTo(a.Room.Found));
         }
 
-        // What a real Claude wrote, with only the game's tools, in a headless run (docs/RULES_MCP.md "Things"): kept as it came, but for its glow.
         static string WrittenByAClient() =>
             File.ReadAllText(Path.Combine(ChemistryTests.Folders.Repo, "core", "Rules.Mcp.Tests", "golden-squirrel.mod.json"));
 
@@ -225,9 +213,6 @@ namespace Chem.Tests
             Assert.That(loaded.CastHash(), Is.EqualTo(a.CastHash()));
         }
 
-        // ---------- a draft's own thing, once it's on ----------
-
-        // A golden squirrel on a clear cell, drafted and switched on. Returns the draft and the cell.
         static (HouseToolsTests.Client client, string draft, string at) Applied(Workbench bench, string title = "A squirrel to find")
         {
             var client = new HouseToolsTests.Client(bench);

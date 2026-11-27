@@ -18,7 +18,6 @@ function run(fail, sandbox = "0", files = null) {
   for (const tool of ["dotnet", "npm", "node"]) {
     const stub = join(bin, tool);
     const real = tool === "node" ? `[[ "$1" == *modules.mjs ]] && exec "${process.execPath}" "$@"\n` : "";
-    // A solution filter is read out into what was said, so a test sees which projects a run had.
     const slnf = `for a in "$@"; do [[ "$a" == *.slnf ]] && cat "$a" >> "${said}"; done\n`;
     writeFileSync(stub, `#!/usr/bin/env bash\n${real}echo "${tool} $* (NODE_OPTIONS=$NODE_OPTIONS)" >> "${said}"\n${slnf}[[ "${tool} $*" == *"${fail}"* ]] && exit 3\nexit 0\n`);
     chmodSync(stub, 0o755);
@@ -67,7 +66,6 @@ test("a test run reads the build it follows", () => assert.match(run(NOTHING).ra
 
 test("a landing leaves the Sweep category to the sweep", () => assert.match(run(NOTHING).ran, /dotnet test core .*--filter TestCategory!=Sweep/));
 
-// By module: what each kind of change runs. The projects come from the real map and core/'s csproj files.
 const projectsIn = (ran, filter) => {
   const runs = [...ran.matchAll(/dotnet test (\S+\.slnf) [^\n]*--filter (\S+)[^\n]*\n(\{[^]*?\n\})/g)];
   const hit = runs.find(r => r[2] === filter);
@@ -128,7 +126,6 @@ test("the stop cuts only its own module's changes: a Land file with a Sim file r
   assert.match(run(NOTHING, "0", ["packages/com.anweather.chemistry-core/Runtime/Land/HillsRoads.cs", "packages/com.anweather.chemistry-core/Runtime/World.Sim.cs"]).ran, /dotnet test core -c Release/);
 });
 
-// A made-up map in the shape load() returns: Lib compiled from lib/, Mid on Lib, A.Tests on Lib, B.Tests on Mid.
 function madeUp(stop, alsoCompiledBy = []) {
   const root = mkdtempSync(join(tmpdir(), "modules-"));
   mkdirSync(join(root, "lib"));

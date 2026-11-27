@@ -27,20 +27,16 @@ namespace Chem.Tests
         static GeneratedMap island;
         internal static GeneratedMap Island => island ??= GeneratedMap.Load(Dir);
 
-        // The whole map is dropped once the fixture is done, so a full EditMode run doesn't keep it (#211).
         [OneTimeTearDown]
         public void DropTheMap()
         {
             island = null;
         }
 
-        // The plan's golden: a change here is a change to the world file, the files the plan reads or the nine's plan.
         const uint PlanGolden = 0xacc38348u;
 
-        // The nine's north-west square in the map, and the chunk it starts at.
         const int BlockX = 4, BlockY = 3, BlockChunkX = BlockX * WorldPlan.ChunksPerSquare, BlockChunkY = BlockY * WorldPlan.ChunksPerSquare;
 
-        // How near (in world squares) two copies of one template may not stand (PlanSolver.RepeatGap, J-080).
         const int RepeatGap = 3;
 
         [Test]
@@ -72,8 +68,6 @@ namespace Chem.Tests
             Assert.That(p.ForcedMisses, Is.Empty, "every forced square took its template");
             Assert.That(p.Hash, Is.EqualTo(PlanGolden));
             Assert.That(GeneratedMap.Load(Dir).Plan.Hash, Is.EqualTo(p.Hash), "the same inputs, the same plan");
-            // Each forced square is what the world file says: the sea's open water, the grass its band's filler, a
-            // landmark square its template.
             var forced = JObject.Parse(File.ReadAllText(Path.Combine(Dir, MapFile.FileName)))["generated"]["forced"];
             var rows = ((JArray)forced["rows"]).Select(r => (string)r).ToList();
             for (int y = 0; y < 10; y++)
@@ -103,7 +97,6 @@ namespace Chem.Tests
             }
             Assert.That(held, Is.EqualTo(9));
             Assert.That((p.Grid.X(p.Valley), p.Grid.Y(p.Valley)), Is.EqualTo((BlockX + 1, BlockY + 2)), "the nine's valley is the plan's");
-            // Its landmarks, spawns and roads are the nine's own: the island's plan makes none in the held squares.
             Assert.That(p.Landmarks.Where(l => p.HeldSquare(l.Square) >= 0), Is.Empty);
             Assert.That(p.Spawns.Where(s => p.HeldSquare(s.Square) >= 0), Is.Empty);
             Assert.That(p.Roads.SelectMany(r => r.Path).Where(i => p.HeldSquare(i) >= 0), Is.Empty);
@@ -114,8 +107,6 @@ namespace Chem.Tests
         [Test]
         public void NoTemplateStandsWithinThreeSquaresOfACopy()
         {
-            // J-080's spacing over the whole plan, the nine's squares and the forced ones with the rest: the forced squares
-            // are laid out to keep it, so none is exempt.
             var p = Island.Plan;
             var close = new List<string>();
             for (int i = 0; i < p.Count; i++)
@@ -131,8 +122,6 @@ namespace Chem.Tests
         [Test]
         public void TheMiddleChunksAreTheNines()
         {
-            // Every chunk of the middle 3 x 3 world squares is the nine's own chunk, its land, cells, things and biome, so
-            // its hash at the nine's coordinates is the nine's and the nine's golden holds over them.
             var gen = Island.Gen;
             var nine = GeneratedMap.Load(NineDir).Gen;
             int side = 3 * WorldPlan.ChunksPerSquare;
@@ -155,12 +144,10 @@ namespace Chem.Tests
             Assert.That(ChunkGenTests.HashOfAll(its), Is.EqualTo(ChunkGenTests.NineGolden), "the nine's golden");
             Assert.That(gen.IsPinned(BlockChunkX - 1, BlockChunkY), Is.False);
             Assert.That(gen.IsPinned(BlockChunkX + side, BlockChunkY + side - 1), Is.False);
-            // Known as the nine knows them, and the rim's samples of the chunks beside it are the nine's too.
             foreach (var (cx, cy) in new[] { (0, 0), (13, 13), (26, 26), (0, 20) })
             {
                 var a = gen.Know(BlockChunkX + cx, BlockChunkY + cy);
                 var b = nine.Know(cx, cy);
-                // Each apart: Unity's older NUnit compares a tuple's arrays by reference.
                 Assert.That(a.Heights, Is.EqualTo(b.Heights), $"known ({cx}, {cy}) heights");
                 Assert.That(a.Water, Is.EqualTo(b.Water), $"known ({cx}, {cy}) water");
                 Assert.That(a.Biomes, Is.EqualTo(b.Biomes), $"known ({cx}, {cy}) biomes");
@@ -184,8 +171,6 @@ namespace Chem.Tests
             var nine = GeneratedMap.Load(NineDir).Gen;
             Assert.That(far.Count(l => l.From == "landmark" && m.Gen.InPinnedSquare(l.Square)),
                 Is.EqualTo(nineFar.Count(l => l.From == "landmark" && l.X >= 0 && l.Y >= 0 && l.X < nine.CellsW && l.Y < nine.CellsH)), "the nine's landmarks on its map, all of them");
-            // The village landmarks and sea spires over the rest of the map, in the map, each in a square of its own and
-            // spread: none side by side, some in every quarter.
             var others = far.Where(l => l.From == "landmark" && !m.Gen.InPinnedSquare(l.Square) && l.X >= 0 && l.Y >= 0 && l.X < m.Gen.CellsW && l.Y < m.Gen.CellsH).ToList();
             TestContext.Out.WriteLine("FAR " + string.Join(", ", others.Select(l => $"{l.Name ?? l.Type} ({l.Type}) at ({l.X / ChunkGen.Square}, {l.Y / ChunkGen.Square})")));
             Assert.That(others.Count, Is.InRange(6, 10));
@@ -201,14 +186,11 @@ namespace Chem.Tests
         [Test]
         public void NoPlaceIdIsTakenTwiceAndTheFarRingFollowsTheNames()
         {
-            // #203: two lake villages both rolled Dunmere (and two great trees the Elder Oak), and the bake's places.json
-            // was refused. Every place id on the map once: the pinned maps', each landmark's and each village's.
             var m = Island;
             var ids = PlaceIds(m);
             TestContext.Out.WriteLine("NAMES " + string.Join(", ", m.Gen.LandmarkRows.Where(r => r != null).Select(r => $"{r.Name} by {r.VillageName}")));
             Assert.That(ids.GroupBy(i => i).Where(g => g.Count() > 1).Select(g => g.Key), Is.Empty, "place ids taken twice");
             Assert.That(m.Gen.PlaceIds, Is.EquivalentTo(ids), "the generator's set is the map's ids");
-            // The far ring's labels are the landmarks' names as they were made, so none shows twice either.
             var named = m.Far.All.Where(l => l.Name != null).ToList();
             foreach (var l in named.Where(l => l.From == "landmark" && !m.Gen.InPinnedSquare(l.Square)))
                 Assert.That(l.Name, Is.EqualTo(m.Gen.LandmarkRows[l.Index].Name), $"landmark {l.Index}");
@@ -217,10 +199,6 @@ namespace Chem.Tests
             Assert.That(named.Select(l => l.Name).Distinct().Count(), Is.EqualTo(named.Count), "no label twice");
         }
 
-        /// <summary>
-        /// The place ids a generated map's places.json would hold but its spawns' (which are named apart): its pinned map's
-        /// (a block's, the same way; a map folder's, its places.json's), then each landmark's place and its village's.
-        /// </summary>
         internal static List<string> PlaceIds(GeneratedMap m)
         {
             var ids = m.Inner != null ? PlaceIds(m.Inner) : WorldPlaces.Load(m.PinnedDir).All.Select(p => p.Id).ToList();
@@ -238,8 +216,6 @@ namespace Chem.Tests
         [Test, Explicit("makes all 9720 chunks (minutes on two threads): run it by name")]
         public void ItsExpectsAreWhatItsChunksMake()
         {
-            // map.json's expects, from every chunk as the bake makes it, one at a time and let go (the whole map's cells are
-            // more than this VM holds): the share at or above the sea, the highest and the lowest land.
             var gen = Island.Gen;
             int w = gen.ChunksW, n = w * gen.ChunksH;
             long above = 0;
@@ -271,7 +247,6 @@ namespace Chem.Tests
             Assert.That((map.LandShare, map.Highest, map.Lowest), Is.EqualTo((share, hi, lo)));
         }
 
-        /// <summary>Into a world folder of a test's own: the files a plan and its chunks read, the valley and the nine's world file.</summary>
         internal static void CopyInputs(string root)
         {
             foreach (string f in new[] { "bands.json", BiomeTable.FileName, HorizonTable.FileName }) File.Copy(Path.Combine(WorldDir, f), Path.Combine(root, f));

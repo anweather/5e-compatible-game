@@ -39,7 +39,6 @@ public class SecondMapProbe : ProbeScenario
         }
         Check("sea_drawn", land.Sea.SeaCells == 0 || (seaCell.x >= 0 && Covers(seaCell)), $"sea at {seaCell}");
         Check("basin_drawn", land.Sea.BasinCells == 0 || (basinCell.x >= 0 && Covers(basinCell)), $"basin at {basinCell}");
-        // Far from any water (more than a beach's width): no sea drawn there, even under the ground.
         var far = Cell(c => !land.Sea.IsSea(c.x, c.y) && !land.Sea.IsBasin(c.x, c.y) && FarFromWater(land, c, 48));
         Check("dry_land_not_sea", far.x >= 0 && !Covers(far), $"dry at {far}");
         Check("water_level_is_the_maps", ocean == null || Mathf.Abs(ocean.level - land.WaterLevel) < 1e-4f, $"{ocean?.level}");
@@ -65,7 +64,6 @@ public class SecondMapProbe : ProbeScenario
         Check("walks", walked > 5f, $"{walked:0.0} m in 8 s toward 20 cells east");
     }
 
-    // Whether no sea or basin cell is within this many cells either way.
     static bool FarFromWater(MapLand land, Vector2Int c, int reach)
     {
         for (int y = c.y - reach; y <= c.y + reach; y += 4)
@@ -74,7 +72,6 @@ public class SecondMapProbe : ProbeScenario
         return true;
     }
 
-    // The map's first cell that's so, scanning from its middle row outward; (-1, -1) if none.
     Vector2Int Cell(System.Func<Vector2Int, bool> so)
     {
         int w = World.W, h = World.H;

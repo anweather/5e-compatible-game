@@ -6,13 +6,11 @@ using UnityEngine;
 // are named as printed on the pad in use (PadGlyphs). Starts itself.
 public class ControlsMenu : MonoBehaviour
 {
-    /// <summary>The Controls page's id in the Esc menu.</summary>
     public const string ControlsPage = "controls";
     const int SectionOrder = 490;
     const string SeenKey = "controls.seen";
     const float ShowSeconds = 12f, FadeSeconds = 1.5f;
 
-    /// <summary>What, on the keyboard and mouse, and on a controller ({South} and so on: PadGlyphs tokens).</summary>
     public static readonly (string what, string keys, string pad)[] Rows =
     {
         ("Move", "WASD", "Left stick"),
@@ -87,7 +85,6 @@ public class ControlsMenu : MonoBehaviour
         scroll = PauseMenu.ScrollView(scroll, Mathf.Clamp(HudScale.Height - 260f, 200f, 520f), () => Table());
     }
 
-    // The first time a player is in a game with spells, the table shows for a few seconds.
     void Update()
     {
         if (shownAt >= 0f || !EventLog.HudVisible || PlayerPrefs.GetInt(SeenKey, 0) == 1 || EventLog.TrackedCaster == null) return;

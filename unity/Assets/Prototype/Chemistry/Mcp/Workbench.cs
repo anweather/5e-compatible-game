@@ -10,7 +10,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem.Mcp
 {
-    /// <summary>A tool call that can't be done, with one sentence saying why.</summary>
     public sealed class RulesToolException : Exception
     {
         public RulesToolException(string message) : base(message) { }
@@ -18,13 +17,11 @@ namespace Chem.Mcp
 
     public sealed partial class Workbench
     {
-        /// <summary>materials.json's three tables, the kinds of material.</summary>
         public static readonly string[] MaterialKinds = { "terrain", "covers", "gases", Rules.LiquidsKey };
 
         readonly Dictionary<string, Draft> drafts = new Dictionary<string, Draft>(StringComparer.Ordinal);
         int nextDraft = 1;
 
-        /// <summary>The rules in the folders' rules/, saving to their <see cref="GameFolders.Mods"/> as it is now.</summary>
         public Workbench(GameFolders folders)
         {
             Folders = folders;
@@ -39,16 +36,12 @@ namespace Chem.Mcp
             PutLayers(Array.Empty<RoomMod>());
         }
 
-        /// <summary>The folders it was made with: the world tools read their map.</summary>
         public GameFolders Folders { get; }
         public string RulesDir { get; }
-        /// <summary>Where a save goes, read before the shipped mods: the player's folder in the game, rules/mods for the headless server.</summary>
         public string ModsDir { get; }
         public string ShippedModsDir { get; }
         public Rules Base { get; }
         public ModBudgets Budgets { get; }
-
-        // ---------- drafts ----------
 
         public Draft DraftOf(string id)
         {
@@ -62,10 +55,6 @@ namespace Chem.Mcp
             throw new RulesToolException($"There is no draft {id}; leave the draft out to start a new one.");
         }
 
-        /// <summary>
-        /// The patch to check or run: a draft's id, a mod's name in rules/mods, or the patch JSON itself
-        /// (bare or {"title", "idea", "patch"}).
-        /// </summary>
         public string PatchJson(string draftOrMod)
         {
             var key = (draftOrMod ?? "").Trim();
@@ -76,7 +65,6 @@ namespace Chem.Mcp
             throw new RulesToolException($"{(key.Length == 0 ? "Nothing" : key)} is neither a draft, a mod in rules/mods nor a patch.");
         }
 
-        /// <summary>The rules in force with a patch on as well, or the reason it can't switch on.</summary>
         public Rules RulesWith(string patchJson)
         {
             try
@@ -89,15 +77,12 @@ namespace Chem.Mcp
             }
         }
 
-        // ---------- validate ----------
-
         public IReadOnlyList<ModProblem> Validate(string draftOrMod)
         {
             drafts.TryGetValue((draftOrMod ?? "").Trim(), out var draft);
             return WithSite(PatchJson(draftOrMod), OwnMod(draft));
         }
 
-        // The mod's checks, then whether its buildings and things can stand on the world as it is now.
         IReadOnlyList<ModProblem> WithSite(string json, string own = null)
         {
             var others = Temporary.Where(t => t.Value != own).ToDictionary(t => t.Key, t => t.Value);
@@ -113,20 +98,8 @@ namespace Chem.Mcp
                 string.Join("\n", problems.Select((p, i) => $"{i + 1}. [{p.Check.ToString().ToLowerInvariant()}] {p.Message}"));
         }
 
-        // ---------- save ----------
-
-        /// <summary>
-        /// Who may save: the sentence refusing one now, or null to let it. Nothing here means anyone may, as for a
-        /// person at a terminal, who answers Claude's own prompt. The game's chat has nobody to answer one, so it says.
-        /// Called off the game's main thread.
-        /// </summary>
         public Func<string> SaveRefused { get; set; }
 
-        /// <summary>
-        /// Writes a draft, or a mod on in the room by its id, as {name}.json in <see cref="ModsDir"/>, {"title", "idea", "patch"},
-        /// once it validates. A mod that's on already passed the room. A shipped mod's name needs overwrite too, which leaves the
-        /// shipped file alone: the player's copy stands in front of it. Returns the path written.
-        /// </summary>
         public string Save(string draftId, string title, string idea, string name = null, bool overwrite = false)
         {
             string refused = SaveRefused?.Invoke();
@@ -169,7 +142,6 @@ namespace Chem.Mcp
         }
     }
 
-    /// <summary>A mod patch held in memory under an id while it's composed; Changed is what it holds, by "table id".</summary>
     public sealed class Draft
     {
         public Draft(string id) { Id = id; }
@@ -177,10 +149,8 @@ namespace Chem.Mcp
         public string Id { get; }
         public JObject Patch { get; } = new JObject();
 
-        /// <summary>The entries this draft added or changed, as "table id" (sim parameters as "sim path").</summary>
         public ISet<string> Changed { get; } = new SortedSet<string>(StringComparer.Ordinal);
 
-        /// <summary>The mod this draft last switched on as, and the patch it sent then. Workbench.OwnMod says if that's still on.</summary>
         public string OnAs { get; private set; }
 
         public string OnJson { get; private set; }
@@ -193,7 +163,6 @@ namespace Chem.Mcp
 
         public string Show() => $"Draft {Id}:\n{Patch.ToString(Formatting.Indented)}";
 
-        /// <summary>Show, or for a draft holding many entries only their names: a whole patch is a lot to read back after every call.</summary>
         public string Brief() => Changed.Count <= MostShown ? Show() : $"Draft {Id} holds {string.Join(", ", Changed)}.";
 
         const int MostShown = 2;

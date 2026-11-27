@@ -14,16 +14,13 @@ namespace Chem.Tests
         const string Id = "drowned-chain";
         const int Ticks = 120;
 
-        // The folder's hash (MapIdentity.Hash): moves with any change to its files, on purpose; set it again when they change.
         const string FolderHash = "90740b0414af4dea";
-        // The world's cells as built, and after the casts below and Ticks ticks.
         const string BuiltHash = "226107d1";
         const string RunHash = "a2df7c5d";
 
         static Rules R => ChemistryTests.R;
         static string Dir => Path.Combine(LandFolders.Folders.Maps, Id);
 
-        // The characters cells.txt uses, as ChemGrid.Legend has them.
         static void PaintCell(World w, int x, int y, char ch)
         {
             switch (ch)
@@ -44,8 +41,6 @@ namespace Chem.Tests
             }
         }
 
-        // The world from the folder as ChemGrid.MapWorld makes it: the cells, the land, then the optional files laid over
-        // them (puzzles, stamps, rows, golf, the Hold), each simply absent here; its reach the chunks round the spawn.
         static World Build()
         {
             var map = MapFile.Load(Dir);
@@ -68,7 +63,6 @@ namespace Chem.Tests
             return w;
         }
 
-        // Fire on the start's grass, water poured on it, a trench dug from the beach into the sea, then the ticks.
         static string Run()
         {
             var w = Build();
@@ -104,7 +98,6 @@ namespace Chem.Tests
         [Test]
         public void ItsCellsAreItsLand()
         {
-            // Sea where the land is under the sea level and nowhere else: what MapCheck can't see, since it reads the two apart.
             var map = MapFile.Load(Dir);
             var rows = MapFile.ReadCells(Dir).Split('\n');
             var land = LandFile.Read(File.ReadAllText(Path.Combine(Dir, MapFile.LandName)), map.W, map.H);

@@ -17,7 +17,6 @@ namespace Chem.Tests
         public void LowLandJoinedToTheEdgeIsSeaAndAHollowIsABasin()
         {
             var land = Flat();
-            // A cove cut in from the west edge, two cells wide and five deep, and a hollow in the middle of the land.
             for (int x = 0; x < 5; x++)
                 for (int y = 2; y < 4; y++) land[y * Side + x] = -10;
             for (int x = 7; x < 10; x++)
@@ -54,7 +53,6 @@ namespace Chem.Tests
             Assert.That(near[4 * Side + 4] && near[8 * Side + 8] && !near[3 * Side + 6], Is.True);
         }
 
-        // The valley's sea is the water its coast has always drawn, and the lake and the generated land's lakes are basins.
         [Test]
         public void TheValleysSeaAndBasins()
         {
@@ -68,7 +66,6 @@ namespace Chem.Tests
             Assert.That(map.SeaShore, Is.EqualTo(((double, double)?)(225.0, -160.0)));
         }
 
-        // island-startup-2: Near a rectangle or a chunk at a time is Near, cell for cell (the valley's sea and lake).
         [TestCase(3, true)]
         [TestCase(12, false)]
         public void NearByPartsIsNear(int reach, bool basins)
@@ -82,7 +79,6 @@ namespace Chem.Tests
             for (int y = 0; y < map.H; y++)
                 for (int x = 0; x < map.W; x++)
                     if (byChunk[x, y] != whole[y * map.W + x]) Assert.Fail($"({x}, {y}): by chunk {byChunk[x, y]}, whole {whole[y * map.W + x]}");
-            // Only chunks with a coast in or round them are worked out: open sea and dry land answer at once.
             Assert.That(byChunk.Chunks, Is.LessThan((map.W / Chunks.Size) * (map.H / Chunks.Size)));
             foreach (var (x0, y0, w, h) in new[] { (0, 0, 7, 9), (130, 300, 40, 3), (map.W - 5, map.H - 11, 5, 11), (200, 0, 1, map.H) })
             {
@@ -94,8 +90,6 @@ namespace Chem.Tests
             Assert.That(byChunk[-1, 3], Is.False);
         }
 
-        // core-mem-scale: land.json held a chunk at a time (LandChunks) reads as LandFile.Read does, cell for cell, by At, by
-        // band and by row; and its sea mask is the one the whole array makes.
         [Test]
         public void TheValleysLandAChunkAtATimeIsItsLand()
         {
@@ -126,7 +120,6 @@ namespace Chem.Tests
             var fromChunks = SeaMask.Of(land, map.SeaLevel);
             Assert.That((fromChunks.SeaCells, fromChunks.BasinCells), Is.EqualTo((fromArray.SeaCells, fromArray.BasinCells)));
             Assert.That(fromChunks.Near(5, true), Is.EqualTo(fromArray.Near(5, true)));
-            // Read with the sea from the same pass (sea-land-speed): the same land and the same mask.
             var both = LandChunks.Read(json, map.W, map.H, map.SeaLevel, out var seaRead);
             Assert.That(both.At(300, 200), Is.EqualTo(whole[200 * map.W + 300]));
             Assert.That((seaRead.SeaCells, seaRead.BasinCells), Is.EqualTo((fromArray.SeaCells, fromArray.BasinCells)));

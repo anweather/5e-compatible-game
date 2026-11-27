@@ -9,7 +9,6 @@ using UnityEngine;
 // yard is built.
 public static class SoundMastering
 {
-    /// <summary>Interleaved samples with <paramref name="channels"/> channels, averaged to one.</summary>
     public static float[] ToMono(float[] interleaved, int channels)
     {
         if (channels <= 1) return interleaved;
@@ -23,7 +22,6 @@ public static class SoundMastering
         return mono;
     }
 
-    /// <summary>Cuts to at most <paramref name="seconds"/>, fading the last part out, and drops leading silence.</summary>
     public static float[] Trim(float[] data, int rate, float seconds, float fadeSeconds = 0.25f)
     {
         int start = 0;
@@ -39,10 +37,6 @@ public static class SoundMastering
         return cut;
     }
 
-    /// <summary>
-    /// How loud a sound is where it matters: the RMS level, in dB below full scale, of its loudest
-    /// 0.4 s, so a silent tail doesn't make a short bang read as quiet. A loop is measured whole.
-    /// </summary>
     public static float LoudnessDb(float[] data, int rate, bool whole = false)
     {
         int window = whole ? data.Length : Mathf.Min(data.Length, (int)(0.4f * rate));
@@ -58,7 +52,6 @@ public static class SoundMastering
         return 20f * Mathf.Log10((float)System.Math.Sqrt(System.Math.Max(best, 0) / window) + 1e-9f);
     }
 
-    /// <summary>Scales to <paramref name="targetDb"/> loudness (at most +36 dB, so near-silence isn't blown up), then soft-limits.</summary>
     public static void Normalize(float[] data, int rate, float targetDb, bool whole = false)
     {
         float gainDb = Mathf.Min(36f, targetDb - LoudnessDb(data, rate, whole));
@@ -66,7 +59,6 @@ public static class SoundMastering
         for (int i = 0; i < data.Length; i++) data[i] = SoftLimit(data[i] * gain);
     }
 
-    // Leaves anything below 0.8 alone and bends louder peaks smoothly towards 1, instead of clipping.
     static float SoftLimit(float x)
     {
         float a = Mathf.Abs(x);

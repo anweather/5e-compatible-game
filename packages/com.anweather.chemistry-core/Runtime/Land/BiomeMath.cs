@@ -7,38 +7,28 @@ namespace Chem
 {
     public static class BiomeMath
     {
-        /// <summary>1.0 in Q16.</summary>
         public const long One = 1 << 16;
 
-        /// <summary>1.0 in Q30, for the small numbers a biome's fit can reach.</summary>
         public const long One30 = 1L << 30;
 
-        /// <summary>ln 2 in Q16.</summary>
         const long Ln2 = 45426;
 
         public static long Clamp01(long v) => Math.Max(0, Math.Min(One, v));
 
-        /// <summary>Floor division, for negative coordinates too.</summary>
         public static long FloorDiv(long a, long b)
         {
             long q = a / b;
             return (a % b != 0 && (a < 0) != (b < 0)) ? q - 1 : q;
         }
 
-        /// <summary>A Q16 number from a row's decimal: exact for the numbers the rows hold (power-of-two scaling, then a round).</summary>
         public static long FromDouble(double v) => (long)Math.Round(v * One, MidpointRounding.AwayFromZero);
 
-        /// <summary>t² (3 − 2t) for t in Q16 [0, 1].</summary>
         public static long Smoothstep(long t)
         {
             t = Clamp01(t);
             return t * t / One * (3 * One - 2 * t) / One;
         }
 
-        /// <summary>
-        /// Hashed value noise in Q16 [0, 1] at a point given in Q16 cells, control points <paramref name="lattice"/> cells apart:
-        /// WorldNoise.Value's scheme, but in integers.
-        /// </summary>
         public static long Noise(int seed, int salt, long xQ, long yQ, long lattice)
         {
             long span = lattice * One;
@@ -52,12 +42,6 @@ namespace Chem
             return top + (bottom - top) * ty / One;
         }
 
-        /// <summary>
-        /// <see cref="Noise(int, int, long, long, long)"/> repeating every <paramref name="periodX"/> cells along x and
-        /// <paramref name="periodY"/> along y (0 for an axis that doesn't), for a world that wraps (world-squares.md section
-        /// 8): an axis that repeats takes a whole number of control points a period, the nearest to its lattice, so the
-        /// lattice stretches a little to fit, and noise at x and x + period is the same bit for bit.
-        /// </summary>
         public static long Noise(int seed, int salt, long xQ, long yQ, long lattice, long periodX, long periodY)
         {
             if (periodX <= 0 && periodY <= 0) return Noise(seed, salt, xQ, yQ, lattice);
@@ -70,7 +54,6 @@ namespace Chem
             return top + (bottom - top) * ty / One;
         }
 
-        // An axis's two control points and the smoothed way between them, repeating every period cells (0 for never).
         static (int i0, int i1, long t) Axis(long q, long lattice, long period)
         {
             if (period <= 0)
@@ -84,25 +67,21 @@ namespace Chem
             return ((int)Mod(k, n), (int)Mod(k + 1, n), Smoothstep(u - k * One));
         }
 
-        /// <summary>a modulo n, from 0 to n − 1 for a negative a too.</summary>
         public static long Mod(long a, long n) => ((a % n) + n) % n;
 
-        /// <summary>Noise in Q16 [−1, 1], where Punchy reads simplex.</summary>
         public static long Centred(int seed, int salt, long xQ, long yQ, long lattice) => 2 * Noise(seed, salt, xQ, yQ, lattice) - One;
 
-        /// <summary>Centred noise repeating every <paramref name="periodX"/> and <paramref name="periodY"/> cells (0 for never).</summary>
         public static long Centred(int seed, int salt, long xQ, long yQ, long lattice, long periodX, long periodY) =>
             2 * Noise(seed, salt, xQ, yQ, lattice, periodX, periodY) - One;
 
         static long Lattice(int seed, int salt, int x, int y) => WorldHash.Hash4(seed, salt, x, y) >> 16;
 
-        /// <summary>e^-x in Q30 for x in Q16 (x ≥ 0): 2^-n times a Taylor series for the remainder under ln 2.</summary>
         public static long ExpNeg(long xQ16)
         {
             if (xQ16 <= 0) return One30;
             long n = xQ16 / Ln2;
             if (n >= 31) return 0;
-            long r = (xQ16 - n * Ln2) << 14; // Q30, under ln 2
+            long r = (xQ16 - n * Ln2) << 14;
             long term = One30, sum = One30;
             for (int k = 1; k <= 12; k++)
             {
@@ -112,12 +91,11 @@ namespace Chem
             return sum >> (int)n;
         }
 
-        /// <summary>log2(m) in Q32 for m ≥ 1, by repeated squaring.</summary>
         public static long Log2(ulong m)
         {
             int whole = 63;
             while ((m >> whole) == 0) whole--;
-            ulong y = whole >= 31 ? m >> (whole - 31) : m << (31 - whole); // [2^31, 2^32): 1.0 to 2.0 in Q31
+            ulong y = whole >= 31 ? m >> (whole - 31) : m << (31 - whole);
             long frac = 0;
             for (int bit = 31; bit >= 0; bit--)
             {
@@ -131,7 +109,6 @@ namespace Chem
             return ((long)whole << 32) + frac;
         }
 
-        /// <summary>The integer square root (floor).</summary>
         public static long Sqrt(long v)
         {
             if (v <= 0) return 0;
@@ -150,10 +127,8 @@ namespace Chem
             return (long)root;
         }
 
-        /// <summary>A Q16 distance from Q16 offsets.</summary>
         public static long Length(long dx, long dy) => Sqrt(dx * dx + dy * dy);
 
-        /// <summary>FNV-1a of a biome's id: its rolls come from its name, not its place in the file.</summary>
         public static uint NameHash(string id)
         {
             unchecked

@@ -10,20 +10,14 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>One of a map's stamps: its id and name, and the stamp.</summary>
     public sealed class MapStamp
     {
         public string Id { get; }
         public string Name { get; }
         public LandStamp Stamp { get; }
 
-        /// <summary>A canyon's trail along its floor: the terrain it lays (dirt), or null for none.</summary>
         public string Trail { get; }
 
-        /// <summary>
-        /// The terrain the stamp leaves bare where it moved the land (a volcano's rock, its crater's crust): every dry cell
-        /// of open ground or standing tree it moved is painted so, its trees gone; null for none.
-        /// </summary>
         public string Bare { get; }
 
         public MapStamp(string id, string name, LandStamp stamp, string trail = null, string bare = null)
@@ -36,7 +30,6 @@ namespace Chem
         }
     }
 
-    /// <summary>A map's stamps.json, in its order: none when there's no file.</summary>
     public sealed class MapStamps
     {
         public const string FileName = "stamps.json";
@@ -47,18 +40,12 @@ namespace Chem
 
         public IReadOnlyList<MapStamp> All { get; }
 
-        /// <summary>Reads stamps.json from <paramref name="worldDir"/>; no file means no stamps.</summary>
         public static MapStamps Load(string worldDir)
         {
             var path = Path.Combine(worldDir, FileName);
             return File.Exists(path) ? FromJson(File.ReadAllText(path)) : Empty;
         }
 
-        /// <summary>
-        /// The stamps in the file's text, each {id, name, at: [x, y], profile, radius, rise (land units), rough, seed}, and
-        /// along: [x, y] or path: [[x, y], ...] from at for a line, and for a canyon a trail: the terrain laid along its floor; bare: the
-        /// terrain it leaves where it moved the land. Throws <see cref="FormatException"/> for one that can't be read.
-        /// </summary>
         public static MapStamps FromJson(string json)
         {
             JObject doc;

@@ -14,10 +14,8 @@ using Debug = UnityEngine.Debug;
 // Nothing leaves the machine, so there's no notice.
 public sealed class TranscribedSpeech : ISpeech
 {
-    /// <summary>How long transcribing may take before the hold gives up on it.</summary>
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(15);
 
-    // Trying again can't bring a library back, so this one doesn't ask to.
     const string NoLibrary = "Voice can't run on this PC: a library it needs is missing or won't load. Typing still works.";
 
     readonly ISpeechAudio audio;
@@ -36,25 +34,18 @@ public sealed class TranscribedSpeech : ISpeech
         Timeout = timeout;
     }
 
-    /// <summary>How long transcribing may take.</summary>
     public TimeSpan Timeout { get; set; }
 
-    /// <summary>The recording's length the last hold, in ms of the clock.</summary>
     public double RecordMs { get; private set; }
 
-    /// <summary>How long the last transcribing took, or ran before it was given up on.</summary>
     public double TranscribeMs { get; private set; }
 
-    /// <summary>Seconds of sound in the last recording.</summary>
     public float Heard { get; private set; }
 
-    /// <summary>Whether the transcriber is still at the last recording.</summary>
     public bool Transcribing => work != null;
 
-    /// <summary>Cancelled work that hasn't ended yet.</summary>
     public int Abandoned => Volatile.Read(ref abandoned);
 
-    /// <summary>What turns the sound into text.</summary>
     public ITranscriber Transcriber => transcriber;
 
     public SpeechState State { get; private set; }
@@ -103,7 +94,6 @@ public sealed class TranscribedSpeech : ISpeech
         return heard.TryDequeue(out line);
     }
 
-    // The work's end, read on the main thread; or the timeout, which ends the hold without it.
     void Collect()
     {
         TranscribeMs = transcribing.Elapsed.TotalMilliseconds;
@@ -133,7 +123,6 @@ public sealed class TranscribedSpeech : ISpeech
         Fail(cause is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException ? NoLibrary : "Making out the words failed. Try again, or type.");
     }
 
-    // Cancels work still going and leaves it to end on its own thread, which nothing waits for.
     void Abandon(string why)
     {
         if (work == null) return;
@@ -146,7 +135,7 @@ public sealed class TranscribedSpeech : ISpeech
         VoiceTrace.Line($"gave up transcribing: {why}; {Abandoned} still out");
         leftBehind = Task.WhenAll(leftBehind, left.ContinueWith(t =>
         {
-            _ = t.Exception; // observed, so an abandoned failure is never rethrown
+            _ = t.Exception;
             source.Dispose();
             Interlocked.Decrement(ref abandoned);
         }, TaskScheduler.Default));
@@ -171,7 +160,6 @@ public sealed class TranscribedSpeech : ISpeech
         if (audio.Recording) audio.Close();
         audio.Dispose();
         heard.Clear();
-        // A model must outlive the work still using it, so it goes once all of that has ended.
         var engine = transcriber;
         leftBehind.ContinueWith(_ => engine.Dispose(), TaskScheduler.Default);
     }

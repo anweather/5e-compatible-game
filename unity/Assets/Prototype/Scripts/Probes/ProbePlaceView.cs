@@ -46,7 +46,6 @@ public class PlaceViewProbe : RoomProbe
     ThingSpawner spawner;
     ValleyFauna fauna;
     float caughtUp;
-    // Filming: where the camera looks, and the frames so far.
     Vector3? filmAt;
     int filmFrame;
     RenderTexture filmTarget;
@@ -75,7 +74,6 @@ public class PlaceViewProbe : RoomProbe
         yield return Ask("dressed", CellText(laid));
         Check("laid_cells_dressed_there", Theirs != null && Theirs.cellsDressed == laid.Count, $"{Theirs?.cellsDressed} of {laid.Count}");
 
-        // The casts: things west and east of the site, the child on it, a grove north and brambles south.
         int placedBefore = World.Placed.Count;
         caster.Cast(Barrels, site.x - 4, site.y, 0);
         yield return Wait(0.4f);
@@ -90,7 +88,6 @@ public class PlaceViewProbe : RoomProbe
         yield return Wait(1.5f);
         Metric("place_frame_ms", spawner.PlacedMs);
 
-        // Here: each placed thing is drawn on its cell, at rest; the child is out; the new plants are dressed.
         var (placed, gap) = PlacedOn(grid, spawner);
         Metric("placed_count", World.Placed.Count);
         Metric("placed_gap_most_m", gap);
@@ -114,11 +111,9 @@ public class PlaceViewProbe : RoomProbe
         Check("trees_and_brambles_made", trees == Each && brush == Each, $"{trees} trees, {brush} brambles");
         Check("new_plants_dressed_here", DressedCount(grid, grown) == grown.Count, $"{DressedCount(grid, grown)} of {grown.Count}");
 
-        // There: the same.
         if (filmAt != null) Metric("film_frames_at_casts", filmFrame);
         yield return Agree2("casts", grown, placed, summons);
 
-        // The crates lapse: gone on both.
         yield return Within(() => World.Placed.Count == Each, CratesLast / 6f + 6f);
         yield return Wait(1f);
         (placed, _) = PlacedOn(grid, spawner);
@@ -129,7 +124,6 @@ public class PlaceViewProbe : RoomProbe
         yield return StopFilm();
         CompareHashes("checksums_before_the_late_join");
 
-        // A late joiner: the barrels, the dressing and the child.
         HashesFrom = Net.NetTick;
         yield return Ask("rejoin");
         yield return Wait(Settle);
@@ -143,13 +137,11 @@ public class PlaceViewProbe : RoomProbe
 
         yield return QuietCost();
 
-        // Off again: the laid cells go back, undressed where they were bare.
         Switcher.Ask(RoomCommand.Revert(Switcher.Me, ModId));
         yield return Agree("mod_off", $"Player 1 switched off {Title}");
         Check("laid_cells_back", laid.All(c => World.At(c.x, c.y).T is not (TerrainIds.Tree or TerrainIds.Brush)), CellText(laid));
     }
 
-    // Both sides hold the same placed things on the same cells, the same summons, and the new plants dressed.
     IEnumerator Agree2(string name, List<Vector2Int> grown, string placed, string summons)
     {
         yield return InStep(Net.NetTick);
@@ -161,7 +153,6 @@ public class PlaceViewProbe : RoomProbe
         Check(name + "_plants_dressed_there", Theirs != null && Theirs.cellsDressed == grown.Count, $"{Theirs?.cellsDressed} of {grown.Count}");
     }
 
-    // The virtual player in the background runs behind: waits until it has run this tick and holds this room.
     IEnumerator InStep(int tick)
     {
         for (caughtUp = 0f; caughtUp < CatchUp; caughtUp += Settle)
@@ -177,7 +168,6 @@ public class PlaceViewProbe : RoomProbe
         for (float t = 0f; t < seconds && !done(); t += Time.unscaledDeltaTime) yield return null;
     }
 
-    // What a quiet frame costs: the spawner's look at the core's table and the animals' look at the summons.
     IEnumerator QuietCost()
     {
         const int Calls = 10000;
@@ -193,13 +183,9 @@ public class PlaceViewProbe : RoomProbe
         yield return GarbagePerCall(() => fauna.BringOutSummons(), 20000, b => animals = b);
         Metric("quiet_things_bytes", things);
         Metric("quiet_summons_bytes", animals);
-        // A call that made anything would make 20 bytes or more each time: a fraction of a byte is another frame's noise.
         Check("quiet_frame_allocates_nothing", things is >= 0f and < 1f && animals is >= 0f and < 1f, $"{things} and {animals} bytes a call");
     }
 
-    // --- the site -------------------------------------------------------------------------
-
-    // A cell some way from the wizard with the most open ground round it, for every cast to find room.
     Vector2Int Site(Vector2Int from)
     {
         var open = World.PlaceOpen(null);
@@ -218,7 +204,6 @@ public class PlaceViewProbe : RoomProbe
         return best;
     }
 
-    // Open cells round a cell, less a lot for each tree the land draws there: one hides what's placed from the film.
     int OpenAround(System.Func<int, int, bool> open, Vector2Int c)
     {
         int n = 0;
@@ -233,7 +218,6 @@ public class PlaceViewProbe : RoomProbe
 
     const int TreePenalty = 40;
 
-    // Three trees and two brambles for the mod to lay, on open cells in a row by the site.
     (List<Vector2Int> trees, List<Vector2Int> brush) LayCells(Vector2Int site)
     {
         var open = World.PlaceOpen(null, false);
@@ -244,7 +228,6 @@ public class PlaceViewProbe : RoomProbe
         return (spaced.Take(3).ToList(), spaced.Skip(3).Take(2).ToList());
     }
 
-    // The tree and bramble cells round the site now.
     HashSet<Vector2Int> PlantCells(Vector2Int site)
     {
         var cells = new HashSet<Vector2Int>();
@@ -257,9 +240,6 @@ public class PlaceViewProbe : RoomProbe
         return cells;
     }
 
-    // --- what each side reports (RoomProbeRecord) --------------------------------------------
-
-    /// <summary>The things spells placed that this side draws (id:kind@cell, sorted), and the most any rests off the ground.</summary>
     public static (string placed, float gap) PlacedOn(ChemGrid grid, ThingSpawner spawner)
     {
         float gap = 0f;
@@ -275,7 +255,6 @@ public class PlaceViewProbe : RoomProbe
         return (string.Join(Between, all), gap);
     }
 
-    /// <summary>The animals spells brought out that are out on this side (n:species, sorted).</summary>
     public static string SummonsOn(ChemGrid grid)
     {
         var fauna = ValleyFauna.InPlay;
@@ -287,28 +266,21 @@ public class PlaceViewProbe : RoomProbe
         return string.Join(" ", all);
     }
 
-    /// <summary>How many of these cells stand dressed (CellDressing drew something on them).</summary>
     public static int DressedCount(ChemGrid grid, IEnumerable<Vector2Int> cells) =>
         cells.Count(c => grid.DressingAt(c.x, c.y) is { } d && d.GetComponentsInChildren<Renderer>().Length > 0);
 
-    // Between two placed things in a report: an id has spaces in it.
     const string Between = "; ";
 
     static int Entries(string placed) => placed.Length == 0 ? 0 : placed.Split(Between).Length;
 
     static string CellText(IEnumerable<Vector2Int> cells) => string.Join(";", cells.Select(c => $"{c.x},{c.y}"));
 
-    /// <summary>Cells written x,y;x,y.</summary>
     public static List<Vector2Int> ParseCells(string text) =>
         (text ?? "").Split(';', System.StringSplitOptions.RemoveEmptyEntries)
             .Select(p => p.Split(','))
             .Select(p => new Vector2Int(int.Parse(p[0], CultureInfo.InvariantCulture), int.Parse(p[1], CultureInfo.InvariantCulture)))
             .ToList();
 
-    // --- film --------------------------------------------------------------------------------
-
-    // With --shots, every frame from the mod going on to the crates lapsing, at 30 a second of game time, the camera
-    // high on the south side (the trees are north, beyond the site) swinging slowly: it renders off screen, so it needs no window.
     void StartFilm(Vector2Int site)
     {
         if (string.IsNullOrEmpty(ScreenshotDir)) return;

@@ -19,10 +19,6 @@ namespace Chem.Tests
         }
     }
 
-    /// <summary>
-    /// island-startup: a map checked clean is taken on its record (MapCheck.Errors with a record: the folder's hash), and
-    /// checked whole again once anything in its folder changes.
-    /// </summary>
     [Category("Simulation")]
     public class MapCheckRecordTests
     {
@@ -47,13 +43,11 @@ namespace Chem.Tests
                 Assert.That(File.ReadAllText(record), Does.StartWith(hash));
                 Assert.That(MapCheck.Errors(dir, record), Is.Empty, "taken on its record");
 
-                // A file changed (its map.json naming another id): the hash moves and the whole check runs, finding it.
                 string map = Path.Combine(dir, MapFile.FileName);
                 File.WriteAllText(map, System.Text.RegularExpressions.Regex.Replace(File.ReadAllText(map), "\"id\": *\"valley\"", "\"id\": \"valley-two\""));
                 Assert.That(MapCheck.FolderHash(dir), Is.Not.EqualTo(hash));
                 Assert.That(MapCheck.Errors(dir, record), Is.Not.Empty, "checked whole again");
                 Assert.That(File.ReadAllText(record), Does.StartWith(hash), "and a map with errors isn't recorded");
-                // No record given: always the whole check.
                 Assert.That(MapCheck.Errors(dir, null), Is.EqualTo(MapCheck.Errors(dir)));
             }
             finally

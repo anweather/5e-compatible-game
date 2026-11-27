@@ -1,13 +1,11 @@
+// Temporary materials (World.Lapse.cs, docs/design/primitives.md §4 and §5's first test): a mod's own
+// cover lives while the mod is on, lapses after its ticks or goes when it's reverted, and every cell
+// holding it is swept at that tick, the same on every peer.
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Temporary materials (World.Lapse.cs, docs/design/primitives.md §4 and §5's first test): a mod's own
-    /// cover lives while the mod is on, lapses after its ticks or goes when it's reverted, and every cell
-    /// holding it is swept at that tick, the same on every peer.
-    /// </summary>
     [Category("Simulation")]
     public class TempMaterialTests
     {
@@ -17,8 +15,6 @@ namespace Chem.Tests
 
         const int Lapse = 3600;
 
-        // §5's first test, as Claude would write it: a slick of black ice that melts in a minute (lasts 360) and
-        // goes in ten (lapse after 3600). The element is cold: a new one must serve two spells (ModValidator).
         static string BlackIce(int after = Lapse) => @"{ ""title"": ""Black ice"", ""idea"": ""A spell that lays a slick of black ice, gone again in ten minutes."", ""patch"": {
             ""covers"": { ""black-ice"": { ""name"": ""Black ice"", ""tags"": [""slippery""], ""lasts"": 360, ""witherLog"": ""The black ice thaws away"",
                 ""melt"": { ""water"": 1 }, ""look"": { ""color"": [0.08, 0.12, 0.35] }, ""lapse"": { ""after"": " + after + @" } } },
@@ -40,14 +36,12 @@ namespace Chem.Tests
 
         static string State(World w) => $"{w.CellHash()} {w.CastHash()} {w.Rules.Fingerprint} {w.RngState}";
 
-        // The mod goes on between ticks 1 and 2, and lapses Lapse ticks later.
         const int Switched = 1, Lapses = Switched + Lapse;
 
         static TickBatch Batch(int t)
         {
             var batch = new TickBatch(t);
             if (t == Switched + 1) batch.Room.Add(RoomCommand.Apply("Bo", "black-ice", BlackIce()));
-            // Once at the start, and again late, since a slick withers by itself in 360 ticks.
             if (t == Switched + 2 || t == Lapses - 50) batch.Casts.Add(new CastCommand("glaze", 32, 32, 0));
             return batch;
         }
@@ -87,7 +81,6 @@ namespace Chem.Tests
         [Test]
         public void TheBlackIceGoldenHolds()
         {
-            // Pins the run: cast at once, step past the lapse; a change to the sweep or the lapse tick moves it.
             var w = Room();
             w.ApplyRoom(RoomCommand.Apply("Bo", "black-ice", BlackIce(600)));
             w.Cast("glaze", 32, 32, 0);
@@ -160,8 +153,6 @@ namespace Chem.Tests
             Assert.That(back.Room.Mods, Is.Empty);
             Assert.That(back.Rules.Fingerprint, Is.EqualTo(R.Fingerprint));
         }
-
-        // ---------- the checks ----------
 
         static string[] Problems(string json, World room = null) =>
             ModValidator.Validate(room?.Rules ?? R, Budgets, json, room == null ? null : TempMaterials.Owners(room.TemporaryMaterials)).Select(p => p.Message).ToArray();

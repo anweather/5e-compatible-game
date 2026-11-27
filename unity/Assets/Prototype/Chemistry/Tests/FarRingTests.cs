@@ -20,21 +20,18 @@ namespace Chem.Tests
 
         internal static GeneratedMap Nine => nine ??= GeneratedMap.Load(NineDir);
 
-        // The whole map is dropped once the fixture is done, so a full EditMode run doesn't keep it (#211).
         [OneTimeTearDown]
         public void DropTheMap()
         {
             nine = null;
         }
 
-        // The valley's middle chunk (the valley is chunks 0..8, 18..26 of the nine).
         internal static readonly (int x, int y) Valley = (4, 22);
 
         [Test]
         public void AKnownChunkIsTheMadeChunksLandAtEveryEighthCell()
         {
             var gen = Nine.Gen;
-            // A valley chunk, one beside it, the far corner, and every chunk a landmark's stamps reach.
             var chunks = new List<(int x, int y)> { Valley, (9, 22), (26, 0), (13, 13) };
             foreach (var rows in gen.LandmarkRows.Where(r => r != null && r.Stamps.Count > 0))
                 chunks.Add((rows.Centre.x / ChunkGen.Size, rows.Centre.y / ChunkGen.Size));
@@ -52,7 +49,6 @@ namespace Chem.Tests
                         bool wet = cell == 'w' || cell == 'r';
                         Assert.That(known.Water[j * KnownChunk.Side + i] != KnownChunk.Dry, Is.EqualTo(wet), $"chunk ({cx}, {cy}) sample ({i}, {j}) is {cell}");
                     }
-                // The last row and column are the next chunk's first: two known chunks side by side meet.
                 if (cx + 1 < gen.ChunksW)
                 {
                     var east = gen.Know(cx + 1, cy);
@@ -63,8 +59,6 @@ namespace Chem.Tests
             }
         }
 
-        // The far ring paints each sample by its own biome (FarMeshes.Known), so a biome's edge shows where it runs, not as
-        // a whole chunk of one colour: a flat tundra chunk drew as a white wedge against its neighbours.
         [Test]
         public void EverySampleNamesItsBiomeAndTwoChunksAgreeWhereTheyMeet()
         {

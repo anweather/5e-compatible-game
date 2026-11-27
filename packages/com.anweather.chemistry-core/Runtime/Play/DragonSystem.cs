@@ -12,7 +12,6 @@ using System.Text;
 
 namespace Chem
 {
-    /// <summary>The dragon's flight (World.DragonSystem).</summary>
     public sealed class DragonSystem
     {
         const uint PathSalt = 17;
@@ -24,16 +23,13 @@ namespace Chem
             this.world = world;
         }
 
-        /// <summary>The flight under way, or null.</summary>
         public DragonState State { get; internal set; }
 
-        /// <summary>Flights begun in this world (the next one's path comes from it).</summary>
         public int Flights { get; internal set; }
 
-        /// <summary>The dragon's summons (a Reset): the warning starts now, unless one is flying or the world keeps no starting state.</summary>
         public void Apply(DragonCommand command)
         {
-            world.FinishTick(); // commands land between whole ticks (StepSome)
+            world.FinishTick();
             if (!world.HasStart)
             {
                 world.AddLog("Nothing answers: this world keeps no starting state");
@@ -59,16 +55,12 @@ namespace Chem
             world.AddLog("The sky darkens: a shadow crosses the valley", LogKind.Notable);
         }
 
-        // ---------- the flight's shape: pure sums on the world's size and the state ----------
-
-        // Cells along a pass, and chunks along and across it.
         int AlongOf(DragonState d) => d.AlongX ? world.W : world.H;
         int AcrossOf(DragonState d) => d.AlongX ? world.H : world.W;
         int ColsOf(DragonState d) => Chunks.ChunkOf(AlongOf(d) - 1) + 1;
         int RowsOf(DragonState d) => Chunks.ChunkOf(AcrossOf(d) - 1) + 1;
         int WidthOf(DragonState d) => Math.Min(world.Rules.Sim.Dragon.BreathChunks, RowsOf(d));
 
-        // The first chunk row of a pass's strip.
         int StripOf(DragonState d)
         {
             int rows = RowsOf(d), width = WidthOf(d), step = Math.Max(1, width - world.Rules.Sim.Dragon.OverlapChunks);
@@ -76,26 +68,16 @@ namespace Chem
             return d.FromFar ? rows - width - at : at;
         }
 
-        // This pass runs toward 0: passes go there and back.
         static bool Backward(DragonState d) => d.Back ^ (d.Pass % 2 == 1);
 
-        /// <summary>
-        /// A pass's line, for the view to fly: the middle of its strip, in cells across the passes, and whether it runs
-        /// toward 0. A sum on the world's size and the flight's first flags, changing nothing.
-        /// </summary>
         public (int middle, bool back) PassLine(DragonState flight, int pass)
         {
             var d = new DragonState { AlongX = flight.AlongX, FromFar = flight.FromFar, Back = flight.Back, Pass = pass };
             return ((StripOf(d) * 2 + WidthOf(d)) * Chunks.Size / 2, Backward(d));
         }
 
-        // Whether the breath is out: on a pass, not wheeling round, and started.
         static bool Breathing(DragonState d) => d != null && d.Phase == DragonPhase.Passes && d.Until == 0 && d.Travelled > 0;
 
-        /// <summary>
-        /// The cells under the breath this tick, [x0, x1) × [y0, y1), clipped to the world (false when it isn't out):
-        /// a strip of chunks across, Depth cells along, up to its lead (the view draws it).
-        /// </summary>
         public bool BreathBox(out int x0, out int y0, out int x1, out int y1)
         {
             x0 = y0 = x1 = y1 = 0;
@@ -110,19 +92,11 @@ namespace Chem
             return true;
         }
 
-        /// <summary>
-        /// Whether the breath catches what stands at (x, y) this tick: it's in the breath's cells and not sheltered.
-        /// The core's raiders take it from here; the view asks for its wizards, whose health is their own (WizardDown).
-        /// </summary>
         public bool CaughtByBreath(int x, int y) => CaughtInBox(world.FoldX(x), world.FoldY(y));
 
         bool CaughtInBox(int x, int y) =>
             BreathBox(out int x0, out int y0, out int x1, out int y1) && x >= x0 && x < x1 && y >= y0 && y < y1 && !ShelteredFromBreath(x, y);
 
-        /// <summary>
-        /// The shelter rule: water at least ShelterWater deep (not frozen) on the cell, or a wall on the breath's side:
-        /// a blocking cell of WallTerrains within WallReach cells straight toward where the dragon flies from.
-        /// </summary>
         public bool ShelteredFromBreath(int x, int y)
         {
             var p = world.Rules.Sim.Dragon;
@@ -173,8 +147,6 @@ namespace Chem
             }
         }
 
-        // As it dives every fire dies, on all the chunks at once: a wildfire left burning would walk back over the
-        // chunks already reset (a burning valley of grass ended a third burnt without this). One tick, cheaply: it's a test on each cell.
         void SnuffFires()
         {
             world.WriteEveryCell(c =>
@@ -185,7 +157,6 @@ namespace Chem
             });
         }
 
-        // Everyone the breath catches goes down (sim.json downed), unless they already are.
         void KnockDown()
         {
             int ticks = DownedTicks(world.Rules.Sim);
@@ -199,7 +170,6 @@ namespace Chem
 
         static int DownedTicks(SimParams s) => (int)Math.Floor(s.Downed.Seconds * s.TicksPerSecond);
 
-        // The next chunk the breath has reached on this pass, reset; false if there's none yet.
         internal bool FreshenNext()
         {
             var d = State;
@@ -212,7 +182,6 @@ namespace Chem
             return true;
         }
 
-        // The chunks of this pass the breath's lead has reached, column by column along the pass.
         int ChunksReached(DragonState d)
         {
             int along = AlongOf(d), lead = Math.Min(d.Travelled, along);
@@ -221,7 +190,6 @@ namespace Chem
             return cols * WidthOf(d);
         }
 
-        // A pass ends when its breath is off the far edge and all its chunks are done: the next, or leaving.
         internal void EndPass()
         {
             var d = State;
@@ -242,8 +210,6 @@ namespace Chem
             world.AddLog("The dragon lands on the mountain and roars", LogKind.Notable);
         }
 
-
-        /// <summary>The dragon's state as text ("" for a world with no starting state), the same text as dragonState in the TS.</summary>
         public string Text()
         {
             if (!world.HasStart) return "";
@@ -256,7 +222,6 @@ namespace Chem
             return sb.ToString();
         }
 
-        /// <summary>A short fingerprint of DragonText, for the netcode checksum.</summary>
         public string Hash() => Fnv1a.Hash(Text());
     }
 }

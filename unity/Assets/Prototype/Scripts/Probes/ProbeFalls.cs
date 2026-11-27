@@ -47,7 +47,6 @@ public class FallsProbe : ProbeScenario
         yield return Wait(1f);
         Shot("from-the-top");
 
-        // The cliff's rocks are solid: a ray from above lands on them, not through to the ground.
         var solid = falls.GetComponentsInChildren<MeshCollider>();
         int landed = solid.Count(mc => Physics.Raycast(mc.bounds.center + Vector3.up * (mc.bounds.extents.y + 5f), Vector3.down, out var hit, 60f) && hit.collider.transform.IsChildOf(falls.transform));
         Check("rocks_solid", solid.Length >= 20 && landed >= solid.Length * 0.8f, $"{landed} of {solid.Length} rock colliders under a ray from above");
@@ -55,14 +54,12 @@ public class FallsProbe : ProbeScenario
         yield return ClimbRamp(lip);
     }
 
-    // The scree ramp beside the falls walks up to the top: the controller, stepped up it.
     IEnumerator ClimbRamp(Vector3 lip)
     {
         var ramp = GameObject.Find("Scree ramp");
         Check("ramp_built", ramp != null && ramp.transform.childCount > 6, "the scree ramp up the east flank, lined with rocks");
         if (ramp == null || ramp.transform.childCount < 2) yield break;
         var stones = ramp.transform.Cast<Transform>().OrderBy(t => t.position.y).ToArray();
-        // The crown runs between the two lines of rocks: from the middle of the lowest pair to the middle of the highest.
         Vector3 low = (stones[0].position + stones[1].position) / 2f, high = (stones[stones.Length - 1].position + stones[stones.Length - 2].position) / 2f;
         var up = new Vector3(high.x - low.x, 0f, high.z - low.z);
         var body = wizard.GetComponent<CharacterController>();

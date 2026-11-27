@@ -13,7 +13,6 @@ namespace Chem.Tests
         [Test]
         public void BuildingsAreMadeOfTheMaterialsInVillagesJson()
         {
-            // world/villages.json "materials": walls and roofs by kind, terrain ids in materials.json.
             var specs = VillageLayout.Load(LandFolders.WorldDir());
             var m = specs[0].Materials;
             foreach (var material in m.Walls.Values.Concat(m.Roofs.Values))

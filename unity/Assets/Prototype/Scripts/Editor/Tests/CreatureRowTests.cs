@@ -81,12 +81,6 @@ public class CreatureRowTests
         Assert.That(bodies.IndexOf("elk"), Is.EqualTo(elk));
     }
 
-    // What a row change costs, for the report: composing and checking the rules with the mod (with and
-    // without the creature tables, for what they add), then in the view one body built, every row compared
-    // and the hunting set again. Asserts only that the view's part is well under a frame (about 2.8 ms on the Mac's Editor
-    // alone): the best of up to RefreshRounds rounds, each after a settled heap, so a loaded Editor (a long suite's garbage,
-    // another job, #177) can't fail it alone, and a view that has really grown slower fails every round. A timing test runs
-    // on an idle Editor (docs/TESTING_LAYERS.md): the sweep's, or by its name; either way with test run --include_explicit true.
     [Test]
     [Explicit("Timing: run on an idle Editor, with test run --include_explicit true (the sweep's)")]
     [Category("Timing")]
@@ -120,7 +114,6 @@ public class CreatureRowTests
     const double FrameBudgetMs = 8.0;
     const int RefreshRounds = 3;
 
-    // The median of 40 refreshes, the row changed and changed back by turns.
     static double MedianRefresh(CreatureBodies bodies, Rules plain, Rules patched)
     {
         var times = new List<double>();
@@ -136,7 +129,6 @@ public class CreatureRowTests
         return Median(times);
     }
 
-    // Earlier tests' garbage collected now, not in the middle of a timed refresh: a timing test's only use of the collector.
 #pragma warning disable S1215
     static void Settle()
     {

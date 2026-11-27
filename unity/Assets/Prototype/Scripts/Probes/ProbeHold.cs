@@ -44,7 +44,6 @@ public class HoldProbe : ProbeScenario
         Teleport(p + Vector3.up * 0.05f);
     }
 
-    // Across a stretch of the road and down the hill beside it: the bench is level where the hill isn't.
     void LevelAcross()
     {
         float Ground(int x, int y) => grid.GroundAt(grid.CellCenter(row.X + x, row.Y + y));
@@ -99,7 +98,6 @@ public class HoldProbe : ProbeScenario
         Destroy(copy);
     }
 
-    // A run with today's spells: the wizard on the walls, a bolt now and then, until the keep falls.
     IEnumerator PlayToALoss(System.Collections.Generic.List<BuildingCell> cells, System.Collections.Generic.List<BuildingCell> gate, RowHouses houses)
     {
         var world = grid.World;
@@ -124,7 +122,7 @@ public class HoldProbe : ProbeScenario
         var marked = world.SpawnRaider(Rules.PlainKind(armoured.Kind) + Rules.AdjectiveMark + "armoured", armoured.X, armoured.Y + 2, 40);
         Check("an_adjective_raider_stands", marked != null && world.Rules.AdjectiveOf(marked.Kind) != null, marked?.Kind);
         yield return Breach(houses, cells);
-        world.Hold.Health = Mathf.Min(world.Hold.Health, HealthToLose); // a whole keep outlasts the probe; its checks need a loss, not a long run
+        world.Hold.Health = Mathf.Min(world.Hold.Health, HealthToLose);
         int casts = 0;
         float took = 0f, worst = 0f;
         int frames = 0, most = 0, wave = 1, inVillage = 0, backEast = 0, westmost = int.MaxValue;
@@ -171,7 +169,6 @@ public class HoldProbe : ProbeScenario
         Check("the_hud_says_so", show.HudLine().Contains("fell"), show.HudLine());
     }
 
-    // A road raider's way from the foot, as the core has it: once on the road it stays on it, round every bend.
     void TheRoadIsTheWay(World world)
     {
         var road = new System.Collections.Generic.HashSet<(int, int)>(world.BuildingCellsOf(row).Where(c => c.Part == BuildingPart.Road && c.Terrain == TerrainIds.Dirt).Select(c => (c.X, c.Y)));
@@ -194,8 +191,6 @@ public class HoldProbe : ProbeScenario
         Check("raiders_keep_to_the_road", joined && offAfter <= steps / 50, $"{steps} steps, {onIt} on the road, {offAfter} off it after joining");
     }
 
-    // What the fight does to the castle, shown: a stretch of the north walls, a tower and the top of a stair, gone by hand
-    // (a raider's blows are the core's tests); the end of the run mends them.
     IEnumerator Breach(RowHouses houses, System.Collections.Generic.List<BuildingCell> cells)
     {
         var world = grid.World;
@@ -300,7 +295,6 @@ public class HoldProbe : ProbeScenario
         Check("a_cast_from_the_walls_lands", burning > 0, $"log: {string.Join(" / ", LogSince(tick).Take(3))}");
         PutOutFires();
 
-        // The east gate, by the walls' stair (the south gate, hold-east-path, is the castle's other).
         var swinging = cells.Where(c => c.Part == BuildingPart.Opening && world.Rules.Terrain[c.Terrain].SwingsTo != null).ToList();
         var gate = swinging.Where(c => c.X >= swinging.Max(o => o.X) - 1).ToList();
         Check("the_gate_is_open_at_the_start", gate.Count == 3 && gate.All(c => !world.IsBlocking(world.At(c.X, c.Y))));
@@ -324,7 +318,6 @@ public class HoldProbe : ProbeScenario
         yield return AfterAReset(houses);
     }
 
-    // Going online resets the world too: what a reset takes with the grid's children has to come back.
     IEnumerator AfterAReset(RowHouses houses)
     {
         grid.ResetWorld();

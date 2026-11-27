@@ -1,13 +1,11 @@
+// The Time & Weather spells (World.Time.cs, rules/spells.json): Hasten Time runs the day clock
+// faster, Control Weather holds a weather, Fog Cloud lays fog that hides what's behind it.
+// Ported from sandbox/test/time.test.ts; the golden hash comes from running the same world there.
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// The Time &amp; Weather spells (World.Time.cs, rules/spells.json): Hasten Time runs the day clock
-    /// faster, Control Weather holds a weather, Fog Cloud lays fog that hides what's behind it.
-    /// Ported from sandbox/test/time.test.ts; the golden hash comes from running the same world there.
-    /// </summary>
     [Category("Unit")]
     public class TimeWeatherTests
     {
@@ -15,7 +13,6 @@ namespace Chem.Tests
 
         static void Run(World w, int ticks) { for (int i = 0; i < ticks; i++) w.Step(); }
 
-        /// <summary>A dirt field walled in bedrock.</summary>
         static World Field(int w = 32, int h = 24)
         {
             var world = new World(R, w, h, 7);
@@ -27,8 +24,6 @@ namespace Chem.Tests
 
         static int FogUnits(World w) => w.AllCells().Where(c => c.Gas == "fog").Sum(c => c.GasAmt);
 
-        // ---------- Hasten Time ----------
-
         [Test]
         public void HastenTimeRunsTheClockTwentyTimesAsFastForHalfAMinuteThenAtItsOwnPace()
         {
@@ -37,7 +32,6 @@ namespace Chem.Tests
             w.Cast("hasten-time", 5, 5, 1);
             Assert.That(w.Haste, Is.EqualTo(((int, int)?)(20, 180)));
             Run(w, 180);
-            // 180 ticks, each 20 ticks of day: 3600 ticks of a 8640-tick day, ten hours.
             Assert.That(w.Minutes - start, Is.EqualTo(600), "ten game hours in 30 s");
             Assert.That(w.Haste, Is.Null, "it wears off");
             Assert.That(w.ClockAhead, Is.EqualTo(180 * 19));
@@ -83,8 +77,6 @@ namespace Chem.Tests
             w.Cast("control-weather", 5, 5, 1);
             Assert.That(w.CellHash(), Is.EqualTo(before));
         }
-
-        // ---------- Control Weather ----------
 
         [Test]
         public void ControlWeatherStepsThroughClearRainSnowStormAndHoldsForTwoMinutes()
@@ -133,8 +125,6 @@ namespace Chem.Tests
             Assert.That(w.Weather.WindDir, Is.InRange(0, 3), "a storm brings wind");
             Assert.That(w.WindDir, Is.EqualTo(w.Weather.WindDir));
         }
-
-        // ---------- Fog Cloud ----------
 
         [Test]
         public void FogCloudLaysThickFogThatHidesWhatsBehindIt()
@@ -203,9 +193,6 @@ namespace Chem.Tests
             return n > 0 ? sum / n : 0;
         }
 
-        // ---------- lockstep ----------
-
-        /// <summary>All three spells and their chemistry, on the sandbox's field, stepped 300 ticks.</summary>
         static World Scenario()
         {
             var w = Field();
@@ -228,9 +215,8 @@ namespace Chem.Tests
             Assert.That(a.CellHash(), Is.EqualTo(b.CellHash()));
             Assert.That(a.SkyState(), Is.EqualTo(b.SkyState()));
             Assert.That(a.SkyHash(), Is.EqualTo(b.SkyHash()));
-            // Golden from sandbox/test/time.test.ts (the same world there).
             Assert.That(a.SkyState(), Is.EqualTo("5130/-/6:40:760"));
-            Assert.That(a.CellHash(), Is.EqualTo("29d47b50")); // night (day.nightFreeze) since 2026-10-27
+            Assert.That(a.CellHash(), Is.EqualTo("29d47b50"));
         }
 
         [Test]
@@ -257,10 +243,10 @@ namespace Chem.Tests
             for (int t = 0; t < 400; t++)
             {
                 w.Step();
-                counted += w.Strikes.Count; // what a view stepping one tick a frame sees
+                counted += w.Strikes.Count;
             }
             Assert.That(counted, Is.GreaterThan(0), "a storm strikes");
-            var seen = w.StrikesSince(from).ToList();   // what a view that stepped all 400 in one frame reads
+            var seen = w.StrikesSince(from).ToList();
             Assert.That(seen.Count, Is.EqualTo(counted));
             Assert.That(seen.Select(s => s.tick), Is.Ordered);
             Assert.That(w.StrikesSince(w.Tick), Is.Empty);

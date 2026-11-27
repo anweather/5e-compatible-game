@@ -37,7 +37,6 @@ using UnityEngine;
 //   after a tick that changed it, spawns and despawns the difference as at a switch.
 public class ThingSpawner : MonoBehaviour
 {
-    /// <summary>The prefab for one kind (an id in rules/entities.json or rules/items.json).</summary>
     [Serializable]
     public struct KindPrefab
     {
@@ -45,24 +44,18 @@ public class ThingSpawner : MonoBehaviour
         public GameObject prefab;
     }
 
-    /// <summary>The generic prefabs a mod's new kind spawns as: its "kind" in <see cref="prefabs"/>, and on the prefab until it's dressed.</summary>
     public const string DressedProp = "dressed-prop", DressedItem = "dressed-item";
 
     public ChemGrid grid;
     [Tooltip("One prefab per kind; each is also a registered network prefab (ChemYardBuilder).")]
     public List<KindPrefab> prefabs = new();
 
-    // What is in the world now, by id: spawned here, or (on a client) adopted from the host.
     readonly Dictionary<ThingId, PhysicsProp> live = new();
-    // Things that broke: their chunk spawning again doesn't bring them back.
     readonly HashSet<ThingId> gone = new();
     readonly HashSet<(int, int)> loaded = new();
     readonly HashSet<string> missingKinds = new();
-    // A client: dressed things that arrived before this peer's rules had them.
     readonly List<NetProp> waiting = new();
-    // The things as they stood at the last switch or change, to tell what changed.
     WorldThings shown;
-    // The rules the dressed things last read their looks from.
     Rules lookRules;
     ThingBodies bodies;
     NetworkManager network;
@@ -71,7 +64,6 @@ public class ThingSpawner : MonoBehaviour
     bool Hosting => network != null && network.IsListening && network.IsServer;
     WorldThings Things => grid.World.ThingsNow;
 
-    /// <summary>The things in the world now (not broken), by stable id.</summary>
     public IEnumerable<(ThingId id, PhysicsProp prop)> Live
     {
         get
@@ -81,14 +73,12 @@ public class ThingSpawner : MonoBehaviour
         }
     }
 
-    /// <summary>The thing with this id, if it is in the world now.</summary>
     public PhysicsProp Find(ThingId id) => live.TryGetValue(id, out var prop) && prop != null ? prop : null;
 
     public bool IsLoaded(int cx, int cy) => loaded.Contains((cx, cy));
 
     static readonly Registry<ThingSpawner> registry = new();
 
-    /// <summary>The spawner in play (what FindAnyObjectByType found), or null: see Registry.</summary>
     public static ThingSpawner InPlay => registry.First;
 
     void Awake()
@@ -120,9 +110,6 @@ public class ThingSpawner : MonoBehaviour
             if (world.HasChunk(cx, cy) && world.IsActive(cx, cy)) SpawnChunk(cx, cy);
     }
 
-    // The host, at an online reset: every thing away (for everyone) and back from the data, broken
-    // ones included. A client's things go and come with the host's despawns and spawns. Any other
-    // reset is a new world, which may hold other things by its seed's chances.
     void Respawn()
     {
         if (!Hosting || !OnlineReset.Happened(Peers.Of(grid)))
@@ -152,15 +139,9 @@ public class ThingSpawner : MonoBehaviour
         network.OnClientStarted -= DropSoloCopies;
     }
 
-    // --- per chunk -----------------------------------------------------------------
-
     static readonly Unity.Profiling.ProfilerMarker SpawnMarker = new("ThingSpawner.SpawnChunk"), UnloadMarker = new("ThingSpawner.UnloadChunk"),
         BringBackMarker = new("ThingSpawner.BringBack");
 
-    /// <summary>
-    /// Spawns a chunk's things (all but those that broke). On a client it only notes the chunk:
-    /// the host's things arrive through Netcode.
-    /// </summary>
     public void SpawnChunk(int cx, int cy)
     {
         if (!loaded.Add((cx, cy))) return;
@@ -183,8 +164,6 @@ public class ThingSpawner : MonoBehaviour
         Link(thing.Id);
     }
 
-    // The dragon's breath reset a chunk: what broke there comes back, and its things go home unburnt. A chunk that
-    // isn't loaded only forgets what broke, for when it is. On a client the host's things do this for it.
     void BringBack(ChunkFresh fresh)
     {
         if (Client) return;
@@ -209,7 +188,6 @@ public class ThingSpawner : MonoBehaviour
         prop.BackAsBuilt(at + Vector3.up * RestHeight(prop.gameObject, thing.Kind, cell, at), turn);
     }
 
-    /// <summary>Removes a chunk's things (the host despawns them for everyone); SpawnChunk brings them back.</summary>
     public void UnloadChunk(int cx, int cy)
     {
         if (!loaded.Remove((cx, cy))) return;
@@ -223,7 +201,6 @@ public class ThingSpawner : MonoBehaviour
         }
     }
 
-    // Out of the world: the host despawns it for everyone.
     static void Remove(PhysicsProp prop)
     {
         var net = prop.GetComponent<NetworkObject>();
@@ -231,7 +208,6 @@ public class ThingSpawner : MonoBehaviour
         else Destroy(prop.gameObject);
     }
 
-    // A thing destroyed without being unloaded broke (or blew up): it stays gone.
     void NoteGone()
     {
         var broken = new List<ThingId>();
@@ -244,19 +220,12 @@ public class ThingSpawner : MonoBehaviour
         }
     }
 
-    // --- a switch of rules ---------------------------------------------------------------
-
     static readonly Unity.Profiling.ProfilerMarker PlacedMarker = new("ThingSpawner.Placed");
 
-    /// <summary>Milliseconds the last change of things between switches took to show (a spell placed, or a placed thing lapsed), for the probe.</summary>
     public double PlacedMs { get; private set; }
 
     void Update() => ShowPlaced();
 
-    /// <summary>
-    /// After a tick that placed things or let them lapse (the core's table is a new one), shows the difference; a switch
-    /// not heard yet reads the rules too. A quiet frame compares one reference. True if anything changed (for the probe).
-    /// </summary>
     public bool ShowPlaced()
     {
         if (grid == null || grid.World == null || ReferenceEquals(Things, shown)) return false;
@@ -268,8 +237,6 @@ public class ThingSpawner : MonoBehaviour
         return true;
     }
 
-    // The rules changed, or the world did: what a mod added comes in, what it took with it goes, and
-    // the dressed things read their looks again. On a client the host's spawns and despawns do the rest.
     void ThingsChanged()
     {
         lookRules = grid.World.Rules;
@@ -291,7 +258,6 @@ public class ThingSpawner : MonoBehaviour
         foreach (var thing in added) Bring(thing);
     }
 
-    // A mod's thing stands in any chunk of the world, active or not: it sleeps there until the chunk activates.
     void Bring(ThingSpawn thing)
     {
         if (!grid.World.HasChunk(thing.ChunkX, thing.ChunkY)) return;
@@ -299,7 +265,6 @@ public class ThingSpawner : MonoBehaviour
         else if (Find(thing.Id) == null) Spawn(thing);
     }
 
-    // A despawned thing a player holds is theirs to lose.
     void TakeAway(ThingId id)
     {
         var prop = Find(id);
@@ -310,15 +275,12 @@ public class ThingSpawner : MonoBehaviour
         Remove(prop);
     }
 
-    // --- one thing ---------------------------------------------------------------------
-
     PhysicsProp Place(ThingSpawn thing)
     {
         var prefab = PrefabFor(thing.Kind);
         if (prefab == null) return null;
         var cell = new Vector2Int(thing.CellX, thing.CellY);
         var at = grid.CellCenter(cell.x, cell.y);
-        // Made above the ground, never in it: a body that starts half sunk into a terrain can fall through it.
         var go = Instantiate(prefab, at + Vector3.up * SpawnAbove, Quaternion.Euler(0f, thing.Rotation, 0f));
         go.name = NameOf(thing.Kind, thing.Id);
         var prop = go.GetComponent<PhysicsProp>();
@@ -361,8 +323,6 @@ public class ThingSpawner : MonoBehaviour
         return null;
     }
 
-    // Where its centre rests: its lowest collider on the ground, or, where it floats on water, its
-    // waterline (PropState: a floater sinks until the part under water times its lift holds it up).
     float RestHeight(GameObject go, string kind, Vector2Int cell, Vector3 at)
     {
         Physics.SyncTransforms();
@@ -381,8 +341,6 @@ public class ThingSpawner : MonoBehaviour
         return Mathf.Max(onGround, afloat);
     }
 
-    // Sending stones: each knows the other (the data's "link"), once both are in the world. Links are
-    // the file's, which a client has before it has a room.
     void Link(ThingId id)
     {
         var thing = grid.Things.Find(id);
@@ -397,9 +355,6 @@ public class ThingSpawner : MonoBehaviour
         }
     }
 
-    // --- online ------------------------------------------------------------------------
-
-    // The host: the things already in the world become NetworkObjects, with their ids.
     void SpawnOnline()
     {
         NoteGone();
@@ -410,7 +365,6 @@ public class ThingSpawner : MonoBehaviour
         }
     }
 
-    // A client: its solo copies go; the host's arrive through Netcode (Adopt).
     void DropSoloCopies()
     {
         if (network.IsServer) return;
@@ -419,7 +373,6 @@ public class ThingSpawner : MonoBehaviour
         gone.Clear();
     }
 
-    /// <summary>A client: one of the host's things arrived. It gets the grid, its name and its partner, by its id.</summary>
     public void Adopt(NetProp net)
     {
         var prop = net.GetComponent<PhysicsProp>();
@@ -441,7 +394,6 @@ public class ThingSpawner : MonoBehaviour
 
     bool KindKnown(NetProp net) => Things.Find(net.Id) != null;
 
-    // The host's rules got here ahead of this peer's. It doesn't Start, and so reads no rules, until enabled.
     void Wait(NetProp net)
     {
         Enable(net, false);

@@ -9,7 +9,6 @@ namespace Chem
     {
         sealed partial class Checker
         {
-            /// <summary>A section's numbers and colours, each held to its field in the schema, in the schema's order.</summary>
             void Values(string what, string path, JToken section, RuleSchema schema)
             {
                 foreach (var f in schema.Fields)
@@ -22,7 +21,6 @@ namespace Chem
                 }
             }
 
-            /// <summary>True when every field of the section is there if required and in its range if given.</summary>
             static bool FitsAll(RuleSchema schema, JObject section)
             {
                 foreach (var f in schema.Fields)
@@ -33,7 +31,6 @@ namespace Chem
                 return true;
             }
 
-            /// <summary>A value in the field's range: a number, whole for a whole field.</summary>
             static bool Fits(RuleField f, JToken v)
             {
                 if (!(f.Type == RuleFieldType.Whole ? IsWholeNumber(v) : IsNumber(v))) return false;

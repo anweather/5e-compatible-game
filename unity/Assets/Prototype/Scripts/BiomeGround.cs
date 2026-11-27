@@ -8,10 +8,8 @@ using Chem;
 // cells. The pinned square (the valley) keeps its own paint. Only drawn: nothing here touches the cells (D4).
 public sealed class BiomeGround
 {
-    // Cells between the field's samples: its blend runs over 80.
     const int Step = 8;
 
-    // Each biome's ground, as weights over CellPaint's layers by name; a biome not listed stays grass.
     static readonly Dictionary<string, (string layer, float weight)[]> Looks = new()
     {
         ["temperate"] = new[] { (CellPaint.Grass, 1f) },
@@ -25,26 +23,19 @@ public sealed class BiomeGround
 
     readonly int layers, across, down, grass;
     [System.ThreadStatic] static float[] buffer;
-    // The field's samples are read a tile of Tile x Tile at a time, as a cell of the tile is first asked about, and kept
-    // (at most KeptTiles; all let go when that's reached): read for the whole map at the start, they were 24 MB and
-    // 600 ms on the 12 x 10 island, twice over (the near ground's and the far ring's), most never looked at (view-mem).
     const int Tile = 8, KeptTiles = 1024;
-    // The most samples Grounds reads (the nine has about 90 thousand: all of them).
     const int MostGroundSamples = 131072;
     readonly System.Collections.Concurrent.ConcurrentDictionary<int, Samples> tiles = new();
     readonly int tilesAcross;
-    // The tile each thread read last, which nearly every next read is in (a terrain's texels in a row).
     [System.ThreadStatic] static Samples lastTile;
     readonly BiomeField field;
     readonly BiomeTable table;
     readonly float[][] looks;
     readonly int fieldH, ox, oy;
-    // Each biome's own ground (Looks) by its id.
     readonly Dictionary<string, float[]> ownGround = new();
     readonly bool[] pinnedChunks;
     readonly int chunksW;
 
-    // One tile's samples: each one's ground (layers weights) and its strongest biome.
     sealed class Samples
     {
         public BiomeGround Owner;
@@ -74,10 +65,8 @@ public sealed class BiomeGround
             for (int cx = 0; cx < gen.ChunksW; cx++) pinnedChunks[cy * chunksW + cx] = gen.IsPinned(cx, cy);
     }
 
-    /// <summary>Tiles of samples read and kept now, for a check.</summary>
     public int TilesKept => tiles.Count;
 
-    // The tile holding sample (i, j), read now if it isn't kept.
     Samples TileOf(int i, int j)
     {
         int key = j / Tile * tilesAcross + i / Tile;
@@ -109,10 +98,8 @@ public sealed class BiomeGround
         return t;
     }
 
-    // The plan's field at sample (i, j) the way ChunkGen reads it: from the plan's corner, its rows from the south.
     BiomeBlend Blend(int i, int j) => field.At(i * Step + ox, fieldH - 1 - (j * Step + oy), table.BlendCells);
 
-    // Sample (i, j)'s ground starts at Ground[at] of the tile returned.
     Samples Sample(int i, int j, out int at)
     {
         var t = TileOf(i, j);
@@ -122,7 +109,6 @@ public sealed class BiomeGround
 
     string StrongestAt(int i, int j) => TileOf(i, j).Strongest[(j % Tile) * Tile + i % Tile];
 
-    // Each biome row's ground as weights over CellPaint's layers.
     float[][] LooksOf(BiomeTable table)
     {
         var looks = new float[table.Rows.Count][];
@@ -136,7 +122,6 @@ public sealed class BiomeGround
         return looks;
     }
 
-    // A sample's ground: its biomes' grounds by their weights.
     void Add(BiomeBlend blend, float[] samples, int at)
     {
         for (int s = 0; s < 4; s++)
@@ -156,19 +141,11 @@ public sealed class BiomeGround
         return blend.Id(best);
     }
 
-    /// <summary>
-    /// Each biome's ground as the near ground draws it, as weights over CellPaint's layers: the mean of the paint of the
-    /// map's dry cells where that biome is strongest (their own terrain's paint, their grass turned to the biome's ground),
-    /// read every Step cells; a biome with no such cell on the map has its own ground (Looks). For the far ring
-    /// (FarMeshes.Palette), so a known chunk's colour comes from the same paint as the drawn chunk beside it.
-    /// </summary>
     public Dictionary<string, float[]> Grounds(World world)
     {
         var sums = new Dictionary<string, float[]>();
         var counts = new Dictionary<string, int>();
         var mix = new float[layers];
-        // Every sample on a map up to MostGroundSamples of them; on a bigger one, every few (the means barely move), so the
-        // far ring's start reads no more of the field than the nine's does.
         int every = System.Math.Max(1, (int)System.Math.Ceiling(System.Math.Sqrt(across * (double)down / MostGroundSamples)));
         for (int j = 0; j < down; j += every)
             for (int i = 0; i < across; i += every)
@@ -191,11 +168,6 @@ public sealed class BiomeGround
         return sums;
     }
 
-    // A cell as the world holds it, without unpacking its chunk (D17): a packed chunk's cell is made from the world's source,
-    // as it started (a packed chunk's changes since aren't read: Grounds runs once, as the far ring starts). Reading every
-    // Step cells through world.At unpacked every chunk of the map.
-    // On a map made from its source (the Wide World) only the chunks it has made already are read: making the others to read
-    // a cell of each was every chunk of the map, on this thread (523 s in the Editor). A biome none of them shows keeps its own.
     internal static Cell CellAsIs(World world, int x, int y)
     {
         if (world.Source is GeneratedSource g && world.IsPacked(x >> Chunks.Shift, y >> Chunks.Shift) && !g.IsMade(x >> Chunks.Shift, y >> Chunks.Shift)) return null;
@@ -214,17 +186,14 @@ public sealed class BiomeGround
         return 0;
     }
 
-    /// <summary>The biome ground of a generated map already read (null for a hills map: one biome, no field).</summary>
     public static BiomeGround Of(GeneratedMap map) => map.Hills != null ? null : new(map);
 
-    /// <summary>The biome ground of the generated map made from this folder, or null for a map that isn't generated (or is a hills map).</summary>
     public static BiomeGround For(string mapSource)
     {
         Last = null;
         if (string.IsNullOrEmpty(mapSource) || !GeneratedMap.IsGenerated(mapSource)) return null;
         var timer = System.Diagnostics.Stopwatch.StartNew();
         var map = LoadedMaps.Get(mapSource);
-        // A hills map is one biome with no plan's field: each cell's own ground is its look.
         if (map.Hills != null) return null;
         var ground = new BiomeGround(map);
         StartupTimeline.Mark("biome ground read");
@@ -233,10 +202,8 @@ public sealed class BiomeGround
         return ground;
     }
 
-    /// <summary>The biome ground For read last, for the map in play (null on a map that isn't generated).</summary>
     public static BiomeGround Last { get; private set; }
 
-    /// <summary>The biome strongest at a cell (its nearest sample's), or null in the pinned square, which keeps its own.</summary>
     public string BiomeAt(int x, int y)
     {
         if (Pinned(x, y)) return null;
@@ -250,7 +217,6 @@ public sealed class BiomeGround
         return cx < 0 || cy < 0 || cx >= chunksW || cy * chunksW + cx >= pinnedChunks.Length || pinnedChunks[cy * chunksW + cx];
     }
 
-    // The biomes' ground at a cell, between the samples round it, into a buffer of CellPaint's layers.
     void At(int x, int y, float[] into)
     {
         float u = x / (float)Step, v = y / (float)Step;
@@ -262,7 +228,6 @@ public sealed class BiomeGround
             into[k] = (sa[a + k] * (1f - fu) + sb[b + k] * fu) * (1f - fv) + (sc[c + k] * (1f - fu) + sd[d + k] * fu) * fv;
     }
 
-    /// <summary>A cell's paint (weights over CellPaint's layers) with its grass turned to its biome's ground.</summary>
     public void Repaint(int x, int y, float[] mix)
     {
         float g = mix[grass];
@@ -273,7 +238,6 @@ public sealed class BiomeGround
         for (int k = 0; k < layers; k++) mix[k] += g * look[k];
     }
 
-    // A sample's paint with its grass turned to the ground of its blend (Repaint at a sample, without keeping its tile).
     void RepaintWith(BiomeBlend blend, float[] mix, int x, int y)
     {
         float g = mix[grass];
@@ -285,7 +249,6 @@ public sealed class BiomeGround
         for (int k = 0; k < layers; k++) mix[k] += g * look[k];
     }
 
-    /// <summary>Whether grass grows at a cell: where its biome's ground is mostly grass.</summary>
     public bool Grassy(int x, int y)
     {
         if (Pinned(x, y)) return true;

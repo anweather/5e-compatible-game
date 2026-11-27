@@ -1,13 +1,11 @@
+// Mixes (docs/design/primitives.md §4, P5; Rules.Mix.cs, World.Mix.cs): rows of a `mix` group that meet
+// derive a row with no reaction for the pair, a pure function of the two, at the same tick on every peer;
+// the room's list comes through a save and a late join; a cap, then a wall; it lapses with the later parent.
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Mixes (docs/design/primitives.md §4, P5; Rules.Mix.cs, World.Mix.cs): rows of a `mix` group that meet
-    /// derive a row with no reaction for the pair, a pure function of the two, at the same tick on every peer;
-    /// the room's list comes through a save and a late join; a cap, then a wall; it lapses with the later parent.
-    /// </summary>
     [Category("Simulation")]
     public class MixTests
     {
@@ -168,7 +166,6 @@ namespace Chem.Tests
                 { ""id"": """ + colour + @"-drip"", ""group"": ""water"", ""name"": """ + colour + @" Drip"", ""look"": { ""family"": ""splash"", ""color"": " + rgb + @" },
                   ""level"": 1, ""shape"": ""point"", ""element"": """ + colour + @"-pour"", ""power"": 4, ""blurb"": ""Level 1. A drip of paint."" } ] } }";
 
-        // What a room's history holds: both mods on, then a pool of each, four cells apart.
         static TickBatch PaintBatch(int t)
         {
             var batch = new TickBatch(t);
@@ -192,7 +189,6 @@ namespace Chem.Tests
             return w;
         }
 
-        // A joiner doesn't load a save: it gets the room where the history starts and replays it (NetChem.Room.cs).
         [Test]
         public void ALateJoinerReplayingTheHistoryHasTheMix()
         {
@@ -259,9 +255,6 @@ namespace Chem.Tests
             Assert.That(w.Room.Retired.Any(r => r.Id == Purple), Is.True);
         }
 
-        // ---------- covers ----------
-
-        // A film of one colour and the spell that lays it: a mod may add one element, so a mod each.
         static string Stain(string colour, string row, string rgb) => @"{ ""title"": """ + colour + @""", ""idea"": ""A stain."", ""patch"": {
             ""elements"": [""" + colour + @"-stain""],
             ""covers"": { """ + colour + @"-film"": { ""name"": """ + colour + @" film"", ""mix"": ""stain"", ""tags"": [], " + row + @", ""look"": { ""color"": " + rgb + @" } } },

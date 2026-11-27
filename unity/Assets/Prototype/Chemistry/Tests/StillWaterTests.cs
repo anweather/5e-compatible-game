@@ -1,21 +1,18 @@
+// Still water costs nothing (World.StillWater): the water pass skips chunks where nothing has
+// moved, and the world must come out exactly as if it hadn't. Each test runs the same world
+// twice, skipping on and off, and compares every tick, through what disturbs still water: a
+// trench dug beside a pond at rest, a neighbour switched off and on, a rule switch, rain,
+// and ticks run in slices.
 using System.Collections.Generic;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Still water costs nothing (World.StillWater): the water pass skips chunks where nothing has
-    /// moved, and the world must come out exactly as if it hadn't. Each test runs the same world
-    /// twice, skipping on and off, and compares every tick, through what disturbs still water: a
-    /// trench dug beside a pond at rest, a neighbour switched off and on, a rule switch, rain,
-    /// and ticks run in slices.
-    /// </summary>
     [Category("Simulation")]
     public class StillWaterTests
     {
         static Rules R => ChemistryTests.R;
 
-        /// <summary>A meadow with a deep pond inside chunk (1, 1) and a shallow lake across the edge of (0, 2) and (1, 2).</summary>
         static World Ponds(bool skip)
         {
             var w = new World(R, 192, 192, 5, "grass") { SkipStillWater = skip };
@@ -26,15 +23,14 @@ namespace Chem.Tests
             return w;
         }
 
-        // What happens to both worlds on a tick, before it steps.
         static void Events(World w, int t)
         {
-            if (t == 150) w.Cast("earthen-trench", 79, 95, 3);   // dug out from the still pond's west bank
-            if (t == 220) w.SetActive(2, 1, false);               // the pond's east neighbour off...
-            if (t == 260) w.SetActive(2, 1, true);                // ...and on again
-            if (t == 300) w.ApplyRules(R);                        // a rule switch (the same rules)
+            if (t == 150) w.Cast("earthen-trench", 79, 95, 3);
+            if (t == 220) w.SetActive(2, 1, false);
+            if (t == 260) w.SetActive(2, 1, true);
+            if (t == 300) w.ApplyRules(R);
             if (t == 340) w.WeatherSet = (WeatherKind.Rain, t, t + 200);
-            if (t == 420) w.Cast("create-water", 100, 95, 0);     // water poured on the still pond
+            if (t == 420) w.Cast("create-water", 100, 95, 0);
         }
 
         static List<string> Run(World w, int ticks, bool sliced, List<int> still = null)

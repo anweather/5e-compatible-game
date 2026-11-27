@@ -25,7 +25,6 @@ public class GraftCoatsProbe : RoomProbe
     const float FilmSeconds = 22f, FrameSeconds = 1f / 15f, Apart = 5f, Pace = 0.9f, Heading = math.PI / 2f;
     const int FilmWidth = 1280, FilmHeight = 720;
 
-    /// <summary>The three grafts: id, name, donors as add_species takes them, the donor the row's own slots wear, and the individual each side puts out.</summary>
     public static readonly (string id, string name, string from, string first, uint individual)[] Grafts =
     {
         ("centaur", "Centaur", "[{\"species\":\"deer\",\"drop\":[\"neck\",\"head\",\"ears\",\"eyes\"]},{\"species\":\"human\",\"take\":[\"human-torso\"],\"at\":[0,0.45,0.8],\"scale\":1.1,\"coat\":\"own\"}]", "deer", 0x2F1Bu),
@@ -38,7 +37,6 @@ public class GraftCoatsProbe : RoomProbe
 
     ValleyFauna fauna;
 
-    /// <summary>The animal out with this individual, or -1.</summary>
     public static int Find(ValleyFauna fauna, uint individual)
     {
         for (int i = 0; i < fauna.Count; i++)
@@ -46,7 +44,6 @@ public class GraftCoatsProbe : RoomProbe
         return -1;
     }
 
-    /// <summary>Puts the three grafts in a line out on the open meadow by a wizard, facing +x (along the line) at this speed.</summary>
     public static void PlaceGrafts(ValleyFauna fauna, ChemGrid grid, Vector3 wizard, float speed)
     {
         for (int k = 0; k < Grafts.Length; k++)
@@ -59,19 +56,16 @@ public class GraftCoatsProbe : RoomProbe
         }
     }
 
-    /// <summary>What one graft's segments wear, against what its donors' own animals of the same individual wear.</summary>
     public sealed class Worn
     {
         public string Id;
         public int Good, Total, Drawn, DrawnGood, OwnSegments, OwnDiffers;
-        /// <summary>Each slot as "slot:donor:#rrggbb" (its first segment's colour), a mismatch marked "!".</summary>
         public List<string> Slots { get; } = new();
         public uint Hash = 2166136261u;
         public bool Out => Total > 0;
         public bool Right => Out && Good == Total && Drawn > 0 && DrawnGood == Drawn && OwnSegments > 0 && OwnDiffers > 0;
     }
 
-    /// <summary>Every graft out on this side, read as the animator draws it.</summary>
     public static List<Worn> Coats(ValleyFauna fauna, FaunaTables tables)
     {
         var all = new List<Worn>();
@@ -100,7 +94,6 @@ public class GraftCoatsProbe : RoomProbe
             string slot = SlotAt(b, s, labels);
             if (slot != null) worn.Slots.Add($"{slot}:{donor}:{Hex(actual[s])}{(good ? "" : "!")}");
         }
-        // What the animator writes for this animal: every colour it draws is one of its segments'.
         var drawn = new SegmentInstance[b.Segments.Length];
         int shown = new CreatureAnimator().Evaluate(b, fauna.State(at), in traits, fauna, drawn, 0);
         worn.Drawn = shown;
@@ -108,7 +101,6 @@ public class GraftCoatsProbe : RoomProbe
             if (actual.Any(a => math.cmax(math.abs(a - drawn[i].Color.xyz)) < 1e-5f)) worn.DrawnGood++;
     }
 
-    // Tallies one segment: whether it matched, whether it's an own-coat one unlike the row's coat, and its colour into the hash.
     static void Count(Worn worn, CreatureBody b, int s, in CreatureTraits traits, float3 colour, bool good)
     {
         worn.Total++;
@@ -123,7 +115,6 @@ public class GraftCoatsProbe : RoomProbe
         worn.Hash = (worn.Hash ^ (uint)Mathf.RoundToInt(colour.z * 1000f)) * 16777619u;
     }
 
-    // The slot a segment starts ("body" for the body), or null for a segment further down a part.
     static string SlotAt(CreatureBody b, int segment, List<string> labels)
     {
         if (segment == 0) return "body";
@@ -132,7 +123,6 @@ public class GraftCoatsProbe : RoomProbe
         return null;
     }
 
-    // A segment's colour on the donor's own animal of this individual: its hair (over any colour of its own), its fixed colour, or its coat's mix.
     static float3 Expected(CreatureSegment seg, ValleyFauna fauna, string donor, uint individual)
     {
         var d = fauna.Body(fauna.SpeciesIndex(donor));
@@ -142,7 +132,6 @@ public class GraftCoatsProbe : RoomProbe
         return math.lerp(t.Worn.Base.xyz, t.Worn.Accent.xyz, seg.Accent);
     }
 
-    // Each part's slot id in the body's order (CreatureBody.Build): a mirrored slot's two copies, children after every copy of their parent.
     static List<string> Labels(FaunaTables tables, string id)
     {
         var labels = new List<string>();
@@ -170,7 +159,6 @@ public class GraftCoatsProbe : RoomProbe
         return "#" + ColorUtility.ToHtmlStringRGB(c).ToLowerInvariant();
     }
 
-    /// <summary>One side's grafts in a line: each one's matches out of its segments and its colours' hash, for the other side to compare.</summary>
     public static string Fingerprint(List<Worn> all) =>
         string.Join(" ", all.Select(w => $"{w.Id}:{w.Good}/{w.Total}:{w.DrawnGood}/{w.Drawn}:{w.OwnDiffers}/{w.OwnSegments}:{w.Hash:x8}"));
 
@@ -180,7 +168,6 @@ public class GraftCoatsProbe : RoomProbe
         Check("serving", RulesMcpServer.Url != null, RulesMcpServer.ConnectLine);
         if (fauna == null || RulesMcpServer.Url == null) yield break;
 
-        // One draft for the three, as Claude would make them, and one apply.
         draft = null;
         foreach (var g in Grafts)
         {
@@ -198,7 +185,6 @@ public class GraftCoatsProbe : RoomProbe
             Check($"{g.id}_built_with_one_own_palette", b != null && b.Own.Length == 1, b == null ? "no body" : string.Join(", ", b.Own.Select(p => p.Id)));
         }
 
-        // Noon and clear for everyone, through the room, so the film is in daylight and both peers keep in step.
         yield return Say("set_time", "{\"time\":\"noon\"}");
         yield return Say("set_weather", "{\"weather\":\"clear\",\"minutes\":10}");
         yield return Wait(2f);
@@ -234,7 +220,6 @@ public class GraftCoatsProbe : RoomProbe
         Check(tool, said.Result.status == 200 && !body.Contains("\"isError\":true"), body.Length > 300 ? body.Substring(0, 300) : body);
     }
 
-    // add_species with from into the probe's draft (a new one the first time); draft is null if it refused.
     IEnumerator AddSpecies(string id, string name, string from)
     {
         string into = draft != null ? $",\"draft\":\"{draft}\"" : "";
@@ -261,7 +246,6 @@ public class GraftCoatsProbe : RoomProbe
 
     static string Quoted(string json) => "\"" + json.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";
 
-    // The three walking, the camera alongside, then a picture of each standing, all at 720p off screen, the wizard's aim marker hidden.
     IEnumerator Film(Vector3 start, SpellCaster caster)
     {
         var cam = Camera.main;
@@ -308,7 +292,6 @@ public class GraftCoatsProbe : RoomProbe
         Metric("film_frames", frames);
     }
 
-    // Each one standing, from in front and to the side, close enough to see whose colours each part wears.
     IEnumerator Stills(SpellCaster caster, Camera cam, RenderTexture target, Texture2D page)
     {
         foreach (var g in Grafts)

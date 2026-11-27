@@ -16,9 +16,7 @@ namespace Playtest.Runner
             Main = main;
         }
 
-        /// <summary>This checkout (the one the runner was started in).</summary>
         public string Root { get; }
-        /// <summary>The main checkout, whose .claude/worktrees the bot's checkout lives in.</summary>
         public string Main { get; }
 
         public string Runs => Path.Combine(Root, "playtest", "runs");
@@ -28,13 +26,8 @@ namespace Playtest.Runner
 
         public const string PlayerName = "SpellChemistryValley";
 
-        /// <summary>
-        /// The player to run: the one given (--player: an exe, or a folder with one in it, such as a
-        /// release's unpacked portable zip), else the bot's checkout's build if there is one, else this checkout's.
-        /// </summary>
         public string Player(string given = null) => given != null ? GivenPlayer(given) : ChoosePlayer(Checkout, Root, File.Exists);
 
-        /// <summary>An exe as given, or the player found in a folder (the shallowest, then by name); the folder's own exe path if there is none.</summary>
         public static string GivenPlayer(string given)
         {
             string full = Path.GetFullPath(given);
@@ -52,7 +45,6 @@ namespace Playtest.Runner
 
         static string Exe(string checkout) => Path.Combine(checkout, "unity", "Builds", "Windows", PlayerName + ".exe");
 
-        /// <summary>The commit a build was made from (StreamingAssets/build.json), or "unknown".</summary>
         public static string BuildCommit(string exe)
         {
             string stamp = Path.Combine(Path.GetDirectoryName(exe) ?? "", PlayerName + "_Data", "StreamingAssets", "build.json");
@@ -61,7 +53,6 @@ namespace Playtest.Runner
             return commit.EndsWith("-dirty", StringComparison.Ordinal) ? commit.Substring(0, commit.Length - "-dirty".Length) : commit;
         }
 
-        /// <summary>The repository round a folder, and its main checkout.</summary>
         public static Paths Find(string from)
         {
             string root = Git.Run(from, "rev-parse --show-toplevel").Trim();

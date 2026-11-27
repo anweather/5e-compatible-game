@@ -30,13 +30,10 @@ public class DoubleJump : MonoBehaviour
     int used;
     float airborneSince = -1f, lastJump = -1f;
 
-    /// <summary>Jumps in the air before landing: 1 is the double jump, 0 none (the jumps stat less the ground's).</summary>
     public int AirJumps { get; set; } = 1;
 
-    /// <summary>Whether every air jump has been used since the wizard last stood on something.</summary>
     public bool Used => used >= AirJumps;
 
-    /// <summary>Air jumps used since the wizard last stood on something.</summary>
     public int UsedJumps => used;
 
     void Awake()
@@ -50,7 +47,6 @@ public class DoubleJump : MonoBehaviour
         TryGetComponent(out animator);
     }
 
-    // Jump, from PlayerInput's messages (as SurfaceEffects gets it): the controller ignores a press off the ground.
     void OnJump(InputValue value)
     {
         if (value.isPressed) AirJump();
@@ -69,7 +65,6 @@ public class DoubleJump : MonoBehaviour
 
     bool OnGround() => grounded == null || (bool)grounded.GetValue(controller);
 
-    /// <summary>An air jump, if the wizard is in the air and has one left; returns whether it jumped.</summary>
     public bool AirJump()
     {
         if (controller == null || !controller.enabled || !body.enabled || fall == null || gravity == null) return false;

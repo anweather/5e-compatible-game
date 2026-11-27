@@ -15,12 +15,9 @@ public class WaterLookProbe : ProbeScenario
 {
     const string ByMe = "{ \"title\": \"Purple Create Water\", \"patch\": { \"elements\": { \"water\": { \"look\": { \"scoped\": [ { \"by\": 0, \"color\": [0.6, 0.2, 0.85] } ] } } }, \"spells\": [ { \"id\": \"create-water\", \"look\": { \"color\": [0.6, 0.2, 0.85] } } ] } }";
     const string AllWater = "{ \"title\": \"All water purple\", \"patch\": { \"elements\": { \"water\": { \"look\": { \"color\": [0.6, 0.2, 0.85] } } }, \"spells\": [ { \"id\": \"create-water\", \"look\": { \"color\": [0.6, 0.2, 0.85] } }, { \"id\": \"flood\", \"look\": { \"color\": [0.6, 0.2, 0.85] } }, { \"id\": \"wave\", \"look\": { \"color\": [0.6, 0.2, 0.85] } } ] } }";
-    // His "Constant meteor showers", in a clear stretch so the shower comes at once.
     public const string Meteors = WeatherMods.Meteors;
-    // Hollowmere's place and square in cells (world/villages.json, PerfStage).
     protected const int HollowmereX = 222, HollowmereY = 300, SquareX = 5, SquareY = 6;
     protected const float SettleAfterSwitch = 3f, Hold = 4f, ShowerSeconds = 60f, AfterShower = 15f;
-    // A stretch with the looks on may cost no more a frame than the stretches round it with them off, by this or this share.
     const float MostExtraMs = 1f, MostExtraShare = 0.2f;
 
     static readonly string[] Markers = { "ChemGrid.Render", "ChemGrid.FinishRender", "ChemGrid.WaterMesh", "ChemGrid.SlickMesh", "ValleyGround.Flush" };
@@ -67,7 +64,6 @@ public class WaterLookProbe : ProbeScenario
 
     static bool Within(double on, double off) => on <= off + System.Math.Max(MostExtraMs, off * MostExtraShare);
 
-    // Both looks on through the room, as Claude's apply puts them, or both off.
     IEnumerator Looks(bool on)
     {
         if (on)
@@ -83,9 +79,6 @@ public class WaterLookProbe : ProbeScenario
         yield return Wait(SettleAfterSwitch);
     }
 
-    // A stretch with the camera still: each marker's mean a frame, the frame's, and the view's counts
-    // a frame (PerfCounts), as metrics and one log line each; ChemGrid.Render's mean goes to <paramref name="render"/>.
-    /// <summary>The last stretch's view counts, summed over its frames.</summary>
     protected SortedDictionary<string, long> LastCounts { get; private set; } = new();
 
     protected IEnumerator Stretch(string name, System.Action<double> render)

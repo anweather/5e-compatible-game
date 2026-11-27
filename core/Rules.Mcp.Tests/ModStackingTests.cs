@@ -1,3 +1,6 @@
+// #86: a mod may name a material another mod on adds (a wing naming its house's clay tile, as add_wing
+// writes it), and goes with that mod when it goes, reverted or lapsed, at the same tick on every peer
+// (World.Lapse.cs). A mod naming a material whose owner went is refused, naming the owner.
 using System;
 using System.Globalization;
 using System.IO;
@@ -8,11 +11,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// #86: a mod may name a material another mod on adds (a wing naming its house's clay tile, as add_wing
-    /// writes it), and goes with that mod when it goes, reverted or lapsed, at the same tick on every peer
-    /// (World.Lapse.cs). A mod naming a material whose owner went is refused, naming the owner.
-    /// </summary>
     [Category("Simulation")]
     public class ModStackingTests
     {
@@ -28,7 +26,6 @@ namespace Chem.Tests
             data = Path.Combine(Path.GetTempPath(), "mod-stacking-" + Guid.NewGuid().ToString("N"));
             folders = new GameFolders(ChemistryTests.RulesDir(), data);
             Directory.CreateDirectory(folders.Mods);
-            // The rowhouses probe's site: the lake's north shore.
             string sites = new HouseToolsTests.Client(new Workbench(folders)).Call("find_site", new { width = 14, depth = 8, near = "lake", side = "north", edge = "shore" });
             var at = Regex.Match(sites, @"\[(\d+), ?(\d+)\]");
             Assert.That(at.Success, sites);
@@ -42,7 +39,6 @@ namespace Chem.Tests
         static string State(World w) =>
             $"{w.CellHash()} {w.CastHash()} {w.Rules.Fingerprint} {string.Join(",", w.Room.Mods.Select(m => m.Id))}";
 
-        // The house, its clay tile lapsing after this many ticks (0: while the house is on).
         string HouseMod(int lapse = 0)
         {
             string tile = lapse == 0 ? BuildingTests.TileTerrain : BuildingTests.TileTerrain.Replace("\"tags\"", "\"lapse\": { \"after\": " + lapse + " }, \"tags\"");
@@ -54,7 +50,6 @@ namespace Chem.Tests
             public Workbench Bench;
             public World Host, Peer;
 
-            // Host and peer decide it at the same tick, and step on.
             public RoomVerdict Both(RoomCommand c)
             {
                 var a = Host.ApplyRoom(c);
@@ -72,7 +67,6 @@ namespace Chem.Tests
             }
         }
 
-        // The house on, then the wing add_wing drafts over it, on a host and a peer. Returns the wing's patch too.
         (Peers p, string wing) HouseAndWing(int lapse = 0)
         {
             var p = new Peers { Bench = new Workbench(folders) };
@@ -160,14 +154,11 @@ namespace Chem.Tests
             var fresh = new Workbench(folders).LiveWorld;
             var v = fresh.ApplyRoom(RoomCommand.Apply("Bo", "wing", wing, "A wing"));
             Assert.That(v.Done, Is.False, "no house, no wing: " + v.Line);
-            // The house was never on here, so nothing knows whose southwest and clay-tile are: the checks say what is missing.
             Assert.That(v.Reason, Does.StartWith("A wing doesn't pass the checks: Building lakeside#1: unknown style southwest"));
             Assert.That(fresh.Room.Mods, Is.Empty);
             Assert.That(p.Host.Room.Mods.Count, Is.EqualTo(2));
         }
 
-        // A late joiner opens the room with the mods on, a reload composes them again: either way the wing
-        // stands on the house, and reverting the house takes it the same as on the host.
         [Test]
         public void ALateJoinerAndAReloadTakeTheWingWithTheHouse()
         {

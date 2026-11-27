@@ -16,20 +16,17 @@ public class GameVoice : MonoBehaviour
     string said = "", guess = "";
     bool talking, held, dropped, released;
 
-    /// <summary>The voice, or null where the game doesn't serve Claude.</summary>
     public static GameVoice Instance { get; private set; }
 
-    /// <summary>The recogniser in use, once there has been a hold; for the probe.</summary>
     public ISpeech Speech => speech;
 
-    /// <summary>Whether a hold is going, from the press until the recogniser has finished.</summary>
     public bool Talking => talking;
 
     void Awake()
     {
         Instance = this;
         chat = GetComponent<GameChat>();
-        QuickExit.BeforeExit += Drop; // some players have no OnApplicationQuit
+        QuickExit.BeforeExit += Drop;
     }
 
     void OnDestroy()
@@ -75,7 +72,6 @@ public class GameVoice : MonoBehaviour
                 && (pad.leftStickButton.wasPressedThisFrame || pad.rightStickButton.wasPressedThisFrame));
     }
 
-    /// <summary>Starts a hold, as the key does. False if one can't start now.</summary>
     public bool Press()
     {
         if (talking || !chat.CanOpen) return false;
@@ -94,7 +90,6 @@ public class GameVoice : MonoBehaviour
         return true;
     }
 
-    /// <summary>Ends a hold, as letting go does: what was said goes once the recogniser has finished.</summary>
     public void Release()
     {
         if (!talking) return;
@@ -103,7 +98,6 @@ public class GameVoice : MonoBehaviour
         speech.Stop();
     }
 
-    /// <summary>Forgets the recogniser, so the next hold makes the chosen one.</summary>
     public void Drop()
     {
         speech?.Dispose();
@@ -149,7 +143,6 @@ public class GameVoice : MonoBehaviour
         chat.Type(Joined(said, guess));
     }
 
-    // Done: a guess still in the box was the best it had, so it goes too.
     void Finish()
     {
         talking = false;

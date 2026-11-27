@@ -56,7 +56,6 @@ namespace PunchySync
             return snap;
         }
 
-        // Many files at once through one `git cat-file --batch`.
         static Dictionary<string, string> Blobs(string clone, string commit, List<string> paths)
         {
             var psi = new ProcessStartInfo("git", "cat-file --batch")
@@ -78,11 +77,11 @@ namespace PunchySync
             foreach (var p in paths)
             {
                 var header = ReadLine(stream).Split(' ');
-                if (header.Length < 3) continue; // "missing"
+                if (header.Length < 3) continue;
                 int size = int.Parse(header[2]);
                 var buffer = new byte[size];
                 for (int read = 0; read < size;) read += stream.Read(buffer, read, size - read);
-                stream.ReadByte(); // the newline after the blob
+                stream.ReadByte();
                 output[p] = Encoding.UTF8.GetString(buffer);
             }
             writer.Join();

@@ -1,9 +1,9 @@
+// The aim marker (AimMarker): ribbons on the ground. No textures: a bright core with a dark rim, so
+// it reads on sand, snow and water alike. UV x is metres along the ribbon, y its side (-1 to 1), z
+// its dash length (0 solid; negative marches the other way). The first pass shows what's hidden
+// behind a hill or a wall, faintly; the second what can be seen. The glow runs past 1 and pulses.
 Shader "Prototype/AimMarker"
 {
-    // The aim marker (AimMarker): ribbons on the ground. No textures: a bright core with a dark rim, so
-    // it reads on sand, snow and water alike. UV x is metres along the ribbon, y its side (-1 to 1), z
-    // its dash length (0 solid; negative marches the other way). The first pass shows what's hidden
-    // behind a hill or a wall, faintly; the second what can be seen. The glow runs past 1 and pulses.
     Properties { }
     SubShader
     {

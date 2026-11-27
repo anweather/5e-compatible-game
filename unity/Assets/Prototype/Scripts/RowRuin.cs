@@ -12,10 +12,8 @@ using UnityEngine;
 public sealed class RowRuin
 {
     const float Soot = 0.16f;
-    // A group of cells falls when one in this many have gone.
     const int GroupFalls = 4;
 
-    /// <summary>What a stretch's cell says now.</summary>
     public struct CellNow
     {
         public bool blocking, burning, ashen;
@@ -26,19 +24,16 @@ public sealed class RowRuin
     readonly RowMesher.Stretch[] stretches;
     readonly Mesh body, roof;
     readonly HeldMesh walk, rail;
-    // Each mesh's triangles whole, what nothing owns (the floor, the chimney), and what's shown now.
     readonly int[] bodyAll, bodyFixed, bodyShown, roofAll, roofShown;
     readonly Color32[] colorsAll, colorsShown;
     readonly bool[] ours, solid, burnt, sooted, roofGone;
     readonly State[] states;
     readonly Dictionary<RowMesher.Stretch, int> index = new();
 
-    /// <summary>Stretches down now, and whether any of the roof has gone.</summary>
     public int Down { get; private set; }
     public bool RoofHurt { get; private set; }
     public int Stretches => stretches.Length;
 
-    /// <summary>Takes over a house's meshes, all of it standing; <paramref name="onACell"/> says which stretches have a wall's cell under them.</summary>
     public RowRuin(RowMesher.Result made, Func<Vector2Int, bool> onACell)
     {
         stretches = made.stretches;
@@ -75,26 +70,22 @@ public sealed class RowRuin
         Write(true);
     }
 
-    /// <summary>The cells under the stretches that are down now (the probe).</summary>
     public IEnumerable<Vector2Int> DownPlaces()
     {
         for (int i = 0; i < stretches.Length; i++)
             if (states[i] == State.Down) yield return stretches[i].Place;
     }
 
-    /// <summary>Whether a window in this stretch has gone dark: its wall fell, fire reached it or its neighbours, or the house fell (half its stretches down).</summary>
     public bool Out(RowMesher.Stretch s) => s != null && index.TryGetValue(s, out int i) && (states[i] == State.Down || sooted[i] || Down * 2 >= stretches.Length);
 
     void Unfix(RowMesher.Run run) => Array.Clear(bodyFixed, run.Index, run.Indices);
 
-    /// <summary>Forgets the fire on the stretches of these cells: they were put back.</summary>
     public void Forget(Func<Vector2Int, bool> put)
     {
         for (int i = 0; i < stretches.Length; i++)
             if (put(stretches[i].Place)) burnt[i] = false;
     }
 
-    /// <summary>Reads the cells and redraws if anything shows differently. True if it did.</summary>
     public bool Look(Func<Vector2Int, CellNow> cell, bool roofBurns)
     {
         int n = stretches.Length, down = 0;
@@ -127,7 +118,6 @@ public sealed class RowRuin
         return true;
     }
 
-    // A part on many cells stands until a share of them have gone; it burns if any of them does.
     static CellNow GroupNow(List<Vector2Int> cells, Func<Vector2Int, CellNow> cell)
     {
         int gone = 0;
@@ -143,7 +133,6 @@ public sealed class RowRuin
         return now;
     }
 
-    // Whether a wall's cell, or the head over a gap, still has what it needs.
     State StateOf(int i)
     {
         if (ours[i] && solid[i]) return State.Standing;
@@ -152,8 +141,6 @@ public sealed class RowRuin
         return Held(s, true) || Held(s, false) ? State.Holed : State.Down;
     }
 
-    // Along the wall one way, over the gaps, to a stretch that stands on its cell, or at the wall's
-    // end to a wall that meets it there (an arch can be a whole wall).
     bool Held(RowMesher.Stretch from, bool before)
     {
         var last = from;
@@ -197,7 +184,6 @@ public sealed class RowRuin
         roof.SetTriangles(roofShown, 0, false);
     }
 
-    // A collider's mesh, what's left of it: what no stretch holds, and what the stretches still up hold.
     sealed class HeldMesh
     {
         readonly Mesh mesh;

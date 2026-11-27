@@ -35,7 +35,6 @@ def needs_packages(package, wanted, project):
 
 
 def unpack(package, project):
-    # Two passes over the tar, so a pack (1.7 GB) is never held in memory: the paths first, then the files.
     paths = {}
     with tarfile.open(package, "r:gz") as tar:
         for member in tar:
@@ -68,7 +67,6 @@ def unpack(package, project):
             with tar.extractfile(member) as src, open(target, "wb") as dst:
                 shutil.copyfileobj(src, dst, 1 << 20)
             written += name == "asset"
-    # A folder entry has no asset: its folder is made, as Unity makes it.
     for guid, target in targets.items():
         if not os.path.exists(target):
             os.makedirs(target, exist_ok=True)

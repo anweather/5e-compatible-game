@@ -24,7 +24,6 @@ public class ApiKeyTests
     {
         folder = Path.Combine(Path.GetTempPath(), "api-key-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(folder);
-        // The tests' own vault, so they run alike on every machine: the Mac has no vault yet (ApiKey.PlatformVault).
         vaultWas = ApiKey.Vault;
         ApiKey.Vault = new TestVault();
         ApiKey.TestFile = Path.Combine(folder, "api-key.dat");
@@ -50,8 +49,6 @@ public class ApiKeyTests
         Directory.Delete(folder, true);
     }
 
-    // Seals by a header and the bytes turned round and mixed, so the plain key is never on disk and a file it didn't write
-    // won't open; it holds nothing in memory, so a new one opens what an old one sealed (as after a restart).
     sealed class TestVault : IKeyVault
     {
         static readonly byte[] Header = Encoding.ASCII.GetBytes("test-vault:");
@@ -160,7 +157,7 @@ public class ApiKeyTests
         Checked(Good);
         ApiKey.Model = "claude-opus-5-5";
         var was = ApiKey.Vault;
-        ApiKey.Vault = (IKeyVault)Activator.CreateInstance(was.GetType()); // nothing is held in memory: it's read from the file
+        ApiKey.Vault = (IKeyVault)Activator.CreateInstance(was.GetType());
         try
         {
             Assert.That(ApiKey.Read(), Is.EqualTo(Good));
@@ -223,7 +220,6 @@ public class ApiKeyTests
         Assert.Throws<InvalidOperationException>(() => ApiWire.Signed(HttpMethod.Get, "http://api.anthropic.com/v1/models", Good));
     }
 
-    // The ways out are few enough to hold to a list: anything else reading the key is a new way to leak it.
     [Test]
     public void OnlyTheWireTheLoopAndTheCheckReadTheKey()
     {
@@ -235,7 +231,6 @@ public class ApiKeyTests
         Assert.That(readers, Is.EqualTo(new[] { "ApiChat.cs", "ApiKeyCheck.cs", "ApiWire.cs", "ChatSetup.cs" }));
     }
 
-    // That path runs a program on the player's PC: nothing but the local screen may set it.
     [Test]
     public void OnlyTheSettingsScreenWritesTheSetup()
     {
@@ -246,7 +241,6 @@ public class ApiKeyTests
             .Where(f => writes.Any(File.ReadAllText(f).Contains))
             .Select(Path.GetFileName).OrderBy(n => n, StringComparer.Ordinal);
         Assert.That(writers, Is.EqualTo(new[] { "ClaudeCheck.cs", "ClaudeSetupSettings.cs" }), "ClaudeCheck keeps a path only for the screen's Check");
-        // The core is the package now (packages/com.anweather.chemistry-core, beside unity/); its tools stay in Prototype/Chemistry.
         var core = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "packages", "com.anweather.chemistry-core"));
         Assert.That(Directory.Exists(core), Is.True, core);
         var coreFiles = Directory.GetFiles(core, "*.cs", SearchOption.AllDirectories)
@@ -307,8 +301,6 @@ public class ApiKeyTests
         throw new TimeoutException("The check never came back.");
     }
 
-    // A stand-in Claude Code install that prints its version and one variable from its environment: a .cmd on Windows,
-    // a shell script elsewhere, so the check runs it the way it would run the real one on that machine.
     string StandInClaude(string version, string variable)
     {
         if (Application.platform == RuntimePlatform.WindowsEditor)

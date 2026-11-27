@@ -25,21 +25,14 @@ public class WindowPanes : MonoBehaviour
     [System.Serializable]
     public struct Pane
     {
-        /// <summary>Its middle, in the building's space.</summary>
         public Vector3 at;
-        /// <summary>Half its width and half its height, as directions.</summary>
         public Vector3 along, up;
-        /// <summary>The way it faces.</summary>
         public Vector3 facing;
-        /// <summary>The light behind it from dusk to dawn (a row's opening, rules/buildings.json "lamp"); clear for none.</summary>
         public Color lamp;
     }
 
-    // The tint and clearness of glass (alpha: how much it hides), and of the gap a shattered pane leaves.
     static readonly Color32 Glass = new Color(0.62f, 0.76f, 0.82f, 0.22f), Gap = new Color(0.025f, 0.022f, 0.02f, 1f);
     static readonly Color ShardTint = new(0.78f, 0.9f, 0.96f);
-    // How hard a thing's hit (N s) breaks the nearest pane, and how near it must be (m). Measured: a
-    // crate at 2.5 m/s hits at about 70, at 8 m/s about 165 (a nudge leaves the glass, a hard shove breaks it).
     const float HeavyImpulse = 120f, Reach = 2.2f;
     const int ShardsPerPane = 24;
 
@@ -51,8 +44,6 @@ public class WindowPanes : MonoBehaviour
     Mesh mesh;
     GameObject shown;
     Color32[] colors;
-    // Each pane's cell (a world index), or -1 where no pane cell stands, and whether it's a gap now. The
-    // mesh may come after the binding (a new world can load before a house has drawn itself).
     int[] cellOf = System.Array.Empty<int>();
     bool[] open = System.Array.Empty<bool>();
     bool[] cracked = System.Array.Empty<bool>();
@@ -64,7 +55,6 @@ public class WindowPanes : MonoBehaviour
 
     void OnDisable() => Hide();
 
-    /// <summary>Draws these panes (a VillageHouse's, from its plan).</summary>
     public void Show(Pane[] made, Material glass)
     {
         panes = made;
@@ -86,7 +76,6 @@ public class WindowPanes : MonoBehaviour
         r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
     }
 
-    /// <summary>Stops drawing them.</summary>
     public void Hide()
     {
         DestroyNow(shown);
@@ -130,7 +119,6 @@ public class WindowPanes : MonoBehaviour
 
     bool Lit => System.Array.Exists(panes, p => p.lamp.maxColorComponent > 0f);
 
-    // A pane's lamp in uv1, linear: what the glass glows at full night; nothing once it's open or out.
     Vector4 Lamp(int pane)
     {
         bool off = (pane < open.Length && open[pane]) || (pane < dark.Length && dark[pane]);
@@ -140,7 +128,6 @@ public class WindowPanes : MonoBehaviour
         return new Vector4(linear.r, linear.g, linear.b, 1f);
     }
 
-    /// <summary>Puts out the lamps whose pane <paramref name="isOut"/> says (by pane index), lighting the rest again.</summary>
     public void Darken(System.Func<int, bool> isOut)
     {
         if (dark.Length != panes.Length) dark = new bool[panes.Length];
@@ -154,7 +141,6 @@ public class WindowPanes : MonoBehaviour
         if (changed) Repaint();
     }
 
-    /// <summary>How many panes show their lamp now, for the probe.</summary>
     public int LampsLit
     {
         get
@@ -166,17 +152,12 @@ public class WindowPanes : MonoBehaviour
         }
     }
 
-    // A corner's place on the pane, and in z its crack: 1 and a seed for the web (Prototype/WindowGlass), 0 for none.
     Vector3 Uv(int pane, int corner)
     {
         bool web = pane < cracked.Length && cracked[pane] && !open[pane];
         return new Vector3(corner == 1 || corner == 2 ? 1f : 0f, corner >= 2 ? 1f : 0f, web ? 1f + CellCrackMesh.WebSeed(pane * 0.37f) : 0f);
     }
 
-    /// <summary>
-    /// Ties each pane to the pane cell it stands on and adds them to <paramref name="byCell"/>, for a new
-    /// world: all glass again, but for those whose cell is already open (a saved game's).
-    /// </summary>
     public void Bind(ChemGrid chemGrid, Dictionary<int, WindowPanes> byCell)
     {
         var grid = chemGrid;
@@ -199,7 +180,6 @@ public class WindowPanes : MonoBehaviour
         Repaint();
     }
 
-    // The pane cell a pane stands on: its own, or beside it (the wall's line runs near a cell's edge).
     static int PaneCellAround(World world, Vector2Int at)
     {
         for (int dy = 0; dy <= 2; dy++)
@@ -211,14 +191,12 @@ public class WindowPanes : MonoBehaviour
         return -1;
     }
 
-    /// <summary>Takes these panes out of <paramref name="byCell"/>: their building is gone.</summary>
     public void Unbind(Dictionary<int, WindowPanes> byCell)
     {
         foreach (int cell in cellOf)
             if (byCell.TryGetValue(cell, out var mine) && mine == this) byCell.Remove(cell);
     }
 
-    /// <summary>A pane cell shattered: its panes (a column, on a taller building) open, with shards and the break sound.</summary>
     public void Shatter(int cell)
     {
         bool sounded = false;
@@ -234,7 +212,6 @@ public class WindowPanes : MonoBehaviour
         Repaint();
     }
 
-    /// <summary>A shattered pane cell is glass again (the dragon's breath put it back).</summary>
     public void Mend(int cell)
     {
         for (int i = 0; i < cellOf.Length; i++)
@@ -242,7 +219,6 @@ public class WindowPanes : MonoBehaviour
         Repaint();
     }
 
-    /// <summary>A pane cell's crack came or went: its panes show it.</summary>
     public void Cracked(int cell, bool on)
     {
         bool changed = false;
@@ -271,7 +247,6 @@ public class WindowPanes : MonoBehaviour
         if (hollow) CloseGaps();
     }
 
-    // A hollow building's shattered panes draw nothing: each folded to a point.
     void CloseGaps()
     {
         var vertices = mesh.vertices;
@@ -286,20 +261,14 @@ public class WindowPanes : MonoBehaviour
         mesh.vertices = vertices;
     }
 
-    /// <summary>The hardest hit by a thing so far (N s), for the probe's measure of HeavyImpulse.</summary>
     public static float HardestHit { get; set; }
 
-    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
         HardestHit = 0f;
     }
 
-    /// <summary>
-    /// A thing hit something: if it hit hard, the pane cell nearest the hit, if one is near, shatters.
-    /// Only the sideways part of the hit counts, so a thing landing on the ground beside a wall doesn't.
-    /// </summary>
     public static void Struck(ChemGrid grid, Collision hit)
     {
         float impulse = Vector3.ProjectOnPlane(hit.impulse, Vector3.up).magnitude;
@@ -309,7 +278,6 @@ public class WindowPanes : MonoBehaviour
         if (best >= 0) ChemEffects.Request(grid, new EffectCommand(EffectKind.Shatter, best % grid.World.W, best / grid.World.W, "", ThingId.None));
     }
 
-    /// <summary>The index of the pane cell nearest <paramref name="point"/>, within <paramref name="metres"/>, or -1.</summary>
     public static int NearestPane(ChemGrid grid, Vector3 point, float metres)
     {
         var world = grid.World;

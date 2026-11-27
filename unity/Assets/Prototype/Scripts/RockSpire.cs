@@ -11,13 +11,10 @@ public static class RockSpire
     const int Variants = 6;
     static readonly Mesh[] spires = new Mesh[Variants], chunks = new Mesh[Variants], slabs = new Mesh[Variants];
 
-    /// <summary>A spire: a tapered, leaning, jagged column, its base at the origin and its point at y = 1.</summary>
     public static Mesh Spire(int seed) => Pick(spires, seed, s => Column(s, new Shape(7, 6, 0.28f, 0.22f, 1.35f, true, 1f)));
 
-    /// <summary>A chunk of ice: a squat, broken block about a metre each way, centred on the origin.</summary>
     public static Mesh Chunk(int seed) => Pick(chunks, seed, s => Centred(Column(s + 101, new Shape(5, 2, 0.3f, 0.05f, 0.35f, false, 1f))));
 
-    /// <summary>A slab of pack ice: a flat broken plate a metre across and a fifth as thick, its underside at the origin.</summary>
     public static Mesh Slab(int seed) => Pick(slabs, seed, s => Column(s + 211, new Shape(6, 1, 0.35f, 0f, 0.15f, false, 0.2f)));
 
     static Mesh Pick(Mesh[] made, int seed, System.Func<int, Mesh> make)
@@ -27,8 +24,6 @@ public static class RockSpire
         return made[i];
     }
 
-    // A column of rings round a crooked middle: each ring Sides points, jittered in and out by Rough,
-    // narrowing to nothing by the top when Pointed (by Taper otherwise), its middle drifting off by Lean.
     readonly struct Shape
     {
         public readonly int Sides, Rings;
@@ -47,7 +42,6 @@ public static class RockSpire
         }
     }
 
-    // Flat-shaded: every face its own vertices, so it reads as broken stone or ice, not a smooth cone.
     static Mesh Column(int seed, Shape shape)
     {
         var rng = new System.Random(seed);

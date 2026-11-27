@@ -14,20 +14,13 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>
-    /// Where a world's cells come from before anyone plays: a pure function from a cell's world
-    /// position to the cell as made. A save stores only what differs from it.
-    /// </summary>
     public interface IChunkSource
     {
-        /// <summary>Names this way of making the world; a save is only loaded over the same.</summary>
         string Version { get; }
 
-        /// <summary>Sets <paramref name="cell"/> (freshly reset to dirt) to the cell at (x, y) as made.</summary>
         void Make(int x, int y, Cell cell);
     }
 
-    /// <summary>A save that doesn't fit: another format, source, rules or size.</summary>
     public sealed class SaveException : Exception
     {
         public SaveException(string message) : base(message) { }
@@ -35,14 +28,8 @@ namespace Chem
 
     public sealed partial class World
     {
-        /// <summary>The save format; a save of another is refused.</summary>
         public const int SaveFormat = 1;
 
-        /// <summary>
-        /// Makes every cell as the source says (as a fresh world starts, or a load before its changes), and takes the
-        /// source as the world's own (Source): every chunk is packed with no changes against it, so no cell is made
-        /// until something reads its chunk (World.Pack.cs). Fire generations go with the cells.
-        /// </summary>
         public void MakeFrom(IChunkSource source)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
@@ -53,7 +40,6 @@ namespace Chem
             ForgetWaterSnapshots();
         }
 
-        /// <summary>The chunks with cells that differ from the source, by row then column.</summary>
         public IReadOnlyList<(int cx, int cy)> ChangedChunks(IChunkSource source)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
@@ -61,7 +47,6 @@ namespace Chem
             return SortedChunks(false).Where(ch => ChangedCells(ch, source, made, scratch).Any()).Select(ch => (ch.X, ch.Y)).ToList();
         }
 
-        /// <summary>The world as play left it, against the source it was made from (finishing the tick in progress first).</summary>
         public string Save(IChunkSource source)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
@@ -85,8 +70,8 @@ namespace Chem
                 ["defense"] = DefenseSystem.Save(),
                 ["raiders"] = new JArray(RaiderSystem.List.Select(SaveRaider)),
             };
-            if (WrapX) save["wrap"] = WrapY ? "torus" : "ew"; // only a world that wraps says so: other saves are as they were
-            if (IsOpen) save["open"] = SaveFills(); // an open world's grounds, the chunks' sources
+            if (WrapX) save["wrap"] = WrapY ? "torus" : "ew";
+            if (IsOpen) save["open"] = SaveFills();
             if (Hold != null || HoldSystem.Plate != 0) save["hold"] = HoldSystem.Save();
             if (progress.Count > 0) save["progress"] = SaveProgress();
             if (hands.Count > 0) save["hands"] = new JArray(hands.Values.Select(SaveHands));
@@ -113,19 +98,12 @@ namespace Chem
             foreach (var ch in SortedChunks(false))
             {
                 var c = SaveChunk(ch, source, made);
-                if (c.Count > 2) saved.Add(c); // more than its x and y
+                if (c.Count > 2) saved.Add(c);
             }
             save["chunks"] = saved;
             return save.ToString(Formatting.None);
         }
 
-        /// <summary>
-        /// A world from a save: made from the source, then the save's changes and state laid over.
-        /// Refused (SaveException) unless the save's format, source and rules are these. A room's save
-        /// takes the room's base rules and the budgets (rules/budgets.json), and composes its mods again.
-        /// A world that was given land (SetLand: a baked map's land.json) loads given the same rows in
-        /// <paramref name="land"/>, and is refused without them or with others.
-        /// </summary>
         public static World Load(string save, Rules rules, IChunkSource source, ModBudgets budgets = null, int[] land = null)
         {
             if (rules == null) throw new ArgumentNullException(nameof(rules));
@@ -156,7 +134,6 @@ namespace Chem
             w.LoadFits(s);
             foreach (var c in s["chunks"] ?? new JArray()) w.LoadChunk((JObject)c);
             w.LoadStarts(s);
-            // The map's buildings by the starting cells as saved, not by the source's alone (a joiner's rows: roomruin).
             w.NoteBaseBuildingsAgain();
             w.LoadLandSet(s, land);
             w.BuildingsIntoStart();
@@ -172,8 +149,6 @@ namespace Chem
             if (!ok) throw new SaveException("This save doesn't fit: " + what);
         }
 
-        // ---------- the world's state between ticks ----------
-
         static JObject SaveRaider(Raider r)
         {
             var status = new JObject();
@@ -188,8 +163,6 @@ namespace Chem
             };
         }
 
-        // A player's cast in progress and grimoire. Only when there are any, so saves without read as they did.
-        // No button is down on a loaded game, so a held cast is saved as a tap, without its hold's ticks.
         static JArray SaveCast(PlayerCast c)
         {
             int meter = c.Holding ? Math.Max(1, c.Meter - c.Extra) : c.Meter;
@@ -197,7 +170,6 @@ namespace Chem
             return new JArray(c.Player, c.First, c.Second, meter, total, c.Window, c.Slot, c.DpadCasting, new JArray(c.Known), c.Charge);
         }
 
-        // A rolling wave; one saved before waves rolled at an angle rolls on along its grid way from where it is.
         static Wave LoadWave(JArray wv)
         {
             var w = new Wave { Spell = (string)wv[0], X = (int)wv[1], Y = (int)wv[2], Dir = (int)wv[3], Width = (int)wv[4], Left = (int)wv[5], Every = (int)wv[6], Age = (int)wv[7], Power = (int)wv[8], MaxMass = (int)wv[9] };
@@ -210,7 +182,6 @@ namespace Chem
             return w;
         }
 
-        // A boulder from before aims (a save with seven numbers) rolls on the grid way it was going.
         static Boulder LoadBoulder(JArray b)
         {
             var o = new Boulder { Spell = (string)b[0], Left = (int)b[4], Every = (int)b[5], Age = (int)b[6] };
@@ -237,7 +208,6 @@ namespace Chem
             casts[c.Player] = c;
         }
 
-        // The machines, whether they have the gates open, and the gates linked to one machine.
         void SaveMachines(JObject save)
         {
             if (GatesOpen) save["gatesOpen"] = true;
@@ -245,7 +215,6 @@ namespace Chem
             if (gateLinks.Count > 0) save["gateLinks"] = new JArray(gateLinks.Select(l => new JArray(l.Gate, l.Machine, l.Open)));
         }
 
-        // The machines, whether they have the gates open, the gates linked to one machine, and the boulders still rolling.
         void LoadMachinesAndBoulders(JObject s)
         {
             GatesOpen = s["gatesOpen"] != null && (bool)s["gatesOpen"];
@@ -298,16 +267,12 @@ namespace Chem
             }
         }
 
-        // ---------- chunks ----------
-
-        // The fit number (World.Fit.cs) when a switch has raised it, and the liquids under each older one a chunk holds.
         void SaveFits(JObject save)
         {
             if (fits != 1) save["fits"] = fits;
             if (fitLiquids.Count > 0) save["fitLiquids"] = new JArray(fitLiquids.OrderBy(f => f.Key).Select(f => new JArray(f.Key, new JArray(f.Value))));
         }
 
-        // Every chunk fits the saved fit number unless its own entry says otherwise (LoadChunk).
         void LoadFits(JObject s)
         {
             fits = (int?)s["fits"] ?? 1;
@@ -315,8 +280,6 @@ namespace Chem
             foreach (var f in s["fitLiquids"] ?? new JArray()) fitLiquids[(int)f[0]] = f[1].Select(id => (string)id).ToArray();
         }
 
-        // The local indices of a chunk's cells that differ from the source's, read where they lie (a packed chunk isn't
-        // unpacked: none of them when it has no changes against a source that is the world's own).
         IEnumerable<int> ChangedCells(Chunk ch, IChunkSource source, Cell made, Cell scratch)
         {
             if (ch.Packed != null && source == Source && ch.Packed.Count == 0) yield break;
@@ -335,8 +298,6 @@ namespace Chem
             a.T == b.T && a.Water == b.Water && a.Kind == b.Kind && a.Frozen == b.Frozen && a.Cover == b.Cover && a.Fire == b.Fire && a.Fuel == b.Fuel
             && a.Gas == b.Gas && a.GasAmt == b.GasAmt && a.Charge == b.Charge && a.Height == b.Height && a.Life == b.Life && a.DampUntil == b.DampUntil && a.Rust == b.Rust && a.Heat == b.Heat && a.Star == b.Star && a.Cracked == b.Cracked && a.Lit == b.Lit && a.Slick == b.Slick && a.Setting == b.Setting;
 
-        // A chunk's coordinates, changed cells and streaming state (just the coordinates when it has neither). A packed
-        // chunk is read where it lies: against the world's own source its record is its changes (SavePacked).
         JObject SaveChunk(Chunk ch, IChunkSource source, Cell made)
         {
             if (ch.Packed != null && source == Source) return SavePacked(ch);
@@ -359,7 +320,6 @@ namespace Chem
             return o;
         }
 
-        // A chunk's coordinates and streaming state (SaveChunk's, and a packed chunk's, World.Pack.cs).
         JObject SaveChunkHeader(Chunk ch)
         {
             var o = new JObject { ["x"] = ch.X, ["y"] = ch.Y };
@@ -373,8 +333,6 @@ namespace Chem
             return o;
         }
 
-        // Rust only when it has some, so saves without it read as they did; a liquid other than water
-        // last, by its id (never its index; in the liquids its chunk was made under), so saves of water read as they did.
         JArray SaveCell(int i, Cell c, string[] liquids)
         {
             var a = SaveCellFields(i, c);
@@ -385,7 +343,6 @@ namespace Chem
             return a;
         }
 
-        // Where a cell's liquid id goes: after Cracked; then its Sets, when it's setting.
         const int LiquidField = 19, SetsField = 20;
 
         static JArray SaveCellFields(int i, Cell c)
@@ -417,11 +374,9 @@ namespace Chem
             }
             foreach (var f in o["fireGen"] ?? new JArray()) ch.FireGeneration[(int)f[0]] = (int)f[1];
             foreach (var a in o["cells"] ?? new JArray()) LoadCell(ch.CellAt((int)a[0]), (JArray)a, LiquidsOf(ch));
-            // An inactive chunk goes in packed (World.Pack.cs): a load unpacks one chunk at a time, only those with changes.
             if (!ch.Active && ch.Packed == null) PackChunk(ch);
         }
 
-        // One saved cell (SaveCell): the fields every save has, then the later ones, 0 when a save leaves them out.
         void LoadCell(Cell c, JArray a, string[] liquids)
         {
             c.T = (string)a[1];
@@ -447,8 +402,6 @@ namespace Chem
             c.ForgetDef();
         }
 
-        // A saved liquid's kind in the rules in force (the save's fingerprint matched them, so they have it), or in the
-        // liquids its chunk was made under (LiquidsOf, InForce for the rules in force) while it waits to be made to fit.
         int LoadLiquid(JArray a, string[] liquids)
         {
             if (a.Count <= LiquidField) return 0;
@@ -457,7 +410,6 @@ namespace Chem
             return kind;
         }
 
-        // A field added after the first save format: 0 when the cell's array stops short of it.
         static int Later(JArray a, int i) => a.Count > i ? (int)a[i] : 0;
     }
 }

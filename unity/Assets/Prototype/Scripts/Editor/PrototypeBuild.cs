@@ -30,12 +30,6 @@ public static class PrototypeBuild
     [MenuItem("Prototype/Build/Windows")]
     public static void Windows() => Build(BuildTarget.StandaloneWindows64, "Builds/Windows/SpellChemistryValley.exe");
 
-    /// <summary>
-    /// The profiling player, into Builds/macOSProfiling/ (Frame Timing Stats is already on in Player
-    /// Settings). From the command line: -batchmode -buildTarget StandaloneOSX -executeMethod
-    /// PrototypeBuild.MacOSProfiling; it exits 0 when the build is good, and with -rebuild-yard (or no
-    /// yard) it builds the yard first.
-    /// </summary>
     [MenuItem("Prototype/Build/macOS (profiling)")]
     public static void MacOSProfiling()
     {
@@ -44,15 +38,6 @@ public static class PrototypeBuild
         if (Application.isBatchMode) EditorApplication.Exit(line.Contains(": OK") ? 0 : 1);
     }
 
-    /// <summary>
-    /// The Windows player with no Editor window, on the Mac or the PC, from a clean tree: what
-    /// UpdateBuild.Players makes for tools/ship-update.sh, in Builds/Update/win/. From the command
-    /// line: -batchmode -nographics -buildTarget Win64 -executeMethod
-    /// PrototypeBuild.BuildWindowsFromCommandLine, with -rebuild-yard (a missing yard is built
-    /// anyway) and -build-version X.Y.Z (Player Settings' version otherwise) if wanted. It exits
-    /// by itself, 0 only for a good build with its PSO collection and shaders inside, and logs
-    /// "HEADLESS BUILD: OK" or "HEADLESS BUILD: FAILED". docs/RELEASING.md.
-    /// </summary>
     public static void BuildWindowsFromCommandLine()
     {
         bool ok = false;
@@ -84,30 +69,19 @@ public static class PrototypeBuild
         return lastContents.Complete;
     }
 
-    // The yard isn't in git and YardAutoBuild doesn't run in batch mode.
     static void BuildYardIfAsked()
     {
         if (File.Exists(Scene) && !Environment.GetCommandLineArgs().Contains("-rebuild-yard")) return;
-        // A fresh checkout has no Generated folder (it isn't in git): the builders write into it.
         if (!AssetDatabase.IsValidFolder("Assets/Prototype/Generated")) AssetDatabase.CreateFolder("Assets/Prototype", "Generated");
         ChemYardBuilder.Build();
-        // A material the first pass creates loses what it's set to after that (37 of them: colours,
-        // transparency, tiling), so only a pass over existing assets makes the yard the game draws.
         ChemYardBuilder.Build();
     }
 
-    static BuildContents.Summary lastContents; // of the player Build made last
+    static BuildContents.Summary lastContents;
 
     const string Exe = "SpellChemistryValley.exe";
-    const string ReadmeTemplate = "ReleaseReadme.txt"; // in the project folder, next to Assets/
+    const string ReadmeTemplate = "ReleaseReadme.txt";
 
-    /// <summary>
-    /// The release zip for Windows players: refuses a dirty git tree (untracked _Recovery*
-    /// aside) and unstable network ids, builds a non-development player into
-    /// Builds/Release/SpellChemistryValley-alpha-VERSION/, adds README.txt and CREDITS.txt,
-    /// and zips it to Builds/Release/SpellChemistryValley-alpha-VERSION-windows.zip.
-    /// Returns a one-line summary (also logged).
-    /// </summary>
     [MenuItem("Prototype/Build/Release (Windows zip)")]
     public static string Release()
     {
@@ -131,7 +105,6 @@ public static class PrototypeBuild
         string line = Build(BuildTarget.StandaloneWindows64, Path.Combine(folder, Exe));
         if (!line.Contains(": OK")) return "Release: FAILED, " + line;
 
-        // Burst's debug information is for us, not for players ("DoNotShip").
         foreach (var debug in Directory.GetDirectories(folder, "*_DoNotShip")) Directory.Delete(debug, true);
         var stamp = ReadStamp();
         File.WriteAllText(Path.Combine(folder, "CREDITS.txt"), Credits.PlainText($"alpha {version} ({stamp.commit})"));
@@ -146,7 +119,6 @@ public static class PrototypeBuild
         return done;
     }
 
-    // Changed or untracked files git reports, without Unity's crash-recovery copies; null if git failed.
     internal static string[] DirtyFiles()
     {
         string status = BuildInfo.RunGit("status --porcelain");
@@ -158,7 +130,6 @@ public static class PrototypeBuild
             .ToArray();
     }
 
-    /// <summary>The repo's LICENSE.md and NOTICE.md, beside the exe, so they ship with the game.</summary>
     public static void CopyLicences(string folder)
     {
         string repo = ChemGrid.Folders.Repo;
@@ -168,10 +139,9 @@ public static class PrototypeBuild
     static string Readme(string version, string commit)
     {
         string text = File.ReadAllText(ReadmeTemplate).Replace("{VERSION}", version).Replace("{COMMIT}", commit);
-        return text.Replace("\r\n", "\n").Replace("\n", "\r\n"); // read in Notepad
+        return text.Replace("\r\n", "\n").Replace("\n", "\r\n");
     }
 
-    // Zips the folder with its contents under one top-level folder, so unzipping makes one folder.
     static void Zip(string folder, string topLevel, string zip)
     {
         using var archive = ZipFile.Open(zip, ZipArchiveMode.Create);
@@ -188,10 +158,8 @@ public static class PrototypeBuild
         return File.Exists(path) ? JsonUtility.FromJson<BuildInfo.StampFile>(File.ReadAllText(path)) : new BuildInfo.StampFile { commit = "unknown" };
     }
 
-    /// <summary>Builds the yard for a platform and returns a one-line summary (also logged).</summary>
     public static string Build(BuildTarget target, string path, BuildOptions options = BuildOptions.None)
     {
-        // Another machine can only join a build whose network ids are the stable ones.
         var unstable = ChemYardBuilder.UnstableNetworkIds();
         if (unstable.Count > 0)
         {
@@ -200,7 +168,6 @@ public static class PrototypeBuild
             return refused;
         }
         SoundBankBuilder.BuildIfOld();
-        // The trees' impostors go into the player through Resources; made from pack trees, so made here when missing.
         if (TreeImpostorBaker.BakeMissing() < 0)
         {
             string refused = $"Build {target}: FAILED, the tree impostors aren't there and can't be baked without a GPU (see above).";
@@ -220,8 +187,6 @@ public static class PrototypeBuild
         lastContents = BuildContents.Of(target, report);
         Debug.Log("PLAYER CONTENTS: " + lastContents.Line);
         var s = report.summary;
-        // Unity can report Succeeded for a build that threw and wrote nothing (seen with a
-        // platform module installed but not yet loaded), so check the output too.
         bool written = File.Exists(path) || Directory.Exists(path);
         bool ok = s.result == BuildResult.Succeeded && s.totalErrors == 0 && written;
         string line = $"Build {target}: {(ok ? "OK" : "FAILED")} (Unity says {s.result}), {s.totalErrors} errors, " +
@@ -233,10 +198,6 @@ public static class PrototypeBuild
     }
 }
 
-// Copies rules/*.json, rules/mods/*.json and all of world/ (every map in world/maps/)
-// into StreamingAssets before any player build, lists the
-// shipped mods beside them (ModMove), and writes StreamingAssets/build.json: the version, the commit (with
-// "-dirty" when the tree has changes) and the build date, for BuildInfo.
 class PackRulesIntoBuild : IPreprocessBuildWithReport
 {
     public int callbackOrder => 0;
@@ -244,7 +205,7 @@ class PackRulesIntoBuild : IPreprocessBuildWithReport
     public void OnPreprocessBuild(BuildReport report)
     {
         Pack("rules");
-        Pack(Path.Combine("rules", "mods")); // the M panel's mods (RuleSwitcher)
+        Pack(Path.Combine("rules", "mods"));
         Chem.ModMove.WriteShippedList(Path.Combine(Application.dataPath, "StreamingAssets", "rules", "mods"));
         int world = PackTree(Path.Combine(ChemGrid.Folders.Repo, "world"), Path.Combine(Application.dataPath, "StreamingAssets", "world"));
         Debug.Log($"Packed {world} files of world/ into the build");
@@ -252,10 +213,6 @@ class PackRulesIntoBuild : IPreprocessBuildWithReport
         AssetDatabase.Refresh();
     }
 
-    /// <summary>
-    /// Set by UpdateBuild while it builds at a version that's only in memory: Unity saves
-    /// that version into ProjectSettings.asset during the build, which isn't a real change.
-    /// </summary>
     internal static bool VersionOnlyInMemory;
 
     static void WriteStamp()
@@ -287,10 +244,6 @@ class PackRulesIntoBuild : IPreprocessBuildWithReport
         Debug.Log($"Packed {files.Length} {folder} files into the build: {string.Join(", ", files.Select(Path.GetFileName))}");
     }
 
-    /// <summary>
-    /// Copies a folder and all under it, every map with its land, cells and themes; what was packed before goes first. A
-    /// generated map (the nine) goes as its world file only: an Editor's bake beside it stays out, and the player bakes it.
-    /// </summary>
     internal static int PackTree(string source, string target)
     {
         if (Directory.Exists(target)) Directory.Delete(target, true);
@@ -305,7 +258,6 @@ class PackRulesIntoBuild : IPreprocessBuildWithReport
         return files.Count;
     }
 
-    // A file a generated map's bake wrote beside its world file.
     static bool ABake(string file) =>
         System.Array.IndexOf(Chem.GeneratedMap.Baked, Path.GetFileName(file)) >= 0 && Chem.GeneratedMap.IsGenerated(Path.GetDirectoryName(file));
 }

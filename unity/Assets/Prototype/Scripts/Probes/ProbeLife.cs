@@ -16,7 +16,6 @@ public class LifeProbe : ProbeScenario
         Check("creatures_placed", life.gullAnchors.Length >= 3 && life.crabSpots.Length >= 15 && life.shoals.Length >= 10,
             $"{life.gullAnchors.Length} gull anchors, {life.crabSpots.Length} crab spots, {life.shoals.Length} shoals");
 
-        // A crab: stand back from it, then walk right up to it.
         var crab = life.crabSpots[0];
         Teleport(crab + V(6f, 0.3f, 0f));
         Cut(crab + V(4f, 3f, 4f), crab);
@@ -30,7 +29,6 @@ public class LifeProbe : ProbeScenario
             after.buried ? "it burrowed into the sand" : $"it moved {(after.pos - before.pos).magnitude:0.0} m");
     }
 
-    // The crab whose home is nearest a spot: where it is and whether it's buried (read from AmbientLife).
     static (Vector3 pos, bool buried) CrabNearest(AmbientLife life, Vector3 spot)
     {
         var field = typeof(AmbientLife).GetField("crabs", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);

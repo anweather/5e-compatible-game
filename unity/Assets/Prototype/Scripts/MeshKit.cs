@@ -17,17 +17,13 @@ public sealed class MeshKit
     readonly List<int> triangles = new();
     readonly List<Vector2> marks = new();
 
-    /// <summary>Where parts go: every point and normal is put through it.</summary>
     public Matrix4x4 Frame = Matrix4x4.identity;
 
-    /// <summary>Faces below this height (after Frame) are darkened toward the ground, by up to Occlusion.</summary>
     public float OcclusionHeight = 1.2f;
     public float Occlusion = 0.35f;
 
-    /// <summary>False for a builder whose colours come from rules and art with alpha 1: nothing it draws glows.</summary>
     public bool Glows = true;
 
-    /// <summary>Parts of this colour are drawn as stone in courses: VillageLit lays the blocks, so they cost no vertices.</summary>
     public Color? Coursed;
 
     public int VertexCount => positions.Count;
@@ -50,14 +46,12 @@ public sealed class MeshKit
         positions.Add(at);
         marks.Add(new Vector2(c == Coursed ? 1f : 0f, 0f));
         normals.Add(Frame.MultiplyVector(n).normalized);
-        // Colours are picked in sRGB, as in a colour picker; the shader works in linear.
         float glow = Glows ? c.a : 0f;
         var lit = new Color(c.r * shade, c.g * shade, c.b * shade, glow);
         colors.Add(QualitySettings.activeColorSpace == ColorSpace.Linear ? new Color(lit.linear.r, lit.linear.g, lit.linear.b, glow) : lit);
         return positions.Count - 1;
     }
 
-    /// <summary>A flat triangle; its front is the side its corners run clockwise from.</summary>
     public void Tri(Vector3 a, Vector3 b, Vector3 c, Color color)
     {
         var n = Vector3.Cross(b - a, c - a).normalized;
@@ -67,14 +61,12 @@ public sealed class MeshKit
         triangles.Add(k);
     }
 
-    /// <summary>A flat triangle facing <paramref name="outward"/>, whichever way its corners run.</summary>
     public void Tri(Vector3 p0, Vector3 p1, Vector3 p2, Color color, Vector3 outward)
     {
         if (Vector3.Dot(Vector3.Cross(p1 - p0, p2 - p0), outward) < 0f) Tri(p0, p2, p1, color);
         else Tri(p0, p1, p2, color);
     }
 
-    /// <summary>A flat quad a b c d (in order round its edge) facing <paramref name="outward"/>.</summary>
     public void Quad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Color color, Vector3 outward)
     {
         if (Vector3.Dot(Vector3.Cross(b - a, c - a), outward) < 0f)
@@ -91,7 +83,6 @@ public sealed class MeshKit
         triangles.Add(l);
     }
 
-    /// <summary>Both sides of a quad (an awning, a sign, a roof's underside).</summary>
     public void Sheet(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Color color)
     {
         var n = Vector3.Cross(b - a, c - a);
@@ -99,7 +90,6 @@ public sealed class MeshKit
         Quad(a, b, c, d, color, -n);
     }
 
-    /// <summary>A box about its centre, turned by <paramref name="turn"/>; <paramref name="top"/> colours its top face.</summary>
     public void Box(Vector3 centre, Vector3 size, Color color, Quaternion turn, Color? top = null)
     {
         var h = size * 0.5f;
@@ -115,11 +105,6 @@ public sealed class MeshKit
 
     public void Box(Vector3 centre, Vector3 size, Color color) => Box(centre, size, color, Quaternion.identity);
 
-    /// <summary>
-    /// A gable's triangular prism: <paramref name="width"/> along x, its base <paramref name="depth"/>
-    /// along z at y = <paramref name="baseY"/>, rising <paramref name="rise"/> to a ridge along x.
-    /// Only the two end triangles: the roof covers the slopes.
-    /// </summary>
     public void GableEnds(float width, float depth, float baseY, float rise, Color color)
     {
         for (int side = -1; side <= 1; side += 2)
@@ -133,7 +118,6 @@ public sealed class MeshKit
         }
     }
 
-    /// <summary>A smooth cylinder from a to b (a log, a post, a well's drum), capped.</summary>
     public void Cylinder(Vector3 a, Vector3 b, float radius, int sides, Color color, bool caps = true)
     {
         var axis = (b - a).normalized;
@@ -150,7 +134,6 @@ public sealed class MeshKit
         for (int s = 0; s < sides; s++)
         {
             int i = first + s * 2;
-            // Clockwise from outside, as Tri and Quad wind: wound the other way a log showed its far inside (issue #47).
             triangles.Add(i);
             triangles.Add(i + 3);
             triangles.Add(i + 1);
@@ -168,7 +151,6 @@ public sealed class MeshKit
         }
     }
 
-    /// <summary>A smooth cone standing on <paramref name="foot"/> (a tower's roof, a hat).</summary>
     public void Cone(Vector3 foot, float radius, float height, int sides, Color color)
     {
         var tip = foot + Vector3.up * height;
@@ -188,7 +170,6 @@ public sealed class MeshKit
         }
     }
 
-    /// <summary>The parts so far as a mesh (32-bit indices if it needs them).</summary>
     public Mesh ToMesh(string name)
     {
         var mesh = new Mesh { name = name };

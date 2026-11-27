@@ -45,7 +45,6 @@ export function kindOf(r) {
   return used.has("set_look") ? "look" : "other";
 }
 
-// Nearest rank, so a percentile is always a run that happened.
 function percentile(values, p) {
   const sorted = values.filter(v => v != null).sort((a, b) => a - b);
   return sorted.length ? sorted[Math.max(0, Math.ceil(sorted.length * p) - 1)] : null;
@@ -68,7 +67,6 @@ function byKind(records) {
   }));
 }
 
-// Each split's share of all the time in runs that finished: a cut-off run has no model time to split.
 function shares(records) {
   const whole = records.filter(r => r.split.model != null);
   const total = sum(whole.map(r => r.split.total));

@@ -10,10 +10,8 @@ using UnityEngine;
 // dither), and switched back once the dither has faded out.
 public sealed class Occluders
 {
-    // Points on the wizard the rays go to, above its feet (m); rays stop this short of them.
     static readonly float[] Heights = { 0.5f, 1.1f, 1.7f };
     const float Clearance = 0.6f;
-    // The most renderers switched at once, and how often the terrain's trees are checked (s).
     const int MaxSwapped = 48;
     const float TreeCheckEvery = 0.1f;
 
@@ -35,10 +33,8 @@ public sealed class Occluders
         this.ditherLit = ditherLit;
     }
 
-    /// <summary>How many renderers are on their dithered copies now.</summary>
     public int Swapped => swapped.Count;
 
-    /// <summary>Whether anything stands between the eye and the wizard; Lit renderers in the way go onto DitherLit.</summary>
     public bool Look(Vector3 eye, Transform held)
     {
         var feet = wizard.position;
@@ -69,7 +65,6 @@ public sealed class Occluders
         return any;
     }
 
-    // The renderers drawn for a collider: its body's, or for a raised wall's invisible blocker, the wall's crags.
     void SwapFor(Collider c)
     {
         if (ditherLit == null || swapped.Count >= MaxSwapped || c is TerrainCollider) return;
@@ -78,7 +73,6 @@ public sealed class Occluders
         else drawn = c.attachedRigidbody != null ? c.attachedRigidbody.gameObject : c.gameObject;
         if (drawn == null) return;
         drawn.GetComponentsInChildren(found);
-        // A collider on its own child (a cabin's wall) is drawn by its siblings.
         if (found.Count == 0 && drawn.transform.parent != null) drawn.transform.parent.GetComponentsInChildren(found);
         foreach (var r in found)
         {
@@ -113,7 +107,6 @@ public sealed class Occluders
         swapped[r] = (own, copy[0]);
     }
 
-    // The DitherLit copy of a Lit material (made once); any other material stays as it is.
     Material Dithered(Material m)
     {
         if (m == null) return null;
@@ -128,7 +121,6 @@ public sealed class Occluders
         return d;
     }
 
-    /// <summary>Puts every switched renderer back on its own materials (unless something else has changed them since: a cabin charred).</summary>
     public void Restore()
     {
         foreach (var pair in swapped)
@@ -139,7 +131,6 @@ public sealed class Occluders
         plain.Clear();
     }
 
-    /// <summary>Restores everything and frees the dithered copies.</summary>
     public void Destroy()
     {
         Restore();
@@ -150,7 +141,6 @@ public sealed class Occluders
         dithered.Clear();
     }
 
-    // A terrain tree whose crown crosses the line from the eye to the wizard.
     bool TreeBetween(Vector3 eye, Vector3 target)
     {
         foreach (var t in Terrain.activeTerrains)
@@ -180,7 +170,6 @@ public sealed class Occluders
         return false;
     }
 
-    // Each species' crown: its radius and height (m), from its model's bounds.
     Vector2[] Crowns(TerrainData data)
     {
         if (crowns.TryGetValue(data, out var c)) return c;
@@ -196,7 +185,6 @@ public sealed class Occluders
         return c;
     }
 
-    // Whether the line passes through a crown: an upright cylinder from a little above the foot to the top.
     static bool Crosses(Vector3 eye, Vector3 target, Vector3 foot, float radius, float height)
     {
         var a = new Vector2(eye.x, eye.z);
@@ -204,7 +192,6 @@ public sealed class Occluders
         var p = new Vector2(foot.x, foot.z);
         float len2 = ab.sqrMagnitude;
         float t = len2 > 1e-4f ? Mathf.Clamp01(Vector2.Dot(p - a, ab) / len2) : 0f;
-        // Closest at the wizard: it stands beside or under the tree, not behind it.
         if (t > 0.98f) return false;
         if ((a + ab * t - p).sqrMagnitude > radius * radius) return false;
         float y = Mathf.Lerp(eye.y, target.y, t);

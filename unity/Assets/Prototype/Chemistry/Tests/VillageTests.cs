@@ -65,7 +65,6 @@ namespace Chem.Tests
             foreach (var lane in plan.Lanes) streets.UnionWith(lane.Cells());
             foreach (var b in plan.Buildings)
             {
-                // Two cells out from the middle of its front is street (one cell of verge, then the street).
                 var (dx, dy) = Sides.Step(b.Door);
                 var f = b.Footprint;
                 int fx = FrontEdge(dx, f.X, f.Right - 1), fy = FrontEdge(dy, f.Y, f.Bottom - 1);
@@ -73,8 +72,6 @@ namespace Chem.Tests
             }
         }
 
-        // The front wall's coordinate along one axis: the low or high edge when the door faces that
-        // way, else the middle.
         static int FrontEdge(int step, int low, int high)
         {
             if (step > 0) return high;
@@ -85,7 +82,6 @@ namespace Chem.Tests
         [Test]
         public void PlotsTheLandRefusesAreSkipped()
         {
-            // Water everywhere west of the well: nothing may stand there.
             var plan = VillageLayout.Lay(Spec(5), (x, y) => x >= 200);
             foreach (var b in plan.Buildings)
                 Assert.That(b.Footprint.X, Is.GreaterThanOrEqualTo(200), $"{b.Kind} at {b.Footprint}");
@@ -132,7 +128,6 @@ namespace Chem.Tests
             Assert.Throws<System.FormatException>(() => VillageLayout.FromJson("{\"villages\": [{\"name\": \"x\"}]}"));
         }
 
-        // Pinned: change it only on purpose (a layout change moves every village's walls).
         [Test]
         public void TheLayoutIsPinned()
         {

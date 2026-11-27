@@ -1,3 +1,4 @@
+// The dragon in the tools (#77): tune and list reach sim.json's dragon, and describe says what it is.
 using System.Linq;
 using Chem.Mcp;
 using Newtonsoft.Json.Linq;
@@ -5,7 +6,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>The dragon in the tools (#77): tune and list reach sim.json's dragon, and describe says what it is.</summary>
     [Category("Simulation")]
     public class DragonToolsTests
     {
@@ -14,7 +14,6 @@ namespace Chem.Tests
 
         static Rules With(Draft d) => Bench.Base.WithMods(new[] { ModPatch.Parse(d.Patch.ToString()) });
 
-        // Every cell of a one-chunk world changed: past a budget of 100 the dragon comes; at never it doesn't.
         static World Changed(Draft d)
         {
             var w = new World(With(d), 64, 64, 7, "dirt");

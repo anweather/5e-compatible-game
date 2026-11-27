@@ -16,9 +16,7 @@ public class GameChat : MonoBehaviour
     const int SourceFontSize = 13;
     const float LevelHeight = 3f, SourceHeight = 20f, LineSeconds = 14f, FadeSeconds = 2f, BoxHeight = 34f, BottomGap = 90f, ShadeAlpha = 0.6f, ShadeEdge = 8f;
     const string Box = "game-chat-box", ToolsKey = "chat.show-tools";
-    /// <summary>Where the Developer menu keeps AccountModel.</summary>
     public const string ModelKey = "chat.account-model";
-    /// <summary>Where a message came from, for the record.</summary>
     public const string FromKeys = "typed", FromVoice = "voice";
     const float BarHeight = 5f, SayAfter = 12f;
     static readonly Color BarColour = new(1f, 0.75f, 0.35f);
@@ -37,10 +35,8 @@ public class GameChat : MonoBehaviour
     GUIStyle lineStyle, boxStyle, talkStyle, sourceStyle;
     Texture2D shade;
 
-    /// <summary>What the API harness is built on: the real wire in play, a stand-in in a probe.</summary>
     public static System.Func<IChatWire> ApiWireMaker { get; set; } = () => new ApiWire();
 
-    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options): a probe sets them.
     [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -48,21 +44,18 @@ public class GameChat : MonoBehaviour
         Instance = null;
     }
 
-    // How long the loop's prompt stays cached: a player's messages can be minutes apart.
     const string PrefixTtl = "1h";
 
     readonly ClaudeChat claudeCode = new();
     ApiChat api;
     IChatHarness harness, pinned;
 
-    /// <summary>What answered last, and answers until the next message picks again. Setting it holds it: only the probe's comparisons do.</summary>
     public IChatHarness Harness
     {
         get => harness ??= claudeCode;
         set => harness = pinned = value;
     }
 
-    /// <summary>What the next message goes to, as the player set it up.</summary>
     public IChatHarness ChosenHarness
     {
         get
@@ -75,31 +68,22 @@ public class GameChat : MonoBehaviour
         }
     }
 
-    /// <summary>The chat, or null where the game doesn't serve Claude.</summary>
     public static GameChat Instance { get; private set; }
 
-    /// <summary>Whether the box is open, taking the keys.</summary>
     public bool Open { get; private set; }
 
-    /// <summary>Whether the box is being filled by voice: it shows the words and takes no keys.</summary>
     public bool Talking { get; set; }
 
-    /// <summary>What the box says until words come, while Talking.</summary>
     public string TalkHint { get; set; } = "";
 
-    /// <summary>What's listening, by name, shown under the box while Talking; null shows nothing.</summary>
     public string TalkSource { get; set; }
 
-    /// <summary>How loud the voice coming in is, 0 to 1, shown under the box while Talking.</summary>
     public float Level { get; set; }
 
-    /// <summary>Whether the box could open now.</summary>
     public bool CanOpen => !Open && !Blocked();
 
-    /// <summary>What's in the box, for the probe.</summary>
     public string Typed => typed;
 
-    /// <summary>What the chat is showing, oldest first, for the probe.</summary>
     public IEnumerable<string> Lines
     {
         get
@@ -108,14 +92,11 @@ public class GameChat : MonoBehaviour
         }
     }
 
-    /// <summary>Whether Claude is still answering, or messages wait for it.</summary>
     public bool Busy => Harness.Busy || waiting.Count > 0;
 
-    /// <summary>The one line about messages waiting for Claude, or null with none.</summary>
     public string Queued => waiting.Count == 0 ? null
         : $"{(turnedAway ? "That's too many, so the last wasn't sent. " : "")}Waiting ({waiting.Count}): {waiting.Peek().message}";
 
-    /// <summary>Whether each tool Claude uses shows in the chat: debugging, in the Developer menu. Otherwise a bar shows how far it's got.</summary>
     public static bool ShowTools
     {
         get => PlayerPrefs.GetInt(ToolsKey, 0) == 1;
@@ -126,7 +107,6 @@ public class GameChat : MonoBehaviour
         }
     }
 
-    /// <summary>Whether the chat leaves the model to the player's account: the Developer menu's way back from Haiku (J-066).</summary>
     public static bool AccountModel
     {
         get => PlayerPrefs.GetInt(ModelKey, 0) == 1;
@@ -137,22 +117,18 @@ public class GameChat : MonoBehaviour
         }
     }
 
-    /// <summary>What the progress bar says now, 0 to 1, for the probe; null with no prompt going.</summary>
     public (float done, string what)? Progress { get; private set; }
 
     void Awake()
     {
         Instance = this;
-        // -claude-stand-in runs this program instead of claude, to test a player without anyone's Claude.
         var args = System.Environment.GetCommandLineArgs();
         int asked = System.Array.IndexOf(args, "-claude-stand-in");
         if (asked >= 0 && asked + 1 < args.Length) ClaudeChat.StandIn = args[asked + 1];
-        // -api-stand-in saves a stand-in key in a folder of its own and answers from ApiStandIn, to test a player's way to the API with no real key.
         if (System.Array.IndexOf(args, "-api-stand-in") >= 0) StandInForTheApi();
-        // -chat-say sends these messages, split on |, once the game is up, to test a player with nobody at its keys.
         int say = System.Array.IndexOf(args, "-chat-say");
         if (say >= 0 && say + 1 < args.Length) StartCoroutine(Says(args[say + 1].Split('|')));
-        QuickExit.BeforeExit += CancelNow; // some players have no OnApplicationQuit
+        QuickExit.BeforeExit += CancelNow;
     }
 
     static void StandInForTheApi()
@@ -198,7 +174,7 @@ public class GameChat : MonoBehaviour
 
     void Update()
     {
-        if (!Open) PauseMenu.KeysTaken = false; // a frame late, so the key that closed the box can't open the menu
+        if (!Open) PauseMenu.KeysTaken = false;
         while (Harness.Take(out var heard)) Show(heard.said, heard.text);
         Progress = ChatBar.Of(ChatTelemetry.Instance != null ? ChatTelemetry.Instance.Current : null);
         if (!Harness.Busy && waiting.Count > 0)
@@ -216,7 +192,6 @@ public class GameChat : MonoBehaviour
         if (!Blocked() && Keyboard.current != null && Keyboard.current.enterKey.wasPressedThisFrame) SetOpen(true);
     }
 
-    // Here and not in OnGUI, which can see a key a frame before the Input System does and so reopen the box.
     void BoxKeys()
     {
         var keys = Keyboard.current;
@@ -247,7 +222,7 @@ public class GameChat : MonoBehaviour
                 break;
             case ClaudeSaid.Failed when ClaudeRun.NeedsSignIn(text):
                 Say(SignInLine);
-                waiting.Clear(); // they'd only fail the same way
+                waiting.Clear();
                 turnedAway = false;
                 ClaudeTerminal.OpenSignIn();
                 break;
@@ -257,14 +232,12 @@ public class GameChat : MonoBehaviour
         }
     }
 
-    /// <summary>A line in the chat.</summary>
     public void Say(string text)
     {
         lines.Add((text, Time.unscaledTime));
         if (lines.Count > MostLines) lines.RemoveAt(0);
     }
 
-    /// <summary>Sends a message to Claude, as Enter does in the box; it waits its turn if Claude is answering.</summary>
     public void Send(string message, string source = FromKeys)
     {
         if (string.IsNullOrWhiteSpace(message)) return;
@@ -289,20 +262,14 @@ public class GameChat : MonoBehaviour
         Harness.Send(message, ChemGrid.Folders.Claude.Path, RulesMcpServer.Url, telemetry.Begin(message, source), () => telemetry.Now);
     }
 
-    /// <summary>
-    /// The sentence refusing a save, on the server's thread: only while a chat message is running, and it didn't ask.
-    /// A terminal's saves stay the player's, who answers Claude's own prompt there. Nothing else in the chat stops one (J-064).
-    /// </summary>
     public static string SaveRefusal()
     {
         var chat = Instance;
         return chat != null && chat.Harness.Busy && !chat.saveAsked ? ClaudeRun.SaveNotAsked : null;
     }
 
-    /// <summary>Fills the box, as typing does; voice comes this way too.</summary>
     public void Type(string text) => typed = text;
 
-    /// <summary>Opens or closes the box; the wizard's controls are off while it's open, and the game plays on.</summary>
     public void SetOpen(bool open)
     {
         if (open == Open) return;
@@ -353,7 +320,7 @@ public class GameChat : MonoBehaviour
         var e = Event.current;
         if (e.type == EventType.KeyDown && e.keyCode is KeyCode.Return or KeyCode.KeypadEnter or KeyCode.Escape)
         {
-            e.Use(); // BoxKeys acts on them
+            e.Use();
             return;
         }
         if (Talking)
@@ -372,7 +339,6 @@ public class GameChat : MonoBehaviour
         focusBox = false;
     }
 
-    // The newest at the bottom, each fading out on its own unless the box is open.
     void DrawLines(float x, float y)
     {
         var colour = GUI.color;
@@ -387,7 +353,6 @@ public class GameChat : MonoBehaviour
         GUI.color = colour;
     }
 
-    // How far Claude has got: what it's on, and a bar under it.
     float DrawBar(float done, string what, float x, float y, Color colour)
     {
         y -= BarHeight;
@@ -403,7 +368,6 @@ public class GameChat : MonoBehaviour
     {
         float high = lineStyle.CalcHeight(new GUIContent(text), Width);
         y -= high;
-        // A dark band behind each line, so it reads over snow and fire alike.
         GUI.color = new Color(0f, 0f, 0f, ShadeAlpha * fade);
         shade ??= Texture2D.whiteTexture;
         GUI.DrawTexture(new Rect(x - ShadeEdge, y, Width + 2f * ShadeEdge, high), shade);

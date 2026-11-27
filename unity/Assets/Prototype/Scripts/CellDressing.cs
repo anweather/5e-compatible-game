@@ -17,13 +17,10 @@ using UnityEngine;
 // ChemGrid.Shaping.cs) by moving the root.
 public sealed partial class CellDressing
 {
-    // The look families this file draws (rules/looks.json), with their forms.
     const string Block = "block", Plant = "plant", Debris = "debris", Deck = "deck", PlateFamily = "plate", Machine = "machine", Wall = "wall", Ground = "ground";
-    // How far a bush follows the drawn ground off its cell's height (m): further, the ground there is a wall or a cliff.
     const float MostBushDrop = 2.5f;
     const string Bush = "bush", Sapling = "sapling", Stump = "stump", Rubble = "rubble";
     const string RustedForm = "rusted", Coil = "coil", GateShut = "gate", GateOpen = "gate-open", Built = "built";
-    // The smoothness of a block whose look doesn't say.
     const float BlockSmoothness = 0.1f;
 
     readonly ChemGrid grid;
@@ -36,11 +33,9 @@ public sealed partial class CellDressing
         this.materials = materials;
     }
 
-    /// <summary>A terrain's look in the rules in force (materials.json "look"), or null.</summary>
     public static LookDef Of(Rules rules, string terrain) =>
         rules.Terrain.TryGetValue(terrain, out var t) ? t.Look : null;
 
-    /// <summary>A terrain's base colour and how high it stands, from the rules in force; magenta for a terrain with no look.</summary>
     public static (Color color, float height) Look(Rules rules, string terrain)
     {
         var look = Of(rules, terrain);
@@ -49,18 +44,14 @@ public sealed partial class CellDressing
 
     static Color ColorOf(LookDef look) => new(look.R, look.G, look.B);
 
-    /// <summary>True for terrains drawn as ground with something standing on it (the plant and debris families).</summary>
     public static bool IsDressed(Rules rules, string terrain) => IsDressed(Of(rules, terrain));
 
-    /// <summary>The same, by the terrain's look (a cell's, World.TerrainOf: no lookup by id).</summary>
     public static bool IsDressed(LookDef look) => look is { Family: Plant or Debris };
 
-    /// <summary>Whether Dress draws a terrain family: the check that rules/looks.json and this file agree.</summary>
     public static bool Draws(string family) => family is Ground or Block or SpireFamily or Plant or Debris or Deck or PlateFamily or Machine or Wall;
 
     float CellSize => grid.cellSize;
 
-    /// <summary>The dressing for a cell with its root at <paramref name="ground"/>, or null when nothing stands on it.</summary>
     public GameObject Build(Cell c, int x, int y, float ground)
     {
         bool wall = grid.World.IsRaisedWall(c);
@@ -79,7 +70,6 @@ public sealed partial class CellDressing
         return root;
     }
 
-    // Everything but flat ground, a wall its house draws and a tree the land drew.
     static bool HasParts(LookDef look) =>
         look != null && look.Family != Ground && !look.Baked && !(look.Family == Wall && look.Form == Built);
 
@@ -141,7 +131,6 @@ public sealed partial class CellDressing
         }
     }
 
-    // A block of the look's height, colour, roughness and glow.
     void DressBlock(Transform root, LookDef look, Color color, Vector3 surface, int x, int y)
     {
         float tall = look.Height;
@@ -161,23 +150,16 @@ public sealed partial class CellDressing
             Shade(r, color, x, y);
             return;
         }
-        // A glowing block keeps its shade and glow in a property block: there are few of them.
         UrpMaterials.SetColor(r, tint, color * Jitter(x, y));
         r.GetPropertyBlock(tint);
         tint.SetColor(EmissionColorId, color * look.Glow);
         r.SetPropertyBlock(tint);
     }
 
-    /// <summary>
-    /// A brush cell's bushes put on a terrain made after them: on a generated map a cell can be dressed before its chunk's
-    /// terrain stands, on the cell's own ground, and the terrain's smoothed heights then left bushes up to a metre off it
-    /// (#220). MapTerrains calls this for each cell under a terrain it makes.
-    /// </summary>
     public static void SeatBushes(GameObject dressing, Terrain t)
     {
         if (dressing == null || !dressing.name.StartsWith(BrushPrefix, System.StringComparison.Ordinal)) return;
         float baseY = t.transform.position.y, cellY = dressing.transform.position.y;
-        // Each clump stands under a foot of its own, at the ground: the foot moves, the clump with it.
         foreach (Transform foot in dressing.transform)
         {
             var p = foot.position;
@@ -190,16 +172,11 @@ public sealed partial class CellDressing
 
     static readonly string BrushPrefix = TerrainIds.Brush + " ";
 
-    // The ground drawn at a point: the chunk terrain's where one stands (its own sampling, as it draws), else the grid's.
     float DrawnGround(Vector3 at) =>
         MapTerrains.Instance != null && MapTerrains.Instance.TerrainAt(at) is { terrainData: not null } t
             ? t.transform.position.y + t.SampleHeight(at)
             : grid.GroundAt(at);
 
-    // Brambles are tall grass: clumps of the terrain's own grass and ferns (its detail prototypes), not the round blobs they
-    // were (Andrew, 2026-11-11: from a little way off they read as lily pads). Each clump sits on the ground drawn under
-    // it, not the cell's middle: on a slope a clump half a cell off the middle floated or sank by up to a metre (#220),
-    // and the drawn ground can stand off the cell's own height. Its foot is an empty at the ground (SeatBushes moves it).
     void DressBrush(Transform root, Vector3 surface, System.Random rng, Color color, int x, int y)
     {
         var grasses = Grasses();
@@ -217,11 +194,9 @@ public sealed partial class CellDressing
             {
                 var clump = Rock(foot, grasses[rng.Next(grasses.Length)], at, wide, tall, rng);
                 foreach (var col in clump.GetComponentsInChildren<Collider>()) Object.Destroy(col);
-                // The terrain's grass casts no shadows (LightTufts); a brush cell's clumps, taller and fewer, still do.
                 foreach (var r in clump.GetComponentsInChildren<Renderer>()) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
                 continue;
             }
-            // No terrain pack: a few blades of the look's colour.
             for (int b = 0; b < 3; b++)
             {
                 var blade = Part(foot, PrimitiveType.Cube, at + new Vector3(Jitter(rng, 0.15f), tall * 0.5f, Jitter(rng, 0.15f)), new Vector3(0.05f, tall, 0.12f), "Leaves", color);
@@ -232,18 +207,9 @@ public sealed partial class CellDressing
         DrawBrushNear(root);
     }
 
-    /// <summary>How far a brush cell's clumps draw (m), at the follow camera's view: about as far as the terrain's own grass.</summary>
     public const float BrushDrawMetres = 250f;
-    // The size the brush LOD measures a cell by (m): a cell and a clump's spread.
     const float BrushLodSize = 2f;
 
-    /// <summary>
-    /// A brush cell's clumps stop drawing past BrushDrawMetres, by the size they take on screen (a LOD group, so the
-    /// Spyglass's zoom draws them further and the Resident Drawer culls them on the GPU). On the nine they were drawn to the
-    /// haze, ~730 m: at the start ~11,400 clumps of ~650 triangles, nearly all past 300 m where a clump is a few pixels in
-    /// the haze, 3.3 ms of the GPU's frame on the Mac (docs/perf/2026-11-23-nine-gpu.md). The cull is the screen height
-    /// that distance gives a BrushLodSize cell at the main camera's field of view, with the quality's LOD bias.
-    /// </summary>
     public static float BrushCullHeight(float fieldOfView, float lodBias) =>
         BrushLodSize * lodBias / (2f * BrushDrawMetres * Mathf.Tan(fieldOfView * 0.5f * Mathf.Deg2Rad));
 
@@ -261,7 +227,6 @@ public sealed partial class CellDressing
 
     const float DefaultFieldOfView = 60f;
 
-    // The terrain's grass and ferns (its detail prototypes' models: the pack's Grass_A..C and Fern_A), or none without the pack.
     static GameObject[] Grasses()
     {
         var template = MapTerrains.Instance != null ? MapTerrains.Instance.template : null;
@@ -278,7 +243,6 @@ public sealed partial class CellDressing
     static GameObject[] grasses;
     static TerrainData grassesOf;
 
-    // Broken stone: a few of the terrain pack's small stones when the grid has them (ChemGrid.wallStones), else rough cubes.
     void DressRubble(Transform root, Vector3 surface, System.Random rng, Color color)
     {
         var stones = grid.wallStones;
@@ -299,7 +263,6 @@ public sealed partial class CellDressing
         }
     }
 
-    // A collider-less shape at a world position and world size, under the (unscaled) root.
     GameObject Part(Transform root, PrimitiveType type, Vector3 at, Vector3 scale, string mat, Color color, float smoothness = 0.1f)
     {
         var go = Primitives.Visual(type);
@@ -310,14 +273,12 @@ public sealed partial class CellDressing
         return go;
     }
 
-    // A shared material, in a per-cell shade so neighbouring parts don't read as one flat sheet.
     void Paint(Renderer r, string mat, Color color, float smoothness, int x, int y)
     {
         r.sharedMaterial = materials.Lit(mat, Color.white, smoothness);
         Shade(r, color, x, y);
     }
 
-    // The renderer's material in the cell's shade: a shared copy (MaterialCache.Shaded), so the dressing batches.
     void Shade(Renderer r, Color color, int x, int y)
     {
         var shade = color * Jitter(x, y);
@@ -332,8 +293,6 @@ public sealed partial class CellDressing
         return 0.86f + 0.24f * n + 0.04f * (((x * 73856093) ^ (y * 19349663)) & 7) / 7f;
     }
 
-    // A shared material's name for a part in a look's colour: its own name in the family's usual
-    // colour, else one for that colour (the cache keeps the first colour a name is asked for).
     static string Tinted(string name, Color color, Color usual) =>
         color == usual ? name : $"{name} {ColorUtility.ToHtmlStringRGB(color)}";
 }

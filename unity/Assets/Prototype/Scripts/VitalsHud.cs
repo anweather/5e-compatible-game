@@ -11,14 +11,11 @@ using UnityEngine;
 // water or fills again (Vitals.Breath), faded in and out the same way.
 public sealed class VitalsHud
 {
-    /// <summary>The margin from the screen's edge, and the portrait's size: DpadHud's block matches them.</summary>
     public const float Margin = 24f, BlockHeight = 80f;
 
     const float BarWidth = 200f, BarHeight = 30f, Gap = 6f, StaminaHeight = 8f;
     const float Inset = 2f;
-    // How fast stamina fades in and out (per second), and how long it stays after the effort stops (s).
     const float FadeRate = 4f, Linger = 0.8f;
-    // How long the health bar glows after its maximum grows (s).
     const float GrowGlow = 1.5f;
 
     static readonly Color GrowColor = new(0.45f, 0.95f, 0.45f);
@@ -36,7 +33,6 @@ public sealed class VitalsHud
     GUIStyle text;
     float staminaShown, inUseUntil, breathShown, breathUntil;
 
-    /// <summary>Draws the vitals for <paramref name="who"/>; the height they take at the top left.</summary>
     public float Draw(GameObject who, GUIStyle style)
     {
         if (who != wizard) Find(who);
@@ -44,7 +40,6 @@ public sealed class VitalsHud
         text ??= new GUIStyle(style) { fontSize = 15, alignment = TextAnchor.MiddleCenter };
         Portrait(new Rect(Margin, Margin, BlockHeight, BlockHeight));
         float x = Margin + BlockHeight + Gap;
-        // Health that upgrades add (Tough) is named on the bar, which glows a moment as it grows.
         string extra = vitals.ExtraHealth > 0 ? $" <color=#b8ffb0>(+{vitals.ExtraHealth})</color>" : "";
         float grew = Mathf.Clamp01(1f - (Time.unscaledTime - vitals.HealthGrewAt) / GrowGlow);
         Bar(new Rect(x, Margin, BarWidth, BarHeight), $"<b>Health</b> {Mathf.CeilToInt(vitals.Health)}/{Mathf.CeilToInt(vitals.HealthMax)}{extra}", vitals.Health / vitals.HealthMax, Color.Lerp(HealthColor, GrowColor, grew));
@@ -66,7 +61,6 @@ public sealed class VitalsHud
         move = inputs != null ? WizardRig.Field(inputs, "move", isPublic: true) : null;
     }
 
-    // The placeholder portrait: a framed square with the wizard's headwear over its face over its robe.
     void Portrait(Rect r)
     {
         var look = outfit != null ? outfit.Look : null;
@@ -89,7 +83,6 @@ public sealed class VitalsHud
         Fill(new Rect(inner.x + w * 0.44f, inner.y + h * 0.02f, w * 0.12f, h * 0.13f), hat);
     }
 
-    // Stamina under the bars while it's in use, fading in and out.
     void Stamina(Rect r)
     {
         if (InUse() || vitals.Stamina < Vitals.StaminaMax) inUseUntil = Time.unscaledTime + Linger;
@@ -99,7 +92,6 @@ public sealed class VitalsHud
         Bar(r, "", vitals.Stamina / Vitals.StaminaMax, StaminaColor, staminaShown);
     }
 
-    // Breath while it runs down or fills again, fading in and out like stamina; drowning, the bar's empty and darker.
     void Breath(Rect r)
     {
         var breath = vitals.Breath;
@@ -113,7 +105,6 @@ public sealed class VitalsHud
         Bar(r, label, (float)breath.Share, colour, breathShown);
     }
 
-    // Sprinting (the sprint held while moving), swimming or rolling.
     bool InUse()
     {
         if (surface != null && surface.Swimming) return true;
@@ -139,6 +130,5 @@ public sealed class VitalsHud
         GUI.color = Color.white;
     }
 
-    // The look's colours are matte (alpha 0 is VillageLit's no-glow); drawn on the HUD, opaque.
     static Color Opaque(Color c) => new(c.r, c.g, c.b, 1f);
 }

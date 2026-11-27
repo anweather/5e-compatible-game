@@ -149,7 +149,6 @@ public class GroundBuilderTests
             double h0 = east ? pack.Metres(c, last, a) : pack.Metres(c, 0, a), h1 = east ? pack.Metres(c, last, b) : pack.Metres(c, 0, b);
             return h0 + (h1 - h0) * (at - a);
         }
-        // Full detail (0, 0) beside coarse (1, 0): every sample of the fine edge lies on the coarse one.
         for (int k = 0; k <= 256; k++)
             Assert.That(Edge(chunks[(0, 0)], k / 256f, true), Is.EqualTo(Edge(chunks[(1, 0)], k / 256f, false)).Within(0.02), $"sample {k}");
     }
@@ -217,7 +216,6 @@ public class GroundBuilderTests
         ground.Destroy();
     }
 
-    // A generated map's ground is made a chunk at a time, as its terrains are (#205): the same arrays as made whole.
     [Test]
     public void ChunksMadeOneAtATimeAreTheSameAsMadeWhole()
     {
@@ -236,8 +234,6 @@ public class GroundBuilderTests
         }
     }
 
-    // A ground made a chunk at a time makes only the chunks given terrains, stands the rest on the land, and draws the
-    // same ground as one made whole where it is made; an untouched chunk whose terrain goes gives its data back.
     [Test]
     public void AGroundMadeAChunkAtATimeMakesOnlyWhatItIsAsked()
     {

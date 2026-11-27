@@ -17,13 +17,8 @@ using System;
 
 namespace Chem
 {
-    /// <summary>Paint-like colour mixing: <see cref="Mix(LookColour, LookColour, float)"/>, and <see cref="ColourMixer"/> for more.</summary>
     public static class Colors
     {
-        /// <summary>
-        /// <paramref name="a"/> and <paramref name="b"/> mixed like paint, <paramref name="t"/> of the way
-        /// to <paramref name="b"/> (0 is all a, 1 all b, 0.5 even).
-        /// </summary>
         public static LookColour Mix(LookColour a, LookColour b, float t = 0.5f)
         {
             var m = new ColourMixer();
@@ -31,8 +26,6 @@ namespace Chem
             m.Add(b, t);
             return m.Result(a);
         }
-
-        // ---------- RGB and RYB, both 0 to 1 a channel ----------
 
         internal static void ToRyb(float r, float g, float b, out float red, out float yellow, out float blue)
         {
@@ -95,15 +88,10 @@ namespace Chem
         internal static float Brightness(LookColour c) => Math.Max(c.R, Math.Max(c.G, c.B));
     }
 
-    /// <summary>
-    /// Colours added with weights, mixed like paint (<see cref="Colors"/>). A struct, so mixing allocates
-    /// nothing; a weight of 0 or less is left out.
-    /// </summary>
     public struct ColourMixer
     {
         float red, yellow, blue, bright, weight;
 
-        /// <summary>The total weight added so far.</summary>
         public float Weight => weight;
 
         public void Add(LookColour c, float w = 1)
@@ -117,7 +105,6 @@ namespace Chem
             weight += w;
         }
 
-        /// <summary>The mix, or <paramref name="none"/> when nothing with a weight was added.</summary>
         public LookColour Result(LookColour none)
         {
             if (!(weight > 0)) return none;

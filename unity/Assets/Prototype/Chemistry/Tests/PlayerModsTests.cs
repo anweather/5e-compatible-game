@@ -1,3 +1,5 @@
+// #63: a player's mods live in their data folder, not the install. Reading both folders, the player's copy
+// winning an id both have, the save, and the move out of the install. Every folder here is a temp one.
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -8,10 +10,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// #63: a player's mods live in their data folder, not the install. Reading both folders, the player's copy
-    /// winning an id both have, the save, and the move out of the install. Every folder here is a temp one.
-    /// </summary>
     [Category("Simulation")]
     public class PlayerModsTests
     {
@@ -33,14 +31,10 @@ namespace Chem.Tests
         public void RemoveFolders()
         {
             SetReadOnly(install, false);
-            // Every file, as a failed test can leave one read-only anywhere and Temp shouldn't keep it. The tests check the data folder's files themselves.
             foreach (var file in Directory.GetFiles(root, "*", SearchOption.AllDirectories)) File.SetAttributes(file, FileAttributes.Normal);
             Directory.Delete(root, true);
         }
 
-        // ---------- helpers ----------
-
-        // A copy of the rules with its shipped mods, so a save gone wrong lands here and not in the repo.
         string CopyOfTheRules()
         {
             string rules = Path.Combine(root, "rules"), mods = Directory.CreateDirectory(Path.Combine(rules, "mods")).FullName;
@@ -61,14 +55,12 @@ namespace Chem.Tests
 
         string InPlayers(string id) => Path.Combine(player, id + ".json");
 
-        // A build's rules/mods: the ids listed as shipped, plus whatever an older copy left there.
         void BuildListed(params string[] ids)
         {
             foreach (string id in ids) Shipped(id);
             ModMove.WriteShippedList(install);
         }
 
-        // The files on every platform, as a copy carries their state with it. Only the folder stops a delete on macOS and Linux.
         static void SetReadOnly(string dir, bool on)
         {
             foreach (var file in Directory.GetFiles(dir)) File.SetAttributes(file, on ? FileAttributes.ReadOnly : FileAttributes.Normal);
@@ -76,8 +68,6 @@ namespace Chem.Tests
             using var chmod = Process.Start(new ProcessStartInfo("chmod", (on ? "555 \"" : "755 \"") + dir + "\"") { UseShellExecute = false });
             chmod.WaitForExit();
         }
-
-        // ---------- reading ----------
 
         [Test]
         public void TheCatalogListsTheShippedModsAndThePlayers()
@@ -115,8 +105,6 @@ namespace Chem.Tests
             Assert.That(bench.PatchJson("wildfire"), Is.EqualTo(File.ReadAllText(Path.Combine(rules, "mods", "wildfire.json"))));
         }
 
-        // ---------- the same id in both: the player's copy wins, for the list, the tools and a reload ----------
-
         [Test]
         public void ThePlayersCopyWinsAnIdBothHave()
         {
@@ -148,8 +136,6 @@ namespace Chem.Tests
             Assert.That(catalog.Mods, Is.Empty);
         }
 
-        // ---------- saving ----------
-
         static Draft FireDraft(Workbench bench) => bench.Tune(null, "fire.spreadChance", "0.4");
 
         [Test]
@@ -178,8 +164,6 @@ namespace Chem.Tests
             Assert.That(File.ReadAllText(wildfire), Is.EqualTo(shipped));
             Assert.That(ModPatch.Parse(bench.PatchJson("wildfire")).Title, Is.EqualTo("Mine"));
         }
-
-        // ---------- moving out of the install ----------
 
         [Test]
         public void TheBuildListsEveryShippedModAndNothingElse()
@@ -309,8 +293,6 @@ namespace Chem.Tests
             Assert.That(File.Exists(InPlayers("mine")), Is.True);
             Assert.That(File.Exists(InInstall("mine")), Is.False);
         }
-
-        // ---------- lockstep ----------
 
         [Test]
         public void WhereAModLivesChangesNothingInTheRoom()

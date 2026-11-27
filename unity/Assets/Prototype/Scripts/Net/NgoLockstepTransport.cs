@@ -16,10 +16,8 @@ using Chem.Lockstep;
 // Not a port: the sandbox has no peers.
 public sealed class NgoLockstepTransport : ILockstepTransport
 {
-    /// <summary>The longest send: the session splits longer messages (a snapshot) into pieces of this.</summary>
     public const int MessageBytes = 16 * 1024;
 
-    /// <summary>What goes to each client a frame at most; the rest waits, in order, for the next.</summary>
     public const int BytesAFrame = 128 * 1024;
 
     readonly Action<byte[]> toHost;
@@ -30,8 +28,6 @@ public sealed class NgoLockstepTransport : ILockstepTransport
 
     enum Arrival { Ready, Bytes, Left }
 
-    /// <param name="toHost">Sends a client's bytes to the host (an RPC to the server).</param>
-    /// <param name="toClient">Sends the host's bytes to one client (an RPC to that client).</param>
     public NgoLockstepTransport(LockstepRole role, Action<byte[]> toHost, Action<ulong, byte[]> toClient)
     {
         Role = role;
@@ -43,7 +39,6 @@ public sealed class NgoLockstepTransport : ILockstepTransport
 
     public int MaxMessageBytes => MessageBytes;
 
-    /// <summary>The bytes still waiting to go to the clients.</summary>
     public int Waiting
     {
         get
@@ -73,19 +68,12 @@ public sealed class NgoLockstepTransport : ILockstepTransport
         foreach (ulong c in clients) outbox[c].Enqueue(bytes);
     }
 
-    /// <summary>Host: a client's NetChem has spawned and is ready for the session's hello.</summary>
     public void Ready(ulong client) => inbox.Enqueue((Arrival.Ready, client, null));
 
-    /// <summary>Bytes from a client (on the host) or from the host (on a client).</summary>
     public void Arrived(ulong from, byte[] bytes) => inbox.Enqueue((Arrival.Bytes, from, bytes));
 
-    /// <summary>Host: a client went.</summary>
     public void Left(ulong client) => inbox.Enqueue((Arrival.Left, client, null));
 
-    /// <summary>
-    /// Hands what arrived to the session, in order: a client becoming a peer (<paramref name="joined"/>, after which
-    /// broadcasts reach it), bytes, and a client gone (<paramref name="left"/>, before which its outbox is dropped).
-    /// </summary>
     public void Deliver(LockstepSession session, Action<ulong> joined, Action<ulong> left)
     {
         while (inbox.Count > 0)
@@ -111,7 +99,6 @@ public sealed class NgoLockstepTransport : ILockstepTransport
         }
     }
 
-    /// <summary>Sends what waits for each client, up to BytesAFrame each (always one message at the least).</summary>
     public void Flush()
     {
         foreach (ulong c in clients)

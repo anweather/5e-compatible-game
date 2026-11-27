@@ -11,7 +11,6 @@ public class PairGlyphsProbe : ProbeScenario
     const int Columns = 6;
     const float Radius = 64f, CellWidth = 300f, CellHeight = 250f;
 
-    /// <summary>Every merged spell in the hands' table: (left, right, spell), each pair of elements once, thrust then throw.</summary>
     public static List<(string left, string right, string spell)> Pairs(World world)
     {
         var hands = world.Rules.Sim.Hold.Hands;

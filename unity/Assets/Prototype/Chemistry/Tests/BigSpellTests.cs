@@ -44,8 +44,6 @@ namespace Chem.Tests
             }
         }
 
-        // Each one's damage per raider and reach on spell-balance's packed field, against raiders neutral to its element (a
-        // giant spider is weak to lightning, a bone hound to fire).
         static int[] Dealt(string spell) =>
             SpellBalanceTests.Dealt(spell, spell == "thunder-strike" ? "bone-hound" : "giant-spider");
 

@@ -6,26 +6,21 @@ using UnityEngine;
 // the way to land shrinks toward nothing rather than flipping over. Worked out at run time from the map's land (MapLand).
 public static class ShoreField
 {
-    /// <summary>Texels along a side, and a texel's side (m): 4 cells, out over 1.3 km past the world on the sea's side.</summary>
     public const int Texels = 512;
     public const float TexelMetres = 6f;
 
-    /// <summary>The blur's width in texels (a standard deviation).</summary>
     public const float BlurTexels = 3f;
 
-    /// <summary>The distance from each texel to the shore (m): positive off the land, negative on it.</summary>
     public static float[] SignedDistance(bool[] land, int n, float texel)
     {
         var toLand = DistanceTo(land, true, n);
         var toSea = DistanceTo(land, false, n);
         var signed = new float[n * n];
-        // The shore lies half a texel from the centres on either side of it.
         for (int i = 0; i < signed.Length; i++)
             signed[i] = land[i] ? (0.5f - Mathf.Sqrt(toSea[i])) * texel : (Mathf.Sqrt(toLand[i]) - 0.5f) * texel;
         return signed;
     }
 
-    // Squared distance in texels to the nearest texel of this kind.
     static float[] DistanceTo(bool[] land, bool kind, int n)
     {
         const float Far = 1e12f;
@@ -41,7 +36,6 @@ public static class ShoreField
         return d;
     }
 
-    // One line's distance transform, in place: the lower envelope of a parabola on each texel.
     static void Transform(float[] d, int start, int step, int n, float[] line, int[] hull, float[] from)
     {
         for (int i = 0; i < n; i++) line[i] = d[start + i * step];
@@ -68,7 +62,6 @@ public static class ShoreField
 
     static float Crossing(float[] line, int q, int p) => (line[q] + q * q - (line[p] + p * p)) / (2f * (q - p));
 
-    /// <summary>A Gaussian blur across a square field, the edges held.</summary>
     public static float[] Blur(float[] field, int n, float sigma)
     {
         int radius = Mathf.CeilToInt(sigma * 3f);
@@ -98,7 +91,6 @@ public static class ShoreField
         return blurred;
     }
 
-    /// <summary>The map's pixels from the distance: rg the way to land (down the distance), b the distance.</summary>
     public static Color[] Pixels(float[] distance, int n, float texel)
     {
         var pixels = new Color[distance.Length];

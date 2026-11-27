@@ -19,7 +19,6 @@ public class ProgressProbe : ProbeScenario
     const int WallX = 21, WallY = 3;
 
     Gamepad pad;
-    // The save's files as they were at the start (null where there was none), put back by PutTheSaveBack.
     Dictionary<string, byte[]> saveAsFound;
     World Core => grid.World;
     string Me => caster.CastPlayer;
@@ -56,7 +55,6 @@ public class ProgressProbe : ProbeScenario
         Metric("saved_at_start", saved);
         saveAsFound = SaveFiles().ToDictionary(f => f, f => File.Exists(f) ? File.ReadAllBytes(f) : null);
 
-        // A dev build has everything first; F7 then must bring the save's points, never write everything into it.
         for (float t = 0f; t < MostWait && world.PointsOf(Me) != World.AllPoints; t += Time.deltaTime) yield return null;
         Check("a_dev_build_has_everything", world.PointsOf(Me) == World.AllPoints, $"{world.PointsOf(Me)}");
         keeper.PlayFromTheSave(true);
@@ -76,7 +74,7 @@ public class ProgressProbe : ProbeScenario
         yield return AtALockedTower(world, site, fresh);
         yield return Wait(0.3f);
         var row = world.BuildingRowOf(site.Castle);
-        Stand((row.X + WallX, row.Y + WallY)); // the hands probe's cell on the wall
+        Stand((row.X + WallX, row.Y + WallY));
         for (float t = 0f; t < MostWait && world.TowerOf(Me) != null; t += Time.deltaTime) yield return null;
         yield return Wait(0.5f);
         if (fresh)
@@ -86,7 +84,6 @@ public class ProgressProbe : ProbeScenario
             Check("and_nothing_is_cast", world.CastOf(Me)?.Casting != true);
         }
 
-        // Wave 1 beaten by the probe: its raiders burn.
         for (float t = 0f; t < MarchWait && world.Hold.Wave == 1; t += Time.deltaTime)
         {
             foreach (var r in world.Raiders)
@@ -105,7 +102,6 @@ public class ProgressProbe : ProbeScenario
         Shot("offer");
         yield return Wait(0.3f);
         if (run == null || run.Offer.Count < 2) yield break;
-        // The probe's hand: Tough is the one to see, second, wherever the seed put it.
         int toughAt = run.Offer.IndexOf("tough");
         if (toughAt < 0) run.Offer[1] = "tough";
         else if (toughAt != 1) (run.Offer[toughAt], run.Offer[1]) = (run.Offer[1], run.Offer[toughAt]);
@@ -122,7 +118,6 @@ public class ProgressProbe : ProbeScenario
         Check("the_picks_are_listed", keeper.PicksText(world, Me).Contains("Tough: " + tough + " more health"), keeper.PicksText(world, Me));
         Shot("picks");
 
-        // The keep falls to the next raider at it.
         world.Hold.Health = 1;
         for (float t = 0f; t < MarchWait && world.HoldRunning; t += Time.deltaTime) yield return null;
         Check("the_keep_falls", !world.HoldRunning, $"wave {world.Hold.Wave}");
@@ -147,7 +142,6 @@ public class ProgressProbe : ProbeScenario
         caster.enabled = false;
     }
 
-    // The save, its last good copy and a half-written one (ProgressFile).
     static IEnumerable<string> SaveFiles()
     {
         string save = Path.Combine(ProgressKeeper.SaveFolder, ProgressFile.FileName);
@@ -171,8 +165,6 @@ public class ProgressProbe : ProbeScenario
         base.OnDestroy();
     }
 
-    // At a tower whose element isn't unlocked (water, for a fresh player; else the first locked one): the HUD says what unlocks
-    // it, and the triggers never attune a locked element or a locked hand (hold-batch: the room went).
     IEnumerator AtALockedTower(World world, WorldHold site, bool fresh)
     {
         var lockedTower = site.Towers.FirstOrDefault(t => !world.ElementOpen(Me, t.Element));

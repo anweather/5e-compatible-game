@@ -39,11 +39,9 @@ public class TierSweepProbe : ProbeScenario
         var home = wizard.transform.position;
         float window = Mathf.Clamp(Seconds, 3f, 60f), side = MapLand.Current.Layout.ChunkSize;
 
-        // One lap at today's dials first, unrecorded, so the first setting doesn't pay for the warm-up.
         yield return Lap(home, side, window * 0.5f, null);
         foreach (int a in Actives)
         {
-            // The rules want sight past keep; the view's drawn dial stands in for sight here anyway.
             yield return Switch(At(11f) + Clear + $", 'streaming': {{ 'reach': {a}, 'keep': {a + 1}, 'sight': {Mathf.Max(today.Sight, a + 2)} }}");
             foreach (int k in Knowns)
                 foreach (int d in Drawns)
@@ -100,7 +98,6 @@ public class TierSweepProbe : ProbeScenario
         Metric(key + "_known_worker_ms", row.WorkerMs);
     }
 
-    // The eye round a square a chunk a side from home, the wizard under it, frame times into ms (when given).
     IEnumerator Lap(Vector3 home, float side, float seconds, List<float> ms)
     {
         var corners = new[] { Vector3.zero, Vector3.right * side, new Vector3(side, 0f, side), Vector3.forward * side, Vector3.zero };
@@ -126,7 +123,6 @@ public class TierSweepProbe : ProbeScenario
                 if (d <= k) expected++;
         expected *= Actives.Length;
         Check("every_setting_measured", rows.Count == expected && rows.TrueForAll(r => r.Frames > 0), $"{rows.Count}/{expected} settings");
-        // The dials took: more known chunks drawn as meshes at known 12 than at known 4 (same active and drawn).
         var small = rows.Find(r => r.Active == 2 && r.Drawn == 2 && r.Known == 4);
         var large = rows.Find(r => r.Active == 2 && r.Drawn == 2 && r.Known == 12);
         Check("dials_took", large.KnownMeshes > small.KnownMeshes, $"known meshes {small.KnownMeshes} at known 4, {large.KnownMeshes} at 12");

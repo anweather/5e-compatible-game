@@ -9,23 +9,18 @@ using System.Linq;
 
 namespace Chem.Mcp
 {
-    /// <summary>What one run did: the census before and after, the peaks, the speed and the cell hash.</summary>
     public sealed class SimRun
     {
         public Dictionary<string, int> Before { get; } = new Dictionary<string, int>(StringComparer.Ordinal);
         public Dictionary<string, int> After { get; } = new Dictionary<string, int>(StringComparer.Ordinal);
-        /// <summary>The most cells burning, holding water and holding gas at once, and the tick of each.</summary>
         public Dictionary<string, (int count, int tick)> Peaks { get; } = new Dictionary<string, (int, int)>(StringComparer.Ordinal);
         public int CellsChanged { get; set; }
-        /// <summary>The cells that were on fire at some tick of the run.</summary>
         public int CellsBurnt { get; set; }
         public int Ticks { get; set; }
         public double TicksPerSecond { get; set; }
         public string Hash { get; set; }
         public uint Rng { get; set; }
-        /// <summary>Who walked the loop (Simulator.Walk), or null for a run with no walk.</summary>
         public string Walker { get; set; }
-        /// <summary>The walker's stands (the first, then a step each), the times triggers fired and the casts they made.</summary>
         public int Steps { get; set; }
         public int Firings { get; set; }
         public int Casts { get; set; }
@@ -36,7 +31,6 @@ namespace Chem.Mcp
         public const int Side = 64;
         const uint Seed = 20261031;
 
-        /// <summary>The named scenarios, each on one chunk (64 × 64 cells) walled with bedrock.</summary>
         public static readonly IReadOnlyDictionary<string, string> Scenarios = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
             ["fire-on-grass"] = "A meadow with trees, brambles, an oil slick and a pond; a Fire Bolt lands in the middle.",
@@ -46,15 +40,12 @@ namespace Chem.Mcp
             [WalkScenario] = "A meadow with trees, and a wizard running a loop round it, a cell every 2 ticks: for a trigger on steps.",
         };
 
-        /// <summary>The scenario that's only the walk; any scenario walks too when asked (Run's walker).</summary>
         public const string WalkScenario = "walk";
 
-        /// <summary>Ticks between a walker's steps: a run, three cells a second.</summary>
         public const int StepTicks = 2;
 
         const int LoopFrom = 16, LoopTo = Side - 1 - 16;
 
-        /// <summary>The walker's cell after <paramref name="steps"/> steps round the loop, a square from (16, 16) to (47, 47), clockwise.</summary>
         public static (int x, int y) Walk(int steps)
         {
             int side = LoopTo - LoopFrom, i = steps % (side * 4), leg = i / side, along = i % side;
@@ -94,7 +85,6 @@ namespace Chem.Mcp
             return w;
         }
 
-        /// <summary>One chunk of grass with a tree here and there, walled with bedrock.</summary>
         static World Meadow(Rules rules)
         {
             var w = new World(rules, Side, Side, Seed, "grass");
@@ -116,8 +106,6 @@ namespace Chem.Mcp
             w.Cast("fire-bolt", 32, 32, 1);
         }
 
-        // Tufts of grass with bare dirt between them, so fire can't run from tuft to tuft and the
-        // cells burnt are the ones the blast (and its scatter) reached.
         static void Fireball(World w)
         {
             for (int y = 1; y < Side - 1; y++)
@@ -147,10 +135,6 @@ namespace Chem.Mcp
                 }
         }
 
-        /// <summary>
-        /// Runs a scenario for some ticks. With a <paramref name="walker"/>, that player stands at the loop's start and
-        /// steps round it every StepTicks ticks, as Stand commands, so step triggers fire as they would in play.
-        /// </summary>
         public static SimRun Run(Rules rules, string scenario, int ticks, string walker = null)
         {
             var w = Build(rules, scenario);
@@ -216,7 +200,6 @@ namespace Chem.Mcp
             }
         }
 
-        /// <summary>One run in words.</summary>
         public static string Describe(SimRun run, double minTicksPerSecond)
         {
             var changes = run.Before.Keys.Union(run.After.Keys)

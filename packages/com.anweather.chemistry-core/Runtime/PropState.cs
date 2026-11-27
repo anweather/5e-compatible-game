@@ -11,7 +11,6 @@ using System;
 
 namespace Chem
 {
-    /// <summary>What happened to a prop during one tick.</summary>
     [Flags]
     public enum PropEvents
     {
@@ -25,17 +24,11 @@ namespace Chem
 
     public sealed class PropState
     {
-        /// <summary>How long it burns once alight: its material's fuel (a wooden crate burns as wood does), else BurnTicks.</summary>
         public int BurnTime => Def.MaterialDef?.Burns == true ? Def.MaterialDef.Fuel ?? BurnTicks : BurnTicks;
 
-        // How often it loses a hit point burning: one of a flammable material burns its fuel down over its hit
-        // points (a timber crate smoulders for a while), never faster than the sim's burn damage.
         int DamageEvery(int burnEvery) =>
             Def.MaterialDef?.Burns == true ? Math.Max(burnEvery, BurnTime / Math.Max(1, Def.Hp)) : burnEvery;
 
-        // Whether this tick in fire sets it going: at once without a material, else once it has stood in
-        // fire for 1/flammability ticks running (counted from the tick it first stood in it, so a prop needs
-        // no random numbers and catches the same however often it's stepped).
         bool Catches(int tick)
         {
             var m = Def.MaterialDef;
@@ -44,11 +37,8 @@ namespace Chem
             return (tick - heatedSince + 1) * m.Flammability >= 1;
         }
 
-        /// <summary>Ticks a flammable thing burns after its last touch of fire (e-fire-flammable: burning 24).</summary>
         public const int BurnTicks = 24;
-        /// <summary>Anything heavier than this sinks (crates and barrels float, boulders don't).</summary>
         public const int FloatMaxMass = 2;
-        /// <summary>Hit points at or above this mean it can't be hurt (the TS's "boulders shrug").</summary>
         public const int Unbreakable = 999;
 
         const double FloatLift = 2.5, SinkLift = 0.4;
@@ -63,31 +53,20 @@ namespace Chem
         public int Hp { get; private set; }
         public bool Destroyed => Hp <= 0;
         public int BurningTicks { get; private set; }
-        // The tick it began standing in fire (-1: not in fire): one of a flammable material catches after
-        // 1/flammability ticks of it.
         int heatedSince = -1;
         public bool Burning => BurningTicks > 0;
 
-        /// <summary>The first tick it no longer levitates on, or -1 when it isn't levitating.</summary>
         public int LevitateUntil { get; private set; } = -1;
         public bool Levitating(int tick) => tick < LevitateUntil;
 
-        /// <summary>Upward push when fully under water, as a multiple of its weight: above 1 floats.</summary>
         public double Lift => Def.Mass <= FloatMaxMass ? FloatLift : SinkLift;
         public bool Floats => Lift > 1;
 
-        /// <summary>How much of something <paramref name="height"/> tall, bottom at <paramref name="bottom"/>, is below <paramref name="surface"/> (0..1).</summary>
         public static double Submerged(double bottom, double height, double surface) =>
             height <= 0 ? 0 : Math.Max(0, Math.Min(1, (surface - bottom) / height));
 
-        /// <summary>Floats for <paramref name="duration"/> ticks from <paramref name="tick"/>.</summary>
         public void Levitate(int tick, int duration) => LevitateUntil = tick + Math.Max(0, duration);
 
-        /// <summary>
-        /// Switches to new numbers for the same thing (a live mod changed its row in entities.json).
-        /// The damage already taken carries over, but a rule change never breaks it by itself: it
-        /// keeps at least 1 hit point. Burning and levitation carry over unchanged.
-        /// </summary>
         public void UseDef(EntityDef def)
         {
             if (def == null) throw new ArgumentNullException(nameof(def));
@@ -97,7 +76,6 @@ namespace Chem
             Hp = Math.Max(1, def.Hp - taken);
         }
 
-        /// <summary>Takes damage; returns true if this destroyed it.</summary>
         public bool Damage(int amount)
         {
             if (amount <= 0 || Destroyed || Def.Hp >= Unbreakable) return false;
@@ -105,11 +83,6 @@ namespace Chem
             return Destroyed;
         }
 
-        /// <summary>
-        /// One sim tick spent over cell <paramref name="c"/>: fire lights a flammable prop,
-        /// water puts it out, and a burning prop takes 1 damage every <paramref name="burnEvery"/> ticks.
-        /// A levitating prop is above the cell and untouched by it.
-        /// </summary>
         public PropEvents Step(Cell c, int tick, int burnEvery)
         {
             if (Destroyed) return PropEvents.None;

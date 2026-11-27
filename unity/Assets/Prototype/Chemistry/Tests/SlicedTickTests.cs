@@ -1,19 +1,16 @@
+// A tick in slices (World.StepSome): the view may spread one tick over several frames, but the
+// tick must be exactly the tick Step computes, whatever the slicing, or peers that slice
+// differently would part. Commands that arrive while a tick is part done land after it.
 using System.Collections.Generic;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// A tick in slices (World.StepSome): the view may spread one tick over several frames, but the
-    /// tick must be exactly the tick Step computes, whatever the slicing, or peers that slice
-    /// differently would part. Commands that arrive while a tick is part done land after it.
-    /// </summary>
     [Category("Simulation")]
     public class SlicedTickTests
     {
         static Rules R => ChemistryTests.R;
 
-        // Runs ticks with a stop after every n slices (n = 0: never stop), recording each tick's hashes.
         static List<string> Run(World w, int ticks, int everySlices)
         {
             var hashes = new List<string>();
@@ -87,7 +84,6 @@ namespace Chem.Tests
         [Test]
         public void TickBatchesLandBetweenWholeTicks()
         {
-            // A batch arriving while tick 1 is part done: tick 1 finishes, then the batch's cast and tick 2.
             var batch = new TickBatch(2, new[] { new CastCommand("fire-bolt", 30, 30, 1) });
             var reference = ChunkTests.Valley();
             reference.Step();

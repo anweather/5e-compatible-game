@@ -179,7 +179,6 @@ public class LookTintTests
         }
     }
 
-    // A spell's whole entry with its colour moved, as set_spell writes it.
     static string Moved(Rules rules, string spell, string colour)
     {
         var entry = Newtonsoft.Json.Linq.JObject.Parse(rules.ToJson())["spells"].First(s => (string)s["id"] == spell).DeepClone();

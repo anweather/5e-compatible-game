@@ -26,7 +26,6 @@ function once(text, needle) {
     return first;
 }
 
-// The <ul> under a section's heading, as [start of its items, end of its items].
 function list(text, heading) {
     const at = once(text, `<h2>${heading}</h2>`);
     const open = text.indexOf("<ul>", at);
@@ -35,7 +34,6 @@ function list(text, heading) {
     return [open + "<ul>".length, close];
 }
 
-// Top-level <li> blocks in the html, keeping nested ones whole.
 function items(html) {
     const found = [];
     let depth = 0;

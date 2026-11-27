@@ -7,10 +7,8 @@ using System.Globalization;
 
 namespace Chem
 {
-    /// <summary>The kinds of weather, in the fixed order sim.json's weather.weights are read in.</summary>
     public enum WeatherKind { Clear, Cloudy, Windy, Fog, Rain, Storm, Snow }
 
-    /// <summary>The weather at one tick: its kind, how strong it is (0..100, ramping in and out) and the wind it brings.</summary>
     public readonly struct WeatherNow
     {
         public WeatherNow(WeatherKind kind, int strength, int windDir, int period, int meteors = 0)
@@ -24,23 +22,16 @@ namespace Chem
 
         public WeatherKind Kind { get; }
         public int Strength { get; }
-        /// <summary>The prevailing wind's direction (0..3, N E S W), or -1 for none.</summary>
         public int WindDir { get; }
-        /// <summary>Which stretch of weather.periodMinutes this is, from 0.</summary>
         public int Period { get; }
-        /// <summary>How thick a meteor shower is, 0..100: a clear stretch may be one (weather.meteors.showerChance).</summary>
         public int Meteors { get; }
 
-        /// <summary>How hard it rains, 0..100 (rain and storms).</summary>
         public int Rain => Kind == WeatherKind.Rain || Kind == WeatherKind.Storm ? Strength : 0;
         public int Fog => Kind == WeatherKind.Fog ? Strength : 0;
-        /// <summary>How hard it snows, 0..100.</summary>
         public int Snow => Kind == WeatherKind.Snow ? Strength : 0;
-        /// <summary>How much the weather holds fire back, 0..100: rain fully, snow by half.</summary>
         public int Wet => Rain + Snow / 2;
     }
 
-    /// <summary>The SRD's light levels, in order: darkness, dim light, bright light.</summary>
     public enum LightLevel { Dark, Dim, Bright }
 
     public static class Sky
@@ -48,25 +39,19 @@ namespace Chem
         public const int MinutesPerDay = 24 * 60;
         static readonly int Kinds = Enum.GetValues(typeof(WeatherKind)).Length;
 
-        /// <summary>Ticks in one stretch of sim.json minutes (whole ticks, at least 1).</summary>
         public static int Ticks(SimParams p, double minutes) => Math.Max(1, (int)Math.Floor(minutes * 60 * p.TicksPerSecond));
 
-        /// <summary>Game minutes since midnight of day 1 at this tick (day.startHour at tick 0; a day lasts day.lengthMinutes).</summary>
         public static long Minutes(SimParams p, long tick) =>
             (long)Math.Floor(p.Day.StartHour * 60) + tick * MinutesPerDay / Ticks(p, p.Day.LengthMinutes);
 
-        /// <summary>Minutes() for a tick with a fraction, for a view that moves the sun between ticks.</summary>
         public static double MinutesSmooth(SimParams p, double tick) =>
             Math.Floor(p.Day.StartHour * 60) + tick * MinutesPerDay / Ticks(p, p.Day.LengthMinutes);
 
-        /// <summary>A minute of the day as a clock reads it: "09:05".</summary>
         public static string ClockWords(int minuteOfDay) =>
             (minuteOfDay / 60).ToString("00", CultureInfo.InvariantCulture) + ":" + (minuteOfDay % 60).ToString("00", CultureInfo.InvariantCulture);
 
-        /// <summary>A weather as players and tools name it: "rain".</summary>
         public static string WeatherName(WeatherKind kind) => kind.ToString().ToLowerInvariant();
 
-        /// <summary>The weather with this name, any case; null if none.</summary>
         public static WeatherKind? ParseWeather(string name)
         {
             for (int k = 0; k < Kinds; k++)
@@ -77,10 +62,6 @@ namespace Chem
         public static int Day(long minutes) => (int)(minutes / MinutesPerDay) + 1;
         public static int MinuteOfDay(long minutes) => (int)(minutes % MinutesPerDay);
 
-        /// <summary>
-        /// The daylight at this many game minutes (World.Minutes): bright from the end of dawn to the
-        /// start of dusk, dark from the end of dusk to the start of dawn, dim at dawn and dusk (sim.json day).
-        /// </summary>
         public static LightLevel Daylight(DayParams d, long minutes)
         {
             int m = MinuteOfDay(minutes);
@@ -89,14 +70,12 @@ namespace Chem
             return LightLevel.Dim;
         }
 
-        /// <summary>Whether a minute of the day is from hour <paramref name="from"/> up to <paramref name="to"/>, across midnight when from is the later (critters.json hours).</summary>
         public static bool InHours(double from, double to, int minuteOfDay)
         {
             int a = (int)Math.Floor(from * 60), b = (int)Math.Floor(to * 60);
             return a <= b ? minuteOfDay >= a && minuteOfDay < b : minuteOfDay >= a || minuteOfDay < b;
         }
 
-        /// <summary>The weather at this tick.</summary>
         public static WeatherNow Weather(SimParams p, uint seed, int tick)
         {
             var wp = p.Weather;
@@ -106,11 +85,9 @@ namespace Chem
             int ramp = Math.Max(1, Ticks(p, wp.RampMinutes));
             if (kind == WeatherKind.Clear)
             {
-                // A clear stretch after the calm may be a meteor shower, ramping in and out within it.
                 bool shower = period >= wp.CalmPeriods && Hash(seed, period, 3) / 4294967296.0 < wp.ShowerChance;
                 return new WeatherNow(kind, 0, -1, period, shower ? Math.Min(100, Math.Min(at, length - at) * 100 / ramp) : 0);
             }
-            // Ramp in from the start and out toward the end, unless the stretch next door is the same weather.
             int fromStart = period > 0 && KindOf(p, seed, period - 1) == kind ? ramp : at;
             int toEnd = KindOf(p, seed, period + 1) == kind ? ramp : length - at;
             int strength = Math.Min(100, Math.Min(fromStart, toEnd) * 100 / ramp);
@@ -118,12 +95,6 @@ namespace Chem
             return new WeatherNow(kind, strength, windy ? (int)(Hash(seed, period, 2) >> 30) : -1, period);
         }
 
-        /// <summary>
-        /// Weather set by Control Weather at tick <paramref name="from"/> until <paramref name="until"/>,
-        /// at this tick: ramping in from the cast and out toward the end over weather.rampMinutes, a
-        /// storm's wind from the seed and the cast's tick. <paramref name="period"/> is the natural
-        /// weather's stretch, carried through for a view.
-        /// </summary>
         public static WeatherNow Held(SimParams p, uint seed, WeatherKind kind, int from, int until, int tick, int period)
         {
             if (kind == WeatherKind.Clear) return new WeatherNow(kind, 0, -1, period);
@@ -133,10 +104,6 @@ namespace Chem
             return new WeatherNow(kind, strength, windy ? (int)(Hash(seed, from, 4) >> 30) : -1, period);
         }
 
-        /// <summary>
-        /// The weather of one stretch: clear for the first weather.calmPeriods, then picked by
-        /// weather.weights with the seed's hash of the stretch.
-        /// </summary>
         public static WeatherKind KindOf(SimParams p, uint seed, int period)
         {
             var wp = p.Weather;
@@ -153,7 +120,6 @@ namespace Chem
             return WeatherKind.Clear;
         }
 
-        /// <summary>A 32-bit hash of the seed, a stretch and a salt (murmur3's finaliser), the same as sky.ts's hash.</summary>
         public static uint Hash(uint seed, int period, uint salt)
         {
             unchecked

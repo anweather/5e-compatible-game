@@ -11,7 +11,6 @@ public static class GameVolume
 
     static bool loaded;
 
-    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -38,7 +37,6 @@ public static class GameVolume
         set => ambience = Save(AmbienceKey, value);
     }
 
-    /// <summary>Reads the saved settings (once) and sets the listener's volume.</summary>
     public static void Load()
     {
         if (loaded) return;

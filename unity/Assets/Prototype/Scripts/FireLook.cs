@@ -15,7 +15,6 @@ public class FireLook : MonoBehaviour
     ParticleSystem.MinMaxGradient[] colors;
     string current;
 
-    /// <summary>Each look's flames: how tall and wide, their colour (multiplied), how fast they play, and how many more flames.</summary>
     public static (float tall, float wide, Color tint, float speed, float more) FlamesOf(string look) => look switch
     {
         Flare => (1.8f, 1.05f, new Color(1f, 0.95f, 0.75f), 1.7f, 1.6f),
@@ -24,7 +23,6 @@ public class FireLook : MonoBehaviour
         _ => (1f, 1f, Color.white, 1f, 1f),
     };
 
-    // Its smoke's colour (multiplied).
     static Color Smoke(string look) => look switch
     {
         Wood => new Color(0.42f, 0.4f, 0.38f),
@@ -32,12 +30,10 @@ public class FireLook : MonoBehaviour
         _ => Color.white,
     };
 
-    /// <summary>Smoke over a fire of this look (null: plain smoke).</summary>
     public static void SmokeOf(GameObject fx, string look) => On(fx).Set(look ?? "", Smoke(look));
 
     static FireLook On(GameObject fx) => fx.TryGetComponent<FireLook>(out var l) ? l : fx.AddComponent<FireLook>();
 
-    // Retunes the effect's systems from their own settings; nothing to do when the look is unchanged.
     void Set(string look, Color tint)
     {
         if (look == current) return;

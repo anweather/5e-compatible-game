@@ -13,10 +13,8 @@ public class NetCourt : NetworkBehaviour
     readonly NetworkVariable<int> west = new();
     readonly NetworkVariable<int> east = new();
 
-    /// <summary>The spawned one while a game is online; null solo.</summary>
     public static NetCourt Live { get; private set; }
 
-    /// <summary>Goals at the west end and at the east end, the same on every machine.</summary>
     public int West => west.Value;
     public int East => east.Value;
 
@@ -36,7 +34,6 @@ public class NetCourt : NetworkBehaviour
         if (grid != null) grid.WorldReset -= Nil;
     }
 
-    // Host, at an online reset (OnlineReset): 0-0 for everyone. The ball is a thing, back on its spot.
     void Nil()
     {
         if (!OnlineReset.Happened(Peers.Of(grid))) return;
@@ -44,7 +41,6 @@ public class NetCourt : NetworkBehaviour
         east.Value = 0;
     }
 
-    /// <summary>Host: a goal at the east end (or the west), counted and announced to everyone.</summary>
     public void Scored(bool eastEnd)
     {
         if (!IsServer) return;
@@ -56,7 +52,6 @@ public class NetCourt : NetworkBehaviour
     [Rpc(SendTo.ClientsAndHost)]
     void GoalRpc(bool eastEnd, int westGoals, int eastGoals)
     {
-        // The counts travel with the call: the network variables may not have arrived yet.
         if (IsSpawned) BallCourt.Announce(eastEnd, westGoals, eastGoals);
     }
 }

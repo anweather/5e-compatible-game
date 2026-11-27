@@ -11,12 +11,10 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const tools = dirname(fileURLToPath(import.meta.url));
-// The watcher needs bash 4 (declare -A); a Mac's /bin/bash is 3.2.
 const bash4 = spawnSync("bash", ["-c", "declare -A x"]).status === 0;
 const hasTimeout = spawnSync("bash", ["-c", "command -v timeout"]).status === 0;
 const rootIgnoresReadOnly = process.getuid?.() === 0;
 
-// A path as bash reads it on every machine: Git Bash takes C:/... but not C:\... inside a script or a variable.
 const posix = p => p.replace(/\\/g, "/");
 
 function scratch() {
@@ -25,8 +23,6 @@ function scratch() {
   for (const d of [bin, work, bridge, guest, join(dir, "pro"), join(dir, "max")]) mkdirSync(d, { recursive: true });
   for (const f of ["bridge-watch.sh", "bridge.sh"]) copyFileSync(join(tools, f), join(work, f));
   const stub = (f, text) => { writeFileSync(f, text); chmodSync(f, 0o755); };
-  // Hyper-V is a stand-in named outright (BRIDGE_WATCH_POWERSHELL), not found on PATH: on Windows a PATH joined wrongly
-  // let the host's powershell.exe answer, and the test reached the real VMs (#219). done() checks the stand-in was asked.
   stub(join(bin, "powershell"), `#!/usr/bin/env bash
 echo "$*" >> "${dir}/ps-called"
 case "$*" in
@@ -35,7 +31,6 @@ case "$*" in
   *Get-VM*) echo "$STUB_VMS" | tr ' ' '\\n' ;;
 esac
 `);
-  // Nothing here may reach a live host: ssh is a stand-in that fails loudly (done() throws if it was ever run).
   stub(join(bin, "ssh"), `#!/usr/bin/env bash
 echo "$*" >> "${dir}/ssh-called"
 exit 255
@@ -59,7 +54,6 @@ esac
     const r = spawnSync("bash", [join(work, "bridge-watch.sh")], { encoding: "utf8", env: env(extra) });
     return { code: r.status, out: r.stdout + r.stderr };
   };
-  // The watcher as the host runs it (no BRIDGE_WATCH_ONCE, which changes what log returns): its first pass, then stopped.
   const live = async () => {
     const alive = join(bridge, "watch", "alive");
     rmSync(alive, { force: true });

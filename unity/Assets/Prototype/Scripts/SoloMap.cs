@@ -27,7 +27,6 @@ public sealed class SoloMap : MonoBehaviour
         go.AddComponent<SoloMap>();
     }
 
-    /// <summary>The saved map's id, or null when none is saved or this copy no longer has it.</summary>
     public static string Saved()
     {
         string id = PlayerPrefs.GetString(Key, "");
@@ -36,16 +35,10 @@ public sealed class SoloMap : MonoBehaviour
         return System.Array.FindIndex(maps, m => m.id == id) >= 0 ? id : null;
     }
 
-    /// <summary>The map a player starts on with none picked: the hills.</summary>
     public const string FirstMap = "hills-12x10";
 
-    /// <summary>The maps to start on with none picked, the first this copy has: the hills, then the nine.</summary>
     public static readonly string[] FirstMaps = { FirstMap, "nine" };
 
-    /// <summary>
-    /// The map a player build starts on with no -map: the saved pick, else the hills; the valley for a scripted run, whose
-    /// places are the valley's. A copy without the hills plays the nine, and one without either the valley.
-    /// </summary>
     public static string Start(string[] args)
     {
         if (System.Array.IndexOf(args, "-fps-probe") >= 0 || System.Array.IndexOf(args, "-playtest") >= 0) return GameFolders.DefaultMap;
@@ -54,7 +47,6 @@ public sealed class SoloMap : MonoBehaviour
         return First(maps);
     }
 
-    /// <summary>The first of <see cref="FirstMaps"/> in <paramref name="have"/>, else the valley.</summary>
     public static string First((string id, string name)[] have)
     {
         foreach (string id in FirstMaps)
@@ -62,14 +54,12 @@ public sealed class SoloMap : MonoBehaviour
         return GameFolders.DefaultMap;
     }
 
-    /// <summary>Keeps the pick for the next launch.</summary>
     public static void Save(string id)
     {
         PlayerPrefs.SetString(Key, id);
         PlayerPrefs.Save();
     }
 
-    /// <summary>The map after <paramref name="current"/> in <paramref name="all"/>, wrapping; the first for one not in it.</summary>
     public static string Next((string id, string name)[] all, string current)
     {
         int at = System.Array.FindIndex(all, m => m.id == current);
@@ -82,7 +72,6 @@ public sealed class SoloMap : MonoBehaviour
 
     void DrawEntry()
     {
-        // Online, the host's map is the one played, and hosting has its own pick.
         if (NetWizard.Local != null) return;
         maps ??= ChemGrid.Maps();
         if (maps.Length < 2) return;

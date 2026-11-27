@@ -22,30 +22,23 @@ using UnityEngine;
 public sealed class CastHud
 {
     const float OrbRadius = 44f, OrbGap = 14f, MeterWidth = 260f, MeterHeight = 14f, StepHeight = 7f, StepGap = 4f;
-    // How fast a charge step lights up (per second), and the bar's bright leading edge.
     const float StepRate = 9f, EdgeWidth = 3f;
     const float DownTheScreen = 2f / 3f;
-    // The cross's three by three cells: a block about the size of VitalsHud's.
     const float Cell = 56f;
-    // A hand's icon: its radius, how far each sits from the middle, its charge ring, and the merge's flight and slam (s).
     const float HandRadius = 20f, HandApart = 46f, RingIn = HandRadius + 11f, RingOut = HandRadius + 16f, RingGap = 0.025f;
     const float MergeSeconds = 0.14f, SlamSeconds = 0.3f, LockShakeSeconds = 0.45f;
 
     static readonly Color Shade = new(0f, 0f, 0f, 0.55f), Meter = new(1f, 0.82f, 0.3f), Edge = new(1f, 0.96f, 0.8f), Glyph = new(1f, 1f, 1f, 0.9f);
     static readonly Color Gold = new(1f, 0.82f, 0.3f), Grey = new(0.55f, 0.55f, 0.58f);
 
-    /// <summary>How full the cast bar was drawn last, 0 to 1, for the probe.</summary>
     public float Share { get; private set; }
 
-    /// <summary>A hand's icon as drawn last, for the probe: its element, gesture (or NoGesture), lit charge steps, cooling, locked.</summary>
     public (string element, int gesture, int charge, bool cooling, bool locked) HandShown(int hand) => shown[hand];
 
-    /// <summary>Whether a hand's icon was drawn last frame: only while the hand is at work (the probe).</summary>
     public bool HandDrawn(int hand) => drawn[hand];
 
     readonly bool[] drawn = new bool[HandsDef.Count];
 
-    /// <summary>The hands' icons have met in the pair's icon (the merge), and how many slams there have been, for the probe.</summary>
     public bool MergeShown => merge >= 1f && mergedSpell != null;
     public int Slams { get; private set; }
 
@@ -61,7 +54,6 @@ public sealed class CastHud
     string mergedSpell;
     bool slammed;
 
-    /// <summary>Draws both parts for <paramref name="caster"/>.</summary>
     public void Draw(SpellCaster caster, GUIStyle style)
     {
         label ??= new GUIStyle(style) { fontSize = 22, alignment = TextAnchor.MiddleLeft };
@@ -97,7 +89,6 @@ public sealed class CastHud
         Steps(world, cast, caster, meter, y - OrbRadius - 36f);
     }
 
-    // The cast bar at this height (cancelling is on the Controls page, not spelled out here).
     Rect Bar(World world, PlayerCast cast, float cx, float top)
     {
         var meter = new Rect(cx - MeterWidth / 2f, top, MeterWidth, MeterHeight);
@@ -108,8 +99,6 @@ public sealed class CastHud
         Fill(new Rect(meter.x + 2f + Mathf.Max(0f, fill - EdgeWidth), meter.y + 2f, Mathf.Min(fill, EdgeWidth), meter.height - 4f), Edge);
         return meter;
     }
-
-    // ---------- the hands ----------
 
     void Hands(World world, PlayerCast cast, SpellCaster caster)
     {
@@ -139,7 +128,6 @@ public sealed class CastHud
         Hand(world, caster, h, HandsDef.Right, new Vector2(cx + apart, y));
     }
 
-    // The two icons fly together while the core says the hands merge, and slam once they meet; they part at once when they don't.
     void Merge(string merged, SpellCaster caster)
     {
         if (merged == null)
@@ -173,7 +161,6 @@ public sealed class CastHud
             alpha = 0.55f + 0.45f * Mathf.PingPong(Time.unscaledTime * 3f, 1f);
         }
         else if (cooling > 0 || locked) alpha = 0.4f;
-        // Only while the hand is at work, or just refused as locked.
         float since = Time.unscaledTime - caster.LockedAt(hand);
         shown[hand] = (element, gesture, h.Down[hand] ? world.HandCharge(player, hand) : 0, cooling > 0, locked);
         if (!h.Down[hand] && gesture == HandsDef.NoGesture && since >= LockShakeSeconds)
@@ -202,7 +189,6 @@ public sealed class CastHud
         shown[hand] = (element, gesture, lit, cooling > 0, locked);
     }
 
-    // The merged pair: one icon of the two colours, the spell's initials on it, its charge ring at the lower charge, and a slam.
     void Pair(World world, string player, PlayerHands h, Vector2 at)
     {
         string left = world.HandHolds(player, HandsDef.Left), right = world.HandHolds(player, HandsDef.Right);
@@ -223,11 +209,6 @@ public sealed class CastHud
         shown[HandsDef.Right] = (right, gesture, lit, false, false);
     }
 
-    /// <summary>
-    /// A merged pair's icon, without its charge ring or slam: the pair's own glyph (PairGlyphs) on the two colours mixed and
-    /// darkened, so a white glyph reads even on air's pale blue, in a rim of each hand's colour, its own side. The spell's
-    /// initials stand in for a spell with no glyph. For the HUD, and the probe's sheet of every pair.
-    /// </summary>
     public static void PairIcon(string left, string right, string spell, string name, Vector2 at, float r, GUIStyle style)
     {
         Color a = HudDraw.ElementColor(left), b = HudDraw.ElementColor(right);
@@ -243,7 +224,6 @@ public sealed class CastHud
 
     const float RimWidth = 5f;
 
-    // The ring a held gesture charges round its icon, one step a level; none for a spell that doesn't charge, or a tap.
     void ChargeRing(World world, Vector2 at, HandRowDef row, int lit, float[] steps, float grow = 0f)
     {
         int max = row?.Spell != null && World.Chargeable(world.Rules.Spell(row.Spell)) ? World.MaxCharge : 1;
@@ -260,7 +240,6 @@ public sealed class CastHud
         }
     }
 
-    // A gesture's mark on its icon: the thrust a short fat burst at the hand, the throw a streak with an arrowhead, the sweep a ring of points.
     static void Mark(Vector2 at, int gesture, Color colour, float r = HandRadius)
     {
         switch (gesture)
@@ -282,10 +261,8 @@ public sealed class CastHud
         }
     }
 
-    // Clockwise from the top, as HudDraw's rings go.
     static Vector2 Way(float angle) => new(Mathf.Sin(angle), -Mathf.Cos(angle));
 
-    // A small padlock: the shackle, then the body over its lower half.
     static void Lock(Vector2 at)
     {
         HudDraw.Disc(at, 12f, new Color(0f, 0f, 0f, 0.6f));
@@ -302,9 +279,6 @@ public sealed class CastHud
         GUI.Label(new Rect(cx - 120f, top, 240f, 24f), $"<b>{name}</b>", hint);
     }
 
-    // ---------- the bar ----------
-
-    // Between casts, when the last tick was: a cast can start at any moment between two.
     void NoteTick(World world)
     {
         barRunning = false;
@@ -312,11 +286,6 @@ public sealed class CastHud
         (tickSeen, tickAt) = (world.Tick, Time.time);
     }
 
-    // How far through the cast it is, 0 to 1. Each frame the bar closes its share of what's left to fill
-    // against the time left, the ticks still to run less what's gone of this one. So the bar starts empty,
-    // rises evenly wherever between two ticks the cast began, and a held cast, waiting on its last tick, is
-    // full. A tick landing late or early, or a tap ending and the hold's ticks coming off, changes the pace
-    // and never leaps the bar: every press starts as a hold, and those can land on one frame.
     float Progress(World world, PlayerCast cast)
     {
         int passed = cast.Total - cast.Meter, perSecond = world.Rules.Sim.TicksPerSecond;
@@ -326,8 +295,6 @@ public sealed class CastHud
             Share = 0f;
             barAt = Time.time;
         }
-        // The meter's own drain times the ticks in a cast: a tick can run over a few frames (ChemGrid's
-        // budget), so World.Tick can turn a frame or two away from it.
         else if (passed > passedSeen) tickAt = Time.time;
         passedSeen = passed;
         float tick = Mathf.Clamp01((Time.time - tickAt) * perSecond);
@@ -337,7 +304,6 @@ public sealed class CastHud
         return frame + left > 0f ? Share + (1f - Share) * frame / (frame + left) : Share;
     }
 
-    // The levels under the meter, from the second (a tap never shows them), and the held spell's name over the orbs.
     void Steps(World world, PlayerCast cast, SpellCaster caster, Rect meter, float nameY)
     {
         int charge = Mathf.Max(caster.HoldCharge, cast.Charge);
@@ -358,15 +324,12 @@ public sealed class CastHud
         if (spell != null && spell != combo.Spell) HeldName(world.Rules.Spell(spell)?.Name ?? spell, meter.center.x, nameY);
     }
 
-    // The spell a full hold turns the cast into, on a plate of its own so it reads over anything.
     void HeldName(string name, float cx, float y)
     {
         float width = small.CalcSize(new GUIContent(name)).x + 28f;
         Fill(new Rect(cx - width / 2f, y + 2f, width, 28f), Shade);
         GUI.Label(new Rect(cx - 200f, y, 400f, 32f), $"<color=#ffd24a><b>{name}</b></color>", small);
     }
-
-    // ---------- the kit's cross ----------
 
     void Cross(World world, SpellCaster caster)
     {
@@ -393,7 +356,6 @@ public sealed class CastHud
 
     static Vector2 Middle(float x, float y, int column, int row) => new(x + Cell * (column + 0.5f), y + Cell * (row + 0.5f));
 
-    // The hands menu: two hands side by side, plain (their elements show only in the menu and while a hand is at work).
     static void TwoHands(Vector2 at)
     {
         for (int hand = 0; hand < HandsDef.Count; hand++)
@@ -404,7 +366,6 @@ public sealed class CastHud
         }
     }
 
-    // The spell list: covers and a spine.
     static void Book(Vector2 at)
     {
         float w = Cell * 0.26f, h = Cell * 0.32f;

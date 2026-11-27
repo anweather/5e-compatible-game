@@ -7,44 +7,31 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>One change to the land: a shape applied to height, in land units.</summary>
     public sealed class LandStamp
     {
         public const string Flat = "flat", Dome = "dome", Cone = "cone", Ridge = "ridge", Canyon = "canyon", Cliff = "cliff";
         const int Fixed = 256, RoughSalt = 7331, LatticeShift = 4096;
-        // Fixed point: One is 1.0.
         const long One = 1024;
-        // How deep a canyon cuts at most, in land units, to stay inside what can be drawn; its rim takes the rest of the wall.
         const long CanyonDeepest = 112;
-        // A face is a cell wide for this many land units of wall.
         const long FaceSlope = 48;
 
         public int X { get; private set; }
         public int Y { get; private set; }
         public int Radius { get; private set; }
-        /// <summary>At the middle, in land units; below 0 it's a hollow. A canyon's or cliff's wall, however it's signed; below 0 a cliff's high side is the other way.</summary>
         public int Rise { get; private set; }
         public string Profile { get; private set; }
-        /// <summary>A ridge's, canyon's or cliff's line, as a step across the grid; 0, 0 for any other profile.</summary>
         public int AlongX { get; private set; }
         public int AlongY { get; private set; }
-        /// <summary>How uneven, 0 to 100 percent of the height at a cell.</summary>
         public int Rough { get; private set; }
         public int Seed { get; private set; }
 
-        /// <summary>
-        /// A canyon's or cliff's line as a path of points from its middle, in cells, in place of one straight line: empty for a
-        /// straight one. Its face follows the path round its bends, Radius either side of it, and its ends taper over
-        /// three tenths of Radius past the first and last points.
-        /// </summary>
         public IReadOnlyList<(int x, int y)> Path { get; private set; } = Array.Empty<(int x, int y)>();
 
-#pragma warning disable S107 // a stamp's row is its nine fields
+#pragma warning disable S107
         public static LandStamp Make(int x, int y, int radius, int rise, string profile, int alongX, int alongY, int rough, int seed) =>
             new LandStamp { X = x, Y = y, Radius = radius, Rise = rise, Profile = profile, AlongX = alongX, AlongY = alongY, Rough = rough, Seed = seed };
 #pragma warning restore S107
 
-        /// <summary>The same stamp along a path of points from its middle (Path).</summary>
         public LandStamp Along(IEnumerable<(int x, int y)> path)
         {
             var copy = (LandStamp)MemberwiseClone();
@@ -52,7 +39,6 @@ namespace Chem
             return copy;
         }
 
-        /// <summary>A stamp in a command or a save, or null if it isn't one: nine fields, and a path as a tenth.</summary>
         public static LandStamp Read(JToken row)
         {
             if (!(row is JArray a) || (a.Count != 9 && a.Count != 10)) return null;
@@ -62,7 +48,6 @@ namespace Chem
             return stamp.Along(points.Select(p => ((int)p[0], (int)p[1])));
         }
 
-        /// <summary>The row, for a command or a save.</summary>
         public JArray Row
         {
             get
@@ -73,23 +58,18 @@ namespace Chem
             }
         }
 
-        /// <summary>The row as text, for the checksum.</summary>
         public string Text => Row.ToString(Newtonsoft.Json.Formatting.None);
 
         public bool Known =>
             Radius > 0 && Rough >= 0 && Rough <= 100
             && (Path.Count == 0 ? Profile == Flat || Profile == Dome || Profile == Cone || (NeedsLine(Profile) && (AlongX != 0 || AlongY != 0)) : PathKnown);
 
-        // A path is a canyon's or a cliff's, two points or more, each a step from the last.
         bool PathKnown => (Profile == Canyon || Profile == Cliff) && Path.Count >= 2 && Enumerable.Range(1, Path.Count - 1).All(k => Path[k] != Path[k - 1]);
 
-        /// <summary>Whether a profile runs along a line.</summary>
         public static bool NeedsLine(string profile) => profile == Ridge || profile == Canyon || profile == Cliff;
 
-        /// <summary>How far from its middle, in cells, it can reach: Radius, or for a path its furthest point and Radius past it.</summary>
         public int Bound => Path.Count == 0 ? Radius : (int)Root(Path.Max(p => (long)p.x * p.x + (long)p.y * p.y)) + 1 + Radius;
 
-        /// <summary>What it adds at a cell this far from its middle, in land units.</summary>
         public int At(int dx, int dy)
         {
             if (Path.Count > 0) return (int)FormedOnPath(dx, dy);
@@ -108,7 +88,6 @@ namespace Chem
                 case Dome: return Rise * (r2 - d2) / r2;
                 case Cone: return Rise * Fall(Root(d2 * Fixed * Fixed)) / (Radius * (long)Fixed);
                 default:
-                    // Highest on its line, and down to nothing at the line's two ends.
                     long length2 = (long)AlongX * AlongX + (long)AlongY * AlongY;
                     long off = Root(Square((long)dx * AlongY - (long)dy * AlongX) * Fixed * Fixed / length2);
                     long along = Root(Square((long)dx * AlongX + (long)dy * AlongY) * Fixed * Fixed / length2);
@@ -120,7 +99,6 @@ namespace Chem
 
         static long Square(long v) => v * v;
 
-        // The whole square root, the same on every machine.
         static long Root(long v)
         {
             if (v <= 0) return 0;
@@ -133,7 +111,6 @@ namespace Chem
             return r;
         }
 
-        // Smoothed value noise on a lattice this many cells wide: -One to One.
         long Lattice(int x, int y, int cells, int salt)
         {
             x += LatticeShift;
@@ -146,7 +123,6 @@ namespace Chem
             return (near / One * (One - fv) + far / One * fv) / One;
         }
 
-        // Four octaves, 16 cells down to 2: -One to One, mostly within half of that.
         long Fractal(int x, int y, int salt) =>
             (8 * Lattice(x, y, 16, salt) + 4 * Lattice(x, y, 8, salt) + 2 * Lattice(x, y, 4, salt) + Lattice(x, y, 2, salt)) / 15;
 
@@ -156,7 +132,6 @@ namespace Chem
             return t * t / One * (3 * One - 2 * t) / One;
         }
 
-        // Bands of rock: a climb of 0 to One held on ledges, with a short steep riser between them.
         static long Strata(long t, int bands)
         {
             t = Math.Max(0, Math.Min(One, t));
@@ -164,20 +139,16 @@ namespace Chem
             return Math.Min(One, (band * One + Smooth(inside * 2 - One / 2)) / bands);
         }
 
-        // A canyon or a cliff at a cell: a face that wanders, with broken ground beside it, in land units.
         long Formed(int dx, int dy, long d2)
         {
             long length = Root(((long)AlongX * AlongX + (long)AlongY * AlongY) * One * One);
             long across = ((long)dx * AlongY - (long)dy * AlongX) * One * One / length;
             long along = Math.Abs((long)dx * AlongX + (long)dy * AlongY) * One * One / length;
             long reach = Radius * One;
-            // A canyon's floor climbs to the land at both ends, gently enough to walk out.
             long ramp = Math.Min(One, (reach - along) * One / (reach * 3 / 4));
-            // Nothing at the rim of the stamp, so it meets the land round it.
             return FormedAt(X + dx, Y + dy, across, ramp, Smooth((reach - Root(d2 * One * One)) * One / (reach * 3 / 10)));
         }
 
-        // A face across a line at a cell this far across it (fixed point, signed), its floor this far down its ramp, tapered.
         long FormedAt(int x, int y, long across, long ramp, long taper)
         {
             long reach = Radius * One, wall = Math.Abs((long)Rise);
@@ -186,14 +157,11 @@ namespace Chem
             long side = Rise < 0 ? -off : off;
             long height = Profile == Canyon ? CanyonAt(Math.Abs(off), reach, face, wall, ramp, x, y) : CliffAt(side, reach, face, wall, x, y);
             height += wall * Fractal(x, y, 4) * Rough / (100 * One * 3);
-            // A canyon's floor is as deep as it's asked, on any seed: noise past it folds back up, so the floor keeps its grain.
             long deepest = CanyonDepth(wall);
             if (Profile == Canyon && height < -deepest) height = -2 * deepest - height;
             return height * taper / One;
         }
 
-        // Along a path: across is from the nearest point on it, signed as a straight line's (the high side of a cliff on
-        // the same hand all the way), and the ends are where the floor climbs out and the stamp tapers away.
         long FormedOnPath(int dx, int dy)
         {
             long reach = Radius * One, cap = reach * 3 / 10;
@@ -205,10 +173,6 @@ namespace Chem
             return FormedAt(X + dx, Y + dy, across, ramp, taper);
         }
 
-        /// <summary>
-        /// The middle of a canyon's floor, cell by cell from the first point of its line or path to the last, two cells
-        /// wide: where it wanders off the line, this follows it, for a trail along the bottom. Empty for any other profile.
-        /// </summary>
         public IEnumerable<(int x, int y)> Trail()
         {
             if (Profile != Canyon) yield break;
@@ -222,7 +186,6 @@ namespace Chem
                 {
                     long px = ax * One + vx * One * n / steps, py = ay * One + vy * One * n / steps;
                     int cx = X + (int)Div(px, One), cy = Y + (int)Div(py, One);
-                    // Where CanyonAt's off is 0: the line, less how far the floor wanders from it here.
                     long wander = Lattice(cx, cy, 24, 2) * Radius / 5;
                     foreach (long side in new[] { -One / 2, One / 2 })
                     {
@@ -234,7 +197,6 @@ namespace Chem
             }
         }
 
-        // A straight canyon's line as a path: its radius either way of the middle.
         (int x, int y)[] StraightEnds()
         {
             long l = Root(((long)AlongX * AlongX + (long)AlongY * AlongY) * One * One);
@@ -242,15 +204,12 @@ namespace Chem
             return new[] { (-ex, -ey), (ex, ey) };
         }
 
-        // Rounded to the nearest whole, halves up, the same way for either sign.
         static long Div(long v, long by)
         {
             long t = v + by / 2;
             return t >= 0 ? t / by : -((-t + by - 1) / by);
         }
 
-        // The nearest point of the path to a cell: how far across (fixed point, signed), how far along from its start (past
-        // either end the first and last steps run on), and the path's whole length.
         (long across, long at, long length) NearestOnPath(int dx, int dy)
         {
             long best = long.MaxValue, across = 0, at = 0, walked = 0;
@@ -278,7 +237,6 @@ namespace Chem
 
         static long CanyonDepth(long wall) => Math.Min(wall * 2 / 5, CanyonDeepest);
 
-        /// <summary>The least and the most it can add anywhere, whatever its seed: what decides if the land can take it.</summary>
         public (int low, int high) Extent
         {
             get
@@ -291,8 +249,7 @@ namespace Chem
             }
         }
 
-        // Cut down to a floor, the rest of the wall raised as a rim that falls back to nothing.
-#pragma warning disable S107 // the place across it, and the five sizes it's cut to
+#pragma warning disable S107
         long CanyonAt(long off, long reach, long face, long wall, long ramp, int x, int y)
 #pragma warning restore S107
         {
@@ -303,7 +260,6 @@ namespace Chem
             return rim * (One - Smooth((off - half - face) * One / Math.Max(1, reach - half - face))) / One;
         }
 
-        // The high side above the face, sloping back to nothing; a skirt of broken rock at the foot.
         long CliffAt(long off, long reach, long face, long wall, int x, int y)
         {
             long foot = wall / 8;

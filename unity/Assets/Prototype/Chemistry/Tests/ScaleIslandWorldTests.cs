@@ -41,7 +41,6 @@ namespace Chem.Tests
                 double loadMs = watch.Elapsed.TotalMilliseconds;
                 Assert.That(m.Plan.Problems, Is.Empty);
                 Assert.That(m.Plan.ForcedMisses, Is.Empty);
-                // The nine baked first (its rows are read from its own bake), timed apart from the copy's own.
                 watch.Restart();
                 m.Inner.Bake(Path.Combine(root, "maps", "nine"));
                 double nineMs = watch.Elapsed.TotalMilliseconds;
@@ -59,18 +58,13 @@ namespace Chem.Tests
                 Assert.That(rows[map.Spawn.y][map.Spawn.x], Is.EqualTo('@'), "the valley's spawn, moved with the nine");
                 Assert.That(rows.Sum(r => r.Count(ch => ch == '@')), Is.EqualTo(1));
                 int w = report.W, chunks = m.Gen.ChunksW * m.Gen.ChunksH;
-                // The land as it was written: the bake holds none of it once it's done (bake-lean).
                 var land = LandFile.Read(File.ReadAllText(Path.Combine(dir, MapFile.LandName)), report.W, report.H);
-                // A spawn place a square below the peaks, each named once; the nine's own nine among them, the valley's
-                // the map's start.
                 var spawns = WorldPlaces.Load(dir).All.Where(p => p.Kind == "spawn").ToList();
                 Assert.That(spawns.Select(p => p.Middle), Is.EquivalentTo(m.Gen.Spawns.Select(s => (s.X, s.Y))));
                 Assert.That(spawns.Select(p => p.Name).Distinct().Count(), Is.EqualTo(spawns.Count));
                 Assert.That(spawns.Select(p => p.Id).Distinct().Count(), Is.EqualTo(spawns.Count));
                 var start = JObject.Parse(File.ReadAllText(Path.Combine(dir, WorldPlaces.FileName)))["places"].Single(p => (bool?)p["start"] == true);
                 Assert.That(spawns.Single(p => p.Id == (string)start["id"]).Middle, Is.EqualTo(map.Spawn));
-                // Every spawn of the forced squares (the nine's are the nine's own checks) on open, level ground above the
-                // sea, nothing of its chunk's in its clearing.
                 var things = ((JArray)JObject.Parse(File.ReadAllText(Path.Combine(dir, "things.json")))["chunks"]).OfType<JObject>()
                     .ToDictionary(c => ((int)c["chunk"][0], (int)c["chunk"][1]), c => (JArray)c["things"]);
                 var outer = m.Gen.Spawns.Where(s => !s.Held).ToList();
@@ -96,8 +90,6 @@ namespace Chem.Tests
                             Assert.That(Math.Max(Math.Abs(cx * ChunkGen.Size + (int)t[0] - s.X), Math.Abs(cy * ChunkGen.Size + (int)t[1] - s.Y)),
                                 Is.GreaterThanOrEqualTo(ChunkGen.ClearCells), $"{name}: a thing in its clearing");
                 }
-                // The land meets the nine at its rim: round all four sides the first cell out is within a height step
-                // (0.5 m) of the nine's rim cell beside it.
                 int x0 = m.Gen.PinnedX, y0 = m.Gen.PinnedY, pw = m.Gen.PinnedW, ph = m.Gen.PinnedH, worst = 0;
                 for (int t = 0; t < pw; t++)
                 {
@@ -113,7 +105,6 @@ namespace Chem.Tests
                     $"{land.Count(v => v >= ChunkGen.SeaLevel) * 100 / land.Length}% at or above the sea");
                 Assert.That(worst, Is.LessThanOrEqualTo(4), "the biggest step onto the nine's rim");
 
-                // What it cost, and the full map's at the same rates (its 9720 chunks; the World is cells, a Cell an object).
                 var (worldKb, worldChunks) = WorldKbAChunk(dir, rows, map, m.Gen);
                 double files = Directory.GetFiles(dir).Sum(f => new FileInfo(f).Length) / 1048576.0;
                 TestContext.Out.WriteLine($"COSTS the copy, {chunks} chunks: load {loadMs:0} ms (the nine's plan and rim too), the nine's bake {nineMs:0} ms, " +
@@ -130,8 +121,6 @@ namespace Chem.Tests
             }
         }
 
-        // The World a chunk, held as the game holds it (a Cell an object, its land with it), over the nine's 27 x 27 chunks
-        // of the copy's bake: the whole copy's World is more than this VM holds.
         static (double kb, int chunks) WorldKbAChunk(string dir, string[] rows, MapFile map, ChunkGen gen)
         {
             int x0 = gen.PinnedX, y0 = gen.PinnedY, w = gen.PinnedW, h = gen.PinnedH;
@@ -154,8 +143,6 @@ namespace Chem.Tests
             return ((after - before) / 1024.0 / chunks, chunks);
         }
 
-        // A world folder of its own for the copy: the files the plan and the chunks read, the valley and the nine's world
-        // file, and the copy's, so its bakes (the nine's too) never touch the game's.
         static string CopyWorld(string root)
         {
             ScaleIslandTests.CopyInputs(root);
@@ -165,12 +152,10 @@ namespace Chem.Tests
             return dir;
         }
 
-        // What's live on the heap, collected first: a measuring test's only use of the collector.
 #pragma warning disable S1215
         static long Heap() => GC.GetTotalMemory(true);
 #pragma warning restore S1215
 
-        // Every byte the process has allocated: .NET has GC.GetTotalAllocatedBytes, Unity's Mono profile doesn't (0 there).
         static long Allocated() =>
             typeof(GC).GetMethod("GetTotalAllocatedBytes", new[] { typeof(bool) })?.Invoke(null, new object[] { false }) is long n ? n : 0;
 
@@ -182,7 +167,7 @@ namespace Chem.Tests
             o["size"] = new JArray(6 * ChunkGen.Square, 6 * ChunkGen.Square);
             var nine = MapFile.Load(ScaleIslandTests.NineDir);
             o["spawn"] = new JArray(nine.Spawn.x + ChunkGen.Square, nine.Spawn.y + 2 * ChunkGen.Square);
-            o["expects"]["landShare"] = 40; // what its bake makes (its highest and lowest are the full map's)
+            o["expects"]["landShare"] = 40;
             var g = (JObject)o["generated"];
             g["squares"] = new JArray(6, 6);
             g["pinned"][0]["square"] = new JArray(1, 2);
@@ -192,11 +177,6 @@ namespace Chem.Tests
             return o;
         }
 
-        // ---------- the small copy ----------
-
-        // The same layout at 6 x 6: the nine at [1, 2], the sea west and south of it its own (the ring), grass north and
-        // east with a meadow's village (its templates not the nine's, which stand within 3 squares), the ring of sea round
-        // it all with a spire.
         static readonly string[] CopyRows = { "~~~~~~", "~hmhh~", "~NNNh~", "~NNNh~", "~NNNh~", "~~~~~S" };
     }
 }

@@ -31,7 +31,7 @@ namespace Chem.Tests
             made = GeneratedMap.Load(map);
             baked = Path.Combine(root, "baked");
             made.Bake(baked);
-            rows = Path.Combine(root, "rows", "two-squares"); // a map's folder is named for it (MapCheck)
+            rows = Path.Combine(root, "rows", "two-squares");
             Assert.That(MapBake.EnsureRows(map, rows), Is.True);
         }
 
@@ -44,7 +44,6 @@ namespace Chem.Tests
 
         GeneratedSource Source(Rules rules = null) => new GeneratedSource(GeneratedMap.Load(map), rules ?? R);
 
-        // A world as ChemGrid.StartWorld builds one on the generated map, its reach round the spawn active.
         World Peer(GeneratedSource source, Rules rules = null)
         {
             var w = GeneratedSource.MapWorld(source, rows, rules ?? R, 7, out var start);
@@ -61,7 +60,6 @@ namespace Chem.Tests
             foreach (string cells in new[] { MapFile.CellsName, MapFile.LandName, "things.json" }) Assert.That(names, Has.No.Member(cells));
             foreach (string name in names.Where(n => n != GeneratedMap.BakeName && n != WorldPlaces.FileName && n != MapFile.FileName))
                 Assert.That(File.ReadAllText(Path.Combine(rows, name)), Is.EqualTo(File.ReadAllText(Path.Combine(baked, name))), name);
-            // Its places are the bake's but the water bodies, which only the whole map's land finds.
             static List<string> Places(string dir, bool water) => WorldPlaces.Load(dir).All.Where(p => water || p.From != MapFile.LandName).Select(p => p.Id).ToList();
             Assert.That(Places(rows, true), Is.EqualTo(Places(baked, false)));
             Assert.That(GeneratedMap.IsRowsOnly(rows), Is.True);
@@ -82,7 +80,6 @@ namespace Chem.Tests
             var things = ((JArray)JObject.Parse(File.ReadAllText(Path.Combine(baked, "things.json")))["chunks"]).OfType<JObject>()
                 .ToDictionary(c => ((int)c["chunk"][0], (int)c["chunk"][1]), c => (JArray)c["things"]);
             Cell a = new Cell(), b = new Cell();
-            // Every chunk, in an order no bake makes them (from the south-east): a chunk is the same whatever came before.
             for (int cy = made.Gen.ChunksH - 1; cy >= 0; cy--)
                 for (int cx = made.Gen.ChunksW - 1; cx >= 0; cx--)
                 {
@@ -103,9 +100,6 @@ namespace Chem.Tests
             Assert.That(source.Made, Is.EqualTo(made.Gen.ChunksW * made.Gen.ChunksH), "each chunk made once");
         }
 
-        // core-review-0: GeneratedSource makes chunks on its worker and on many threads at once (Ahead, Parallel.For), so
-        // ChunkGen.Make must be a pure function of the chunk: no state it writes as it makes one. Every chunk made at once on
-        // many threads, in no order, is the chunk made alone on one, its hash, things and biome alike.
         [Test]
         public void ChunksMadeAtOnceOnManyThreadsAreTheSameAsOneAtATime()
         {
@@ -116,7 +110,7 @@ namespace Chem.Tests
             var together = new string[n];
             System.Threading.Tasks.Parallel.For(0, n, new System.Threading.Tasks.ParallelOptions { MaxDegreeOfParallelism = 8 }, k =>
             {
-                int at = (n - 1 - k) * 37 % n; // not in order
+                int at = (n - 1 - k) * 37 % n;
                 together[at] = Text(fresh.Make(at % w, at / w));
             });
             Assert.That(together, Is.EqualTo(alone));
@@ -124,9 +118,6 @@ namespace Chem.Tests
             static string Text(GeneratedChunk c) => $"{c.Hash} {c.Biome} {c.Pinned} {c.Things.ToString(Newtonsoft.Json.Formatting.None)}";
         }
 
-        // The view's land on a map too big to bake (MapLand, the ground, the folk): the source's chunks' land, the bake's
-        // cell for cell, read from several threads at once (the ground's chunks are made side by side) and each chunk made
-        // once between them and the World's own reads.
         [Test]
         public void ItsLandFromTheSourceIsTheBakesFromAnyThread()
         {
@@ -156,8 +147,6 @@ namespace Chem.Tests
             Assert.That(source.MadeAgain, Is.Zero);
         }
 
-        // A chunk the World holds unpacked is kept made, however full the hold gets: packing it again reads its cells from the
-        // source, and a chunk let go was made again there, on the World's thread (the Wide World's walk, 230 times).
         [Test]
         public void AChunkTheWorldHoldsUnpackedIsKeptMade()
         {
@@ -177,8 +166,6 @@ namespace Chem.Tests
             Assert.That(g.KeptCount, Is.GreaterThan(0));
         }
 
-        // The coarse sea a map too big to bake draws (MapLand, Ocean) from its known chunks: the bake's sea to within the
-        // known samples' spacing, every chunk known and none made, and the same mask on one thread as on many.
         [Test]
         public void ItsSeaFromTheKnownChunksIsTheBakesNearly()
         {
@@ -231,7 +218,6 @@ namespace Chem.Tests
             var b = Peer(Source());
             Assert.That(a.CellHash(), Is.EqualTo(b.CellHash()));
             long makes = ((GeneratedSource)a.Source).Made;
-            // A cell far from the reach, in a chunk nothing has made: the hash sees it, and makes only that chunk.
             int x = a.W - 20, y = a.H - 20;
             var far = (Chunks.ChunkOf(x), Chunks.ChunkOf(y));
             Assert.That(a.IsPacked(far.Item1, far.Item2) && a.PackedOf(far.Item1, far.Item2).Count == 0, Is.True, "untouched");
@@ -240,7 +226,6 @@ namespace Chem.Tests
             b.Paint(x, y, "stone");
             Assert.That(b.CellHash(), Is.Not.EqualTo(a.CellHash()));
             Assert.That(b.CellText(), Does.Contain("@" + (y * b.W + x) + ":stone,"));
-            // Packed, it hashes the same; and back as it was made, the same as a world never changed.
             string changed = b.CellHash();
             b.Pack(far.Item1, far.Item2);
             Assert.That(b.CellHash(), Is.EqualTo(changed));
@@ -251,14 +236,12 @@ namespace Chem.Tests
             c.Cover = was.Cover;
             Assert.That(b.CellHash(), Is.EqualTo(a.CellHash()));
             Assert.That(((GeneratedSource)a.Source).Made, Is.EqualTo(makes), "the hash made no chunk");
-            // The running hash closes on the same fingerprint as the whole one.
             var rolling = new RollingHash();
             string closed = null;
             for (int t = 1; t <= RollingHash.WindowFor(a); t++) closed = rolling.Add(a, t) ?? closed;
             Assert.That(closed, Is.EqualTo(a.CellHash()));
         }
 
-        // A walk east from the spawn and back, a fire bolt now and then: the host's plan and the casts, tick by tick.
         sealed class Walk
         {
             readonly (int x, int y) from;
@@ -279,9 +262,6 @@ namespace Chem.Tests
 
         static Rules With(string streaming) => R.WithMods(new[] { ModPatch.Parse("{ \"sim\": { \"streaming\": " + streaming + " } }") });
 
-        // core-guards: a source that holds far fewer chunks than the walk passes lets them go and makes them again as they're
-        // read once more (GeneratedSource's eviction); the World it feeds must run as one whose source never lets a chunk go.
-        // Each peer plans for itself, as a host would: the planner asks its own world's source to make ahead.
         [Test]
         public void AChunkLetGoAndMadeAgainRunsTheSame()
         {
@@ -310,8 +290,6 @@ namespace Chem.Tests
             Assert.That(small.MadeAgain, Is.GreaterThan(0), "the small source let chunks go and made them again");
         }
 
-        // core-guards: MakeNow, which ChunkStreaming.Apply calls for the chunks about to activate, keeps to the hold as a read
-        // does, but never lets go of a chunk it was just asked for: those are about to be read.
         [Test]
         public void MakeNowKeepsToTheHold()
         {
@@ -324,8 +302,6 @@ namespace Chem.Tests
             Assert.That(next.All(c => src.IsMade(c.Item1, c.Item2)), Is.True, "the chunks just asked for are still held");
         }
 
-        // core-guards: a client never plans (the host's planner asks its own source to make ahead), so its chunks are made
-        // only by MakeNow and on reads. Walked across many chunks with a small hold, it keeps to the hold and runs as the host.
         [Test]
         public void AClientsSourceKeepsToItsHold()
         {
@@ -346,7 +322,6 @@ namespace Chem.Tests
                     if (t % 90 == 45) w.Cast("fire-bolt", me[0].x + 6, me[0].y, 1);
                     w.Step();
                 }
-                // Past the chunks the client's World holds unpacked, which are kept made (Keep).
                 if (t > 0) most = Math.Max(most, small.HeldCount - small.KeptCount);
                 if (t % 50 == 49) Assert.That(client.CellHash(), Is.EqualTo(host.CellHash()), $"tick {t}");
             }
@@ -358,7 +333,6 @@ namespace Chem.Tests
         [Test]
         public void TwoPeersAndLateJoinersAgree()
         {
-            // The host makes ahead and packs; the other packs nothing and has no view; they share the plan and the casts.
             var host = Peer(Source());
             var other = Peer(Source(), With("{ \"packsPerTick\": 0 }"));
             var walk = new Walk(((GeneratedSource)host.Source).Start, 4 * Chunks.Size);
@@ -383,7 +357,6 @@ namespace Chem.Tests
                 host.SetDrawn(SparseWorldDrawn(host, me[0], 3));
                 if (t == joinAt)
                 {
-                    // A late joiner replaying the history from the start (NetChem), and one loading the host's save.
                     var replayed = Peer(Source());
                     foreach (var (p, c) in history.Take(t)) Step(replayed, p, c);
                     var loaded = World.Load(host.Save(host.Source), R, Source());
@@ -392,7 +365,6 @@ namespace Chem.Tests
                     Assert.That(loaded.CellHash(), Is.EqualTo(host.CellHash()), "the joiner loading the save");
                     peers.Add((replayed, null, "the joiner replaying"));
                     peers.Add((loaded, null, "the joiner loading"));
-                    // A load reads the chunks its save changed as it lays them in (World.Load): not the tick's reads.
                     loadUnpacks = loaded.ReadUnpacks;
                 }
                 string first = null;
@@ -420,7 +392,6 @@ namespace Chem.Tests
             {
                 Assert.That(w.ReadUnpacks - (name == "the joiner loading" ? loadUnpacks : 0), Is.Zero, $"{name}: the tick never read a packed chunk");
                 Assert.That(w.CellHash(), Is.EqualTo(host.CellHash()), name);
-                // The cells themselves, round the walk, not only their fingerprint.
                 foreach (var (cx, cy) in host.ActiveChunks) Assert.That(w.ChunkHash(cx, cy), Is.EqualTo(host.ChunkHash(cx, cy)), $"{name}: chunk ({cx}, {cy})");
             }
             var hostSource = (GeneratedSource)host.Source;
@@ -464,7 +435,6 @@ namespace Chem.Tests
                 + $"making {laid} of its {w.ChunkCoords.Count} chunks (those its lays touch), its start kept in {keepMs:0} ms; {w.UnpackedCount} unpacked");
             Assert.That(laid, Is.LessThan(w.ChunkCoords.Count / 4), "the build makes only what it lays on");
 
-            // The spawn's reach, then a walk from four chunks west of the seam (the far east) to four chunks east of it.
             ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { start }));
             int y = start.y, x0 = w.W - 4 * Chunks.Size + 10;
             var planner = new ChunkPlanner();
@@ -488,7 +458,6 @@ namespace Chem.Tests
                 w.SetDrawn(SparseWorldDrawn(w, me[0], 2));
                 w.Step();
                 double ms = Ms(Stopwatch.GetTimestamp() - at);
-                // The first is an arrival from the spawn: the reach at the seam made at once, on every core (MakeNow).
                 if (t == 0)
                 {
                     arrival = ms;
@@ -517,7 +486,6 @@ namespace Chem.Tests
                 + $"a chunk made in {source.MakeMs / Math.Max(1, source.Made):0.0} ms; {w.UnpackedCount} unpacked, {source.HeldCount} held made");
             Assert.That(source.MadeOnRead - onRead, Is.LessThanOrEqualTo(walked / 4), "most of the walk's chunks were made ahead, not on a read");
 
-            // Five chunks unpacking at a chunk edge, made ahead against made on the spot.
             int ey = Chunks.ChunkOf(y) + 20;
             var five = Enumerable.Range(0, 5).Select(k => (40 + k, ey)).ToList();
             long started = Stopwatch.GetTimestamp();

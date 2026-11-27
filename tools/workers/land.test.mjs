@@ -24,8 +24,6 @@ function scratch(devFiles = {}) {
   const repo = join(dir, "repo");
   const put = (f, text) => { mkdirSync(join(repo, f, ".."), { recursive: true }); writeFileSync(join(repo, f), text); };
   for (const f of ["land.sh", "queue.mjs", "bridge.sh", "modules.mjs"]) { mkdirSync(join(repo, "tools/workers"), { recursive: true }); copyFileSync(join(tools, f), join(repo, "tools/workers", f)); }
-  // The gates' stand-in: fails when told to, counts its runs, and (LAND_TEST_DEV_MOVES) pushes that file to dev
-  // from another clone during its first run, as another landing would.
   put("tools/workers/gates.sh", `#!/usr/bin/env bash
 [[ -z "\${LAND_TEST_RUNS:-}" ]] || echo run >> "$LAND_TEST_RUNS"
 if [[ -n "\${LAND_TEST_DEV_MOVES:-}" && ! -e "$LAND_TEST_RUNS.moved" ]]; then
@@ -210,7 +208,6 @@ test("uncommitted changes, or being on dev, are refused before anything is pushe
   } finally { s.done(); }
 });
 
-// The retry when dev moves during the gates: a small map of its own (two test projects, a props list, docs).
 const MAP = {
   "core/Chem.Tests.props": '<Project><PropertyGroup><ChemTests>$(MSBuildThisFileDirectory)../t/</ChemTests></PropertyGroup><ItemGroup><ChemTestsA Include="$(ChemTests)A*.cs" /></ItemGroup></Project>\n',
   "core/A.Tests/A.Tests.csproj": '<Project><ItemGroup><Compile Include="*.cs" /></ItemGroup></Project>\n',

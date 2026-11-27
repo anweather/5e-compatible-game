@@ -29,7 +29,6 @@ public class HitsProbe : ProbeScenario
             Check("fire_bolt_throws_wizard", hit == 1 && thrown > 0.5f, $"{hit} wizard caught, thrown {thrown:0.00} m");
 
             cell = grid.CellAt(wizard.transform.position);
-            // From the square south of the wizard, north through it.
             hit = SpellForces.Apply(grid, SpellIds.RayOfFrost, cell.x, cell.y + 1, 0, other);
             yield return null;
             Check("ray_of_frost_slows_wizard", hit == 1 && feet != null && feet.Slowed, $"{hit} wizard caught, slowed {(feet != null && feet.Slowed)}");

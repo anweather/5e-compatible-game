@@ -11,7 +11,6 @@ using UnityEngine;
 [RequireComponent(typeof(ChemGrid))]
 public sealed class Waystones : MonoBehaviour
 {
-    // Beside the spawn's cell, not on it: a player starts on the cell itself.
     static readonly Vector2Int Beside = new(2, -2);
     const float Height = 2.2f, Width = 0.7f, Every = 0.5f;
 
@@ -45,7 +44,6 @@ public sealed class Waystones : MonoBehaviour
         foreach (var spawn in SpawnPoints.Current) stones.Add(MakeStone(spawn));
     }
 
-    // On a map made from its source: the stones standing on known land, by their cell, until a wizard comes within SeatCells.
     readonly List<(GameObject standing, Vector2Int cell)> unseated = new();
     const int SeatCells = 3 * Chunks.Size;
 
@@ -72,7 +70,6 @@ public sealed class Waystones : MonoBehaviour
         return root;
     }
 
-    // The land a generated map's chunk is known to have at its sample nearest the cell (m).
     float KnownGround(Vector2Int cell)
     {
         if (!grid.World.InBounds(cell.x, cell.y)) return 0f;
@@ -81,7 +78,6 @@ public sealed class Waystones : MonoBehaviour
         return known.Heights[j * KnownChunk.Side + i] * (float)MapFile.LandUnitMetres;
     }
 
-    // The stones a wizard has come near stand on the ground drawn there, once its chunk is made.
     void Seat()
     {
         if (unseated.Count == 0 || grid.World?.Source is not GeneratedSource source) return;
@@ -136,13 +132,11 @@ public sealed class Waystones : MonoBehaviour
         return m;
     }
 
-    // Every half second: the spawns any wizard here has walked up to are the party's.
     void Update()
     {
         if (Time.time < nextVisit || grid.World == null || !SpawnPoints.Several) return;
         nextVisit = Time.time + Every;
         Seat();
-        // Every wizard here, the local one and the party's (each has its Vitals).
         foreach (var wizard in FindObjectsByType<Vitals>(FindObjectsSortMode.None))
         {
             var cell = grid.CellAt(wizard.transform.position);

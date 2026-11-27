@@ -10,7 +10,6 @@ namespace Chem
 {
     public sealed partial class World
     {
-        // The clock only runs forward: to the next time the day reaches that minute.
         RoomVerdict SetTime(RoomCommand c)
         {
             int minute = -1;
@@ -21,7 +20,6 @@ namespace Chem
             return new RoomVerdict(true, null, $"{c.Peer} set the time to {Sky.ClockWords(minute)} ({RoomPolicy.Words(Room.Mode)} room)");
         }
 
-        // The ticks of day from now to the first tick that reads that minute; 0 if it reads it now.
         long TicksUntilMinute(int minute)
         {
             long now = Minutes;

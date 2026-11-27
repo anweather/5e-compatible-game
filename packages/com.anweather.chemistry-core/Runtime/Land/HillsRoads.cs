@@ -17,45 +17,28 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>The roads of a hills map: per world square its hub and arms, per side its road and slot.</summary>
     public sealed class HillsRoads
     {
-        /// <summary>A road's kind across a side: none, a lesser road or a main road.</summary>
         public const byte None = 0, Lesser = 1, Main = 2;
-        /// <summary>Half a road's width in cells (a cell nearer the line than this is road), and the bank it leans back over.</summary>
         public const int MainHalf = 3, LesserHalf = 2, Bank = 6;
-        /// <summary>How far a road's curve leaves a side square on, and comes into a through hub straight, in cells.</summary>
         const int SideReach = 160, HubReach = 140;
-        /// <summary>The farthest an arm wanders from its curve, in cells, and the pieces an arm is drawn in.</summary>
         const int WanderCells = 40, Pieces = 32;
-        /// <summary>Hubs stand at least this far in from every side of their square, in cells.</summary>
         const int HubMargin = 160;
         const int SaltHub = 0x7a01, SaltSlot = 0x7a02, SaltTree = 0x7a03, SaltWander = 0x7a04;
         const long One = BiomeMath.One;
         const int Square = WorldPlan.SquareCells, Slots = WorldPlan.ChunksPerSquare, Chunk = WorldPlan.ChunkCells;
 
-        /// <summary>One road from a side's slot to its square's hub.</summary>
         public sealed class Arm
         {
-            /// <summary>The square it's in, the side it leaves by (0 north, 1 east, 2 south, 3 west) and its kind.</summary>
             public int Home, Side;
             public byte Kind;
-            /// <summary>Its line, Q16 cells from its square's north-west corner, from the slot to the hub.</summary>
             public long[] X, Y;
-            /// <summary>Its line's bounding box in cells from the square's corner.</summary>
             public int MinX, MinY, MaxX, MaxY;
             public int Half => Kind == Main ? MainHalf : LesserHalf;
-            /// <summary>
-            /// Where the land along it is steeper than the grade limit, its graded height along its line (Q16 land units,
-            /// <see cref="Sub"/> samples a piece, both ends at the land there); null where the land is gentle enough to follow.
-            /// </summary>
             public long[] Profile;
-            /// <summary>The deepest cut and the highest fill its profile makes, in land units.</summary>
             public int Cut, Fill;
-            /// <summary>Its grade in percent where its ends are too far apart for the grade limit (0 where it keeps to it).</summary>
             public int Over;
 
-            /// <summary>The road's height at a point on its line (piece <paramref name="k"/>, Q16 <paramref name="t"/> along it), from its profile.</summary>
             public int ProfileAt(int k, long t)
             {
                 long q = t * Sub;
@@ -66,27 +49,20 @@ namespace Chem
             }
         }
 
-        /// <summary>Samples of a graded arm's profile a piece.</summary>
         public const int Sub = 4;
-        /// <summary>How far from either end, in cells, a graded road still keeps to the land, so it meets the roads there.</summary>
         public const int EndCells = 16;
 
         public readonly int SquaresW, SquaresH;
-        // Per world square, its hub in cells from its north-west corner; the road across its east side and its south side,
-        // and the slot each crosses at.
         readonly (int x, int y)[] hub;
         readonly byte[] east, south;
         readonly int[] eastSlot, southSlot;
-        /// <summary>The rows and columns of world squares the main roads run along.</summary>
         public IReadOnlyList<int> MainRows => mainRows;
         public IReadOnlyList<int> MainColumns => mainColumns;
         readonly int[] mainRows, mainColumns;
 
-        /// <summary>A world square's hub, in cells from its north-west corner.</summary>
         public (int x, int y) HubOf(int square) => hub[square];
         readonly List<Arm>[] arms;
         readonly int seed;
-        // Where only main roads go (a massif's ring): a lesser road is never laid where it would reach it.
         readonly Func<int, int, bool> wild;
 
         public HillsRoads(int seed, int squaresW, int squaresH, int[] mainRows, int[] mainColumns, int loopPercent, Func<int, int, bool> wild = null)
@@ -112,7 +88,6 @@ namespace Chem
                 uint h = WorldHash.Hash4(seed, SaltHub, i % squaresW, i / squaresW);
                 int span = Square - 2 * HubMargin + 1;
                 hub[i] = (HubMargin + (int)(h % (uint)span), HubMargin + (int)((h >> 16) % (uint)span));
-                // Slots 1..7: never a corner chunk, so a road never runs along the side it crosses.
                 eastSlot[i] = 1 + (int)(WorldHash.Hash4(seed, SaltSlot, i, 1) % (Slots - 2));
                 southSlot[i] = 1 + (int)(WorldHash.Hash4(seed, SaltSlot, i, 2) % (Slots - 2));
             }
@@ -122,7 +97,6 @@ namespace Chem
             for (int i = 0; i < n; i++) arms[i] = LayArms(i);
         }
 
-        /// <summary>map.json's generated "hills" "roads": { "mainRows": [..], "mainColumns": [..], "loops": percent }, or null.</summary>
         public static HillsRoads Read(JObject o, int seed, int squaresW, int squaresH, Func<int, int, bool> wild = null)
         {
             if (o == null) return null;
@@ -142,8 +116,6 @@ namespace Chem
 
         int Index(int sx, int sy) => PlanGrid.Mod(sy, SquaresH) * SquaresW + PlanGrid.Mod(sx, SquaresW);
 
-        // Main roads along their rows and columns, then a spanning tree over the other sides in a seeded order (Kruskal),
-        // so every world square is on the network; then a side the tree didn't need is a road loopPercent times in 100.
         void Network(int loopPercent)
         {
             int n = SquaresW * SquaresH;
@@ -176,7 +148,6 @@ namespace Chem
                     south[i] = Main;
                     Join(i, Index(c, sy + 1));
                 }
-            // Every side once: 2 i for square i's east side, 2 i + 1 for its south side, in a seeded order.
             var sides = new List<(uint key, int side)>(2 * n);
             for (int k = 0; k < 2 * n; k++) sides.Add((WorldHash.Hash4(seed, SaltTree, k, 0), k));
             sides.Sort((a, b) => a.key != b.key ? a.key.CompareTo(b.key) : a.side.CompareTo(b.side));
@@ -194,8 +165,6 @@ namespace Chem
             }
         }
 
-        // Whether a lesser road from square i's side to its hub would reach wild land: the straight line from the slot to
-        // the hub, every 16 cells, with a margin for the arm's wander.
         bool Wild(int i, int side)
         {
             if (wild == null) return false;
@@ -214,10 +183,8 @@ namespace Chem
             return false;
         }
 
-        /// <summary>The grade limit along a road, in percent (map.json's "roads" "grade"): steeper land is cut and filled.</summary>
         public int GradePercent { get; private set; } = 12;
 
-        /// <summary>The main roads' arms' lines, Q16 map cells from each square's corner on the map: what a massif's passes follow.</summary>
         public List<(long[] x, long[] y)> MainLines()
         {
             var lines = new List<(long[], long[])>();
@@ -240,21 +207,14 @@ namespace Chem
             return lines;
         }
 
-        /// <summary>
-        /// Grades every arm over <paramref name="land"/> (map cells to land units): an arm whose land is steeper than the
-        /// grade limit anywhere along its line gets a profile within it (only arms reaching where <paramref name="steepAt"/>
-        /// says the land may be steep are looked at, when it's given), half way between the deepest cut and the highest fill
-        /// that would keep to it, held to the land at both ends so arms meet. Call it once, before any chunk is made.
-        /// </summary>
         public void Grade(Func<int, int, int> land, Func<int, int, bool> steepAt = null)
         {
-            long g = (long)GradePercent * 12 * One / 100; // land units a cell, Q16: a cell is 1.5 m, a unit 0.125 m
+            long g = (long)GradePercent * 12 * One / 100;
             for (int i = 0; i < arms.Length; i++)
             {
                 int ox = i % SquaresW * Square, oy = i / SquaresW * Square;
                 foreach (var a in arms[i])
                 {
-                    // Only an arm that reaches land that may be steep (a massif's) is looked at: the rolling hills never are.
                     bool may = steepAt == null;
                     for (int k = 0; k < a.X.Length && !may; k++) may = steepAt(ox + (int)BiomeMath.FloorDiv(a.X[k], One), oy + (int)BiomeMath.FloorDiv(a.Y[k], One));
                     if (may) GradeArm(a, ox, oy, land, g);
@@ -281,19 +241,15 @@ namespace Chem
             for (int q = 1; q < n && !steep; q++) steep = Math.Abs(h[q] - h[q - 1]) > (s[q] - s[q - 1]) * g / One;
             a.Profile = null;
             if (!steep) return;
-            // Within EndCells of either end the road keeps to the land, so it meets the arms at its hub and over its side
-            // whatever they do; between, it's half way from the cut to the fill, within the grade of both held ends.
             int a0 = 0, b0 = n - 1;
             while (a0 + 1 < n && s[a0 + 1] <= (long)EndCells * One) a0++;
             while (b0 - 1 > a0 && s[n - 1] - s[b0 - 1] <= (long)EndCells * One) b0--;
-            // Where the held ends are further apart than the grade allows, this arm's grade is what it takes (a little over it).
             long need = s[b0] - s[a0] <= 0 ? 0 : Math.Abs(h[b0] - h[a0]) * One / (s[b0] - s[a0]) * 21 / 20 + 1;
             if (need > g)
             {
                 a.Over = (int)(need * 100 / (12 * One));
                 g = need;
             }
-            // The highest profile under the land that keeps to the grade (a cut), and the lowest over it (a fill).
             var up = (long[])h.Clone();
             var down = (long[])h.Clone();
             for (int q = 1; q < n; q++)
@@ -323,14 +279,12 @@ namespace Chem
                 cut = Math.Max(cut, (int)((h[q] - p[q]) / One));
                 fill = Math.Max(fill, (int)((p[q] - h[q]) / One));
             }
-            // Land that only just steps past the grade somewhere keeps its own line (the hills' roads as they were).
             if (cut == 0 && fill == 0) return;
             a.Profile = p;
             a.Cut = cut;
             a.Fill = fill;
         }
 
-        /// <summary>The road across a side of a world square (0 north, 1 east, 2 south, 3 west) and the slot it crosses at.</summary>
         public (byte kind, int slot) SideOf(int square, int side)
         {
             int sx = square % SquaresW, sy = square / SquaresW;
@@ -343,7 +297,6 @@ namespace Chem
             }
         }
 
-        /// <summary>Where a road crosses a side, in Q16 cells from the square's north-west corner: its slot's middle.</summary>
         static (long x, long y) SlotPoint(int side, int slot)
         {
             long along = ((long)slot * Chunk + Chunk / 2) * One;
@@ -356,10 +309,8 @@ namespace Chem
             }
         }
 
-        // The way into the square from a side, a unit in Q16.
         static (long x, long y) Inward(int side) => side switch { 0 => (0, One), 1 => (-One, 0), 2 => (0, -One), _ => (One, 0) };
 
-        /// <summary>A world square's arms, north side first.</summary>
         public IReadOnlyList<Arm> ArmsOf(int square) => arms[square];
 
         List<Arm> LayArms(int i)
@@ -377,8 +328,6 @@ namespace Chem
                 var (cx, cy) = SlotPoint(side, slot);
                 var (nx, ny) = Inward(side);
                 long k1x = cx + nx * SideReach, k1y = cy + ny * SideReach;
-                // Where only two roads meet, each comes into the hub along the line between their slots, so the road runs
-                // through it without a bend; at a junction or a dead end, each comes straight at the hub.
                 long k2x = hx, k2y = hy;
                 if (roads.Count == 2)
                 {
@@ -393,9 +342,6 @@ namespace Chem
             return list;
         }
 
-        // A cubic from the slot (a) to the hub (d), with control points b and c, and a seeded wander across the line from a to
-        // d that is nothing at either end and level there (16 t² (1 − t)²), so the curve still leaves the side square on and
-        // meets the hub as the cubic does.
         Arm Lay(int square, int side, byte kind, (long x, long y) a, (long x, long y) b, (long x, long y) c, (long x, long y) d)
         {
             var (ax, ay) = a;
@@ -404,8 +350,7 @@ namespace Chem
             var (dx, dy) = d;
             var arm = new Arm { Home = square, Side = side, Kind = kind, X = new long[Pieces + 1], Y = new long[Pieces + 1] };
             long len = Math.Max(1, BiomeMath.Length(dx - ax, dy - ay));
-            long px = -(dy - ay) * One / len, py = (dx - ax) * One / len; // across the line, a unit in Q16
-            // Four lattice values along the arm in Q16 [-1, 1], from the seed, the square and the side.
+            long px = -(dy - ay) * One / len, py = (dx - ax) * One / len;
             var lattice = new long[5];
             for (int k = 0; k < lattice.Length; k++) lattice[k] = (WorldHash.Hash4(seed, SaltWander, square * 4 + side, k) % (2 * One + 1)) - One;
             for (int k = 0; k <= Pieces; k++)
@@ -436,17 +381,12 @@ namespace Chem
             return arm;
         }
 
-        /// <summary>An arm placed on the map: its square's north-west corner in map cells, unwrapped (past a seam it runs on).</summary>
         public struct Placed
         {
             public Arm Arm;
             public int Ox, Oy;
         }
 
-        /// <summary>
-        /// Every arm whose road or bank may reach a cell of [x0, x1] × [y0, y1] (map cells, unwrapped: a box over a seam reads
-        /// the squares across it), each placed at its square's copy nearest the box, in a fixed order.
-        /// </summary>
         public List<Placed> Near(int x0, int y0, int x1, int y1)
         {
             int reach = MainHalf + Bank + 2;
@@ -464,25 +404,17 @@ namespace Chem
             return near;
         }
 
-        /// <summary>The nearest point on a road line to a cell, and where on which arm it is.</summary>
         public struct Hit
         {
-            /// <summary>Its distance in Q16 cells (long.MaxValue for none within its bank), and the point in map cells (unwrapped).</summary>
             public long Distance;
             public int X, Y, Half;
             public Arm Arm;
-            /// <summary>The arm's piece it's on and how far along that, Q16.</summary>
             public int Piece;
             public long Along;
         }
 
-        /// <summary>How near a main road's line a cell is kept dry of an end lake, in cells (a lake's node beside it reaches 16 more).</summary>
         public const int Dry = MainHalf + Bank + 24;
 
-        /// <summary>
-        /// The nearest road line to a map cell's middle among <paramref name="near"/>: its distance in Q16 cells (long.MaxValue
-        /// when none is within its bank), the nearest point on it in map cells (unwrapped) and that road's half width.
-        /// </summary>
         public static long Nearest(List<Placed> near, int x, int y, out int cx, out int cy, out int half)
         {
             var hit = Nearest(near, x, y);
@@ -492,7 +424,6 @@ namespace Chem
             return hit.Distance;
         }
 
-        /// <summary>The nearest road line to a map cell's middle among <paramref name="near"/>, as a <see cref="Hit"/>.</summary>
         public static Hit Nearest(List<Placed> near, int x, int y)
         {
             long qx = (long)x * One + One / 2, qy = (long)y * One + One / 2;
@@ -519,12 +450,6 @@ namespace Chem
             return hit;
         }
 
-        /// <summary>
-        /// A main road's line along row <paramref name="index"/> of world squares (west to east, <paramref name="alongRow"/>) or
-        /// along that column (north to south),
-        /// as map cells every few cells, unwrapped from the first square's west (north) side, once round the torus: what a walk
-        /// along it follows.
-        /// </summary>
         public List<(int x, int y)> Route(bool alongRow, int index)
         {
             var path = new List<(int, int)>();

@@ -30,7 +30,6 @@ namespace Chem
                     continue;
                 }
                 if (o.Sea) continue;
-                // A filler takes whatever its neighbours bring, a river flowing in where it flows out of them.
                 for (int s = 0; s < 4; s++)
                 {
                     int j = Grid.Neighbour(i, s);
@@ -77,12 +76,9 @@ namespace Chem
                     }
         }
 
-        /// <summary>The chunk a site (cells within square <paramref name="i"/>) is in.</summary>
         public (int x, int y) ChunkOf(int i, int siteX, int siteY) =>
             (Grid.X(i) * ChunksPerSquare + siteX / ChunkCells, Grid.Y(i) * ChunksPerSquare + siteY / ChunkCells);
 
-        // A filler copies its neighbours' sides, so a river can reach it from below. Where it would, the crossing is
-        // dropped on both sides, as long as the neighbour's template stays whole without it.
         void SettleFillerRivers()
         {
             foreach (int i in Fillers)
@@ -107,10 +103,6 @@ namespace Chem
             }
         }
 
-        // ---------- landmarks ----------
-
-        // Not every square that may hold a village keeps one: Towns percent of them do, every must-have's, and at least one
-        // other in the world.
         void PlaceLandmarks()
         {
             int n = Count;
@@ -131,7 +123,7 @@ namespace Chem
             {
                 var t = Options[i].Template;
                 string lm = t.Lm;
-                if (lm == null || held[i] >= 0) continue; // a held square's landmarks are its own plan's
+                if (lm == null || held[i] >= 0) continue;
                 if ((lm == "land" || lm == "water") && TownRoll(i) >= towns && i != firstTown && Array.IndexOf(MustSquares, i) < 0) continue;
                 var r = new PlanRng(H(Seed, i, 77));
                 int sx = 150 + r.Below(277), sy = 150 + r.Below(277);
@@ -165,13 +157,11 @@ namespace Chem
 
         string FormOf(string biome) => Library.Village != null ? Library.Village.FormFor(biome) : biome;
 
-        // A site 60 cells inland of the shore along side s; (along, along) keeps its place along the side.
         (int x, int y) ShoreSite(int i, int s, int ax, int ay)
         {
             return Inside(s, s == 0 || s == 2 ? ax : ay, Coasts[i].Depth[s] + 60);
         }
 
-        // One town on each inland sea's shore: one that stands there already, else a new fishing village.
         void PlacePorts()
         {
             int n = Count;
@@ -212,7 +202,6 @@ namespace Chem
             }
         }
 
-        /// <summary>The cell <paramref name="depth"/> cells in from side <paramref name="s"/>, <paramref name="along"/> it (n and s run west to east, e and w north to south).</summary>
         public static (int x, int y) Inside(int s, int along, int depth) => s switch
         {
             0 => (along, depth),
@@ -221,12 +210,8 @@ namespace Chem
             _ => (depth, along),
         };
 
-        // ---------- checks ----------
-
         void Problem(int i, string what) => Problems.Add($"({Grid.X(i)}, {Grid.Y(i)}) {Options[i].Template.Id}: {what}");
 
-        // Every river crossing leaves the higher (or equal) band for the lower; it starts at a spring (hills and up) or a
-        // lake, and ends at the sea or a lake.
         void CheckRivers()
         {
             for (int i = 0; i < Count; i++)
@@ -255,9 +240,6 @@ namespace Chem
             }
         }
 
-        // Every shared side: features meet (same slots and kinds, rivers in to out, never uphill) and the shoreline's
-        // offsets agree at both ends; a land side facing the sea is a coast and only a river out crosses it. Every corner:
-        // the four squares agree whether it is sea.
         void CheckSidesAndCorners()
         {
             for (int i = 0; i < Count; i++)
@@ -344,13 +326,6 @@ namespace Chem
                     if (Wall[p] != 0) Problem(p, "a road on the wall");
         }
 
-        // ---------- what a chunk reads ----------
-
-        /// <summary>
-        /// Side <paramref name="side"/> of square <paramref name="i"/> as a coast profile: per slot, whether it is sea, and the
-        /// shoreline's offset into the square there in cells (0 where there's no shore). An open side is sea all along at its
-        /// depth, easing to the offsets at its ends; a closed side's end slot is sea where a corner notch is.
-        /// </summary>
         public (bool[] sea, int[] offset) CoastProfile(int i, int side)
         {
             int slots = Library.Slots;
@@ -369,7 +344,6 @@ namespace Chem
                 for (int k = 0; k < slots; k++)
                 {
                     sea[k] = true;
-                    // Halfway along, the side's own depth; towards each end, the depth the shore turns the corner at.
                     int half = (slots - 1) / 2;
                     offset[k] = k <= half ? e0 + (d - e0) * k / half : d + (e1 - d) * (k - half) / (slots - 1 - half);
                     if (e0 == 0 && k == 0) offset[k] = d;
@@ -381,8 +355,6 @@ namespace Chem
             if (e1 > 0) { sea[slots - 1] = true; offset[slots - 1] = e1; }
             return (sea, offset);
         }
-
-        // ---------- the hash ----------
 
         uint HashPlan()
         {
@@ -416,7 +388,6 @@ namespace Chem
             return HashInts(parts);
         }
 
-        /// <summary>FNV-1a over each int's four bytes, low first.</summary>
         internal static uint HashInts(IEnumerable<int> parts)
         {
             unchecked

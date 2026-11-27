@@ -18,9 +18,7 @@ using UnityEngine;
 [RequireComponent(typeof(Animator))]
 public class CastPose : MonoBehaviour
 {
-    /// <summary>How long a released wind-up is held waiting for its cast (online, the announcement comes back from the host).</summary>
     const float HoldLinger = 0.6f;
-    /// <summary>Shoulder height (m) the gestures are written for; the rig's own scales them.</summary>
     const float GestureShoulders = 1.45f;
 
     Animator animator;
@@ -31,7 +29,6 @@ public class CastPose : MonoBehaviour
     SwimPose swim;
     CastBeats beats;
     Transform rightPalm, leftPalm;
-    // Each finger bone of a hand with its rest rotation: the open hand (LayHand).
     (Transform bone, Quaternion open)[] rightFingers, leftFingers;
     float scale = 1f;
 
@@ -39,11 +36,9 @@ public class CastPose : MonoBehaviour
     Vector3 target;
     float started = -1f;
     bool wound, beatLed;
-    // The wind-up a held Cast shows (the caster's own machine only).
     CastGesture held;
     float heldAt = -1f;
 
-    /// <summary>The gesture playing now, or Auto when none is.</summary>
     public CastGesture Playing { get; private set; }
 
     void Awake()
@@ -72,24 +67,18 @@ public class CastPose : MonoBehaviour
         glow.enabled = false;
     }
 
-    /// <summary>Where the other hand is (the second element's orb: CastOrbs).</summary>
     public Vector3 LeftHandPosition => leftArm.end != null ? leftArm.end.position : transform.position + Vector3.up * 1.2f - transform.right * 0.3f;
 
-    /// <summary>The hand's position, where projectiles start; the chest if the rig has no hand.</summary>
     public Vector3 HandPosition => rightArm.end != null ? rightArm.end.position : transform.position + Vector3.up * 1.3f;
 
-    /// <summary>The middle of each palm, where what the hand holds sits.</summary>
     public Vector3 RightPalm => rightPalm != null ? rightPalm.position : HandPosition;
     public Vector3 LeftPalm => leftPalm != null ? leftPalm.position : LeftHandPosition;
 
-    /// <summary>The right shoulder, and how far that arm reaches from it to the hand.</summary>
     public Vector3 RightShoulder => rightArm.Valid ? rightArm.root.position : transform.position + Vector3.up * (GestureShoulders * scale);
     public float ArmLength => rightArm.Valid ? Vector3.Distance(rightArm.root.position, rightArm.mid.position) + Vector3.Distance(rightArm.mid.position, rightArm.end.position) : 0f;
 
-    /// <summary>The rig's size against the one the poses are written for.</summary>
     public float Scale => scale;
 
-    /// <summary>Plays a cast's gesture toward <paramref name="at"/>, on from the wind-up if a held Cast was showing it.</summary>
     public void Play(CastGesture gesture, Vector3 at, Color color)
     {
         if (gesture == CastGesture.Auto) gesture = CastGesture.Reach;
@@ -123,13 +112,11 @@ public class CastPose : MonoBehaviour
             glow.enabled = false;
             return;
         }
-        // Wound up by a held Cast: stay at the wind-up until the gesture would have reached it, so the release keeps its time.
         var key = playing.At(wound && t < playing.hold ? playing.hold : t);
         Apply(playing, key, 0f);
         glow.intensity = 4f * Mathf.Max(key.weight, key.leftWeight);
     }
 
-    // While Cast is held to charge: into the selected spell's wind-up and held there, trembling with each level.
     bool Charging()
     {
         float seconds = caster != null ? caster.ChargingSeconds : -1f;
@@ -148,7 +135,6 @@ public class CastPose : MonoBehaviour
         return true;
     }
 
-    // Cast let go: the wind-up stays a moment for the cast to come back from the host.
     void Linger()
     {
         if (heldAt < 0f) return;
@@ -162,7 +148,6 @@ public class CastPose : MonoBehaviour
         Apply(gesture, gesture.At(gesture.hold), 0f);
     }
 
-    // The pose: the hips down (feet kept planted), the spine leaned and turned, then the hands.
     void Apply(CastGestures.Gesture gesture, CastGestures.Key key, float tremble)
     {
         if (beatLed || (beats != null && beats.Driving)) return;
@@ -180,7 +165,6 @@ public class CastPose : MonoBehaviour
     Vector3 Frame(Vector3 local, Vector3 forward, Vector3 right) =>
         transform.position + (right * local.x + Vector3.up * local.y + forward * local.z) * scale;
 
-    // Pointing up or down at the target from the chest, as well as toward it (at most 50 degrees).
     Quaternion Aim(Vector3 forward, Vector3 right)
     {
         var chest = transform.position + Vector3.up * (GestureShoulders * scale);
@@ -194,13 +178,11 @@ public class CastPose : MonoBehaviour
         if (weight <= 0f || !arm.Valid) return;
         var shoulder = arm.root.position;
         hand = shoulder + aim * (hand - shoulder) + shake;
-        // The elbow out to the side, down when the hand is low and level with the shoulder when it is high.
         float raised = Mathf.Clamp01((hand.y - shoulder.y) / (0.5f * scale));
         var elbow = shoulder + (outward * 0.45f + Vector3.up * Mathf.Lerp(-0.3f, 0.1f, raised)) * scale;
         LimbIK.Solve(arm, hand, elbow, weight);
     }
 
-    // The hips lowered and the legs bent to keep the feet where the animation put them; not while swimming.
     void Dip(float dip, Vector3 forward)
     {
         if (dip <= 0.001f || hips == null || (swim != null && swim.Weight > 0.1f)) return;
@@ -224,9 +206,6 @@ public class CastPose : MonoBehaviour
         spine.rotation = Quaternion.AngleAxis(lean, right) * Quaternion.AngleAxis(twist, Vector3.up) * spine.rotation;
     }
 
-    // --- for CastBeats ------------------------------------------------------------------
-
-    /// <summary>Sinks the hips with the feet planted, leans and turns the spine, then moves all of the body by <paramref name="shift"/>.</summary>
     public void LayBody(float dip, float lean, Vector3 forward, Vector3 shift, float twist = 0f)
     {
         if (!rightArm.Valid) return;
@@ -235,14 +214,12 @@ public class CastPose : MonoBehaviour
         if (hips != null) hips.position += shift;
     }
 
-    /// <summary>The turn from level to the target, as a gesture that aims has.</summary>
     public Quaternion AimAt(Vector3 at, Vector3 forward, Vector3 right)
     {
         target = at;
         return Aim(forward, right);
     }
 
-    /// <summary>The body's frame a hand is laid in: from a point, x right, y up, z ahead, turned by an aim, trembling (m).</summary>
     public readonly struct HandFrame
     {
         public readonly Vector3 origin, forward, right;
@@ -259,10 +236,6 @@ public class CastPose : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Puts a hand at a point of the body's frame (scaled), its fingers and palm turned as given (for the
-    /// right hand; the left's are their mirror) and open. Returns where the hand was put.
-    /// </summary>
     public Vector3 LayHand(bool isRight, in HandFrame body, Vector3 local, float weight, Vector3 fingers, Vector3 palm)
     {
         var arm = isRight ? rightArm : leftArm;
@@ -279,7 +252,6 @@ public class CastPose : MonoBehaviour
         return shoulder + aim * (at - shoulder) + shake;
     }
 
-    /// <summary>Curls a hand's fingers toward its palm, each joint by this many degrees, the thumb less: a fist.</summary>
     public void Clench(bool isRight, float degrees)
     {
         var arm = isRight ? rightArm : leftArm;
@@ -292,7 +264,6 @@ public class CastPose : MonoBehaviour
             fingers[i].bone.rotation = Quaternion.AngleAxis(i < ThumbBones ? degrees * ThumbShare : degrees, axis) * fingers[i].bone.rotation;
     }
 
-    // The way a hand's fingers go and its palm faces, from the rig's own finger bones.
     bool PalmOf(Transform hand, bool isRight, out Vector3 along, out Vector3 facing)
     {
         along = facing = Vector3.zero;
@@ -305,7 +276,6 @@ public class CastPose : MonoBehaviour
         return along.sqrMagnitude >= 1e-6f && facing.sqrMagnitude >= 1e-8f;
     }
 
-    // Turns the hand so the fingers and palm point the given ways.
     void Turn(Transform hand, bool isRight, Vector3 fingers, Vector3 palm, float weight)
     {
         if (!PalmOf(hand, isRight, out var along, out var facing) || fingers.sqrMagnitude < 1e-6f || palm.sqrMagnitude < 1e-6f) return;
@@ -313,7 +283,6 @@ public class CastPose : MonoBehaviour
         hand.rotation = Quaternion.Slerp(hand.rotation, turn * hand.rotation, weight);
     }
 
-    // A hand's finger bones with their rotation in the rig's T-pose (flat and open), from the avatar.
     (Transform, Quaternion)[] Fingers(HumanBodyBones firstBone, HumanBodyBones lastBone)
     {
         var rest = new System.Collections.Generic.Dictionary<string, Quaternion>();
@@ -328,7 +297,6 @@ public class CastPose : MonoBehaviour
         return fingers.ToArray();
     }
 
-    // A tremble of the hands (m), each hand its own (seed).
     static Vector3 Shake(float amount, float seed)
     {
         if (amount <= 0f) return Vector3.zero;

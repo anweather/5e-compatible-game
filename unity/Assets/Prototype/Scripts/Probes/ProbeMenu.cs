@@ -24,7 +24,6 @@ public class MenuProbe : ProbeScenario
         pad = InputSystem.AddDevice<Gamepad>("Probe pad");
         try
         {
-            // Start opens the menu, on its main page, with the highlight showing.
             var controls = caster.controls;
             bool controlsWereOn = controls != null && controls.enabled;
             yield return PressStart();
@@ -38,7 +37,6 @@ public class MenuProbe : ProbeScenario
             yield return Wait(0.2f);
             yield return EveryEntryHasAHome(menu);
 
-            // Game, then down to Mods; A opens the Mods page.
             yield return Enter(menu, PauseMenu.Submenu.Game, "Mods");
             menu.Submit();
             yield return Frames(3);
@@ -47,7 +45,6 @@ public class MenuProbe : ProbeScenario
             Check("mods_page_opens", menu.CurrentPage == ModsPanel.PageId && ModsPanel.Open, $"page '{menu.CurrentPage}'");
             Check("mods_page_lists_mods", mods > 0 && menu.ItemCount == mods + 2, $"{mods} mods, {menu.ItemCount} items (mods, Play with Claude, Back)");
 
-            // A on the first mod switches it on; A again switches it back off.
             string first = switcher.Catalog.Mods[0].Id;
             bool wasOn = switcher.Rules.IsOn(first);
             menu.Submit();
@@ -59,7 +56,6 @@ public class MenuProbe : ProbeScenario
             yield return Wait(0.5f);
             Check("a_toggles_mod_back", switcher.Rules.IsOn(first) == wasOn, $"{first}: {switcher.Rules.IsOn(first)}");
 
-            // B goes back to the main page, the highlight on Mods again.
             menu.Back();
             yield return Frames(3);
             Check("b_backs_out_of_mods", menu.Open && menu.CurrentPage == PauseMenu.PageOf(PauseMenu.Submenu.Game) && menu.FocusedLabel != null && menu.FocusedLabel.StartsWith("Mods", System.StringComparison.Ordinal),
@@ -68,7 +64,6 @@ public class MenuProbe : ProbeScenario
             yield return Frames(3);
             Check("b_backs_to_the_main_page", menu.CurrentPage == MenuNavigator.MainPage && menu.FocusedLabel == "Game", $"page '{menu.CurrentPage}', highlight on '{menu.FocusedLabel}'");
 
-            // Controls: the table of every control, then back.
             yield return Enter(menu, PauseMenu.Submenu.Settings, "Controls");
             menu.Submit();
             yield return Frames(3);
@@ -78,7 +73,6 @@ public class MenuProbe : ProbeScenario
             menu.Back();
             yield return Frames(3);
 
-            // Sound: A on Effects' − turns effects down a step, + puts it back.
             yield return FocusOn(menu, "Sound");
             menu.Submit();
             yield return Frames(3);
@@ -100,7 +94,6 @@ public class MenuProbe : ProbeScenario
             menu.Back();
             yield return Frames(3);
 
-            // Shake and rumble: A on − turns it down a step, + puts it back.
             yield return FocusOn(menu, "Shake and rumble");
             menu.Submit();
             yield return Frames(3);
@@ -122,7 +115,6 @@ public class MenuProbe : ProbeScenario
 
             yield return PlayLogSwitch(menu);
 
-            // Credits, then back.
             yield return Enter(menu, PauseMenu.Submenu.Game, "About and credits");
             menu.Submit();
             yield return Frames(3);
@@ -134,7 +126,6 @@ public class MenuProbe : ProbeScenario
             menu.Back();
             yield return Frames(3);
 
-            // Join by code: up changes the letter, A moves on, B goes back a letter then leaves.
             yield return Enter(menu, PauseMenu.Submenu.Multiplayer, "Enter a code");
             menu.Submit();
             yield return Frames(3);
@@ -154,19 +145,16 @@ public class MenuProbe : ProbeScenario
             menu.Back();
             yield return Frames(3);
 
-            // Claude's two entries, reached by pad.
             yield return Enter(menu, PauseMenu.Submenu.Claude, "Open a Claude terminal");
             Check("claude_submenu_has_the_terminal", menu.FocusedLabel != null && menu.FocusedLabel.StartsWith("Open a Claude terminal", System.StringComparison.Ordinal), $"highlight on '{menu.FocusedLabel}'");
             menu.Back();
             yield return Frames(3);
 
-            // B on the main page closes the menu and gives the wizard back its controls.
             menu.Back();
             yield return Frames(2);
             Check("b_closes_menu", !menu.Open);
             Check("wizard_resumed", !controlsWereOn || controls.enabled);
 
-            // Start opens it again and Start closes it.
             yield return PressStart();
             bool reopened = menu.Open;
             yield return PressStart();
@@ -179,8 +167,6 @@ public class MenuProbe : ProbeScenario
         }
     }
 
-    // Every entry the old long page had is still one level down, and each sub menu fits the screen.
-    // The entries cut for J-065 aren't on any of them.
     IEnumerator EveryEntryHasAHome(PauseMenu menu)
     {
         string[] cut = { "Host", "Join", "Frame-rate log: On", "Frame-rate log: Off", "Open log folder" };
@@ -216,8 +202,6 @@ public class MenuProbe : ProbeScenario
         Check("cut_entries_gone", !everyLabel.Overlaps(cut), string.Join(", ", everyLabel.Intersect(cut)));
     }
 
-    // Settings' Play log, flipped off and on by pad from a log writing in a folder of its own. Turning
-    // it on writes beside the Editor's log, as it does for a player beside theirs, so that file goes too.
     IEnumerator PlayLogSwitch(PauseMenu menu)
     {
         var log = PlayLog.Instance;
@@ -260,7 +244,6 @@ public class MenuProbe : ProbeScenario
         }
     }
 
-    // From the main page, into a sub menu, the highlight on the entry that starts with this.
     IEnumerator Enter(PauseMenu menu, PauseMenu.Submenu submenu, string entry)
     {
         yield return FocusOn(menu, submenu.ToString());
@@ -270,7 +253,6 @@ public class MenuProbe : ProbeScenario
         yield return FocusOn(menu, entry);
     }
 
-    // Presses and releases Start on the virtual gamepad, a frame each.
     IEnumerator PressStart()
     {
         InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(GamepadButton.Start));
@@ -279,7 +261,6 @@ public class MenuProbe : ProbeScenario
         yield return Frames(2);
     }
 
-    // Moves the highlight down until it is on the button whose text starts with this.
     static IEnumerator FocusOn(PauseMenu menu, string label)
     {
         for (int i = 0; i <= menu.ItemCount; i++)

@@ -38,29 +38,28 @@ public class NetDemoDirector : MonoBehaviour
 
     const float Length = 16f;
 
-    // Seconds from the start; cells are (column, row) on the yard map. Directions: 0 N, 1 E, 2 S, 3 W.
     static readonly Step[][] Parts =
     {
-        new[] // Player 1, the host: lights the oil spill, then watches the meadow burn.
+        new[]
         {
             Step.Look(0f, 18, 5), Step.Walk(0.5f, 16, 11),
             Step.Cast(3.5f, SpellIds.FireBolt, 19, 3, 0),
             Step.Look(6.5f, 10, 11),
         },
-        new[] // Player 2: greases the meadow, then sets it alight.
+        new[]
         {
             Step.Look(0f, 9, 10), Step.Walk(0.5f, 11, 13),
             Step.Cast(5f, SpellIds.Grease, 9, 11, 3),
             Step.Cast(7f, SpellIds.FireBolt, 9, 11, 3),
             Step.Look(11.5f, 19, 6),
         },
-        new[] // Player 3: freezes a strip of the pond, then shocks the metal strip.
+        new[]
         {
             Step.Look(0f, 20, 5), Step.Walk(0.5f, 20, 11),
             Step.Cast(8.5f, SpellIds.RayOfFrost, 20, 10, 0),
             Step.Cast(10f, SpellIds.ShockingGrasp, 24, 9, 1),
         },
-        new[] // Player 4: water on the burning oil, then wind across the meadow fire.
+        new[]
         {
             Step.Look(0f, 19, 3), Step.Walk(0.5f, 15, 12),
             Step.Cast(6f, SpellIds.CreateWater, 19, 3, 0),
@@ -96,7 +95,6 @@ public class NetDemoDirector : MonoBehaviour
         foreach (var step in Parts[part])
         {
             yield return new WaitUntil(() => Elapsed >= step.At);
-            // Parts are written in yard coordinates; the world may extend beyond the yard.
             var at = grid.YardCell(step.X, step.Y);
             var cell = grid.CellCenter(at.x, at.y);
             switch (step.Act)

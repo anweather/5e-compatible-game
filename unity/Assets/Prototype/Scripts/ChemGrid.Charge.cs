@@ -9,7 +9,6 @@ using UnityEngine;
 // coil. A strike is one bolt from under its cloud, sparks and a crack of thunder.
 public partial class ChemGrid
 {
-    // Arcs for one charge, how fast it runs (m/s), and how far over the cell it runs.
     const int MostChargeArcs = 22;
     const float ChargeSpeed = 16f;
     const float ChargeLift = 0.18f;
@@ -21,10 +20,8 @@ public partial class ChemGrid
     int shedSeen = -1;
     readonly HashSet<(int x, int y, int tick)> strikesShown = new();
 
-    /// <summary>Where the next charge starts from: where a bolt just struck.</summary>
     public void ChargeStartsAt(Vector3 at) => chargeFrom = at;
 
-    // A cell the charge has just reached (RenderCharge).
     void NoteCharged(Cell c, Vector3 at)
     {
         at.y += ChargeLift;
@@ -32,7 +29,6 @@ public partial class ChemGrid
         if (c.T == TerrainIds.Coil) coilsCharging.Add(at);
     }
 
-    // The cells charged this frame, joined up from the strike: each sample to the nearest one before it.
     void RenderChargeRun()
     {
         if (charging.Count == 0) return;
@@ -62,10 +58,8 @@ public partial class ChemGrid
         coilsCharging.Clear();
     }
 
-    // A storm cloud strikes: a bolt from under it to the ground, sparks and thunder.
     void RenderShedStrikes()
     {
-        // From the tick before too, as a flash (RenderFlashes).
         foreach (var (x, y, tick) in World.ShedStrikesSince(shedSeen - 1))
         {
             if (!strikesShown.Add((x, y, tick))) continue;

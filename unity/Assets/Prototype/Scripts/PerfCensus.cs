@@ -25,7 +25,6 @@ public static class PerfCensus
         public long Tris, VisibleTris;
     }
 
-    /// <summary>The census lines, labelled (start, end).</summary>
     public static List<string> Lines(string label)
     {
         var inv = CultureInfo.InvariantCulture;
@@ -80,7 +79,6 @@ public static class PerfCensus
         return t;
     }
 
-    /// <summary>A renderer's group: its scene root and the root's child it is under.</summary>
     public static string Group(Transform t)
     {
         var root = t.root;
@@ -124,7 +122,6 @@ public static class PerfCensus
         $"impostors_on={TreeImpostors.On} impostors_drawn={TreeImpostors.Drawn} impostor_calls={TreeImpostors.Calls} near_trees={TreeImpostors.NearDrawn} near_trees_made={TreeImpostors.NearMade}" +
         $" prefabs_within={TreeImpostors.PrefabsWithin:0} impostors_within={TreeImpostors.ImpostorsWithin:0} trees_near={TreeImpostors.NearAround} trees_around={TreeImpostors.AllAround} {Brush()}";
 
-    // The brush cells' clumps (CellDressing.DrawBrushNear's LOD groups): all of them, and those within their draw distance.
     static string Brush()
     {
         var cam = Camera.main;

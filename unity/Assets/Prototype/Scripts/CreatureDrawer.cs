@@ -24,11 +24,8 @@ public sealed class CreatureDrawer : System.IDisposable
     readonly MaterialPropertyBlock props = new();
     GraphicsBuffer buffer;
 
-    /// <summary>A segment's Pad for "shadow only" (Creature.shader): under 0, where a crack web's is over 0.</summary>
     public const float ShadowOnly = -1f;
-    // Beyond this from the lens a creature's first segment is too far to test, whatever its size.
     const float TooFar = 12f;
-    // Clear of the near plane by this much, so the cut never quite shows as it nears.
     const float LensMargin = 0.05f;
 
     public CreatureDrawer(Material material)
@@ -37,14 +34,12 @@ public sealed class CreatureDrawer : System.IDisposable
         capsule = CreatureCapsule.Build(12, 6, 4);
     }
 
-    /// <summary>How near a camera's lens something must be for the near plane to cut it: out to the near plane's corners.</summary>
     public static float LensReach(Camera cam)
     {
         float tan = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
         return cam.nearClipPlane * Mathf.Sqrt(1f + tan * tan * (1f + cam.aspect * cam.aspect)) + LensMargin;
     }
 
-    /// <summary>Whether one of a creature's segments comes within <paramref name="reach"/> of the lens.</summary>
     public static bool AtLens(SegmentInstance[] instances, int first, int count, float3 lens, float reach)
     {
         if (count <= 0 || math.distancesq(instances[first].Position, lens) > TooFar * TooFar) return false;
@@ -59,7 +54,6 @@ public sealed class CreatureDrawer : System.IDisposable
         return false;
     }
 
-    /// <summary>Marks one posed creature shadow only if it's at the lens; after anything else that sets a segment's Pad. Returns whether it did.</summary>
     public static bool HideAtLens(SegmentInstance[] instances, int first, int count, Camera cam)
     {
         if (cam == null) return false;
@@ -68,7 +62,6 @@ public sealed class CreatureDrawer : System.IDisposable
         return true;
     }
 
-    /// <summary>Draws the first <paramref name="count"/> segments, culled as a big box round <paramref name="centre"/>.</summary>
     public void Draw(SegmentInstance[] instances, int count, Vector3 centre)
     {
         if (count <= 0 || material == null) return;

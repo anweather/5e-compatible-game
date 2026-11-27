@@ -22,10 +22,8 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>One named landmark: its id, name, kind and cells (grid cells, y growing south).</summary>
     public sealed class Place
     {
-        // Row y = Bounds.Y + i holds spans[i] as pairs x0, x1 (inclusive), west to east.
         readonly int[][] spans;
 
         Place(JObject json, CellRect bounds, int[][] spans)
@@ -45,18 +43,12 @@ namespace Chem
 
         public string Id { get; }
         public string Name { get; }
-        /// <summary>village, lake, sea, river, course, puzzle... (a word, not a type: anything the file says).</summary>
         public string Kind { get; }
-        /// <summary>Where it came from: the world file it was generated from, or what a hand-written one was copied from.</summary>
         public string From { get; }
-        /// <summary>Made by GeneratedPlaces.Generate, so regenerating rewrites it.</summary>
         public bool Generated { get; }
-        /// <summary>The smallest block holding every cell.</summary>
         public CellRect Bounds { get; }
         public int Count { get; }
-        /// <summary>The place's own cell nearest the middle of its cells.</summary>
         public (int x, int y) Middle { get; }
-        /// <summary>The entry as the file has it.</summary>
         internal JObject Json { get; }
 
         public bool Contains(int x, int y)
@@ -69,7 +61,6 @@ namespace Chem
             return false;
         }
 
-        /// <summary>Every cell, row by row, west to east.</summary>
         public IEnumerable<(int x, int y)> Cells()
         {
             for (int i = 0; i < spans.Length; i++)
@@ -77,11 +68,9 @@ namespace Chem
                     for (int x = spans[i][k]; x <= spans[i][k + 1]; x++) yield return (x, Bounds.Y + i);
         }
 
-        /// <summary>The cells at the place's edge: those with a side on a cell outside it.</summary>
         public IEnumerable<(int x, int y)> EdgeCells() =>
             Cells().Where(c => !Contains(c.x + 1, c.y) || !Contains(c.x - 1, c.y) || !Contains(c.x, c.y + 1) || !Contains(c.x, c.y - 1));
 
-        /// <summary>How far a cell is from the place, in cells between centres: 0 inside it.</summary>
         public double DistanceTo(int x, int y)
         {
             if (Contains(x, y)) return 0;
@@ -112,12 +101,9 @@ namespace Chem
             return Cells().OrderBy(c => (long)(c.x - mx) * (c.x - mx) + (long)(c.y - my) * (c.y - my)).ThenBy(c => c.y).ThenBy(c => c.x).First();
         }
 
-        /// <summary>A place from its entry in places.json. Throws <see cref="FormatException"/> if it can't be read.</summary>
         internal static Place Parse(JObject o)
         {
             string id = Str(o["id"]) ?? throw Bad("a place needs an id");
-            // Rows alone (the water bodies places.json generates: the island's sea is millions of cells) straight to spans,
-            // never a cell at a time.
             if (o["rows"] != null && o["area"] == null && o["line"] == null && o["circle"] == null) return FromRows(o["rows"], o, id);
             var cells = new SortedSet<(int y, int x)>();
             if (o["area"] != null) AddArea(cells, o["area"], id);
@@ -128,10 +114,6 @@ namespace Chem
             return FromCells(cells, o);
         }
 
-        /// <summary>
-        /// A place of rows of spans (pairs x0, x1, west to east) from row <paramref name="top"/>, none empty at either end,
-        /// its id, name, kind and source from <paramref name="json"/>.
-        /// </summary>
         internal static Place FromSpans(int top, int[][] spans, JObject json)
         {
             int left = int.MaxValue, right = int.MinValue;
@@ -144,7 +126,6 @@ namespace Chem
             return new Place(json, new CellRect(left, top, right - left + 1, spans.Length), spans);
         }
 
-        /// <summary>A place of these cells, its id, name, kind and source from <paramref name="json"/>.</summary>
         internal static Place FromCells(SortedSet<(int y, int x)> cells, JObject json)
         {
             int top = cells.Min.y, bottom = cells.Max.y, left = cells.Min(c => c.x), right = cells.Max(c => c.x);
@@ -170,7 +151,6 @@ namespace Chem
             return new Place(json, new CellRect(left, top, right - left + 1, bottom - top + 1), spans);
         }
 
-        /// <summary>The cells as places.json's rows: [y, x0, x1, ...] per row that has any.</summary>
         internal JArray Rows()
         {
             var rows = new JArray();
@@ -187,7 +167,6 @@ namespace Chem
                 for (int x = Math.Min(x0, x1); x <= Math.Max(x0, x1); x++) cells.Add((y, x));
         }
 
-        // Every cell whose centre is within half the width of the line through the points.
         static void AddLine(SortedSet<(int y, int x)> cells, JToken t, double width, string id)
         {
             if (!(t is JArray points) || points.Count < 2 || points.Any(p => !(p is JArray xy) || xy.Count != 2))
@@ -228,7 +207,6 @@ namespace Chem
                 for (int x = x0; x <= x1; x++) cells.Add((y, x));
         }
 
-        // places.json's rows, [y, x0, x1, ...] each, as their spans.
         static IEnumerable<(int y, int x0, int x1)> RowSpans(JToken t, string id)
         {
             if (!(t is JArray rows)) throw Bad($"place {id}: rows needs a list of [y, x0, x1, ...]");
@@ -240,8 +218,6 @@ namespace Chem
             }
         }
 
-        // A place of rows alone, as FromCells would make it from their cells: each row's spans sorted, and joined where
-        // they overlap or touch.
         static Place FromRows(JToken t, JObject o, string id)
         {
             var byRow = new SortedDictionary<int, List<(int x0, int x1)>>();
@@ -283,7 +259,6 @@ namespace Chem
         static double? Num(JToken t) => t != null && (t.Type == JTokenType.Integer || t.Type == JTokenType.Float) ? (double)t : (double?)null;
     }
 
-    /// <summary>The world's places (world/places.json), in file order.</summary>
     public sealed class WorldPlaces
     {
         public const string FileName = "places.json";
@@ -302,7 +277,6 @@ namespace Chem
         public int Count => places.Count;
         internal JObject Doc { get; }
 
-        /// <summary>A place by its id, or by its name in any case (with or without a leading "the"); null if none.</summary>
         public Place Find(string idOrName)
         {
             if (string.IsNullOrWhiteSpace(idOrName)) return null;
@@ -319,17 +293,14 @@ namespace Chem
             return s.StartsWith("the ", StringComparison.OrdinalIgnoreCase) ? s.Substring(4) : s;
         }
 
-        /// <summary>The ids, for a refusal's list.</summary>
         public string Ids => places.Count == 0 ? "none (world/places.json has none)" : string.Join(", ", places.Select(p => p.Id));
 
-        /// <summary>Reads world/places.json from <paramref name="worldDir"/>; no file means no places.</summary>
         public static WorldPlaces Load(string worldDir)
         {
             var path = worldDir == null ? null : Path.Combine(worldDir, FileName);
             return path != null && File.Exists(path) ? FromJson(File.ReadAllText(path)) : Empty;
         }
 
-        /// <summary>The places in a places.json text. Throws <see cref="FormatException"/> for one that can't be read.</summary>
         public static WorldPlaces FromJson(string json)
         {
             JObject doc;
@@ -350,7 +321,6 @@ namespace Chem
             string.Join("-", new string(name.ToLowerInvariant().Select(c => char.IsLetterOrDigit(c) ? c : ' ').ToArray())
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
-        // The file with one place a block and each row of cells on a line of its own, so a diff shows what moved.
         internal static string Write(JObject doc, List<Place> places)
         {
             var sb = new StringBuilder("{\n");
@@ -374,7 +344,6 @@ namespace Chem
             return sb.ToString().Replace("\r\n", "\n", StringComparison.Ordinal);
         }
 
-        /// <summary>A cell in words for here(): "(x, y)".</summary>
         public static string CellWords(int x, int y) => string.Format(CultureInfo.InvariantCulture, "({0}, {1})", x, y);
     }
 }

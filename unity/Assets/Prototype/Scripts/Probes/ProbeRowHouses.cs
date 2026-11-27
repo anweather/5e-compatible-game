@@ -28,7 +28,6 @@ public class RowHousesProbe : ProbeScenario
     static readonly HttpClient Http = new();
 
     protected RowHouses houses;
-    // The world's own rows RowHouses draws before any mod (the castle, the landmarks' houses): what a revert leaves.
     protected int valleyDrawn;
     protected string answer;
 
@@ -72,8 +71,6 @@ public class RowHousesProbe : ProbeScenario
         var withWing = WallCells();
         yield return Look("wing", x + 7, y + 4);
 
-        // The wing names the house's clay tile (#86): reverting the house takes the wing with it, and both go back on.
-        // The two go in one switch, so every chunk is redrawn once, not once a mod (#88).
         int redrawsWere = grid.EveryChunkRedraws;
         yield return Revert(Title);
         yield return Until(() => houses.Root(House) == null);
@@ -128,7 +125,6 @@ public class RowHousesProbe : ProbeScenario
             " \"world\": { \"buildings\": { \"" + House + "\": " + row + " } } }";
     }
 
-    // Calls a tool over HTTP on a thread of its own: the desk needs this main thread free to answer.
     protected IEnumerator Tool(string name, JObject arguments)
     {
         var body = new JObject
@@ -176,7 +172,6 @@ public class RowHousesProbe : ProbeScenario
         return new HashSet<Vector2Int>(grid.World.BuildingCellsOf(row).Where(c => c.Part == BuildingPart.Wall).Select(c => new Vector2Int(c.X, c.Y)));
     }
 
-    // The house drawn again with more than it had alone, and a drawn vertex over every wall cell the wing adds.
     void WingDrawn(int vertsWere, HashSet<Vector2Int> cellsWere)
     {
         var added = WallCells().Where(c => !cellsWere.Contains(c)).ToList();
@@ -223,8 +218,6 @@ public class RowHousesProbe : ProbeScenario
         if (hasBody) body.enabled = true;
     }
 
-    // Frames of a building at 720p, the camera swung round it, for a clip: they're what proves it shows.
-    // The probe flies the camera itself and renders off screen, so this needs no window.
     protected IEnumerator Look(string label, int x, int y, float back = ViewBack, float from = 0f)
     {
         if (string.IsNullOrEmpty(ScreenshotDir)) yield break;
@@ -256,7 +249,6 @@ public class RowHousesProbe : ProbeScenario
         Destroy(target);
     }
 
-    // Reverts the mod on with this title, by the id whats_on gives it.
     IEnumerator Revert(string title)
     {
         yield return Tool("whats_on", new JObject());
@@ -272,7 +264,6 @@ public class RowHousesProbe : ProbeScenario
             yield return Tool("revert", new JObject { ["mod"] = id });
     }
 
-    // An edited cabin keeps its scene model; an edited village house gives way, and comes back.
     IEnumerator Base()
     {
         yield return Tool("add_wing", new JObject { ["building"] = "cabin#2", ["width"] = 3, ["depth"] = 3 });
@@ -283,8 +274,6 @@ public class RowHousesProbe : ProbeScenario
         Check("the_cabin_wing_shows", Vertices("cabin#2") > 0, $"{Vertices("cabin#2")} vertices, {Size("cabin#2")}");
         var cabin = grid.World.BuildingRowOf("cabin#2");
         yield return Look("cabin-wing", cabin.X + 3, cabin.Y, CloseBack, FromNorth);
-        // A village house: one the valley drew a scene house for, which an edit replaces (not a cabin, the castle or a
-        // landmark's own house).
         var row = grid.World.BuildingsNow.FirstOrDefault(r => houses.SceneHouseOf(r) != null);
         Check("a_village_house_to_edit", row != null, string.Join(", ", grid.World.BuildingsNow.Select(r => r.Id).Take(12)));
         if (row == null) yield break;
@@ -302,7 +291,6 @@ public class RowHousesProbe : ProbeScenario
         yield return Look("village-after", row.X + 3, row.Y + 3, CloseBack);
     }
 
-    // Frame time with a dozen more houses than before. Hidden Editor numbers: for comparison only.
     IEnumerator Dozen12()
     {
         yield return Sample("frame_ms_before");

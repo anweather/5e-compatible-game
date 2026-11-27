@@ -45,7 +45,6 @@ public class TowerProbe : ProbeScenario
         Check("tower_tall", tall > 30f && tall < 45f, $"the summit stands {tall:0.0} m over the ground");
     }
 
-    // From the yard's east side, looking at the tower.
     IEnumerator FromYard()
     {
         var from = V(24f, 8f, 14f);
@@ -70,7 +69,6 @@ public class TowerProbe : ProbeScenario
         Check("moving_platform_moves", moved > 0.1f, $"{p.name} moved up to {moved:0.00} m in 1 s");
     }
 
-    // A whole cycle and a bit: it is solid for part of it and a ghost (no collider) for the rest.
     IEnumerator Phasing()
     {
         var p = First(TowerPlatform.Kind.Phasing);
@@ -90,7 +88,6 @@ public class TowerProbe : ProbeScenario
         Check("phasing_platform_toggles", solid && ghost, $"{p.name}: solid seen {solid}, ghost seen {ghost}, {flips} switches in {p.period + 0.5f:0.0} s");
     }
 
-    // The wizard put on the lowest collapsing platform: it drops within 1.5 s and is back within 6 s.
     IEnumerator Collapsing()
     {
         var p = First(TowerPlatform.Kind.Collapsing);
@@ -116,7 +113,6 @@ public class TowerProbe : ProbeScenario
         Check("collapsing_platform_returns", back >= 0f && back <= 6f, $"back {back:0.00} s after the wizard landed");
     }
 
-    // On open ground off the start pad: a single jump, then a jump and a second one near its top.
     IEnumerator Jumps()
     {
         var jumper = wizard.GetComponent<DoubleJump>();
@@ -138,7 +134,6 @@ public class TowerProbe : ProbeScenario
         Check("double_jump_higher", twice > single + 0.6f, $"single {single:0.00} m, double {twice:0.00} m");
     }
 
-    // Jumps (through the Starter Assets input, as the jump button does) and reports how high the feet rose.
     IEnumerator Jump(bool again, DoubleJump jumper, System.Action<float> peak, System.Action<bool> took = null)
     {
         var input = wizard.GetComponent(WizardRig.InputsComponent);
@@ -159,7 +154,6 @@ public class TowerProbe : ProbeScenario
         peak(top - from);
     }
 
-    // On the ground 5 m further out from the start pad, away from the tower.
     Vector3 OffThePad()
     {
         var outward = course.startPad - course.summit;
@@ -169,7 +163,6 @@ public class TowerProbe : ProbeScenario
         return spot;
     }
 
-    // Onto the start pad, off it (the clock starts), then up by the flag: fireworks and the time in the log.
     IEnumerator Finish()
     {
         Teleport(course.startPad + Vector3.up * 0.05f);

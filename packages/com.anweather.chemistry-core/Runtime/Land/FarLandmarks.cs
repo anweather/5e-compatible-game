@@ -10,27 +10,21 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>One type's row of world/horizon.json.</summary>
     public sealed class HorizonRow
     {
         public string Type, Shape;
-        /// <summary>How far off it shows: a radius in chunks from the character.</summary>
         public int SeenFrom;
-        /// <summary>Metres: how high it stands above the ground at it, and how far it reaches from its middle.</summary>
         public int Height, Radius;
     }
 
-    /// <summary>world/horizon.json: the landmark types that show from far off.</summary>
     public sealed class HorizonTable
     {
         public const string FileName = "horizon.json";
 
         readonly Dictionary<string, HorizonRow> rows = new Dictionary<string, HorizonRow>(StringComparer.Ordinal);
 
-        /// <summary>Each type's row.</summary>
         public IReadOnlyDictionary<string, HorizonRow> Rows => rows;
 
-        /// <summary>world/horizon.json under <paramref name="worldDir"/>.</summary>
         public static HorizonTable Load(string worldDir) => Parse(File.ReadAllText(Path.Combine(worldDir, FileName)));
 
         public static HorizonTable Parse(string json)
@@ -59,36 +53,24 @@ namespace Chem
         }
     }
 
-    /// <summary>A landmark the view draws far off.</summary>
     public sealed class FarLandmark
     {
-        /// <summary>Its type, a key of world/horizon.json ("volcano", "castle", "rock spire", ...).</summary>
         public string Type;
-        /// <summary>Its name where the plan's rows give one ("Mount Hearth"), else null.</summary>
         public string Name;
-        /// <summary>"landmark", "outcrop" or "waystation", and its index in the plan's list of them.</summary>
         public string From;
         public int Index;
-        /// <summary>The world square it's in.</summary>
         public int Square;
-        /// <summary>Its middle, a map cell (a village landmark's first stamp's middle, else the plan's site).</summary>
         public int X, Y;
         public int SeenFrom, Height, Radius;
         public string Shape;
-        /// <summary>The map's width in cells where it wraps east-west, else 0.</summary>
         public int WrapCells;
 
-        /// <summary>
-        /// Whether it shows from map cell (<paramref name="x"/>, <paramref name="y"/>): within its seenFrom radius, the
-        /// short way round where the map wraps.
-        /// </summary>
         public bool SeenAt(int x, int y)
         {
             long dx = DxTo(x), dy = Y - y, r = (long)SeenFrom * ChunkGen.Size;
             return dx * dx + dy * dy <= r * r;
         }
 
-        /// <summary>Its x less <paramref name="x"/>, in cells: the short way round where the map wraps.</summary>
         public int DxTo(int x)
         {
             int d = X - x;
@@ -98,7 +80,6 @@ namespace Chem
         }
     }
 
-    /// <summary>The plan's far landmarks, in the plan's order: its landmarks, then outcrops, then waystations, then a pinned block's.</summary>
     public sealed class FarLandmarks
     {
         public readonly IReadOnlyList<FarLandmark> All;
@@ -109,7 +90,6 @@ namespace Chem
         {
             var plan = gen.Plan;
             var all = new List<FarLandmark>();
-            // A hills map has no plan, so nothing shows from far off.
             if (plan == null) return new FarLandmarks(all);
             void Add(string type, string from, int index, int square, int siteX, int siteY, LandmarkRows rows)
             {
@@ -146,7 +126,6 @@ namespace Chem
                 var w = plan.Waystations[k];
                 Add(w.Kind, "waystation", k, w.Square, w.SiteX, w.SiteY, null);
             }
-            // A pinned block's are its own plan's (its index in that plan's lists) on its own map, moved to where it lies.
             var inner = gen.Pinned?.Inner;
             if (inner != null)
                 foreach (var l in Make(inner, table).All)
@@ -160,7 +139,6 @@ namespace Chem
             return new FarLandmarks(all);
         }
 
-        /// <summary>A plan landmark's type: a port, a village form's landmark ("great tree"), else its kind ("castle").</summary>
         public static string TypeOf(WorldPlan plan, PlanLandmark l)
         {
             if (l.Port) return "port";
@@ -168,7 +146,6 @@ namespace Chem
             return l.Kind;
         }
 
-        /// <summary>The far landmarks that show from map cell (<paramref name="x"/>, <paramref name="y"/>), in order.</summary>
         public IEnumerable<FarLandmark> SeenAt(int x, int y) => All.Where(l => l.SeenAt(x, y));
     }
 }

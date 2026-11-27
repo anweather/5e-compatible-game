@@ -21,7 +21,6 @@ public static class BuildInfo
     static BuildVersion.Stamp stamp;
     static string builtOn;
 
-    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -29,7 +28,6 @@ public static class BuildInfo
         builtOn = null;
     }
 
-    /// <summary>Where the build stamp lives inside a player build.</summary>
     public const string FileName = "build.json";
 
     public static BuildVersion.Stamp Stamp
@@ -41,10 +39,8 @@ public static class BuildInfo
         }
     }
 
-    /// <summary>"alpha 0.1.0 (abc1234)".</summary>
     public static string Label => Stamp.Label;
 
-    /// <summary>For tests in the Editor: pretend to be another version until the next domain reload.</summary>
     public static void Pretend(string version, string commit, bool editor)
     {
         stamp = new BuildVersion.Stamp { Version = version, Commit = commit, Editor = editor };
@@ -76,7 +72,6 @@ public static class BuildInfo
         stamp = new BuildVersion.Stamp { Version = Application.version, Commit = file?.commit ?? "unknown", Editor = false };
     }
 
-    // The checked-out commit, short, or "" when git isn't there.
     static string GitCommit()
     {
 #if UNITY_EDITOR
@@ -87,19 +82,14 @@ public static class BuildInfo
     }
 
 #if UNITY_EDITOR
-    /// <summary>Runs git in the project's folder and returns its trimmed output, or null if it failed.</summary>
-    // Git's usual homes, for an Editor started without git on its PATH (from a shortcut or the
-    // Hub after a restart): Git for Windows, Homebrew on Apple silicon and Intel, the system's.
     static readonly string[] GitHomes =
     {
         "C:/Program Files/Git/cmd/git.exe", "C:/Program Files (x86)/Git/cmd/git.exe",
         "/opt/homebrew/bin/git", "/usr/local/bin/git", "/usr/bin/git",
     };
 
-    // "git" if the PATH has it, else the first of GitHomes that exists (or "git", to fail as before).
     static string GitExe()
     {
-        // Windows runs only git.exe off the PATH (an extensionless "git" there is a shell script).
         string name = Application.platform == RuntimePlatform.WindowsEditor || Application.platform == RuntimePlatform.WindowsPlayer ? "git.exe" : "git";
         string path = Environment.GetEnvironmentVariable("PATH") ?? "";
         foreach (string dir in path.Split(Path.PathSeparator))

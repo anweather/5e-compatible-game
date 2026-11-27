@@ -34,10 +34,8 @@ public class NetTag : NetworkBehaviour
         Show(TagRules.Nobody);
     }
 
-    /// <summary>Who is it (a client id), or TagRules.Nobody.</summary>
     public ulong It => it.Value;
 
-    /// <summary>Host: starts a game with this player it; false without two players.</summary>
     public bool StartWith(ulong first)
     {
         if (!IsServer) return false;
@@ -48,7 +46,6 @@ public class NetTag : NetworkBehaviour
         return true;
     }
 
-    /// <summary>Host: ends the game.</summary>
     public void Stop()
     {
         if (!IsServer || !rules.Playing) return;
@@ -73,7 +70,6 @@ public class NetTag : NetworkBehaviour
         else if (!rules.Playing) EndedRpc();
     }
 
-    // The host's button; everyone else sees whether a game is on.
     void DrawMenu()
     {
         if (!IsSpawned) return;
@@ -106,7 +102,6 @@ public class NetTag : NetworkBehaviour
 
     string Name(ulong player) => player == NetworkManager.LocalClientId ? "You" : $"Player {player + 1}";
 
-    // Whoever is it glows red; everyone else looks as usual.
     void Show(ulong who)
     {
         foreach (var wizard in NetWizard.All)

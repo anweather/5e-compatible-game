@@ -21,7 +21,6 @@ public class FolkJobsTests
 
     static float2 Centre(int x, int y) => new float2(x, y) * CellMetres;
 
-    // Straight from the foot of the hill to the gate, the way a person would rather not go.
     static List<(int x, int y)> StraightUp()
     {
         var way = new List<(int x, int y)>();
@@ -80,7 +79,6 @@ public class FolkJobsTests
         }
     }
 
-    // The raiders' road up to the castle (the map's hold.json road), as cells.
     static HashSet<(int x, int y)> RaidersRoad()
     {
         var rules = Rules.Load(ChemGrid.Folders.Rules);
@@ -93,8 +91,6 @@ public class FolkJobsTests
 
     static (int x, int y) CellOf(float2 at) => ((int)math.round(at.x / CellMetres), (int)math.round(at.y / CellMetres));
 
-    // In a Hold run the folk keep off the raiders' road (hold-bodies, Andrew's 2026-11-06 playtest): a worker whose round
-    // goes up it walks off it to its stop for a run and stays, and every other's round never comes near it.
     [Test]
     public void InAHoldRunNoWorkerIsOnTheRaidersRoad()
     {
@@ -113,7 +109,6 @@ public class FolkJobsTests
                 continue;
             }
             Assert.That(Apart(CellOf(w.Home.At), road), Is.GreaterThanOrEqualTo(Clear), $"{w.Job}'s stop for a run");
-            // Wherever on its round the run catches it, it gets off the road and stays off.
             for (double t = 0; t < 1500; t += 25)
             {
                 var trip = jobs.HomeFrom(w, CellOf(w.At(t).At));

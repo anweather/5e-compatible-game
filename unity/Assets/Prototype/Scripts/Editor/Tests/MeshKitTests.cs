@@ -29,7 +29,6 @@ public class MeshKitTests
             float along = Vector3.Dot(middle - a, axis);
             var near = along <= 0f ? a : along >= (b - a).magnitude ? b : a + axis * along;
             var outward = (middle - near).normalized;
-            // On a cap the middle of a face lies on the end, so outward is along the axis.
             if (Mathf.Abs(along) < 1e-4f) outward = -axis;
             else if (Mathf.Abs(along - (b - a).magnitude) < 1e-4f) outward = axis;
             Assert.That(Vector3.Dot(Vector3.Cross(q - p, r - p), outward), Is.GreaterThan(0f), $"triangle {t / 3}");
@@ -43,7 +42,6 @@ public class MeshKitTests
         var mesh = Log(true);
         var points = mesh.vertices;
         var triangles = mesh.triangles;
-        // Welded by place: every edge of a closed shape runs once each way.
         var edges = new HashSet<(Vector3Int, Vector3Int)>();
         Vector3Int Key(int i) => Vector3Int.RoundToInt(points[i] * 10000f);
         for (int t = 0; t < triangles.Length; t += 3)

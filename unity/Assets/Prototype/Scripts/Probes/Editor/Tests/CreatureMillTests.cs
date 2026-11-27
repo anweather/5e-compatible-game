@@ -11,7 +11,6 @@ public class CreatureMillTests
     const float Dt = 1f / 60f;
     const float Settle = 3f, Watched = 15f;
 
-    /// <summary>Flat land, walkable where <see cref="open"/> says.</summary>
     sealed class Land : ICreatureGround
     {
         readonly System.Func<float2, bool> open;
@@ -34,7 +33,6 @@ public class CreatureMillTests
         Seed = seed | 1u,
     };
 
-    // Steps an animal with a threat stood still at a place; the herd is only itself.
     static MillWatch Run(ref CreatureState s, CreatureBody body, ICreatureGround land, float2 threat, bool fire = false, System.Action<CreatureState> eachFrame = null)
     {
         var brain = new CreatureBrain();
@@ -52,7 +50,6 @@ public class CreatureMillTests
         return watch;
     }
 
-    // A pen 8 m wide and 10 deep with no way out, the danger at its south end.
     static bool Pen(float2 p) => math.abs(p.x) < 4f && math.abs(p.y) < 5f;
 
     [TestCase("deer", 1u)]
@@ -87,7 +84,6 @@ public class CreatureMillTests
         Assert.That(watch.Mills, Is.True, watch.Summary);
     }
 
-    // Only a true corner is one: an animal running at a long wall goes along it and gets away.
     [TestCase(1u)]
     [TestCase(7u)]
     [TestCase(1234u)]

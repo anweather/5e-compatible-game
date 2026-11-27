@@ -13,7 +13,6 @@ using UnityEngine.InputSystem;
 [RequireComponent(typeof(PlayerInput))]
 public class SprintToggle : MonoBehaviour
 {
-    // Let go of the stick this long and the run stops.
     const float StopAfter = 0.25f;
 
     PlayerInput input;
@@ -38,16 +37,14 @@ public class SprintToggle : MonoBehaviour
         if (pad.leftStickButton.wasPressedThisFrame)
         {
             running = !running;
-            idle = 0f; // clicked standing still, the stick has a moment to move before the run stops
+            idle = 0f;
         }
         idle = pad.leftStick.ReadValue().sqrMagnitude < 0.04f ? idle + Time.deltaTime : 0f;
         if (idle > StopAfter) running = false;
-        // On, it holds sprint down every frame; switching off lets go once (Shift, if held, presses it again).
         if (running) sprint(true);
         else if (was) sprint(false);
     }
 
-    // Takes the left trigger off sprint, leaving the keyboard's Shift.
     void Unbind()
     {
         unbound = true;

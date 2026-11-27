@@ -7,20 +7,16 @@ using UnityEngine;
 // only switches them on and off (BallCourt says what to show).
 public class CourtScoreboard : MonoBehaviour
 {
-    /// <summary>Segments in a figure (a to g: top, upper right, lower right, bottom, lower left, upper left, middle) and figures on the board.</summary>
     public const int SegmentsPerDigit = 7, DigitCount = 4;
 
     [Tooltip("Seven segments per figure, a to g, for the four figures: west tens, west ones, east tens, east ones.")]
     public Renderer[] segments;
 
-    // Which segments light for each digit, a in bit 0 to g in bit 6.
     static readonly int[] Digits = { 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F };
 
-    /// <summary>The numbers on the board now (-1 before the first Show).</summary>
     public int West { get; private set; } = -1;
     public int East { get; private set; } = -1;
 
-    /// <summary>Shows the goals at each end (up to 99).</summary>
     public void Show(int west, int east)
     {
         if (west == West && east == East) return;
@@ -30,7 +26,6 @@ public class CourtScoreboard : MonoBehaviour
         ShowNumber(2, east);
     }
 
-    // Two figures from the first; no leading zero.
     void ShowNumber(int first, int value)
     {
         value = Mathf.Clamp(value, 0, 99);

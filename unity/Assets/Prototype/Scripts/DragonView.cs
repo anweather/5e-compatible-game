@@ -19,11 +19,8 @@ public class DragonView : MonoBehaviour
     [Tooltip("Draws its shadow (Prototype/DragonShadow); the builder sets it, which puts it in the build.")]
     public Shader shadowShader;
 
-    // How quickly the shown dragon follows its pose (s), and turns toward its way.
     const float Follow = 0.1f, GroundFollow = 0.7f, Turn = 2.5f, MostBank = 35f;
-    // The model's flying clip hovers upright: this much nose down lays it out level for a long pass.
     const float Level = 40f;
-    // Where its mouth is, at scale 1, if the model has no nose bone: ahead of the body, a little below.
     const float MouthAhead = 26f, MouthBelow = 2f;
     const string Nose = "Nose_end";
     const string Flying = "DragonArmature|Dragon_Flying", Attack = "DragonArmature|Dragon_Attack";
@@ -55,31 +52,22 @@ public class DragonView : MonoBehaviour
     bool roared;
     Vector3 cellOrigin, cellX, cellY;
 
-    /// <summary>The dragon is in sight, for the probe.</summary>
     public bool Seen => wasSeen;
 
-    /// <summary>Where it's drawn, for the probe.</summary>
     public Vector3 ShownAt => shownAt;
 
-    /// <summary>It's stood on the mountain, for the probe.</summary>
     public bool Perched { get; private set; }
 
-    /// <summary>The way it's facing, for the probe.</summary>
     public Vector3 Way => way;
 
-    /// <summary>The breath drawn now, or null.</summary>
     public DragonBreath Breath => breath;
 
-    /// <summary>How big it's drawn against the model at scale 1, for the probe.</summary>
     public float DrawnScale => body != null ? body.localScale.x / unitScale : 0f;
 
-    /// <summary>The metres across its shadow is laid, for the probe.</summary>
     public float ShadowSize { get; private set; }
 
-    /// <summary>Its mouth now.</summary>
     public Vector3 Mouth => nose != null ? nose.position : shownAt + way * (MouthAhead * shownScale) + Vector3.down * (MouthBelow * shownScale);
 
-    /// <summary>The box round all of it, for the probe.</summary>
     public Bounds Extent
     {
         get
@@ -110,7 +98,6 @@ public class DragonView : MonoBehaviour
 
     void BuildBody()
     {
-        // The model keeps its own turn from the file on a child: only the empty body above it is steered.
         body = new GameObject("Dragon").transform;
         body.SetParent(transform, false);
         var go = Instantiate(model, body);
@@ -177,7 +164,6 @@ public class DragonView : MonoBehaviour
         body.localScale = Vector3.one * (unitScale * scale);
     }
 
-    // How far into this tick we are: the time since the world's tick last moved, over the time a tick takes.
     float TickFraction(World world)
     {
         if (world.Tick != lastTick)
@@ -197,7 +183,6 @@ public class DragonView : MonoBehaviour
         if (shadow != null) shadow.Hide();
     }
 
-    // The highest ground in the valley, once a flight: where it lands to roar.
     Vector2 PerchFor(World world)
     {
         if (flightKnown == world.DragonFlights) return perch;
@@ -232,7 +217,6 @@ public class DragonView : MonoBehaviour
             body.gameObject.SetActive(true);
             wasSeen = true;
         }
-        // Over a hill it climbs early and comes down late, rather than riding every bump.
         groundUnder = ground > groundUnder ? Mathf.SmoothDamp(groundUnder, ground, ref groundSpeed, GroundFollow * 0.5f) : Mathf.SmoothDamp(groundUnder, ground, ref groundSpeed, GroundFollow * 2f);
         var target = at + Vector3.up * (groundUnder + pose.Lift);
         var was = shownAt;
@@ -241,14 +225,11 @@ public class DragonView : MonoBehaviour
         if (moved.sqrMagnitude > 0.01f && !pose.Perched) way = Vector3.Slerp(way, moved.normalized, 1f - Mathf.Exp(-Time.deltaTime * Turn));
         float flat = Vector3.SignedAngle(Vector3.ProjectOnPlane(way, Vector3.up), Vector3.ProjectOnPlane(moved, Vector3.up), Vector3.up);
         bank = Mathf.Lerp(bank, Mathf.Clamp(-flat * 4f, -MostBank, MostBank), 1f - Mathf.Exp(-Time.deltaTime * Turn));
-        // Stood on the mountain it rears up as its clip hovers, rather than lying on the air.
         rear = Mathf.Lerp(rear, pose.Perched ? Level : 0f, 1f - Mathf.Exp(-Time.deltaTime * Turn));
         body.SetPositionAndRotation(shownAt, Quaternion.LookRotation(way, Vector3.up) * Quaternion.Euler(-rear, 0f, bank + pose.Roll));
         Perched = pose.Perched;
     }
 
-    // The highest ground under its wings and just ahead, so a tip doesn't catch a hill the body passes by. Coming in to land
-    // it narrows to the ground under its feet.
     float GroundUnderAll(Vector3 at, DragonFlight.Pose pose)
     {
         float span = DragonFlight.SpanAtOne * shownScale;
@@ -280,7 +261,6 @@ public class DragonView : MonoBehaviour
         breath.Burn(Scene(a), Scene(b), -flatWay, Mouth, shownScale);
     }
 
-    // Under it while it's low; high up, thrown long and wide, and softer, by the sun's slant.
     void LayShadow(DragonParams p, DragonFlight.Pose pose)
     {
         if (shadow == null) return;
@@ -294,7 +274,6 @@ public class DragonView : MonoBehaviour
         shadow.Lay(new Vector3(shownAt.x, 0f, shownAt.z), way, ShadowSize, Mathf.Lerp(0.7f, 0.5f, high));
     }
 
-    // The horn as the warning starts, its roar as it dives and from the mountain. Heard the same everywhere: at the listener.
     void Cues(World world, DragonState flight)
     {
         var eye = Camera.main;

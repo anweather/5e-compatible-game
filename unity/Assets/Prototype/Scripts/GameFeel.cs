@@ -11,7 +11,6 @@ public static class GameFeel
     static bool loaded;
     static float shake = 1f;
 
-    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -19,7 +18,6 @@ public static class GameFeel
         shake = 1f;
     }
 
-    /// <summary>How much of the shake and rumble to play, 0 (off) to 1.</summary>
     public static float Shake
     {
         get

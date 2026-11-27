@@ -10,7 +10,6 @@ namespace Chem
 {
     public static class ValueNoise
     {
-        /// <summary>A value in [0, 1) for an integer lattice point.</summary>
         public static float Hash(int x, int y, int seed)
         {
             unchecked
@@ -25,7 +24,6 @@ namespace Chem
             }
         }
 
-        /// <summary>Smooth noise in [0, 1] at a point, one lattice cell per unit.</summary>
         public static float At(float x, float y, int seed)
         {
             int ix = (int)Math.Floor(x), iy = (int)Math.Floor(y);
@@ -36,13 +34,11 @@ namespace Chem
             return bottom + (top - bottom) * fy;
         }
 
-        /// <summary>Two octaves: broad shapes with a finer wobble on top, still in [0, 1].</summary>
         public static float Twice(float x, float y, int seed) =>
             0.7f * At(x, y, seed) + 0.3f * At(x * 2.7f + 17.3f, y * 2.7f + 5.1f, seed + 101);
 
         static float Ease(float t) => t * t * (3f - 2f * t);
 
-        /// <summary>Hermite step: 0 at or below <paramref name="lo"/>, 1 at or above <paramref name="hi"/>.</summary>
         public static float SmoothStep(float lo, float hi, float x)
         {
             float t = (x - lo) / (hi - lo);

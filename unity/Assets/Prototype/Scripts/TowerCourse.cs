@@ -28,13 +28,11 @@ public class TowerCourse : MonoBehaviour
     [Tooltip("Where the fireworks burst round.")]
     public Vector3 fireworksAt;
 
-    // The clock drifts toward the shared one; past this far off (s) it jumps to it.
     const double SnapAfter = 0.5;
     const float FindEvery = 1f;
 
     static float best = -1f;
 
-    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -49,7 +47,6 @@ public class TowerCourse : MonoBehaviour
     bool onPad, atTop;
     GUIStyle style;
 
-    /// <summary>The course's shared clock (s): the chemistry's tick in seconds, smoothed.</summary>
     public double Now
     {
         get
@@ -59,13 +56,10 @@ public class TowerCourse : MonoBehaviour
         }
     }
 
-    /// <summary>The local player's wizard, carried by the moving platforms it stands on; null if none.</summary>
     public CharacterController LocalRider => local;
 
-    /// <summary>The best climb this session (s), or below 0 before the first.</summary>
     public static float Best => best;
 
-    /// <summary>Whether a climb is being timed now.</summary>
     public bool Timing => startedAt >= 0f;
 
     void Advance()
@@ -91,7 +85,6 @@ public class TowerCourse : MonoBehaviour
         Top(feet);
     }
 
-    // Every wizard (the local one and other players' puppets) can set off a collapsing platform.
     void FindWizards()
     {
         nextFind = Time.time + FindEvery;
@@ -105,7 +98,6 @@ public class TowerCourse : MonoBehaviour
         }
     }
 
-    /// <summary>Whether any wizard stands on a platform.</summary>
     public bool AnyWizardOn(TowerPlatform platform)
     {
         foreach (var w in wizards)
@@ -113,7 +105,6 @@ public class TowerCourse : MonoBehaviour
         return false;
     }
 
-    // On the pad the clock is ready; stepping off starts it.
     void Pad(Vector3 feet)
     {
         bool on = Flat(feet - startPad) < padRadius && Mathf.Abs(feet.y - startPad.y) < 1f;
@@ -128,7 +119,6 @@ public class TowerCourse : MonoBehaviour
         onPad = on;
     }
 
-    // Reaching the flag finishes the climb; it can finish again once the wizard has gone back down.
     void Top(Vector3 feet)
     {
         bool there = Flat(feet - summit) < finishRadius && feet.y > summit.y - 0.5f && feet.y < summit.y + 4f;
@@ -161,7 +151,6 @@ public class TowerCourse : MonoBehaviour
         return true;
     }
 
-    /// <summary>A time as minutes and seconds, "1:23".</summary>
     public static string Clock(float seconds)
     {
         int s = Mathf.FloorToInt(seconds);
@@ -170,7 +159,6 @@ public class TowerCourse : MonoBehaviour
 
     static float Flat(Vector3 v) => new Vector2(v.x, v.z).magnitude;
 
-    // The climb's time, top middle, while it runs.
     void OnGUI()
     {
         HudScale.Apply();

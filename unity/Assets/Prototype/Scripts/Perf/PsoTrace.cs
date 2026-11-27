@@ -35,13 +35,11 @@ public class PsoTrace : MonoBehaviour
         self.trace = new GraphicsStateCollection();
         bool tracing = self.trace.BeginTrace();
         Debug.Log($"PSO TRACE: {(tracing ? "tracing" : "couldn't start tracing")} on {SystemInfo.graphicsDeviceType}; saving to {self.path} at quit.");
-        // Unity records states only in a development build, and only where pipelines can be made in parallel.
         if (!Debug.isDebugBuild) Debug.LogWarning("PSO TRACE: this isn't a development build, so nothing will be recorded.");
         if (!SystemInfo.supportsParallelPSOCreation) Debug.LogWarning($"PSO TRACE: {SystemInfo.graphicsDeviceType} here can't make pipelines in parallel, so nothing will be recorded.");
         QuickExit.BeforeExit += self.Save;
     }
 
-    // States made while drawing a frame show up in the next Update, whose delta is that frame's time.
     void Update()
     {
         int count = trace.totalGraphicsStateCount;
@@ -51,7 +49,6 @@ public class PsoTrace : MonoBehaviour
         LogNewVariants();
     }
 
-    // Which shaders those states were for, once the first frames' crowd is past.
     void LogNewVariants()
     {
         trace.GetVariants(variants);

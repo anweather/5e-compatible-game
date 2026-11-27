@@ -7,7 +7,6 @@ using UnityEngine;
 [DefaultExecutionOrder(305)]
 public class ClothSpring : MonoBehaviour
 {
-    // How hard it springs back each step, how much of its motion it keeps, and how far it may lag.
     const float Stiffness = 0.18f, Damping = 0.86f, Reach = 0.07f, Sag = 0.02f;
 
     Vector3 rest, at, before;

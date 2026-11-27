@@ -42,10 +42,8 @@ public sealed class CellLightPool
         }
     }
 
-    /// <summary>How many lights are on, for the probe.</summary>
     public int Shown { get; private set; }
 
-    /// <summary>A cell was redrawn, with its ground at <paramref name="top"/>.</summary>
     public void Changed(int x, int y, Cell c, float top)
     {
         int key = grid.World.Idx(x, y);
@@ -57,7 +55,6 @@ public sealed class CellLightPool
         else dirty |= lit.Remove(key);
     }
 
-    /// <summary>Moves the lights if a lit cell came or went.</summary>
     public void Place()
     {
         if (!dirty) return;

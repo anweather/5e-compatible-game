@@ -10,7 +10,6 @@ using UnityEngine;
 // arm must not jump in with the wizard's nose to a wall and open ground behind.
 public class HouseCameraProbe : ProbeScenario
 {
-    // The arm at or above this share of its length counts as not pulled in.
     const float KeepsShare = 0.75f;
     const float Pitch = 12f;
     static readonly Collider[] Near = new Collider[16];
@@ -48,7 +47,6 @@ public class HouseCameraProbe : ProbeScenario
         yield return SmallForm(houses, follow, root);
     }
 
-    // The smallest of the animals' bodies at the same walls: its radius is under the camera's check (#20 again?).
     IEnumerator SmallForm(VillageHouse[] houses, CinemachineThirdPersonFollow follow, Transform root)
     {
         var shape = wizard.GetComponent<Shapeshift>();
@@ -94,7 +92,6 @@ public class HouseCameraProbe : ProbeScenario
             }
         Metric("small_runs", runs);
         Metric("small_arm_checks_on_its_own_wall", ownWall);
-        // The arm's own check, not its length: the camera doesn't settle behind a form teleported about like this.
         Check("arm_check_clear_in_a_small_form", ownWall == 0, $"{ownWall} of {runs} walks in the {shape.FormName} start the check in the wall; last: {lastCheck}");
         Shot("small-form-at-the-wall");
         yield return null;
@@ -102,7 +99,6 @@ public class HouseCameraProbe : ProbeScenario
         shape.ChangeBackByChoice();
     }
 
-    // Into the wall from one side and held there, as a player does.
     IEnumerator WalkInto(VillageHouse house, Vector3 side, CinemachineThirdPersonFollow follow, Transform root)
     {
         var centre = house.transform.position;
@@ -137,19 +133,16 @@ public class HouseCameraProbe : ProbeScenario
             truly |= behind != null && !behind.transform.IsChildOf(house.transform);
         }
         puppet.Move(Vector2.zero);
-        // Another house or a tree truly behind the wizard is the arm doing its job: not this one's fault.
         if (truly) blocked++;
         else if (walkShortest < shortest) (shortest, what) = (walkShortest, walkHit);
     }
 
-    // Pressed against the wall: does the arm's own check start in it?
     void CheckAtTheWall(VillageHouse house, CinemachineThirdPersonFollow follow, Transform root)
     {
         lastCheck = ArmHit(follow, root, out var wall);
         if (wall != null && wall.transform.IsChildOf(house.transform)) ownWall++;
     }
 
-    // Repeats the follow's check: the shoulder out from the root, the arm back from there.
     static string ArmHit(CinemachineThirdPersonFollow follow, Transform root, out Collider behind)
     {
         behind = null;

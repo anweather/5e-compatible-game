@@ -13,20 +13,10 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>places.json as it should be, its generated places made from the world files (WorldPlaces reads it).</summary>
     public static class GeneratedPlaces
     {
-        /// <summary>
-        /// places.json as it should be: its about and generate sections, the places generated from
-        /// the world files in <paramref name="worldDir"/> (villages, courses, puzzles, water bodies),
-        /// then the hand-written ones the file has now, in its order.
-        /// </summary>
         public static string Generate(string worldDir) => Generate(worldDir, null);
 
-        /// <summary>
-        /// As <see cref="Generate(string)"/>, the water bodies those <paramref name="water"/> found as the land was
-        /// written (a bake's, which never reads its land back whole), else land.json's.
-        /// </summary>
         internal static string Generate(string worldDir, WaterRuns water)
         {
             var current = WorldPlaces.Load(worldDir);
@@ -65,17 +55,9 @@ namespace Chem
         }
     }
 
-    /// <summary>
-    /// The water bodies of a world's land (places.json's "generate" "water"), read a row at a time, north to south: its
-    /// connected cells below the water level, each body of at least "least" cells, one touching the world's edge a sea,
-    /// one closed in a lake, ids by kind, largest first. A row's runs of water are joined to the runs of the row above
-    /// that share a column with them, so it holds the runs, never the land or a cell at a time (a bake's, bake-lean): the
-    /// sea of the scale island is millions of cells and a few thousand runs.
-    /// </summary>
     internal sealed class WaterRuns
     {
         readonly int w, h, below, least;
-        // Every run in the order the rows gave them: its row, its first and last x, and the run it's joined to.
         readonly List<int> runY = new List<int>(), runX0 = new List<int>(), runX1 = new List<int>(), parent = new List<int>();
         int above, aboveEnd, y;
 
@@ -87,16 +69,13 @@ namespace Chem
             least = (int?)settings["least"] ?? 1;
         }
 
-        /// <summary>The finder for a w × h world whose places.json (in <paramref name="worldDir"/>) asks for water bodies; null if it asks none.</summary>
         internal static WaterRuns For(string worldDir, int w, int h)
         {
-            // Its settings alone: the places themselves are read (and checked) when places.json is generated.
             var path = Path.Combine(worldDir, WorldPlaces.FileName);
             if (!File.Exists(path)) return null;
             return JObject.Parse(File.ReadAllText(path))["generate"]?["water"] is JObject settings ? new WaterRuns(w, h, settings) : null;
         }
 
-        /// <summary>land.json's water bodies, as the places.json <paramref name="doc"/> asks for them; null if it asks none or there's no land.</summary>
         internal static WaterRuns Read(string worldDir, JObject doc)
         {
             var path = Path.Combine(worldDir, "land.json");
@@ -110,7 +89,6 @@ namespace Chem
             return runs;
         }
 
-        /// <summary>The next row's <c>w</c> cells of land.</summary>
         internal void Row(ReadOnlySpan<int> land)
         {
             int start = runY.Count, p = above, x = 0;
@@ -128,7 +106,6 @@ namespace Chem
                 runX0.Add(x0);
                 runX1.Add(x1);
                 parent.Add(k);
-                // The runs above, west to east: one ending west of this run ends west of every run after it in the row.
                 while (p < aboveEnd && runX1[p] < x0) p++;
                 for (int q = p; q < aboveEnd && runX0[q] <= x1; q++) Join(q, k);
             }
@@ -160,7 +137,6 @@ namespace Chem
             public bool Edge;
         }
 
-        /// <summary>The bodies as places: the largest first, then by their north-west-most cell.</summary>
         internal IEnumerable<Place> Bodies()
         {
             var of = new Dictionary<int, Body>();
@@ -178,7 +154,6 @@ namespace Chem
                 b.Edge |= runY[k] == 0 || runY[k] == h - 1 || runX0[k] == 0 || runX1[k] == w - 1;
             }
             var counts = new Dictionary<string, int>(StringComparer.Ordinal);
-            // A body's first run is its north-west-most cell: the rows came north to south, each west to east.
             foreach (var b in bodies.Where(b => b.Cells >= least).OrderByDescending(b => b.Cells).ThenBy(b => (runY[b.Runs[0]], runX0[b.Runs[0]])))
             {
                 string kind = b.Edge ? "sea" : "lake";
@@ -191,7 +166,6 @@ namespace Chem
             }
         }
 
-        // A body's runs as rows of pairs x0, x1 from its first row to its last, a row without any empty.
         int[][] Spans(Body b)
         {
             int top = runY[b.Runs[0]], bottom = runY[b.Runs[b.Runs.Count - 1]];

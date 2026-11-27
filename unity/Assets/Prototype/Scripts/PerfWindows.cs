@@ -30,7 +30,6 @@ public sealed class PerfWindows
         Open(now);
     }
 
-    /// <summary>The windows so far, oldest first.</summary>
     public IReadOnlyList<string> Lines => lines;
 
     void Open(double now)
@@ -46,7 +45,6 @@ public sealed class PerfWindows
         counted.Clear();
     }
 
-    /// <summary>One frame's times; the CPU and GPU ones are negative when the frame has none yet.</summary>
     public void Frame(float ms, float mainMs, float gpuMs)
     {
         frames.Add(ms);
@@ -56,17 +54,14 @@ public sealed class PerfWindows
         render.Add((float)grid.RenderMs);
     }
 
-    /// <summary>A named count of the frame, into the window's.</summary>
     public void Count(string name, long value)
     {
         counted.TryGetValue(name, out long had);
         counted[name] = had + value;
     }
 
-    /// <summary>Whether this window's time is up.</summary>
     public bool Due(double now) => now - openedAt >= Seconds;
 
-    /// <summary>Writes the window and opens the next.</summary>
     public void Close(double now, int burning, string markers)
     {
         var world = grid.World;
@@ -83,7 +78,6 @@ public sealed class PerfWindows
         line.Append($" weather={world.Weather.Kind} chunks={world.ActiveChunks.Count} burning={burning} flames={grid.Flames.CellsBurning}");
         line.Append($" near_fire={BurningNearWizard()}");
         line.Append($" lights={LightsOn()} particles={ParticlesAlive()} gen0={GC.CollectionCount(0) - collectionsAtOpen}");
-        // The managed heap as the window closes: what's live (used) and what the collector holds (heap), for a long walk's trend.
         line.Append($" mono_used_mb={UnityEngine.Profiling.Profiler.GetMonoUsedSizeLong() >> 20} mono_heap_mb={UnityEngine.Profiling.Profiler.GetMonoHeapSizeLong() >> 20}");
         line.Append($" at={WizardChunk()} drawn_chunks={grid.ChunksDrawn} blockers={grid.BlockersStanding}{Bodies()}");
         foreach (var pair in counted.OrderBy(c => c.Key, StringComparer.Ordinal)) line.Append($" {pair.Key}={pair.Value.ToString(Plain)}");
@@ -99,8 +93,6 @@ public sealed class PerfWindows
         line.Append($" {name}_mean={Num(stats.MeanMs)} {name}_p50={Num(stats.P50Ms)} {name}_p95={Num(stats.P95Ms)} {name}_p99={Num(stats.P99Ms)} {name}_worst={Num(ms.Max())}");
     }
 
-    // Cells burning within 10 of the wizard: whether a walk really goes through the fire.
-    // The chunk the wizard stands in, so a cost that follows the place can be told from one that grows with the walk.
     string WizardChunk()
     {
         var wizard = WizardRig.FindLocal();
@@ -127,7 +119,6 @@ public sealed class PerfWindows
 
     static int ParticlesAlive() => UnityEngine.Object.FindObjectsByType<ParticleSystem>(FindObjectsSortMode.None).Sum(p => p.particleCount);
 
-    // What physics has to carry: every collider and body in the scene, and how many bodies are awake (#184).
     static string Bodies()
     {
         var bodies = UnityEngine.Object.FindObjectsByType<Rigidbody>(FindObjectsSortMode.None);

@@ -9,7 +9,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>The spell zones and the course's runs (World.CourseSystem): world data, the same on every peer, in the checksum.</summary>
     public sealed class CourseSystem
     {
         readonly World world;
@@ -21,22 +20,17 @@ namespace Chem
             this.world = world;
         }
 
-        /// <summary>The spell zones, in order (the course's booths among them).</summary>
         public IReadOnlyList<SpellZone> Zones => zones;
 
-        /// <summary>The course laid out, or null.</summary>
         public CourseLayout Layout { get; private set; }
 
-        /// <summary>Each player's run on the course, by player.</summary>
         public IReadOnlyDictionary<string, CourseRun> Runs => runs;
 
-        /// <summary>Adds a spell zone anywhere in the valley (addZone in the TS). World data: every peer adds the same, before the first tick.</summary>
         public void AddZone(SpellZone zone)
         {
             if (zone != null) zones.Add(zone);
         }
 
-        /// <summary>Lays the course out (setCourse in the TS): its booths become spell zones. World data, like AddZone.</summary>
         public void Set(CourseLayout course)
         {
             if (course == null || Layout != null) return;
@@ -44,7 +38,6 @@ namespace Chem
             foreach (var z in course.Zones()) zones.Add(z);
         }
 
-        /// <summary>The zone that smothers this spell cast at (x, y) (zoneAgainst in the TS), or null when it may go off there.</summary>
         public SpellZone ZoneAgainst(SpellDef s, int x, int y)
         {
             foreach (var z in zones)
@@ -52,7 +45,6 @@ namespace Chem
             return null;
         }
 
-        // A spell is allowed by id, or when a combo or a hand row of only the zone's elements casts it.
         bool Allows(SpellZone z, string spell)
         {
             if (z.Spells.Contains(spell)) return true;
@@ -62,13 +54,9 @@ namespace Chem
             return slot != null && slot != HandsDef.Empty && slot.Split('+').All(e => z.Elements.Contains(e));
         }
 
-        /// <summary>
-        /// A player stands on (x, y) (courseStep in the TS): the gate (re)starts their clock, a booth further on than
-        /// their last is the checkpoint reached, and the bell stops the clock. Between ticks, like a cast.
-        /// </summary>
         public void Apply(CourseCommand command)
         {
-            world.FinishTick(); // commands land between whole ticks (StepSome)
+            world.FinishTick();
             var course = Layout;
             if (course == null || command.Player == null || !course.Area.Contains(command.X, command.Y)) return;
             if (!runs.TryGetValue(command.Player, out var run)) runs[command.Player] = run = new CourseRun { Player = command.Player };
@@ -106,17 +94,12 @@ namespace Chem
                 : $"{run.Player} rings the bell in {Seconds(time)} (best {Seconds(run.Best)})", LogKind.Notable);
         }
 
-        /// <summary>Ticks as seconds to a tenth, "42.5 s" (courseSeconds in the TS).</summary>
         public string Seconds(int ticks)
         {
             int tps = Math.Max(1, world.Rules.Sim.TicksPerSecond), tenths = (ticks * 10 + tps / 2) / tps;
             return $"{CourseRect.W(tenths / 10)}.{CourseRect.W(tenths % 10)} s";
         }
 
-        /// <summary>
-        /// Where a wizard downed at (x, y) gets up (courseRespawn in the TS): inside the course on a run, the last
-        /// checkpoint reached (the gate before the first); otherwise null, the yard as ever.
-        /// </summary>
         public (int x, int y)? Respawn(string player, int x, int y)
         {
             var course = Layout;
@@ -127,18 +110,14 @@ namespace Chem
             return (b.CheckX, b.CheckY);
         }
 
-        /// <summary>The zones as text, "" with none (so worlds without any hash as they did; zoneState in the TS).</summary>
         public string ZoneText() => string.Concat(zones.Select(z =>
             $"|z{z.Id}:{CourseRect.Text(z.Area)}:{string.Join(",", z.Elements)}:{string.Join(",", z.Spells)}"));
 
-        /// <summary>The players' runs as text, "" before anyone ran (courseState in the TS): player, checkpoint, start, best, last.</summary>
         public string Text() => string.Concat(runs.Values.Select(r =>
             $"|r{r.Player}:{CourseRect.W(r.Checkpoint)}:{CourseRect.W(r.Start)}:{CourseRect.W(r.Best)}:{CourseRect.W(r.Last)}"));
 
-        /// <summary>FNV-1a of Text and ZoneText (both part of CastHash, so of the online checksum).</summary>
         public string Hash() => Fnv1a.Hash(Text() + ZoneText());
 
-        // The runs into a save, best times and all; the zones and the course are world data, laid again on load.
         internal void Save(JObject save)
         {
             if (runs.Count > 0) save["course"] = new JArray(runs.Values.Select(r => new JArray(r.Player, r.Checkpoint, r.Start, r.Best, r.Last)));

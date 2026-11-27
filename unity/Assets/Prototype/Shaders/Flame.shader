@@ -1,15 +1,15 @@
+// A burning cell's flames (FlameBank): one quad an instance, drawn with no mesh from the flames'
+// buffer, turned about its upright to the camera and leaning partway toward it, so a fire still
+// reads from high up. Each plays a flipbook of real flame (the Particle Pack's tiny, medium or large
+// fire sheet, by the fire's level) on its own clock. Each time round it starts a little elsewhere,
+// at a little another size and perhaps mirrored, as a new particle would, so nothing keeps time or
+// stays stamped in place. A sheet below zero marks embers: a spark climbing and fading, then again.
+// A sheet of 3 marks a drop of the dragon's stream (DragonBreath): a GPU particle with no state,
+// flying each time round from _StreamMouth past _StreamBend to where it lands (its `at`), drawn out
+// along its way and facing the camera from any side, the large sheet's fire added to what's behind.
+// A flame's `turn` turns its colour round the wheel: a spell's fire in that spell's look (LookTint).
 Shader "Prototype/Flame"
 {
-    // A burning cell's flames (FlameBank): one quad an instance, drawn with no mesh from the flames'
-    // buffer, turned about its upright to the camera and leaning partway toward it, so a fire still
-    // reads from high up. Each plays a flipbook of real flame (the Particle Pack's tiny, medium or large
-    // fire sheet, by the fire's level) on its own clock. Each time round it starts a little elsewhere,
-    // at a little another size and perhaps mirrored, as a new particle would, so nothing keeps time or
-    // stays stamped in place. A sheet below zero marks embers: a spark climbing and fading, then again.
-    // A sheet of 3 marks a drop of the dragon's stream (DragonBreath): a GPU particle with no state,
-    // flying each time round from _StreamMouth past _StreamBend to where it lands (its `at`), drawn out
-    // along its way and facing the camera from any side, the large sheet's fire added to what's behind.
-    // A flame's `turn` turns its colour round the wheel: a spell's fire in that spell's look (LookTint).
     Properties
     {
         [NoScaleOffset] _SheetTiny ("Tiny flames (11 x 11)", 2D) = "black" {}
@@ -46,7 +46,7 @@ Shader "Prototype/Flame"
 
             StructuredBuffer<Flame> _Flames;
             float _FlameTime;
-            float4 _StreamMouth; // where the stream leaves the mouth, and the dragon's scale
+            float4 _StreamMouth;
             float3 _StreamBend;
             TEXTURE2D(_SheetTiny);
             TEXTURE2D(_SheetMedium);
@@ -70,10 +70,8 @@ Shader "Prototype/Flame"
                 return frac(sin(a * 127.1 + b * 311.7) * 43758.5453);
             }
 
-            // Frames across a sheet, and how many times it plays in one go round.
             float Tiles(float sheet) { return sheet < 0.5 ? 11.0 : sheet < 1.5 ? 10.0 : 8.0; }
             float Plays(float sheet) { return sheet < 1.5 ? 1.0 : 2.5; }
-            // A drop's width at the mouth, at scale 1.
             static const float DropAtMouth = 3.0;
             static const float DropSheet = 2.5;
 
@@ -115,12 +113,10 @@ Shader "Prototype/Flame"
                     corner.y -= 0.5;
                     mirror = Hash(round + 19.0, f.seed) < 0.5 ? -1.0 : 1.0;
                     frame = floor(frac(life * Plays(2.0) + f.seed) * 64.0);
-                    // White hot at the mouth, through gold, to the red of the wall.
                     tint.rgb = life < 0.4 ? lerp(float3(1.2, 0.8, 0.4), float3(1.0, 0.42, 0.08), life / 0.4) : lerp(float3(1.0, 0.42, 0.08), float3(0.7, 0.15, 0.02), (life - 0.4) / 0.6);
                 }
                 else if (f.sheet < 0.0)
                 {
-                    // Embers: a spark on its way up, wandering, drawn out along its climb.
                     float rise = frac(clock);
                     at += up * rise * f.tall + side * sin(clock * 5.0 + f.seed * 40.0) * 0.3 * rise;
                     at += cross(up, side) * cos(clock * 3.7) * 0.3 * rise;
@@ -130,7 +126,6 @@ Shader "Prototype/Flame"
                 }
                 else
                 {
-                    // Each go round: a new spot about its place, a new size, perhaps mirrored.
                     float spread = f.wander;
                     at.x += (Hash(round, f.seed) - 0.5) * spread;
                     at.z += (Hash(round + 7.0, f.seed) - 0.5) * spread;
@@ -140,7 +135,6 @@ Shader "Prototype/Flame"
                     mirror = Hash(round + 19.0, f.seed) < 0.5 ? -1.0 : 1.0;
                     float tiles = Tiles(f.sheet);
                     frame = floor(frac(life * Plays(f.sheet)) * tiles * tiles);
-                    // The large sheet's flames loop, so they rise out of nothing and die back; the others' frames do it themselves.
                     if (f.sheet > 1.5) fade *= saturate(life * 8.0) * saturate((1.0 - life) * 4.5);
                 }
                 float3 world = at + side * corner.x * wide + up * corner.y * tall;
@@ -174,11 +168,8 @@ Shader "Prototype/Flame"
                 if (input.sheet < 0.5) c = SAMPLE_TEXTURE2D_GRAD(_SheetTiny, sampler_SheetTiny, uv, dx, dy);
                 else if (input.sheet < 1.5) c = SAMPLE_TEXTURE2D_GRAD(_SheetMedium, sampler_SheetTiny, uv, dx, dy);
                 else c = SAMPLE_TEXTURE2D_GRAD(_SheetLarge, sampler_SheetTiny, uv, dx, dy);
-                // The frames run off their bottom edge; the pack's soft particles hid that where they met the ground.
                 float alpha = c.a * input.tint.a * input.fade * smoothstep(0.0, 0.16, input.uv.y);
-                // As the pack's materials: half again as bright as the sheet, which is what blooms.
                 half3 color = HueTurn(c.rgb * input.tint.rgb, input.turn) * 1.5;
-                // A drop adds to what's behind it, so fog only dims it.
                 if (input.sheet > DropSheet) return half4(MixFogColor(color * alpha, half3(0.0, 0.0, 0.0), input.fogFactor), 0.0);
                 return half4(MixFog(color * alpha, input.fogFactor), alpha);
             }

@@ -52,14 +52,9 @@ public sealed class MenuControls : System.IDisposable
         return action;
     }
 
-    /// <summary>True if the action was pressed this frame on a gamepad (Start rather than Esc).</summary>
     public static bool PressedOnPad(InputAction action) =>
         action.WasPressedThisFrame() && action.activeControl != null && action.activeControl.device is Gamepad;
 
-    /// <summary>
-    /// Steps for the highlight this frame: +1 down, -1 up, 0 none. A press steps at once;
-    /// holding repeats (MenuNavigator.RepeatSteps).
-    /// </summary>
     public int Steps()
     {
         int direction = (Down.IsPressed() ? 1 : 0) - (Up.IsPressed() ? 1 : 0);

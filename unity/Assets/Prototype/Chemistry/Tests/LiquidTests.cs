@@ -1,15 +1,13 @@
+// Liquids (docs/design/primitives.md §3, P1; Rules.Liquids.cs, World.Liquids.cs): a mod's honey is
+// thick, slow and heaps; a red paint runs as water does but stays paint; two kinds never share a
+// cell; a liquid's touch lets the reactions decide where it meets another; the kind travels by id
+// through saves and rule switches, and lapses with its mod, the same on every peer.
 using System;
 using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Liquids (docs/design/primitives.md §3, P1; Rules.Liquids.cs, World.Liquids.cs): a mod's honey is
-    /// thick, slow and heaps; a red paint runs as water does but stays paint; two kinds never share a
-    /// cell; a liquid's touch lets the reactions decide where it meets another; the kind travels by id
-    /// through saves and rule switches, and lapses with its mod, the same on every peer.
-    /// </summary>
     [Category("Simulation")]
     public class LiquidTests
     {
@@ -242,8 +240,6 @@ namespace Chem.Tests
             Assert.That(string.Join("; ", e.Errors), Does.Contain("liquid goo unknown"));
         }
 
-        // ---------- in a room: a honey spill the way Claude would write it ----------
-
         const int Lapse = 900;
 
         static string HoneyMod(int after = Lapse) => @"{ ""title"": ""Honey spill"", ""idea"": ""A spell that spills a pool of thick honey, gone again in a while."", ""patch"": {
@@ -269,7 +265,7 @@ namespace Chem.Tests
 
         static string State(World w) => $"{w.CellHash()} {w.CastHash()} {w.Rules.Fingerprint} {w.RngState}";
 
-        const int Switched = 1, Lapses = Switched + Lapse; // the mod goes on between ticks 1 and 2
+        const int Switched = 1, Lapses = Switched + Lapse;
 
         static TickBatch HoneyBatch(int t)
         {

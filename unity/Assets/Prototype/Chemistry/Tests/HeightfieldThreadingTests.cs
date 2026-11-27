@@ -17,7 +17,6 @@ namespace Chem.Tests
         static ModBudgets budgets;
         static ModBudgets Budgets => budgets ??= ModBudgets.Load(ChemistryTests.RulesDir());
 
-        // Draws from WorldHash, not System.Random, whose numbers differ between .NET and Unity's Mono.
         sealed class Draws
         {
             readonly int seed;
@@ -30,7 +29,6 @@ namespace Chem.Tests
             public int Next(int lo, int hi) => lo + (int)(WorldHash.Hash4(seed, 0x7e5d, n++, 0) % (uint)(hi - lo));
         }
 
-        // A valley-sized world that tries every rule the samples follow, from a seed.
         static World Seeded(int seed)
         {
             var grid = TerrainGrid.Valley();
@@ -66,7 +64,6 @@ namespace Chem.Tests
             return w;
         }
 
-        // Every chunk's target and drawn heights, as bytes, in chunk order.
         static byte[] Heights(CellHeightfield f)
         {
             var bytes = new List<byte>();
@@ -92,7 +89,6 @@ namespace Chem.Tests
                 var many = ResetWith(w, true, flat);
                 Assert.That(many.Length, Is.EqualTo(one.Length));
                 Assert.That(many.SequenceEqual(one), Is.True, $"{what}, flat under walls {flat}: threaded heights differ");
-                // Twice threaded, in whatever order the chunks ran this time.
                 Assert.That(ResetWith(w, true, flat).SequenceEqual(one), Is.True, $"{what}: a second threaded Reset differs");
             }
             Assert.That(w.CellHash(), Is.EqualTo(cells), $"{what}: a Reset only reads the cells");
@@ -104,8 +100,6 @@ namespace Chem.Tests
         [Test]
         public void ThreadedResetIsTheSameOnTheValley() => SameBothWays(FogTickBench.Valley(R), "the valley");
 
-        // A chunk at a time (#206): each chunk worked out as it's first asked for, through its own small cache, gives the same
-        // bits as the whole Reset; none is worked out until asked; one let go and asked again is the same again.
         [TestCase(1), TestCase(42)]
         public void ALazyResetIsTheSameChunkByChunk(int seed)
         {
@@ -129,7 +123,6 @@ namespace Chem.Tests
             }
         }
 
-        // An Update after a lazy Reset (cells dug where no chunk was worked out yet) ends where it does after a whole one.
         [Test]
         public void AnUpdateAfterALazyResetEndsTheSame()
         {
@@ -150,8 +143,6 @@ namespace Chem.Tests
             Assert.That(Heights(lazy).SequenceEqual(Heights(whole)), Is.True);
         }
 
-        // island-startup-2: a sample's ground asked of a lazily reset heightfield (OffsetNow) is what working its chunk out
-        // gives (Current), and asking works out no chunk: the valley's spawns and a spread of cells round it.
         [Test]
         public void OneSamplesGroundIsItsChunksWithoutWorkingTheChunkOut()
         {
@@ -181,7 +172,6 @@ namespace Chem.Tests
             Assert.That(new CellHeightfield(TerrainGrid.Valley()).Threaded, Is.True);
         }
 
-        // FNV-1a over the bytes, so the PC and the Mac can compare one number.
         static uint Fnv(byte[] bytes)
         {
             uint h = 2166136261u;
@@ -196,10 +186,6 @@ namespace Chem.Tests
             return h;
         }
 
-        // The goldens, to compare between machines. The valley's heights are the same under .NET 8 and Unity's Mono.
-        // A seeded world's are not: its cells and land agree, but the land-stamp and snow-bank sums round differently
-        // under Mono, threaded or not. The heights are view-only floats, never shared state, so the seeded golden
-        // compares .NET with .NET (the PC's and the Mac's core runs), and the valley's compares everything.
         [Test]
         public void GoldenValley()
         {
@@ -218,8 +204,6 @@ namespace Chem.Tests
         }
 #endif
 
-        // Before and after, in core Release: dotnet test core -c Release --filter "FullyQualifiedName~HeightfieldThreadingBench"
-        // --logger "console;verbosity=detailed"
         [Test, Explicit("a benchmark: run it by name")]
         public void HeightfieldThreadingBench()
         {

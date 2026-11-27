@@ -11,43 +11,31 @@ using System.Collections.Generic;
 
 namespace Chem
 {
-    /// <summary>A river as laid in one world square, from upstream to downstream (ChunkGen.Rivers).</summary>
     public sealed class LaidRiver
     {
         public int Square;
-        /// <summary>Its path's points, Q16 map cells.</summary>
         public long[] X, Y;
-        /// <summary>At each point: the water's surface in land units × 256, and half the river's width in Q16 cells.</summary>
         public long[] Surface, Half;
     }
 
     public sealed partial class ChunkGen
     {
-        /// <summary>The farthest a river wanders from its curve, in cells; and how many pieces a river's path is drawn in.</summary>
         const int WanderCells = 44, PathPieces = 48;
-        // A river's curve leaves a side square on for SideReach cells, and runs through a hub straight for HubReach.
         const int SideReach = 110, HubReach = 90;
-        // Half a river's width at a spring, and the widest it gets.
         const int SpringHalf = 2, WidestHalf = 8;
         const int SaltRiver = 0x0c65;
 
         sealed class Segment
         {
             public bool River, Lake;
-            /// <summary>The path's points from the slot to the hub, Q16 map cells (one point for a lake).</summary>
             public long[] Px, Py;
-            /// <summary>For water, at each point: its surface (land units × Q) and half its width (Q16 cells).</summary>
             public long[] S, H;
-            /// <summary>A road's half width in cells; how far past the path the segment touches the land, in cells.</summary>
             public int Half, Reach;
-            public int MinX, MinY, MaxX, MaxY; // the path's cells
-            /// <summary>The world square it is laid in.</summary>
+            public int MinX, MinY, MaxX, MaxY;
             public int Home;
-            /// <summary>A river laid from the slot it flows out by: its points run upstream.</summary>
             public bool Out;
         }
 
-        /// <summary>The plan's rivers as laid, each from upstream to downstream (not the lakes).</summary>
         public IReadOnlyList<LaidRiver> Rivers
         {
             get
@@ -65,15 +53,11 @@ namespace Chem
         }
 
         readonly List<Segment> segments = new List<Segment>();
-        // Round a world that wraps, the segments near the seam again a world's width east or west, each with the index of
-        // the one it copies, so the land just across the seam reads them as the land beside them does.
         readonly List<(int of, Segment copy)> seamCopies = new List<(int, Segment)>();
         long[] hubLevel;
         int[] drained;
-        // The squares being worked out, so a loop in the plan's rivers (it has none) can't recurse for ever.
         readonly HashSet<int> open = new HashSet<int>();
 
-        // The rivers and roads from each side's slot to the square's hub, a lake at a hub where a river ends.
         void SetUpPaths()
         {
             int n = Plan.Count;
@@ -89,8 +73,6 @@ namespace Chem
                     foreach (var f in Plan.Features[i][s])
                         if (f.Kind == EdgeKind.River && f.Flow > 0) (ins, inSide, inSlot) = (ins + 1, s, f.Slot);
                         else if (f.Kind == EdgeKind.River && f.Flow < 0) (outs, outSide, outSlot) = (outs + 1, s, f.Slot);
-                // One river in and one out with no lake: it runs through the hub, along the line from where it comes in to
-                // where it goes out.
                 long dirX = 0, dirY = 0;
                 if (ins == 1 && outs == 1 && !Plan.Lake[i])
                 {
@@ -119,9 +101,6 @@ namespace Chem
                             }));
                             continue;
                         }
-                        // Coming in, the water and width are what the square upstream sends; going out, this square's.
-                        // The curve reaches the hub along the through line: coming in, along it; going out, against it
-                        // (the path is laid from the slot).
                         int j = Plan.Grid.Neighbour(i, s), upstream = f.Flow > 0 && j >= 0 ? Drained(j) : 1;
                         var water = f.Flow > 0
                             ? new Water(CrossingLevel(i, s, f.Slot), level, HalfFor(upstream) * One, hubHalf)
@@ -184,8 +163,6 @@ namespace Chem
 
         static long Mid(int cell) => (long)cell * One + One / 2;
 
-        // The map cell a feature crosses side s of square i by: on the east and south sides it is the next square's first
-        // cell, so the two squares a river crosses between name the same cell.
         (int x, int y) SlotCell(int i, int s, int slot)
         {
             var (sx, sy) = WorldPlan.Inside(s, slot * Size + Size / 2, 0);
@@ -194,7 +171,6 @@ namespace Chem
 
         static int HalfFor(int drainedSquares) => Math.Min(WidestHalf, RiverHalf + drainedSquares - 1);
 
-        // How many squares' rivers drain through square i, itself included.
         int Drained(int i)
         {
             if (drained[i] > 0) return drained[i];
@@ -212,7 +188,6 @@ namespace Chem
             return sum;
         }
 
-        // The water at square i's hub: its own surface, and a metre below every river flowing in.
         long HubLevel(int i)
         {
             if (hubLevel[i] != long.MinValue) return hubLevel[i];
@@ -228,8 +203,6 @@ namespace Chem
             return level;
         }
 
-        // The water where a river flows into square i across side s: its surface there, and a metre below the hub it
-        // comes from (what that square says of the same crossing, as the same cell).
         long CrossingLevel(int i, int s, int slot)
         {
             var at = SlotCell(i, s, slot);
@@ -241,7 +214,6 @@ namespace Chem
             return level;
         }
 
-        // A river's water at its two ends, the slot and the hub: its surface (land units × Q) and half its width (Q16 cells).
         readonly struct Water
         {
             public readonly long S0, S1, H0, H1;
@@ -255,8 +227,6 @@ namespace Chem
             }
         }
 
-        // A cubic curve from a slot (A) to a hub (D), Q16 cells: it leaves side s square on for SideReach cells and reaches
-        // the hub along (toX, toY) (a Q16 unit, or zero to come in as it likes) for HubReach.
         readonly struct Curve
         {
             readonly long ax, ay, bx, by, cx, cy, dx, dy;
@@ -277,14 +247,12 @@ namespace Chem
 
             static long L(long p, long q, long t) => p + (q - p) * t / One;
 
-            /// <summary>The point at t (Q16), by de Casteljau.</summary>
             public (long x, long y) At(long t)
             {
                 long abx = L(ax, bx, t), bcx = L(bx, cx, t), cdx = L(cx, dx, t), aby = L(ay, by, t), bcy = L(by, cy, t), cdy = L(cy, dy, t);
                 return (L(L(abx, bcx, t), L(bcx, cdx, t), t), L(L(aby, bcy, t), L(bcy, cdy, t), t));
             }
 
-            /// <summary>The way the curve runs at t, a third of its derivative.</summary>
             public (long x, long y) Tangent(long t)
             {
                 long abx = L(ax, bx, t), bcx = L(bx, cx, t), cdx = L(cx, dx, t), aby = L(ay, by, t), bcy = L(by, cy, t), cdy = L(cy, dy, t);
@@ -292,8 +260,6 @@ namespace Chem
             }
         }
 
-        // A river along a curve, wandering either side of it, its surface and width running straight from one end to the
-        // other by how far along the curve a point is.
         Segment RiverPath(int salt, Curve curve, Water w)
         {
             long length = curve.Chord;
@@ -302,15 +268,13 @@ namespace Chem
             {
                 long t = (long)k * One / PathPieces;
                 var (px, py) = curve.At(t);
-                // Across the curve: its tangent turned a quarter.
                 var (tx, ty) = curve.Tangent(t);
                 long tl = BiomeMath.Length(tx / 64, ty / 64);
                 long nx = tl == 0 ? 0 : -(ty / 64) * One / tl, ny = tl == 0 ? 0 : (tx / 64) * One / tl;
-                // None at either end, and level there, so the river meets the next square's and the hub's straight on.
                 long u = 4 * t * (One - t) / One, envelope = u * u / One;
                 long along = t * length;
                 long wander = (BiomeMath.Centred(seed, salt, along, 0, 150) * 3 + BiomeMath.Centred(seed, salt + 1, along, 0, 47)) / 4;
-                long off = wander * WanderCells * envelope / One; // Q16 cells
+                long off = wander * WanderCells * envelope / One;
                 seg.Px[k] = px + nx * off / One;
                 seg.Py[k] = py + ny * off / One;
                 seg.S[k] = w.S0 + (w.S1 - w.S0) * t / One;
@@ -335,8 +299,6 @@ namespace Chem
             return s;
         }
 
-        // The segments whose reach touches the cells [x0, x1] × [y0, y1], and a road's width past them: a road's cell takes
-        // the land at its middle, which a river beyond the cell's own reach may have carved.
         List<Segment> Nearby(int x0, int y0, int x1, int y1)
         {
             const int margin = MainRoadHalf + RoadBank + 2;
@@ -347,14 +309,12 @@ namespace Chem
             for (int k = 0; k < segments.Count; k++)
             {
                 if (Touches(segments[k])) near.Add(segments[k]);
-                // A copy follows the one it copies, so a cell and its twin a world round read their paths in one order.
                 for (; c < seamCopies.Count && seamCopies[c].of == k; c++)
                     if (Touches(seamCopies[c].copy)) near.Add(seamCopies[c].copy);
             }
             return near;
         }
 
-        /// <summary>Whether a map cell is within reach of a river, lake or road: land they carve or level, not the biomes' own.</summary>
         public bool NearPath(int x, int y)
         {
             foreach (var s in Nearby(x, y, x, y))
@@ -368,8 +328,6 @@ namespace Chem
 
         static long Distance(Segment s, int x, int y, out long cx, out long cy) => Distance(s, x, y, out cx, out cy, out _, out _);
 
-        // Distance from a cell's middle to a segment's path, Q16 cells; the nearest point, and for water the surface and
-        // half width there. Pieces farther than the segment's reach are passed over.
         static long Distance(Segment s, int x, int y, out long cx, out long cy, out long surface, out long half)
         {
             long qx = Mid(x), qy = Mid(y), reach = ((long)s.Reach + 1) * One;

@@ -19,25 +19,17 @@ namespace Chem
 {
     public sealed class RollingHash
     {
-        /// <summary>Ticks to a window, and how many slices the cells are cut into, at the least: the valley's.</summary>
         public const int Every = 30;
 
-        /// <summary>The cells a window of Every ticks covers at most: two valleys (576 x 576 each), about 1.5 ms a tick.</summary>
         public const int CellsPerWindow = 2 * 576 * 576;
 
-        /// <summary>A world's window in ticks: Every, or longer for a world of more than CellsPerWindow cells, by its size alone.</summary>
         public static int WindowFor(int cells) => Math.Max(Every, (int)((Every * (long)cells + CellsPerWindow - 1) / CellsPerWindow));
 
-        /// <summary>An open world's is Every: its size grows as it's filled, and a window must be the same length all through.</summary>
         public static int WindowFor(World world) => world.IsOpen ? Every : WindowFor(world.W * world.H);
 
         Fnv1aSum sum = Fnv1aSum.Start();
         int seen;
 
-        /// <summary>
-        /// Adds this finished tick's slice. At the end of a window, returns the cells' fingerprint
-        /// and starts the next; null otherwise.
-        /// </summary>
         public string Add(World world, int tick)
         {
             int window = WindowFor(world), slice = SliceOf(tick, window);
@@ -51,14 +43,11 @@ namespace Chem
             return slice == window - 1 && seen == window ? world.CloseHash(sum) : null;
         }
 
-        /// <summary>The slice a tick hashes in the valley's window.</summary>
         public static int SliceOf(int tick) => SliceOf(tick, Every);
 
-        /// <summary>The slice a tick hashes: a window runs from a tick after a multiple of its length up to the next multiple.</summary>
         public static int SliceOf(int tick, int window) => ((tick - 1) % window + window) % window;
     }
 
-    /// <summary>32-bit FNV-1a a character at a time: Fnv1a.Hash of what was written, with no string to build.</summary>
     public struct Fnv1aSum
     {
         uint hash;
@@ -76,7 +65,6 @@ namespace Chem
             for (int i = 0; i < s.Length; i++) Add(s[i]);
         }
 
-        /// <summary>Writes a number as its decimal digits.</summary>
         public void Add(long n)
         {
             if (n < 0)

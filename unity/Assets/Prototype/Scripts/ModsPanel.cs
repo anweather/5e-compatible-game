@@ -20,17 +20,15 @@ using UnityEngine.InputSystem;
 [RequireComponent(typeof(RuleSwitcher))]
 public class ModsPanel : MonoBehaviour
 {
-    /// <summary>The page's id in the Esc menu.</summary>
     public const string PageId = "mods";
     const int Width = 600;
-    const int SectionOrder = 500; // the Game sub menu: after New look, before About and credits
+    const int SectionOrder = 500;
 
     RuleSwitcher switcher;
     GUIStyle row, rowOn, small, error;
     Vector2 scroll;
     PauseMenu.Page page;
 
-    /// <summary>True while the Esc menu shows the Mods page.</summary>
     public static bool Open => PauseMenu.Instance != null && PauseMenu.Instance.Open && PauseMenu.Instance.CurrentPage == PageId;
 
     void Awake()
@@ -55,7 +53,7 @@ public class ModsPanel : MonoBehaviour
     {
         var keys = Keyboard.current;
         var controls = PauseMenu.Controls;
-        bool typing = PauseMenu.KeysTaken || (PauseMenu.Instance != null && PauseMenu.Instance.Open && GUIUtility.keyboardControl != 0); // the join code field has the keys
+        bool typing = PauseMenu.KeysTaken || (PauseMenu.Instance != null && PauseMenu.Instance.Open && GUIUtility.keyboardControl != 0);
         if (controls != null && controls.Mods.WasPressedThisFrame() && !typing) SetOpen(!Open);
         if (Open && keys != null && !typing && switcher.Catalog.Mods.Count > 0) NumberKeys(keys);
     }
@@ -67,7 +65,6 @@ public class ModsPanel : MonoBehaviour
             if (keys[Key.Digit1 + i].wasPressedThisFrame) Toggle(i);
     }
 
-    /// <summary>Switches the mod at this place in the list on or off.</summary>
     public void Toggle(int index)
     {
         var mods = switcher.Catalog.Mods;
@@ -75,7 +72,6 @@ public class ModsPanel : MonoBehaviour
         switcher.Toggle(mods[index].Id);
     }
 
-    /// <summary>Opens the Esc menu on the Mods page, or closes the menu (also for scripted screenshots).</summary>
     public static void SetOpen(bool open)
     {
         var menu = PauseMenu.Instance;
@@ -84,9 +80,6 @@ public class ModsPanel : MonoBehaviour
         else if (Open) menu.SetOpen(false);
     }
 
-    // --- drawing -----------------------------------------------------------------
-
-    // In the Game sub menu: the button that opens this page, with what's on.
     void DrawEntry()
     {
         MakeStyles();
@@ -122,7 +115,6 @@ public class ModsPanel : MonoBehaviour
         if (PauseMenu.Button(label, on ? rowOn : row, GUILayout.Width(Width - 56), GUILayout.Height(52))) Toggle(i);
     }
 
-    // A mod on that isn't a file here: another peer's, or one Claude made.
     List<RoomMod> OthersOn() => switcher.Room.Mods.FindAll(m => switcher.Catalog.Find(m.Id) == null);
 
     void DrawOther(RoomMod mod)
@@ -145,7 +137,6 @@ public class ModsPanel : MonoBehaviour
         return sb.ToString();
     }
 
-    // A mod whose materials lapse says how long it has left, ahead of the rest of its line.
     string Lapsing(string id, string rest)
     {
         string note = switcher.LapseNote(id);

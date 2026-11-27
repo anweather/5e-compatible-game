@@ -9,7 +9,7 @@ using System.Globalization;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 
-#pragma warning disable S107 // a tool's parameters are its schema (RulesTools)
+#pragma warning disable S107
 
 namespace Chem.Mcp
 {
@@ -17,7 +17,6 @@ namespace Chem.Mcp
     {
         const string LayTable = "lay";
 
-        /// <summary>scatter(): count of a terrain, cover or thing over open cells near something, written into a draft.</summary>
         public string Scatter(string draftId, string what, int count, string near, int? within, int? spacing, string side, string edge, int? seed, string[] onto)
         {
             what = Required(what, "what");
@@ -39,7 +38,6 @@ namespace Chem.Mcp
             return line + ".\n" + Sited(draft) + StandInLine;
         }
 
-        // Open cells near something, by the world's seed, off villages and courses: what scatter and act both place on.
         List<(int x, int y, int d, string ground)> PickNear(int count, string near, int reach, int apart, string side, string edge, int salt, string[] onto, out string name)
         {
             double maxWithin = Budgets.Number("lay.maxWithin", 32);
@@ -54,7 +52,6 @@ namespace Chem.Mcp
             });
         }
 
-        // The cells a distance map reaches, picked by the world's seed, off villages and courses.
         List<(int x, int y)> OpenNear(World w, int[] distance, int count, int apart, int salt, string[] onto)
         {
             var area = Enumerable.Range(0, w.W * w.H).Where(i => distance[i] >= 0).Select(i => (x: i % w.W, y: i / w.W));
@@ -62,7 +59,6 @@ namespace Chem.Mcp
             return Placement.Pick(area, count, apart, (x, y) => open(x, y) && !Settled(x, y), unchecked((int)w.Seed), salt);
         }
 
-        // Whether a scatter's what is a terrain, a cover or a thing, with the draft on; null for none.
         string ScatterTable(Draft draft, string what)
         {
             if (Current(draft, "terrain", what) != null) return "terrain";
@@ -70,7 +66,6 @@ namespace Chem.Mcp
             return Current(draft, "items", what) != null || Current(draft, "entities", what) != null ? "things" : null;
         }
 
-        // One lay row per what and seed: a second scatter with the same replaces it, another seed adds one.
         static void LayRowInto(Draft draft, string key, string what, int seed, IEnumerable<(int x, int y)> cells)
         {
             var world = Section(draft, "world");
@@ -85,7 +80,6 @@ namespace Chem.Mcp
 
         static string LayId(JToken row) => string.Format(CultureInfo.InvariantCulture, "{0}#{1}", Str(row["terrain"]) ?? Str(row["cover"]), (int?)row["seed"] ?? 0);
 
-        // apply's words for one lay row of the draft.
         static string LayChange(Draft draft, string id)
         {
             var row = (draft.Patch["world"]?["lay"] as JArray)?.FirstOrDefault(r => LayId(r) == id);

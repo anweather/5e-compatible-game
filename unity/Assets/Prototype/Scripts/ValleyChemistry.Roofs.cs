@@ -21,25 +21,18 @@ using UnityEngine;
 // comes back with them, or with the first of its chunks if only the roof went.
 public partial class ValleyChemistry
 {
-    // Each building's wall cells (world indices), how long fire has licked at its roof (s), and whether
-    // its roof is gone.
     List<int>[] buildingCells;
     float[] roofFire;
     bool[] roofGone;
-    // When (Time.time) each roof caught and was gone, -1 not yet: the probe's numbers.
     float[] roofCaughtAt, roofGoneAt;
     int[] lastFire;
     float roofTimer;
     BuildingMaterials buildingMaterials;
 
-    // How often to look; a roof catches after this many seconds of fire beside it over its flammability;
-    // a roof this hot (heat) or hotter lights the walls as it burns away, this many of them.
     const float RoofLook = 0.25f, RoofCatch = 1f, FlareHeat = 2f;
     const int FlareCells = 4;
-    // A burnt-out building's walls: this much of their height is left.
     const float BurntWallsLeft = 0.35f;
 
-    // How a building looked before its first harm: its parts where they stood, on or off, and each mesh's colours.
     sealed class BuildingLook
     {
         public readonly List<(Transform part, Vector3 at, Quaternion turn, Vector3 scale)> parts = new();
@@ -70,7 +63,6 @@ public partial class ValleyChemistry
         kept[k] = look;
     }
 
-    // A reset chunk: each harmed building with a cell in it, and with all its walls standing again, is as it was.
     void BuildingsBack(ChunkFresh fresh)
     {
         var world = grid.World;
@@ -127,7 +119,6 @@ public partial class ValleyChemistry
         }
     }
 
-    // A cabin's roof is shingle; a village building's comes from its cover.
     string RoofMaterialOf(int k) =>
         cabins[k] != null && cabins[k].TryGetComponent<VillageHouse>(out var house) ? buildingMaterials.RoofOf(house.cover) : TerrainIds.Shingle;
 
@@ -135,14 +126,12 @@ public partial class ValleyChemistry
 
     bool RoofBurns(int k) => RoofOf(k)?.Burns == true;
 
-    /// <summary>For the probe: when a building's roof caught and when it was gone (Time.time), -1 for not yet.</summary>
     public (float caught, float gone) RoofTimes(Transform building)
     {
         int k = System.Array.IndexOf(cabins, building);
         return k < 0 || roofCaughtAt == null ? (-1f, -1f) : (roofCaughtAt[k], roofGoneAt[k]);
     }
 
-    // A few times a second: fire on or beside a building's walls sets a roof that burns going.
     void WatchRoofs(float dt)
     {
         if (buildingCells == null || grid.World == null) return;
@@ -156,8 +145,6 @@ public partial class ValleyChemistry
         }
     }
 
-    // A roof that burns: catching from fire beside it (a flammable one sooner: thatch in about a second,
-    // shingle in several), then burning as long as its fuel lasts (ticks at the sim's rate).
     void RoofStep(int k, float step)
     {
         var roof = RoofOf(k);
@@ -177,10 +164,8 @@ public partial class ValleyChemistry
         if (roofFire[k] >= (roof.Fuel ?? 5) / (float)grid.World.Rules.Sim.TicksPerSecond) RoofBurnsAway(k, lastFire[k]);
     }
 
-    // The cell itself, then north, east, south and west.
     static readonly int[] AroundX = { 0, 0, 1, 0, -1 }, AroundY = { 0, -1, 0, 1, 0 };
 
-    // A burning cell among the cells or beside them (world index), or -1.
     int FireAt(List<int> cells)
     {
         var world = grid.World;
@@ -211,7 +196,6 @@ public partial class ValleyChemistry
         EventLog.Add($"The roof of the {LabelOf(building)} burns away");
     }
 
-    // A hot roof flaring as it goes sets the walls nearest the fire alight (they burn as long as wood does).
     void Flare(int k, int fireCell)
     {
         var world = grid.World;
@@ -228,7 +212,6 @@ public partial class ValleyChemistry
             if (c.name == "Roof") c.enabled = false;
     }
 
-    // Walls burnt down: the roof goes too if it burns, else it falls onto what's left of the walls.
     void WallsBurnDown(int k)
     {
         var building = cabins[k];
@@ -249,14 +232,12 @@ public partial class ValleyChemistry
             HideRoof(building);
             return;
         }
-        // Slate doesn't burn: it drops onto the stubs of the walls, askew.
         float drop = (top - bottom) * (1f - BurntWallsLeft);
         foreach (var r in building.GetComponentsInChildren<Renderer>().Where(r => r.name == "Roof"))
             r.transform.SetPositionAndRotation(r.transform.position + Vector3.down * drop, r.transform.rotation * Quaternion.Euler(6f, 0f, -4f));
         EventLog.Add($"The {LabelOf(building)}'s slate roof falls in");
     }
 
-    // Darkens a mesh's vertex colours near a point (VillageLit draws them): soot, heaviest at the point.
     static void CharNear(MeshFilter filter, Vector3 at, float radius)
     {
         var mesh = filter.mesh;

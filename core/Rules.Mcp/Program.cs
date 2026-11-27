@@ -42,7 +42,6 @@ namespace Chem.Mcp
             builder.Build().Run();
         }
 
-        // The repo's folders above a server started inside it, with no player, so a save goes to rules/mods.
         static GameFolders InRepo(string start)
         {
             try
@@ -55,7 +54,6 @@ namespace Chem.Mcp
             }
         }
 
-        // Each RulesTool method as the SDK's tool: its name, its Description and its parameters' are read from there.
         static McpServerTool[] Tools(RulesTools tools) =>
             typeof(RulesTools).GetMethods()
                 .Select(m => (method: m, tool: m.GetCustomAttribute<RulesToolAttribute>()))

@@ -1,7 +1,7 @@
+// How a body goes with moving ground (ChemGrid.CarryBody): the rule a land stamp and a terraform spell share.
 using NUnit.Framework;
 using UnityEngine;
 
-/// <summary>How a body goes with moving ground (ChemGrid.CarryBody): the rule a land stamp and a terraform spell share.</summary>
 public class LandCarryTests
 {
     GameObject go;

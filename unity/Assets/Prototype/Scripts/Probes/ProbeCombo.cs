@@ -18,9 +18,7 @@ using UnityEngine.InputSystem.LowLevel;
 // the slam (castfeel, handsclip), and a held element's steps (hands' charge).
 public class ComboProbe : ProbeScenario
 {
-    // Most of the bar a frame may gain past the time it took (one tick of Light's 6-tick cast is 0.17).
     const float MostBarJump = 0.07f;
-    // The casts of BarRunsEven: how far between two ticks each is pressed, in ticks (the later, the sooner the first one), and held, in seconds.
     static readonly (float late, float held)[] PressesBetweenTicks = { (0.55f, 0f), (0.7f, 0f), (0.85f, 0f), (0.7f, 0.2f) };
 
     Gamepad pad;
@@ -58,7 +56,6 @@ public class ComboProbe : ProbeScenario
         }
     }
 
-    // Right cycles the d-pad's spells; on to Light (a cast that changes nothing the rest needs), up casts it.
     IEnumerator Dpad()
     {
         var combos = World.Rules.Combos;
@@ -77,7 +74,6 @@ public class ComboProbe : ProbeScenario
         yield return Wait(0.5f);
     }
 
-    // B drops the cast and leaves what's in the hand there: nothing is thrown and nothing casts.
     IEnumerator Cancel()
     {
         var item = Carryable.AllByInstanceId.FirstOrDefault(c => c.Holder == null);
@@ -94,7 +90,6 @@ public class ComboProbe : ProbeScenario
         yield return Wait(0.3f);
     }
 
-    // From the menu's own button, Back from the grimoire goes back to the menu (#10).
     IEnumerator Grimoire()
     {
         var menu = PauseMenu.Instance;
@@ -117,7 +112,6 @@ public class ComboProbe : ProbeScenario
         yield return Wait(0.3f);
     }
 
-    // The cast bar runs on between the core's ticks: many more steps than ticks, and only ever up (#9).
     IEnumerator BarFills()
     {
         yield return Press(GamepadButton.DpadUp);
@@ -146,9 +140,6 @@ public class ComboProbe : ProbeScenario
         yield return Wait(1f);
     }
 
-    // Pressed at any moment between two ticks and tapped short or long, the bar runs at the pace of the time
-    // left and doesn't leap when the core's first tick comes, however soon that is, or when the press ends (#9).
-    // What it gains in a frame, past that frame's share of the cast.
     IEnumerator BarRunsEven()
     {
         var end = new WaitForEndOfFrame();
@@ -184,7 +175,6 @@ public class ComboProbe : ProbeScenario
         Check("bar_runs_even", allCast && worst < MostBarJump, $"each press cast {allCast}, gained {worst:0.00} of the bar past the time gone, in one frame");
     }
 
-    // Everything on the screen at once: sprinting for the stamina line, a d-pad cast under way.
     IEnumerator WholeHud()
     {
         var sprint = new GamepadState { leftStick = Vector2.up }.WithButton(GamepadButton.LeftStick);
@@ -198,7 +188,6 @@ public class ComboProbe : ProbeScenario
         InputSystem.QueueStateEvent(pad, new GamepadState { leftStick = Vector2.up });
         yield return Wait(0.2f);
         var vitals = wizard.GetComponent<Vitals>();
-        // Stamina is infinite in the sandbox, which would leave the line full: spent for real for the picture.
         vitals.infinite = false;
         vitals.TrySpendStamina(vitals.Stamina * 0.35f);
         yield return null;
@@ -212,7 +201,6 @@ public class ComboProbe : ProbeScenario
         yield return Wait(3f);
     }
 
-    // A tap of a button.
     IEnumerator Press(GamepadButton button)
     {
         InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(button));

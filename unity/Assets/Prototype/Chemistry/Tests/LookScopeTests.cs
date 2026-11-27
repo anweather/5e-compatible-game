@@ -1,3 +1,5 @@
+// Scoped and mixed looks (LookScopes.cs; docs/design/world-tools.md "Scoped and mixed looks"): the
+// colour the view draws at a cell from the looks in force and where the players stand.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -5,10 +7,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Scoped and mixed looks (LookScopes.cs; docs/design/world-tools.md "Scoped and mixed looks"): the
-    /// colour the view draws at a cell from the looks in force and where the players stand.
-    /// </summary>
     [Category("Simulation")]
     public class LookScopeTests
     {
@@ -26,7 +24,6 @@ namespace Chem.Tests
 
         static readonly LookColour Green = new LookColour(0.2f, 0.9f, 0.3f), Blue = new LookColour(0.25f, 0.45f, 1f), Red = new LookColour(1f, 0.1f, 0.1f);
 
-        // A box of a place and a village far off, in a world of their own.
         static readonly WorldPlaces Places = WorldPlaces.FromJson(@"{ ""places"": [
             { ""id"": ""box"", ""name"": ""the box"", ""area"": [20, 20, 24, 24] },
             { ""id"": ""far"", ""area"": [100, 100, 110, 110] } ] }");
@@ -35,7 +32,6 @@ namespace Chem.Tests
 
         static ModPatch Mod(string json) => ModPatch.Parse(json.Replace('\'', '"'));
 
-        // A mod giving fire's look these scoped looks (a JSON list) and maybe a mix.
         static ModPatch FireLook(string scoped, string mix = null) =>
             Mod("{ 'elements': { 'fire': { 'look': { 'color': [0.95, 0.42, 0.12]" + (mix == null ? "" : ", 'mix': " + mix) + (scoped == null ? "" : ", 'scoped': " + scoped) + " } } } }");
 
@@ -46,7 +42,6 @@ namespace Chem.Tests
         static void Same(LookColour got, LookColour want, string why = null) =>
             Assert.That(got.Near(want), Is.True, $"{why}: got {got}, want {want}");
 
-        // A scope's edge mixes into the plain look like paint (Colors), t of the way to the scope's colour.
         static LookColour Lerp(LookColour a, LookColour b, float t) => Colors.Mix(a, b, t);
 
         [Test]
@@ -89,15 +84,12 @@ namespace Chem.Tests
             Assert.That(nearBlue.B, Is.GreaterThan(middle.B), "deeper in the blue one: bluer");
             Same(fire.At(44, 50, Nobody), Blue, "in the first only");
 
-            // Two mods, each one scoped look: both stay on, and the order they went on in doesn't matter.
             var blue = FireLook("[{ 'where': { 'at': [50, 50], 'within': 6 }, 'color': [0.25, 0.45, 1] }]");
             var gold = FireLook("[{ 'where': { 'at': [56, 50], 'within': 6 }, 'color': [1, 0.9, 0.1] }]");
             Same(Fire(blue, gold).At(53, 50, Nobody), middle);
             Same(Fire(gold, blue).At(53, 50, Nobody), middle, "the other order");
             Same(Fire(gold, blue).At(52, 50, Nobody), Fire(blue, gold).At(52, 50, Nobody));
         }
-
-        // ---------- colour theory ----------
 
         static float Hue(LookColour c)
         {
@@ -224,7 +216,6 @@ namespace Chem.Tests
                 }
             Assert.That((double)red / n, Is.EqualTo(0.75).Within(0.01), "three red in four");
 
-            // A scoped mix picks its own patchwork; outside it the plain look's mix holds.
             var scoped = Fire(FireLook("[{ 'where': { 'place': 'far' }, 'mix': [[0, 1, 0], [0, 1, 1], [1, 1, 0]] }]", "[[1, 0, 0], [0, 0, 1]]"));
             var seen = new HashSet<string>();
             for (int y = 100; y <= 110; y++)
@@ -245,7 +236,6 @@ namespace Chem.Tests
             Assert.That(a, Is.EqualTo(0x70396988u), "golden: the hash a cell picks by must not move, or peers on different versions see different patchworks");
         }
 
-        // FNV-1a over the colours of a block of cells, each channel in 1/1000ths.
         static uint Digest(CellLook look)
         {
             unchecked
@@ -262,7 +252,7 @@ namespace Chem.Tests
         }
 
         [Test]
-        [NonParallelizable] // with fixtures beside it, the runtime's own work on this thread (its JIT) once landed in a measured loop: 6560 bytes
+        [NonParallelizable]
         public void AtAllocatesNothing()
         {
             var fire = Fire(FireLook("[{ 'where': { 'place': 'box', 'within': 3 }, 'mix': [[0, 1, 0], [0, 1, 1]] }, { 'where': { 'around': 'host', 'within': 5 }, 'color': [0.2, 0.9, 0.3] }, { 'by': 'each', 'mix': [[1, 0, 0], [0, 0, 1]] }, { 'by': 1, 'color': [0, 1, 0] }]", "[[1, 0, 0], [0, 0, 1]]"));
@@ -274,10 +264,7 @@ namespace Chem.Tests
                     for (int x = 0; x < 64; x++) sum += fire.At(x, y, players, y == 0 ? Red : (LookColour?)null, x % 3 == 0 ? (int?)null : x % 3 - 1).G;
                 return sum;
             }
-            // Past the runtime's 30 calls before it recompiles a method (tiered JIT), so that work is done before the measuring.
             for (int warm = 0; warm < 32; warm++) Sweep();
-            // The runtime may still allocate a little once around a measured loop, so what's checked is
-            // that the bytes on this thread don't grow with the calls: 4096 calls and 12288 allocate the same.
             long Measure(int sweeps)
             {
                 long before = GC.GetAllocatedBytesForCurrentThread();
@@ -290,8 +277,6 @@ namespace Chem.Tests
             float sum = Sweep();
             Assert.That(sum, Is.GreaterThan(0));
         }
-
-        // ---------- by player ----------
 
         static readonly List<PlayerSpot> ThreePlayers = new List<PlayerSpot>
         {
@@ -325,7 +310,6 @@ namespace Chem.Tests
             Same(fire.At(7, 7, fourth, null, 3), Red, "more players than colours: round again");
             Same(fire.At(7, 7, null, null, 1), Plain, "nobody known in the game: no by");
 
-            // One player's own colour, latest wins over each; it lapses when they leave, and each takes over again only while they're in.
             var mine = Fire(FireLook("[{ 'by': 'each', 'mix': [[1, 0.1, 0.1], [0.25, 0.45, 1], [0.2, 0.9, 0.3]] }, { 'by': 1, 'color': [0.2, 0.9, 0.3] }]"));
             Same(mine.At(7, 7, ThreePlayers, null, 1), Green, "a look naming slot 1 is stronger than each");
             Same(mine.At(7, 7, left, null, 1), Plain, "gone: lapsed");

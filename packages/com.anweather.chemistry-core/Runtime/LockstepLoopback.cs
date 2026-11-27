@@ -13,10 +13,8 @@ namespace Chem.Lockstep
     public sealed class LockstepLoopback
     {
         readonly List<LoopbackPeer> peers = new List<LoopbackPeer>();
-        // Messages on their way, in the order sent: (due pump, from, to, bytes).
         readonly List<(int due, LoopbackPeer from, LoopbackPeer to, byte[] bytes)> onTheWay = new List<(int, LoopbackPeer, LoopbackPeer, byte[])>();
 
-        /// <param name="maxMessageBytes">The longest send every peer's transport takes (the session splits longer messages).</param>
         public LockstepLoopback(int maxMessageBytes = 1024)
         {
             MaxMessageBytes = maxMessageBytes;
@@ -24,18 +22,14 @@ namespace Chem.Lockstep
 
         public int MaxMessageBytes { get; }
 
-        /// <summary>Pumps so far.</summary>
         public int Now { get; private set; }
 
-        /// <summary>The host, or a solo peer: peer 0.</summary>
         public LoopbackPeer Host { get; private set; }
 
-        /// <summary>Every send so far, frames counted one by one, and the longest.</summary>
         public int Sends { get; private set; }
 
         public int LongestSend { get; private set; }
 
-        /// <summary>The host (or, <paramref name="solo"/>, a peer alone), peer 0. There's one.</summary>
         public LoopbackPeer AddHost(string name = "host", bool solo = false)
         {
             if (Host != null) throw new InvalidOperationException("a loopback has one host");
@@ -44,7 +38,6 @@ namespace Chem.Lockstep
             return Host;
         }
 
-        /// <summary>A client, not yet connected; its messages take <paramref name="delay"/> pumps each way.</summary>
         public LoopbackPeer AddClient(string name, int delay = 0)
         {
             var client = new LoopbackPeer(this, new PeerId(peers.Count), name, LockstepRole.Client, Math.Max(0, delay));
@@ -52,7 +45,6 @@ namespace Chem.Lockstep
             return client;
         }
 
-        /// <summary>A client connects: the host's session hears it joined (and sends the hello).</summary>
         public void Connect(LoopbackPeer client)
         {
             if (client == null) throw new ArgumentNullException(nameof(client));
@@ -61,7 +53,6 @@ namespace Chem.Lockstep
             Host.Session?.PeerJoined(client.Id, client.Name);
         }
 
-        /// <summary>A client goes: what's on its way to or from it is lost, and the host's session hears it left.</summary>
         public void Disconnect(LoopbackPeer client)
         {
             if (client == null) throw new ArgumentNullException(nameof(client));
@@ -70,7 +61,6 @@ namespace Chem.Lockstep
             Host.Session?.PeerLeft(client.Id);
         }
 
-        /// <summary>Delivers every message due by now, in the order sent (one sent while delivering may be due too), then the clock moves on.</summary>
         public void Pump()
         {
             while (true)
@@ -98,7 +88,6 @@ namespace Chem.Lockstep
         internal IEnumerable<LoopbackPeer> Clients => peers.Where(p => p != Host && p.Connected);
     }
 
-    /// <summary>One peer's end of a loopback: its transport, and the session it delivers to.</summary>
     public sealed class LoopbackPeer : ILockstepTransport
     {
         readonly LockstepLoopback net;
@@ -117,12 +106,10 @@ namespace Chem.Lockstep
         public LockstepRole Role { get; }
         public int MaxMessageBytes => net.MaxMessageBytes;
 
-        /// <summary>Pumps each of its messages takes, to it or from it.</summary>
         public int Delay { get; }
 
         public bool Connected { get; internal set; }
 
-        /// <summary>The session messages to this peer go to: set it once the session is made.</summary>
         public LockstepSession Session { get; set; }
 
         public void SendToHost(ReadOnlySpan<byte> message) => net.Send(this, net.Host, message);

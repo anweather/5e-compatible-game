@@ -67,24 +67,18 @@ public static class AssetPackRestore
         };
     }
 
-    // Where the Editor keeps downloaded packs: ~/Library/Unity/Asset Store-5.x on macOS,
-    // %APPDATA%\Unity\Asset Store-5.x on Windows. FromCommandLine's -asset-cache replaces it.
     static string CacheRoot => SessionState.GetString(CacheOverride, "") is { Length: > 0 } folder ? folder : EditorCache;
 
     static string EditorCache => Application.platform == RuntimePlatform.WindowsEditor
         ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Unity", "Asset Store-5.x")
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "Library", "Unity", "Asset Store-5.x");
 
-    /// <summary>True while a restore is downloading or importing.</summary>
     public static bool Busy => SessionState.GetBool(Active, false);
 
-    /// <summary>True when every pack in the manifest is in the project.</summary>
     public static bool AllPresent => Missing().Count == 0;
 
-    /// <summary>Raised when a restore ends (with or without failures).</summary>
     public static event Action Finished;
 
-    /// <summary>The folders the manifest's packs live in ("Assets/Starter Assets", ...).</summary>
     internal static List<string> Folders() =>
         File.Exists(ManifestPath)
             ? JsonUtility.FromJson<Manifest>(File.ReadAllText(ManifestPath)).packs.ConvertAll(p => p.folder)
@@ -114,10 +108,6 @@ public static class AssetPackRestore
         EditorApplication.update += Pump;
     }
 
-    /// <summary>
-    /// For -executeMethod (no -quit): restores the missing packs from the cache, with no download, then logs
-    /// ASSET PACKS: OK or FAILED and, in batch mode, exits 0 or 1.
-    /// </summary>
     public static void FromCommandLine()
     {
         string cache = CacheArgument(Environment.GetCommandLineArgs()) ?? CacheRoot;
@@ -140,14 +130,12 @@ public static class AssetPackRestore
         Restore();
     }
 
-    /// <summary>The folder after -asset-cache, made absolute, or null without one.</summary>
     internal static string CacheArgument(string[] args)
     {
         int at = Array.IndexOf(args, "-asset-cache");
         return at >= 0 && at + 1 < args.Length ? Path.GetFullPath(args[at + 1]) : null;
     }
 
-    /// <summary>Null when every pack in <paramref name="missing"/> has its file in <paramref name="cache"/>, otherwise what isn't there.</summary>
     internal static string CheckCache(List<Pack> missing, string cache)
     {
         if (missing.Count == 0) return null;
@@ -156,14 +144,9 @@ public static class AssetPackRestore
         return absent.Count == 0 ? null : $"not in {cache}: {string.Join(", ", absent.ConvertAll(p => p.cache))}";
     }
 
-    /// <summary>Where a cache folder keeps the baked tree impostors, and where they go (TreeImpostorBaker.Folder).</summary>
     internal const string ImpostorCache = "Generated/TreeImpostors";
     internal const string ImpostorFolder = "Assets/Prototype/Generated/Resources/TreeImpostors";
 
-    /// <summary>
-    /// Copies the baked impostors in <paramref name="cache"/>, .meta files and all (the materials find their atlases by
-    /// those GUIDs), into <paramref name="destination"/>, leaving any file already there; returns how many it copied.
-    /// </summary>
     internal static int CopyImpostors(string cache, string destination)
     {
         string from = Path.Combine(cache, ImpostorCache);
@@ -200,12 +183,10 @@ public static class AssetPackRestore
         ImportWhenDownloaded();
     }
 
-    // Picks the next missing pack and starts its download if it isn't cached; finishes the restore when none are left.
     static void StartNextPack()
     {
         var failed = SessionState.GetString(Failed, "");
         current = Missing().Find(p => !failed.Contains($"[{p.id}]"));
-        // One import attempt per pack per restore: still missing afterwards means it failed.
         if (current != null && SessionState.GetString(Attempted, "").Contains($"[{current.id}]"))
         {
             Debug.LogError($"Asset packs: {current.name} imported but {current.folder} still doesn't exist.");
@@ -242,7 +223,6 @@ public static class AssetPackRestore
         }
     }
 
-    // Waits for the current pack's file to finish downloading, then imports it (or the subset it asks for).
     static void ImportWhenDownloaded()
     {
         var file = Path.Combine(CacheRoot, current.cache);
@@ -255,7 +235,6 @@ public static class AssetPackRestore
         }
         if (!File.Exists(file)) return;
 
-        // The download writes the file in place; import once its size has held for 3 seconds.
         long size = new FileInfo(file).Length;
         if (size != lastSize)
         {
@@ -278,15 +257,12 @@ public static class AssetPackRestore
         current = null;
     }
 
-    // Unity remembers deleted assets' GUIDs for a while, so check the file is really there.
     static bool IsInProject(string guid)
     {
         var path = AssetDatabase.GUIDToAssetPath(guid);
         return !string.IsNullOrEmpty(path) && (File.Exists(path) || Directory.Exists(path));
     }
 
-    // A pack counts as present only if its folder holds real files: an empty
-    // folder (say, one Unity kept after an interrupted import) doesn't count.
     static bool HasFiles(string folder) =>
         Directory.Exists(folder) && Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Any(f => !f.EndsWith(".meta", StringComparison.Ordinal));
 }

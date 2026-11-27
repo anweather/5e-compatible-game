@@ -14,7 +14,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>A set of components, as bits (Rules.Component gives each name its bit).</summary>
     public readonly struct ComponentSet : IEquatable<ComponentSet>
     {
         public ComponentSet(ulong bits) => Bits = bits;
@@ -23,7 +22,6 @@ namespace Chem
         public static ComponentSet Empty => default;
         public bool IsEmpty => Bits == 0;
 
-        /// <summary>Whether it has the component with this id (false for -1, an unknown name).</summary>
         public bool Has(int id) => id >= 0 && (Bits & (1UL << id)) != 0;
         public bool HasAll(ComponentSet other) => (Bits & other.Bits) == other.Bits;
         public bool HasAny(ComponentSet other) => (Bits & other.Bits) != 0;
@@ -38,40 +36,31 @@ namespace Chem
 
     public sealed partial class Rules
     {
-        /// <summary>The components the engine itself reads, there whatever components.json says.</summary>
         public const string Flammable = "flammable", Creature = "creature";
 
-        /// <summary>At most this many components (a thing's are one 64-bit set).</summary>
         public const int MaxComponents = 64;
 
         readonly List<string> componentNames = new List<string>();
         readonly Dictionary<string, int> componentIds = new Dictionary<string, int>(StringComparer.Ordinal);
 
-        /// <summary>The component names, in id order (sorted).</summary>
         public IReadOnlyList<string> Components => componentNames;
 
-        /// <summary>A component's id (its bit), or -1 for a name the rules don't know.</summary>
         public int Component(string name) => name != null && componentIds.TryGetValue(name, out int id) ? id : -1;
 
-        /// <summary>Whether the entity with this id has the component (false for an unknown entity or name).</summary>
         public bool EntityHas(string entityId, string component) => Entity(entityId)?.Components.Has(Component(component)) ?? false;
 
-        /// <summary>Whether the item with this id has the component (false for an unknown item or name).</summary>
-        /// <summary>Whether an item's material goes intact, cracked, shattered (shatter.cracks; a glow ball's glass). One that spills goes at once.</summary>
         public bool ItemCracks(string itemId) =>
             Item(itemId) is ItemDef item && item.Breaks?.Spill == null && item.Material != null && terrain.TryGetValue(item.Material, out var t) && t.Cracks;
 
         public bool ItemHas(string itemId, string component) =>
             itemId != null && items.TryGetValue(itemId, out var item) && item.Components.Has(Component(component));
 
-        /// <summary>The ids of the entities with a component, sorted.</summary>
         public IReadOnlyList<string> EntitiesWith(string component)
         {
             int id = Component(component);
             return entities.Values.Where(e => e.Components.Has(id)).Select(e => e.Id).OrderBy(i => i, StringComparer.Ordinal).ToList();
         }
 
-        // components.json's names plus the engine's own, sorted, numbered from 0.
         static void ParseComponents(Rules r, JObject table)
         {
             var names = table.Properties().Select(p => p.Name).Concat(new[] { Flammable, Creature })
@@ -83,7 +72,6 @@ namespace Chem
             }
         }
 
-        /// <summary>A thing's "components" list, plus the old shorthand keys ("flammable": true, "creature": true).</summary>
         ComponentSet ThingComponents(JObject o)
         {
             var set = Names(o["components"]);
@@ -92,8 +80,6 @@ namespace Chem
             return new ComponentSet(set.Bits | FromMaterial(Str(o["material"])).Bits);
         }
 
-        // What a thing's material makes it (docs/MATERIALS.md, step 4): its verbs as the components the
-        // rules ask for. A burn makes it flammable, a break breakable, a conduct conducts, a shatter brittle.
         ComponentSet FromMaterial(string material)
         {
             var set = ComponentSet.Empty;
@@ -103,13 +89,11 @@ namespace Chem
             return set;
         }
 
-        /// <summary>Each component a material's verb gives a thing, and the verb's tag (sandbox: MATERIAL_COMPONENTS).</summary>
         public static readonly IReadOnlyList<(string component, string tag)> MaterialComponents = new[]
         {
             ("flammable", "flammable"), ("breakable", "breakable"), ("conducts", "conductive"), ("brittle", "brittle"),
         };
 
-        /// <summary>A component name or a list of them, as a set (unknown names left out; the checks report them).</summary>
         ComponentSet Names(JToken t)
         {
             var set = ComponentSet.Empty;
@@ -119,7 +103,6 @@ namespace Chem
             return set;
         }
 
-        /// <summary>An entity rule's "if": a status it has, components it has and lacks ("flammable": true / false are has / lacks flammable).</summary>
         EntityCond ParseEntityCond(JObject c)
         {
             var cond = new EntityCond { Status = Str(c["status"]), Has = Names(c["has"]), Lacks = Names(c["lacks"]), Verb = Str(c["verb"]) };

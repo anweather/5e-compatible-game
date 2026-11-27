@@ -9,9 +9,7 @@ using UnityEngine;
 [RequireComponent(typeof(CharacterController))]
 public class Kicker : MonoBehaviour
 {
-    /// <summary>Things heavier than this (kg) are walked into, not kicked.</summary>
     public const float MaxKickKg = 5f;
-    /// <summary>The ball's speed from a kick: this much, plus the runner's speed times KickPerSpeed (m/s).</summary>
     const float KickBase = 2f, KickPerSpeed = 1.3f, Lift = 0.25f, Cooldown = 0.2f, MinRunSpeed = 0.5f;
 
     CharacterController body;
@@ -25,8 +23,6 @@ public class Kicker : MonoBehaviour
         var thing = hit.rigidbody;
         if (thing == null || thing.mass > MaxKickKg) return;
         if (thing.TryGetComponent<Carryable>(out var carried) && carried.Holder != null) return;
-        // Away from where they touched (the move that hit may be a step's fall, straight down),
-        // and only while the wizard is on the move: standing against it doesn't kick.
         var along = -hit.normal;
         along.y = 0f;
         var run = body.velocity;

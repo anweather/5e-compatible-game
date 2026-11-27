@@ -16,8 +16,6 @@ namespace Chem.Tests
 
         const int S = Chunks.Size;
 
-        // Fire made certain (every catch catches, no smoke, no heat on stone, no boiling), so a fire and its mirror burn
-        // alike whatever order the tick visits them in.
         static Rules certain;
         static Rules CertainFire => certain ??= R.WithMods(new[] { ModPatch.Parse(
             "{ \"sim\": { \"fire\": { \"spreadChance\": 1000, \"smokeChance\": 0, \"heatChance\": 0, \"boilChance\": 0, \"slickBoilChance\": 0 } } }") });
@@ -73,9 +71,6 @@ namespace Chem.Tests
             Assert.That(w.IsActiveAt(0, 10), Is.True);
         }
 
-        // ---------- fire, water, gas ----------
-
-        // A strip of grass along row y round the seam, x from W - n to n - 1, on stone: the same strip mirrored (x to W - 1 - x).
         static World FireStrip(int n, int y)
         {
             var w = Wrapped(CertainFire, 4, 1, "stone");
@@ -95,9 +90,6 @@ namespace Chem.Tests
             return c.T == "grass" ? 'g' : '.';
         }
 
-        // Every cell's state, row by row, west to east (or, mirrored, east to west). The tick's draws aren't in it: which
-        // neighbour a burning cell meets first goes by the tick's row order, so a fire and its mirror draw a different number
-        // of times for catches that can't happen (on stone); with every catch certain, what burns is the same.
         static string Cells(World w, bool mirrored)
         {
             var sb = new System.Text.StringBuilder();
@@ -139,9 +131,8 @@ namespace Chem.Tests
         {
             var w = Wrapped(ChemistryTests.NoSoak, 4, 1, "stone");
             int wide = w.W, y = 20;
-            for (int x = -8; x < 8; x++) w.Paint(x, y, "dirt"); // a channel of dirt through the stone, over the seam
+            for (int x = -8; x < 8; x++) w.Paint(x, y, "dirt");
             for (int x = 0; x < 4; x++) w.AddWater(x, y, 32);
-            // The same channel and water in the middle of a world without wrap: what it keeps (some dries off).
             var flat = new World(ChemistryTests.NoSoak, 4 * S, S, 7, "stone");
             flat.WeatherSet = w.WeatherSet;
             for (int x = 120; x < 136; x++) flat.Paint(x, y, "dirt");
@@ -184,7 +175,6 @@ namespace Chem.Tests
             Assert.That(cells, Has.Member((w.W - 2, 20)).And.Member((2, 20)));
             Assert.That(cells.All(c => c.x >= 0 && c.x < w.W), Is.True, "every cell folded");
             w.Cast("fireball", 0, 20, 1);
-            // Its crater (radius 1) blows the grass off x = -1 to 1; the rest of the burst burns.
             Assert.That(w.At(w.W - 2, 20).Fire, Is.GreaterThan(0));
             Assert.That(w.At(2, 20).Fire, Is.GreaterThan(0));
         }
@@ -200,14 +190,11 @@ namespace Chem.Tests
             Assert.That(r.X, Is.InRange(0, 8), $"pushed east over the seam, at {r.X}");
         }
 
-        // ---------- streaming ----------
-
         static (int, int)[] Actives(World w) => w.ActiveChunks.Select(c => (c.cx, c.cy)).ToArray();
 
         [Test]
         public void ACharacterByTheSeamKeepsTheFarEastActive()
         {
-            // The 12 x 10's width in chunks (108) is too many for a quick test; 12 chunks round shows the same.
             var w = Wrapped(R, 12, 3);
             var at = new[] { (10, 1 * S + 30) };
             ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, at));
@@ -217,9 +204,8 @@ namespace Chem.Tests
             Assert.That(Actives(w), Is.EqualTo(new[] { 0, 1, 2 }.SelectMany(cy => cols.Select(cx => (cx, cy))).ToArray()),
                 "reach 2 round chunk 0: chunks 10 and 11 across the seam, row by row in folded order");
 
-            // Walking west over the seam the keep holds what's behind, and the reach brings on what's ahead.
             var planner = new ChunkPlanner();
-            ChunkStreaming.Apply(w, planner.Plan(w, new[] { (-S * 2 + 10, 1 * S + 30) })); // chunk 10, given unfolded
+            ChunkStreaming.Apply(w, planner.Plan(w, new[] { (-S * 2 + 10, 1 * S + 30) }));
             Assert.That(w.IsActive(8, 1) && w.IsActive(9, 1) && w.IsActive(0, 1) && w.IsActive(1, 1), Is.True);
             Assert.That(w.IsActive(2, 1), Is.False, "4 chunks east of chunk 10 the short way round: past keep 3");
 
@@ -237,7 +223,6 @@ namespace Chem.Tests
             var round = ChunkStreaming.Plan(chunks, (cx, cy) => false, at, 1, 2, wrapChunks: 12);
             Assert.That(plain.Select(s => s.CX), Is.EqualTo(new[] { 0, 1 }));
             Assert.That(round.Select(s => s.CX), Is.EqualTo(new[] { 0, 1, 11 }));
-            // Within 60 cells of x = 5: chunk 11 (5 cells west over the seam) and chunk 1 (59 east), not chunk 10 (69 west).
             var near = ChunkStreaming.Within(chunks, 5, 10, 60, wrapCells: 12 * S);
             Assert.That(near.Select(c => c.cx), Is.EqualTo(new[] { 0, 1, 11 }));
             Assert.That(ChunkStreaming.Within(chunks, 5, 10, 60).Select(c => c.cx), Is.EqualTo(new[] { 0, 1 }));
@@ -250,7 +235,6 @@ namespace Chem.Tests
             var planner = new ChunkPlanner();
             var at = new[] { (3 * S + 30, 30) };
             ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, at));
-            // Reach 2 round chunk 3: chunks 1 to 5. Chunk 0's fire then runs to its west edge.
             ChunkStreaming.Apply(w, new[] { new ChunkSwitch(0, 0, true) });
             Assert.That(w.IsActive(7, 0), Is.False);
             for (int y = 0; y < S; y++) w.Paint(0, y, "grass");
@@ -268,7 +252,6 @@ namespace Chem.Tests
         [Test]
         public void TheChunkOverTheSeamIsUnpackedAndKeptBesideAnActiveOne()
         {
-            // Reach 2 round chunk 0 of 8: chunks 6, 7, 0, 1 and 2 active.
             var w = Wrapped(R, 8, 1, "dirt");
             ChunkStreaming.Apply(w, ChunkStreaming.StartPlan(w, new[] { (10, 30) }));
             Assert.That(w.IsActive(6, 0) && w.IsActive(7, 0) && !w.IsActive(5, 0), Is.True);
@@ -278,8 +261,6 @@ namespace Chem.Tests
             Assert.That(w.IsPacked(4, 0), Is.True, "two chunks from any active one");
             Assert.That(w.IsPacked(3, 0), Is.False, "beside active chunk 2");
         }
-
-        // ---------- hashes and saves ----------
 
         [Test]
         public void AWrappedWorldsHashSaysSoAndItsSaveKeepsIt()

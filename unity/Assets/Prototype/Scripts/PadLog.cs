@@ -9,7 +9,6 @@ using UnityEngine.InputSystem;
 // thing to look for in a player's log. Nothing runs between changes. Starts itself.
 public static class PadLog
 {
-    // A pad's capabilities on Linux list every axis and button, and those are the evidence, so keep plenty.
     const int CapabilitiesKept = 2000;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -23,10 +22,8 @@ public static class PadLog
 
     static void Changed(InputDevice device, InputDeviceChange change) => Debug.Log(Line(change.ToString(), device, Gamepad.current));
 
-    /// <summary>The pad in use moved to this one, which gets these glyphs.</summary>
     public static void InUse(Gamepad pad, PadFamily family) => Debug.Log($"{Line("InUse", pad, pad)} glyphs={family}");
 
-    /// <summary>The line for a device, or for no device: the change, then what the device says about itself.</summary>
     public static string Line(string change, InputDevice device, Gamepad current)
     {
         string gamepad = current != null ? $"{current.deviceId} \"{current.description.product}\"" : "none";

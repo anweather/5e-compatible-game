@@ -13,16 +13,11 @@ using UnityEngine.Rendering;
 // reads it.
 public sealed partial class FarRing
 {
-    // The far land's spacing in cells (two known samples), how far under the known land it stands (m), and its tiles in
-    // cells (a hills map's size divides by them: 4 × 5 on hills-12x10).
     const int FarStep = 16, TileW = 1728, TileH = 1152;
     const float FarSink = 3f;
-    // The massif's rock: from RockFrom land units over the meadow, all rock by RockAll.
     const int RockFrom = 250, RockAll = 900;
-    // How much the far land pales toward the sky's colour far off (Air.hlsl's DulledFar).
     const float FarDulls = 0.5f;
 
-    /// <summary>A generated map's air (m): its clear air's reach, its gaussian's 98% in clear air and in rain, and where all gives way.</summary>
     public const float HillsReach = 15000f, HillsClear = 25000f, HillsRainy = 1500f, HillsFarFrom = 12500f, HillsFarTo = 14500f;
 
     Task<(FarMeshes.Data[] tiles, double ms)> farLandWork;
@@ -31,24 +26,15 @@ public sealed partial class FarRing
     Material farMaterial;
     float periodX, periodZ, tileX, tileZ;
     GameObject[] farCopies;
-    // Copies of each tile drawn at most, each way from the nearest: two maps' widths (20 km) past the air's reach.
     const int Copies = 2;
     System.Func<int, int, float> rockAt;
 
-    /// <summary>
-    /// The air's dials on a generated map (AirInPlay): its clear air's reach (m), its gaussian's ~98% in clear air and in
-    /// rain (m), and where everything gives way (m). Every generated map has the hills' long clear air (Andrew,
-    /// 2026-11-24); a map with no far land shows its known ring's edge (the nine's bare sea past it) until it draws some.
-    /// </summary>
     public (float reach, float clear, float rainy, float farFrom, float farTo) AirDials => (HillsReach, HillsClear, HillsRainy, HillsFarFrom, HillsFarTo);
 
-    /// <summary>A hills map's land at map cell (x, y) in metres, from its generator (no chunk is made), or null on another map.</summary>
     public float? HillsLandAt(int x, int y) => map?.Hills is { } h ? h.At((x % map.Gen.CellsW + map.Gen.CellsW) % map.Gen.CellsW, (y % map.Gen.CellsH + map.Gen.CellsH) % map.Gen.CellsH) * (float)MapFile.LandUnitMetres : null;
 
-    /// <summary>Whether a hills map's far land is drawn now (the probe and the stills read it).</summary>
     public bool FarLandShown => farTiles != null;
 
-    /// <summary>The far land's vertices, all tiles (one copy of the map).</summary>
     public int FarLandVertices { get; private set; }
 
     void StartFarLand(GeneratedMap m)
@@ -75,10 +61,6 @@ public sealed partial class FarRing
         tileZ = TileH * l.CellSize;
     }
 
-    /// <summary>
-    /// A hills map's far land as tiles of TileW × TileH cells, row by row from the north-west: each sample every FarStep
-    /// cells at its known height less FarSink, painted as the known meshes are. Safe off the main thread.
-    /// </summary>
     public static FarMeshes.Data[] FarLandTiles(ChunkGen gen, float cell, FarMeshes.Palette colours, System.Func<int, int, float> rockAt)
     {
         colours ??= FarMeshes.Palette.Plain;
@@ -88,7 +70,6 @@ public sealed partial class FarRing
         var water = new byte[gw * gh];
         var biome = new string[gw * gh];
         var wood = new byte[gw * gh];
-        // Every known sample's height too (8 cells apart), for the normals: lit and painted as the known meshes are.
         int fw = gen.CellsW / KnownChunk.Step, fh = gen.CellsH / KnownChunk.Step, fine = KnownChunk.Side - 1;
         var f = new float[fw * fh];
         for (int cy = 0; cy < gen.ChunksH; cy++)
@@ -142,8 +123,6 @@ public sealed partial class FarRing
         return tiles;
     }
 
-    // The worker's tiles to Unity when they're done; then, every frame, each tile's copies within the air's reach shown
-    // where they stand (the copy of the tile nearest the eye and the copies round it, up to Copies a side each way).
     void UpdateFarLand()
     {
         if (farLandWork != null && farLandWork.IsCompleted) FinishFarLand();

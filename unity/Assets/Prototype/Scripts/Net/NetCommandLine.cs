@@ -25,9 +25,8 @@ public class NetCommandLine : MonoBehaviour
 {
     const float StatusEvery = 10f;
 
-    static bool started; // once per run: Leave reloads the scene, which mustn't host again
+    static bool started;
 
-    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -67,8 +66,6 @@ public class NetCommandLine : MonoBehaviour
 
     void BeginLocal(bool host, string address) => StartCoroutine(Local(host, address));
 
-    // A frame later, not as the scene loads: Netcode's generated serializers start then too, in no set order, and a
-    // network started before them can't send its variables (the host's map, a FixedString).
     System.Collections.IEnumerator Local(bool host, string address)
     {
         yield return null;
@@ -83,7 +80,6 @@ public class NetCommandLine : MonoBehaviour
         else session.Join(address);
     }
 
-    // To the cell -walk-to names, along a path over the cells (TestWalk): the controller's stick is the camera's.
     void Walk()
     {
         var net = NetworkManager.Singleton;
@@ -147,7 +143,6 @@ public class NetCommandLine : MonoBehaviour
         _ = host ? session.HostOnline() : session.JoinOnline(code);
     }
 
-    // After Netcode has registered its prefabs, so the hash is the one it sends and compares.
     void LogConfig()
     {
         if (configLogged || NetworkManager.Singleton == null) return;

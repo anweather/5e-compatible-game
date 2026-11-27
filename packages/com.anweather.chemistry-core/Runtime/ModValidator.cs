@@ -14,10 +14,8 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>Which of validate's checks a problem comes from.</summary>
     public enum ModCheck { Shape, References, Design, Determinism, Budget, Looks, Site }
 
-    /// <summary>One problem with a mod: the check that found it and one sentence saying what to fix.</summary>
     public readonly struct ModProblem
     {
         public ModProblem(ModCheck check, string message)
@@ -32,31 +30,24 @@ namespace Chem
         public override string ToString() => $"{Check.ToString().ToLowerInvariant()}: {Message}";
     }
 
-    /// <summary>rules/budgets.json: what one mod may ask of the engine.</summary>
     public sealed class ModBudgets
     {
         ModBudgets(JObject json) { Json = json; }
 
         internal JObject Json { get; }
 
-        /// <summary>The look and effect families a mod's new things may name (rules/looks.json); null skips that check.</summary>
         public LookFamilies Looks { get; private set; }
 
-        /// <summary>The world's places a scoped look may name (world/places.json beside rules/); empty when there's none.</summary>
         public WorldPlaces Places { get; private set; } = WorldPlaces.Empty;
 
-        /// <summary>The buildings a world was made with (world/buildings.json, villages.json), which a mod may edit by id.</summary>
         public WorldBuildings Buildings { get; private set; } = WorldBuildings.Empty;
 
-        /// <summary>The world's things (world/things.json): a building's site keeps clear of them.</summary>
         public WorldThings Things { get; private set; } = WorldThings.Empty;
 
         public static ModBudgets Parse(string json) => new ModBudgets(JObject.Parse(json));
 
-        /// <summary>rules/budgets.json with the family list of rules/looks.json: all a peer checks a mod against.</summary>
         public static ModBudgets Load(string rulesDir) => Load(new GameFolders(rulesDir));
 
-        /// <summary>The same, with the places, buildings and things of the folders' map.</summary>
         public static ModBudgets Load(GameFolders folders)
         {
             var budgets = Parse(File.ReadAllText(Path.Combine(folders.Rules, "budgets.json")));
@@ -68,11 +59,9 @@ namespace Chem
             return budgets;
         }
 
-        /// <summary>A number under a dotted path such as "spells.maxRadius", or the fallback.</summary>
         public double Number(string path, double fallback) =>
             Json.SelectToken(path) is JValue v && (v.Type == JTokenType.Integer || v.Type == JTokenType.Float) ? (double)v : fallback;
 
-        /// <summary>The sim parameters with declared bounds, as (dotted path, min, max).</summary>
         public IEnumerable<(string path, double min, double max)> SimBounds =>
             (Json["sim"] as JObject)?.Properties()
                 .Where(p => p.Value is JArray a && a.Count == 2)
@@ -85,20 +74,9 @@ namespace Chem
         static readonly HashSet<string> Sections = new HashSet<string>(ModPatch.Tables.Concat(new[] { "elements", "reactions", "spells", "critters", "sim", "combos", BuildingTables.Key, "world", Rules.TriggersKey }));
         static readonly string[] RandomKeys = { "seed", "random", "rng" };
 
-        /// <summary>
-        /// Every problem with a patch (bare or {"title", "patch"}) over these base rules; empty means
-        /// it may switch on. Stops after the shape check if the patch can't be read. A room passes its
-        /// temporary materials by id with the mod each is from (TempMaterials.Owners): another mod may name
-        /// one, and goes when its owner does (World.Lapse.cs), but makes no thing of one and lapses into none.
-        /// </summary>
         public static IReadOnlyList<ModProblem> Validate(Rules baseRules, ModBudgets budgets, string patchJson, IReadOnlyDictionary<string, string> temporary = null) =>
             Validate(baseRules, budgets, patchJson, temporary, out _);
 
-        /// <summary>
-        /// Validate, handing back the rules it composed to check the patch (<paramref name="baseRules"/> with it over them),
-        /// or null if they wouldn't compose: a room switching the mod on puts these in force rather than composing them a
-        /// second time (#155).
-        /// </summary>
         public static IReadOnlyList<ModProblem> Validate(Rules baseRules, ModBudgets budgets, string patchJson, IReadOnlyDictionary<string, string> temporary, out Rules composedRules)
         {
             composedRules = null;
@@ -134,7 +112,6 @@ namespace Chem
             return problems;
         }
 
-        /// <summary>A spell's numbers past the budget's caps, one sentence each: what validate says, and set_spell at once.</summary>
         internal static IEnumerable<string> SpellCaps(ModBudgets budgets, string id, JObject s)
         {
             if (s["place"] is JObject place)
@@ -152,7 +129,6 @@ namespace Chem
             }
         }
 
-        /// <summary>The engine's terse messages ("spell x: unknown element y") as a sentence.</summary>
         static string Sentence(string m)
         {
             if (string.IsNullOrEmpty(m)) return m;
@@ -188,8 +164,6 @@ namespace Chem
 
             bool InBase(string list, string id) => baseDoc[list] is JArray a && a.Any(x => Text(x["id"]) == id);
 
-            // ---------- shape: what Parse lets through ----------
-
             public void Shape()
             {
                 foreach (var p in patch.Properties().Where(p => !Sections.Contains(p.Name)))
@@ -210,11 +184,8 @@ namespace Chem
                 }
             }
 
-            // ---------- the looks: every new thing names a family the view draws ----------
+            JObject fauna;
 
-            JObject fauna; // the species in force with the mod on; null if it didn't compose
-
-            // A patch's entry names only what it changes, so its look is checked as it composes.
             public void Looks(LookFamilies looks, JObject composed)
             {
                 fauna = composed?[FaunaTables.SpeciesKey] as JObject;
@@ -233,7 +204,6 @@ namespace Chem
             static JObject SpellIn(JObject composed, JObject s) =>
                 (composed?["spells"] as JArray)?.OfType<JObject>().FirstOrDefault(c => Text(c["id"]) == Text(s["id"])) ?? s;
 
-            // A kind the rules came with has its baked prefab; a new one has only its look.
             void ThingsHaveLooks(JObject composed)
             {
                 foreach (var row in (patch["world"]?["add"] as JArray)?.OfType<JObject>() ?? Enumerable.Empty<JObject>())
@@ -245,8 +215,6 @@ namespace Chem
                 }
             }
 
-            // Covers and gases have no family drawn yet, so a new one needn't name one, and may give
-            // only a colour (a bare look; an element's is always bare); if it names one, the name must be right.
             void LookOf(LookFamilies looks, string table, string who, JObject entry, bool required)
             {
                 if (!(entry["look"] is JObject look))
@@ -259,9 +227,9 @@ namespace Chem
                 if (name == null)
                 {
                     if (looks.BareTables.Contains(table)) Params(look, who, "a look with no family", looks.BareParams(table), table);
-                    return; // else Rules.Check says so
+                    return;
                 }
-                if (table == "elements") return; // Rules.Check: an element names no family
+                if (table == "elements") return;
                 var family = looks.Find(table, name);
                 if (family == null)
                     Add(ModCheck.Looks, $"{who} names the look family \"{name}\", which the view doesn't know; the families for it are {looks.DrawnNames(table)} (rules/looks.json).");
@@ -280,8 +248,6 @@ namespace Chem
                 }
             }
 
-            // Every parameter a look gives is one its family takes, or the view would silently ignore it. A
-            // mix and scoped looks go wherever a colour does, on an element, cover, gas or terrain.
             void Params(JObject look, string who, string what, IReadOnlyList<string> takes, string table)
             {
                 bool colours = takes.Contains("color") && LookScopes.Tables.Contains(table);
@@ -294,7 +260,6 @@ namespace Chem
                 }
             }
 
-            // A scoped look's place is one the world has, and its reach and count, and a mix's colours, are within the budgets.
             void Scoped(string table, string who, JObject look)
             {
                 double maxMix = budgets.Number("looks.maxMix", 8), maxScoped = budgets.Number("looks.maxScoped", 8), maxWithin = budgets.Number("looks.maxWithin", 64);
@@ -316,8 +281,6 @@ namespace Chem
                 }
             }
 
-            // ---------- the design rules ----------
-
             public void Design(JObject composed)
             {
                 foreach (var s in PatchSpells)
@@ -325,7 +288,6 @@ namespace Chem
                     var id = Text(s["id"]) ?? "?";
                     if (!InBase("spells", id) && s["group"] == null)
                         Add(ModCheck.Design, $"Spell {id} needs a group (its element on the spell radial, from groups.json).");
-                    // What it names on top of a spell the rules have keeps that spell's element or effect.
                     var whole = SpellIn(composed, s);
                     if (whole["element"] == null && whole["effect"] == null && whole["place"] == null && (composed != null || !InBase("spells", id)))
                         Add(ModCheck.Design, $"Spell {id} has neither an element nor an effect, and places nothing, so it does nothing; spells act through elements and the material verbs, or place something.");
@@ -334,7 +296,6 @@ namespace Chem
                 NewElements(composed);
             }
 
-            // Spells stay inside the 5E-compatible frame: SRD 5.2.1 levels and damage dice.
             void FiveE(string id, JObject s)
             {
                 var level = s["level"];
@@ -350,7 +311,6 @@ namespace Chem
                     Add(ModCheck.Design, $"Spell {id} rolls {d[0]} dice; a spell rolls 1 to {Num(maxDice)}.");
             }
 
-            // No new element for one spell: a new one needs its own reactions and more than one spell or critter using it.
             void NewElements(JObject composed)
             {
                 var baseElements = new HashSet<string>((baseDoc["elements"] as JArray)?.Select(x => (string)x) ?? Enumerable.Empty<string>());
@@ -370,12 +330,9 @@ namespace Chem
                 }
             }
 
-            // ---------- determinism ----------
-
             public void Determinism()
             {
                 var wholeKeys = WholeKeys(baseDoc);
-                // A building's numbers are the view's or checked whole by Rules.Check, and its seed is its own; a creature's are the view's.
                 var checkedHere = WithoutPlayer(new JObject(patch.Properties().Where(p => p.Name != "world" && p.Name != BuildingTables.Key && !FaunaTables.Holds(p.Name)).Select(p => new JProperty(p.Name, p.Value))));
                 Walk(checkedHere, "", (key, path, value) =>
                 {
@@ -390,13 +347,10 @@ namespace Chem
                 });
             }
 
-            /// <summary>Keys that hold numbers in the base rules and never a fraction: the core keeps them as integers.</summary>
             static HashSet<string> WholeKeys(JObject doc)
             {
                 var whole = new HashSet<string>();
-                // A group's order only sorts the spell radial (MODDING.md slots Frost in at 2.5).
                 var fraction = new HashSet<string> { "order" };
-                // The creature tables' numbers are the view's: their radius says nothing of a spell's.
                 var shared = WithoutPlayer(new JObject(doc.Properties().Where(p => !FaunaTables.Holds(p.Name)).Select(p => new JProperty(p.Name, p.Value))));
                 Walk(shared, "", (key, path, value) =>
                 {
@@ -407,8 +361,6 @@ namespace Chem
                 return whole;
             }
 
-            // The player's stats are the view's (PlayerStats.cs), not integer state, and their names (size, speed) mustn't
-            // loosen a spell's size or the dragon's speed: sim player is left out of the walk, on a copy.
             static JObject WithoutPlayer(JObject o)
             {
                 if (!(o["sim"] is JObject sim) || sim["player"] == null) return o;
@@ -419,12 +371,10 @@ namespace Chem
                 return copy;
             }
 
-            /// <summary>Calls back with (key, path, value) for every property below; list items take their id (or index) into the path.</summary>
             static void Walk(JToken t, string path, Action<string, string, JToken> visit)
             {
                 if (t is JObject o)
                 {
-                    // A look's numbers are the view's, not integer state.
                     foreach (var p in o.Properties().Where(p => p.Name != "look"))
                     {
                         string sub = path.Length == 0 ? p.Name : path + "." + p.Name;
@@ -439,7 +389,6 @@ namespace Chem
                 }
             }
 
-            /// <summary>A patch path as words: "spells[fireball].radius" reads "Spell fireball's radius".</summary>
             static string Where(string path)
             {
                 int open = path.IndexOf('[');
@@ -454,12 +403,6 @@ namespace Chem
                 return rest.Length == 0 ? $"{kind} {id}" : $"{kind} {id}'s {rest}";
             }
 
-            // ---------- temporary materials (World.Lapse.cs) ----------
-
-            /// <summary>
-            /// The materials the mod adds: how many, their lapse (only a material the mod adds lapses, within the
-            /// budget, into one that stays), and no thing made of one, nor of another mod's temporary material.
-            /// </summary>
             public void Temporary(IReadOnlyDictionary<string, string> temporary)
             {
                 temporary ??= new Dictionary<string, string>();
@@ -473,14 +416,12 @@ namespace Chem
                         Add(ModCheck.Design, $"{row.Name} is made of {m}, {goes}; a thing outlives a mod, so it can't be made of one that goes with it.");
             }
 
-            // Why a material goes with a mod, or null if it stays: the mod adds it, or another mod on does.
             static string Goes(string id, HashSet<string> added, IReadOnlyDictionary<string, string> temporary)
             {
                 if (added.Contains(id)) return "a material the mod adds";
                 return temporary.TryGetValue(id, out var owner) ? $"a material of the mod {owner}" : null;
             }
 
-            // The patch's rows in these tables, table by table in the patch's order.
             IEnumerable<(string table, JProperty row)> Rows(IEnumerable<string> tables) =>
                 tables.SelectMany(t => ((patch[t] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>()).Select(p => (t, p)));
 
@@ -501,8 +442,6 @@ namespace Chem
                 else if (temporary.TryGetValue(into, out var owner))
                     Add(ModCheck.Design, $"{what} lapses into {into}, a material of the mod {owner}, which goes with it; lapse into a material that stays.");
             }
-
-            // ---------- budgets ----------
 
             public void Budgets(JObject composed)
             {
@@ -527,7 +466,6 @@ namespace Chem
                 ChainDepth(composed);
             }
 
-            // A mod's triggers (Rules.Triggers.cs): how many, how many actions each, how strong a spell they cast, how much they place.
             void TriggerBudget(JObject composed)
             {
                 if (!(patch[Rules.TriggersKey] is JObject rows)) return;
@@ -598,7 +536,6 @@ namespace Chem
                 if (sim["player"] is JObject player) PlayerBudget(player);
             }
 
-            // A player's stats (PlayerStats.cs): everyone's bounds hold for a slot's own too, and jumps are whole.
             void PlayerBudget(JObject player)
             {
                 var rows = new List<(string where, JObject row)> { ("sim player", player) };
@@ -630,9 +567,6 @@ namespace Chem
                     Add(ModCheck.Shape, $"{where} has no stat {f.Name}; a player has {string.Join(", ", PlayerParams.Stats)}.");
             }
 
-            // What one building may be (builders.md section 4), and how many a mod may bring.
-            // A species is drawn only, but a giant should still be a giant and not a mountain (#61): a variant's
-            // scale, and a size against the row's in the base rules (or the reader's default), within things.maxScale.
             void FaunaBudget(JObject composed)
             {
                 double max = budgets.Number("things.maxScale", 20);
@@ -648,7 +582,6 @@ namespace Chem
                 if (added > maxNew) Add(ModCheck.Budget, $"The mod adds {added} species; a mod may add at most {Num(maxNew)}.");
             }
 
-            // A graft (FaunaGraft): how many donors, how many slots once flattened, and how far a donor's slots grow or shrink.
             void GraftBudget(JObject species, string id, JObject row)
             {
                 if (!FaunaGraft.IsGraft(row)) return;
@@ -662,8 +595,6 @@ namespace Chem
                 if (slots > maxSlots) Add(ModCheck.Budget, $"Species {id} draws {slots} slots once flattened; a body draws at most {Num(maxSlots)} (each is drawn for every animal out).");
             }
 
-            // The most slots one animal draws: every slot outside a style group, and of each group its biggest
-            // option (a slot of that style and all hung on it), as an animal shows one option a group (hairstyles).
             static int DrawnSlots(JObject slots)
             {
                 if (slots == null) return 0;
@@ -703,7 +634,6 @@ namespace Chem
                 }
             }
 
-            // Either end of a size past max times the base row's (the reader's default 1.1 for a new row).
             static bool Oversized(JArray size, JArray normal, double max)
             {
                 bool known = normal != null && normal.Count == 2 && normal.All(IsNumber);
@@ -742,7 +672,6 @@ namespace Chem
                 if (wide > max || deep > max) Add(ModCheck.Budget, $"Building {id} is {Num(wide)} by {Num(deep)} cells; a building is at most {Num(max)} by {Num(max)}.");
             }
 
-            // A row's built cells (a cabin's, carried along in an edit) stay the size of a building too.
             void BuiltSize(string id, JObject row)
             {
                 double reach = 2 * budgets.Number("buildings.maxCells", 24);
@@ -751,7 +680,6 @@ namespace Chem
                     Add(ModCheck.Budget, $"Building {id}'s built cells must be whole numbers within {Num(reach)} cells of its at.");
             }
 
-            // Covers that float spread over open water: a reach past the budget would cover a lake.
             void MaterialBudget(JObject composed)
             {
                 if (!(patch["covers"] is JObject covers)) return;
@@ -765,7 +693,6 @@ namespace Chem
                 }
             }
 
-            // Covers that spread creep on with no cast: a slow turn and a small chance keep a mod's from covering the land.
             void SpreadBudget(string id, JToken cover)
             {
                 if (cover?["spreadEvery"] is JToken every && IsNumber(every))
@@ -781,14 +708,8 @@ namespace Chem
                 if (IsNumber(reach) && (double)reach > far) Add(ModCheck.Budget, $"Cover {id} spreads {reach} cells; a mod's cover spreads at most {Num(far)}.");
             }
 
-            /// <summary>
-            /// Changes that run on their own, with no spell: a terrain ripening into its grow.into, and a gas
-            /// shedding an element whose rules lay a cover, gas or terrain. A loop would run forever; a long
-            /// chain is one cast setting off more than the tick budget expects.
-            /// </summary>
             void ChainDepth(JObject composed)
             {
-                // Only what the mod brings: a loop or long chain the base rules already have isn't its doing.
                 var already = new HashSet<string>(Chains(baseDoc));
                 foreach (var message in Chains(composed).Where(m => !already.Contains(m))) Add(ModCheck.Budget, message);
             }
@@ -817,7 +738,6 @@ namespace Chem
                 var next = new Dictionary<string, List<string>>();
                 void Edge(string from, string to)
                 {
-                    // A gas laying more of itself only lasts longer (it still decays): not a loop.
                     if (from == null || to == null || from == to) return;
                     if (!next.TryGetValue(from, out var list)) next[from] = list = new List<string>();
                     if (!list.Contains(to)) list.Add(to);
@@ -840,7 +760,6 @@ namespace Chem
                 return next;
             }
 
-            // The longest path from a node; a loop found on the way is written into loop.
             static List<string> Longest(string node, Dictionary<string, List<string>> next, Dictionary<string, List<string>> done, List<string> path, List<string> loop)
             {
                 if (done.TryGetValue(node, out var known)) return known;

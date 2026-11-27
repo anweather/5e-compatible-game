@@ -12,10 +12,8 @@ public class EventLog : MonoBehaviour
 {
     static EventLog instance;
 
-    /// <summary>False hides all on-screen UI (help, spell bar, log, the online status line), e.g. for trailer recordings.</summary>
     public static bool HudVisible { get; set; } = true;
 
-    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -28,7 +26,6 @@ public class EventLog : MonoBehaviour
     readonly VitalsHud vitalsHud = new();
     readonly CastHud castHud = new();
     GUIStyle logStyle, logShadow, chipStyle;
-    // Over the update notice in the corner (UpdateCheck).
     const float LogWidth = 640f, LogLine = 22f, LogBottom = 56f;
 
     void Awake() => instance = this;
@@ -37,14 +34,10 @@ public class EventLog : MonoBehaviour
         if (caster == null) caster = SpellCaster.InPlay;
     }
 
-    /// <summary>Shows this caster's spells and controls; the local player's caster calls it when enabled.</summary>
-    /// <summary>The local player's caster, or null (e.g. the mods panel pauses its controls).</summary>
     public static SpellCaster TrackedCaster => instance != null ? instance.caster : null;
 
-    /// <summary>How full the cast bar was drawn last, 0 to 1, for the probe.</summary>
     public static float CastBarShare => instance != null ? instance.castHud.Share : 0f;
 
-    /// <summary>The cast's HUD, the hands' icons and all, for the probe; null with no log.</summary>
     public static CastHud CastShown => instance != null ? instance.castHud : null;
 
     public static void Track(SpellCaster c)
@@ -53,14 +46,11 @@ public class EventLog : MonoBehaviour
     }
     void OnDestroy() { if (instance == this) instance = null; }
 
-    // A line that starts with the same text as the last one replaces it, so
-    // "The oil ignites (×3)" updates "The oil ignites (×2)" in place.
     const string CastLine = "You cast ";
 
     public static void Add(string line, string sameAs = null)
     {
         Debug.Log(line);
-        // What the player just did and sees happen isn't news on screen (playtest 2026-11-08, M2): the console keeps it.
         if (instance == null || line.StartsWith(CastLine, StringComparison.Ordinal)) return;
         var list = instance.lines;
         if (list.Count > 0 && list[list.Count - 1].StartsWith(sameAs ?? line, StringComparison.Ordinal))
@@ -94,15 +84,9 @@ public class EventLog : MonoBehaviour
         RebuildYard();
     }
 
-    // How long Reset is held to rebuild the valley at once, and how long it has been (below zero: not counting).
     const float RebuildHoldSeconds = 3f;
     float resetHeld = -1f;
 
-    /// <summary>
-    /// The Reset: in the valley the dragon comes and puts it back (BACKLOG 26), online for everyone if the host asks, and a
-    /// client asks the host to (OnlineReset). In a scene with no valley it reloads the scene. True if it did.
-    /// Held for a few seconds it's RebuildYard, for a world that has gone wrong and can't wait for the dragon.
-    /// </summary>
     public static bool ResetYard()
     {
         if (OnlineReset.Summon()) return false;
@@ -117,17 +101,9 @@ public class EventLog : MonoBehaviour
         return false;
     }
 
-    /// <summary>
-    /// The way out of a world that has gone wrong, as Reset was before the dragon: solo, reloads the scene and returns true.
-    /// Online the host rebuilds the world for everyone and a client asks the host to (OnlineReset); the scene isn't
-    /// reloaded, so it returns false.
-    /// </summary>
     public static bool RebuildYard()
     {
-        // Reloading the scene online would drop this machine's world and everyone's wizards with it.
         if (OnlineReset.Ask()) return false;
-        // Nor under a playtest run: a stray R or pad press on the bot's window reloaded the scene
-        // and destroyed its wizard (seed 103, 2026-10-27).
         if (PlaytestBot.Active)
         {
             Debug.Log("PLAYTEST: reset ignored while the bot runs");
@@ -137,7 +113,6 @@ public class EventLog : MonoBehaviour
         return true;
     }
 
-    // A plus with a dark shadow, so it reads against the sky as well as the ground.
     void Crosshair()
     {
         var c = new Vector2(HudScale.Width / 2f, HudScale.Height / 2f);
@@ -155,7 +130,6 @@ public class EventLog : MonoBehaviour
         DrawLog();
     }
 
-    // The message log down the free right side, the newest at the bottom.
     void DrawLog()
     {
         logStyle ??= new GUIStyle(style) { fontSize = 16, alignment = TextAnchor.MiddleRight };
@@ -170,23 +144,17 @@ public class EventLog : MonoBehaviour
         }
     }
 
-    // The wizard's bars, the crosshair, and the spell chip: the selected spell in its element's
-    // colour, with the keys that change it (the spell radial: SpellRadialHud). The rest of the
-    // controls are on the menu's Controls page (ControlsMenu).
     void DrawCasterHud()
     {
         bool pad = caster.controls != null && caster.controls.UsingGamepad;
         float vitalsHeight = vitalsHud.Draw(caster.gameObject, style);
         if (Cursor.lockState == CursorLockMode.Locked || pad) Crosshair();
         castHud.Draw(caster, style);
-        // The spell the radial picked: what Cast casts, only in the debug layout. With the hands (D16), in the world and the
-        // Hold, the hands' icons say what goes off, so there's no spell selector.
         bool hands = caster.controls != null && caster.controls.HandPad;
         chipStyle ??= new GUIStyle(style) { fontSize = 15 };
         if (!hands) GUI.Label(new Rect(VitalsHud.Margin, VitalsHud.Margin + vitalsHeight + 6f, 1400, 26), SpellChip(pad), chipStyle);
     }
 
-    /// <summary>The keyboard's spell keys, on the chip.</summary>
     public const string KeyHints = "Tab: spells  ·  Q element  ·  E spell  ·  1-8 an element's spells  ·  F2 the hands";
 
     string SpellChip(bool pad)

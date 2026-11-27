@@ -18,8 +18,6 @@ public static class BurstFx
 
     const int PerKind = 6;
 
-    // One kind of burst: its spread of lifetimes, speeds, sizes and colours, how hard it falls,
-    // how many at each moment, where they come from, how long it stays full, and its blend.
     sealed class Recipe
     {
         public Vector2 life, speed, size;
@@ -28,7 +26,6 @@ public static class BurstFx
         public (float at, short count)[] bursts;
         public bool cone, additive;
 
-        // The colour a look is measured from: its hot end, or its cool end if that's nearly white.
         public Color Own
         {
             get
@@ -94,16 +91,11 @@ public static class BurstFx
     static Material softMaterial, glowMaterial;
     static Transform root;
 
-    /// <summary>
-    /// Plays a burst at a point, <paramref name="size"/> times its usual spread, turned to <paramref name="turn"/> if
-    /// given, in <paramref name="tint"/> if given, else in its own colours turned to a spell's <paramref name="look"/> if given.
-    /// </summary>
     public static void Play(Kind kind, Vector3 at, float size = 1f, Quaternion? turn = null, Color? tint = null, Color? look = null)
     {
         var ps = Take(kind);
         ps.transform.SetPositionAndRotation(at, turn ?? Quaternion.identity);
         ps.transform.localScale = Vector3.one * size;
-        // Set each time: the pool hands back whatever colour the last burst of this kind left.
         var recipe = Recipes[kind];
         var shift = look != null ? LookTint.Between(recipe.Own, look.Value, 1f) : default;
         var main = ps.main;
@@ -114,7 +106,6 @@ public static class BurstFx
         ps.Play(true);
     }
 
-    /// <summary>Makes the first burst of a kind ahead of its first use (ShowPool readies them): the first one also makes its material and puff.</summary>
     public static void Ready(Kind kind)
     {
         if (!pools.TryGetValue(kind, out var pool)) pools[kind] = pool = new List<ParticleSystem>();
@@ -125,7 +116,7 @@ public static class BurstFx
     static ParticleSystem Take(Kind kind)
     {
         if (!pools.TryGetValue(kind, out var pool)) pools[kind] = pool = new List<ParticleSystem>();
-        pool.RemoveAll(p => p == null); // a scene change destroyed them
+        pool.RemoveAll(p => p == null);
         foreach (var p in pool)
             if (!p.IsAlive(true)) return p;
         if (pool.Count < PerKind)
@@ -194,7 +185,6 @@ public static class BurstFx
         Fade(ps, r.hold);
     }
 
-    /// <summary>The soft additive particle every glowing burst uses.</summary>
     public static Material Glow => Soft(true);
 
     static Material Soft(bool additive)
@@ -210,7 +200,6 @@ public static class BurstFx
         return material;
     }
 
-    // Full until <paramref name="holdUntil"/> of its life, then fading out.
     static void Fade(ParticleSystem ps, float holdUntil)
     {
         var fade = ps.colorOverLifetime;

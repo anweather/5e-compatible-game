@@ -11,7 +11,6 @@ using UnityEngine;
 public class ArcFx : MonoBehaviour
 {
     const int Pool = 48;
-    // How far off its line an arc wanders (a share of its length, at most Wander m), how often it is redrawn.
     const float Jag = 0.14f, Wander = 0.9f, RedrawSeconds = 0.05f, MetresPerPoint = 0.7f;
     const int MostPoints = 18;
     static readonly Color Hot = new(2.2f, 2.5f, 3.4f, 1f), Cool = new(0.7f, 0.85f, 2.4f, 0.9f);
@@ -28,10 +27,8 @@ public class ArcFx : MonoBehaviour
     Material material;
     int next;
 
-    /// <summary>How many arcs are playing now, for the probe.</summary>
     public static int Playing { get; private set; }
 
-    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options).
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -39,7 +36,6 @@ public class ArcFx : MonoBehaviour
         Playing = 0;
     }
 
-    /// <summary>An arc from <paramref name="from"/> to <paramref name="to"/>, after <paramref name="delay"/> seconds, for <paramref name="seconds"/>, in a spell's <paramref name="look"/> if given.</summary>
     public static void Play(Vector3 from, Vector3 to, float width = 0.07f, float delay = 0f, float seconds = 0.35f, Color? look = null)
     {
         if (instance == null) instance = new GameObject("Arcs").AddComponent<ArcFx>();
@@ -55,7 +51,6 @@ public class ArcFx : MonoBehaviour
         arc.line.endColor = tint.Of(Cool);
     }
 
-    // A free line, or the one played longest ago.
     Arc Take()
     {
         if (arcs.Count < Pool)
@@ -95,7 +90,6 @@ public class ArcFx : MonoBehaviour
             if (!on) continue;
             Playing++;
             float k = 1f - (Time.time - arc.starts) / (arc.ends - arc.starts);
-            // Two quick flickers as it fades.
             arc.line.widthMultiplier = arc.width * (0.4f + 0.6f * k) * (Mathf.Sin(Time.time * 70f) > -0.4f ? 1f : 0.45f);
             if (Time.time < arc.redraw) continue;
             arc.redraw = Time.time + RedrawSeconds;

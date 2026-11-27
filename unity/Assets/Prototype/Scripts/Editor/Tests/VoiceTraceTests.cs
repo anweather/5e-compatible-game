@@ -11,7 +11,6 @@ public class VoiceTraceTests
 {
     const string Said = "make all fire blue";
 
-    // What a trace line may not hold outside Words: anything GameVoice or a recogniser has heard.
     static readonly Regex BareWords = new(@"\{[^{}]*\b(text|message|said|guess|heard\.text|line\.text|Typed)\b[^{}]*\}");
     static readonly Regex InWords = new(@"\{VoiceTrace\.Words\((?:[^(){}]|\([^(){}]*\))*\)\}");
 

@@ -7,10 +7,6 @@
 // 0-0. Solo, Reset summons the dragon and holding it reloads the scene (EventLog).
 public static class OnlineReset
 {
-    /// <summary>
-    /// Online: the host summons the dragon for everyone, a client asks the host to. Returns false
-    /// when not online (EventLog.ResetYard then does it for this machine alone).
-    /// </summary>
     public static bool Summon()
     {
         var net = Peers.InPlay;
@@ -20,10 +16,6 @@ public static class OnlineReset
         return true;
     }
 
-    /// <summary>
-    /// Online: the host rebuilds the world for everyone at once, a client asks the host to. Returns false
-    /// when not online (EventLog.RebuildYard then reloads the scene).
-    /// </summary>
     public static bool Ask()
     {
         var net = Peers.InPlay;
@@ -44,9 +36,5 @@ public static class OnlineReset
         EventLog.Add("You asked the host to reset the world");
     }
 
-    /// <summary>
-    /// Whether a WorldReset now is a live online reset that the view follows: not going online
-    /// (a fresh world, no reset yet), and not a late joiner loading the host's world.
-    /// </summary>
     public static bool Happened(IPeers peers) => peers.Resetting;
 }

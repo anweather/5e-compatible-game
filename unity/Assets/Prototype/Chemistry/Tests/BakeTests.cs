@@ -11,10 +11,8 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem.Tests
 {
-    /// <summary>The bake's fixtures' helpers (its tests are BakeWorldTests: a bake writes Play's rows, so it is the core's).</summary>
     internal static class BakeTests
     {
-        // The valley at [0, 0] and a square east of it, in a world folder of the test's own.
         internal static string TwoSquares(string root)
         {
             ScaleIslandTests.CopyInputs(root);
@@ -33,13 +31,10 @@ namespace Chem.Tests
             return dir;
         }
 
-        // The places.json water bodies in a folder, in its order.
         internal static List<JObject> WaterPlaces(string dir) =>
             ((JArray)JObject.Parse(File.ReadAllText(Path.Combine(dir, WorldPlaces.FileName)))["places"]).OfType<JObject>()
                 .Where(p => (string)p["from"] == "land.json").ToList();
 
-        // The water bodies as places.json held them before bake-lean: a flood fill from each cell below the level, a set
-        // of its cells a body, the largest first, then by its north-west-most cell; a body touching the map's edge a sea.
         internal static List<JObject> FloodFilled(int[] land, int w, int h, int below, int least)
         {
             var seen = new bool[w * h];

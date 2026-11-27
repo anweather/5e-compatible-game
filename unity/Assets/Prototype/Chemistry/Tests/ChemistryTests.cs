@@ -1,3 +1,5 @@
+// Cell-chemistry port tests. Many mirror sandbox/test/sim.test.ts; the
+// goldens were first produced by the TS sandbox (frozen 2026-10-31).
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -5,10 +7,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// Cell-chemistry port tests. Many mirror sandbox/test/sim.test.ts; the
-    /// goldens were first produced by the TS sandbox (frozen 2026-10-31).
-    /// </summary>
     [Category("Simulation")]
     public class ChemistryTests
     {
@@ -16,15 +14,10 @@ namespace Chem.Tests
 
         internal static Rules R => rules ??= Rules.Load(RulesDir());
         static Rules noSoak;
-        /// <summary>The rules without soaking (sim.water.soakPass 0), for tests of the flow alone.</summary>
         internal static Rules NoSoak => noSoak ??= R.WithMods(new[] { ModPatch.Parse("{ \"sim\": { \"water\": { \"soakPass\": 0 } } }") });
 
         static GameFolders folders;
 
-        /// <summary>
-        /// The repo's folders, found above the Unity project, or above the test binary under
-        /// `dotnet test` (core/Game.Core.Tests).
-        /// </summary>
         internal static GameFolders Folders => folders ??= GameFolders.InRepo(
 #if UNITY_5_3_OR_NEWER
             UnityEngine.Application.dataPath);
@@ -32,16 +25,12 @@ namespace Chem.Tests
             TestContext.CurrentContext.TestDirectory);
 #endif
 
-        /// <summary>The repo's rules/ folder.</summary>
         internal static string RulesDir() => Folders.Rules;
 
-        /// <summary>The repo's world/ folder.</summary>
         internal static string WorldDir() => Folders.World;
 
-        /// <summary>The game's world/ folder (bands, biomes, square templates, landmarks, maps), as LandFolders.GameWorldDir.</summary>
         internal static string GameWorldDir() => System.IO.Path.Combine(System.IO.Directory.GetParent(RulesDir()).FullName, "world");
 
-        /// <summary>A small dirt room with bedrock walls, like room() in sim.test.ts (seed 7).</summary>
         internal static World Room(int w = 12, int h = 8, uint seed = 7, Rules rules = null)
         {
             var world = new World(rules ?? R, w, h, seed);
@@ -55,8 +44,6 @@ namespace Chem.Tests
         static void Direct(World w, int x, int y, string element) => w.Apply(x, y, element, 2, -1, true);
 
         static string Entry(LogEntry l) => $"{l.Tick}|{l.Kind.ToString().ToLowerInvariant()}|{l.Count}|{l.Text}";
-
-        // ---------- line of sight (Misty Step) ----------
 
         [Test]
         public void WallsBlockSightButGateBarsAndTheEndsDont()
@@ -73,8 +60,6 @@ namespace Chem.Tests
             Assert.That(w.LineOfSight(2, 3, 9, 3), Is.True, "the target square itself doesn't block the view of it");
             Assert.That(w.LineOfSight(4, 4, 4, 4), Is.True, "your own square");
         }
-
-        // ---------- rules + rng ----------
 
         [Test]
         public void RulesLoadAllFiles()
@@ -113,15 +98,12 @@ namespace Chem.Tests
         [Test]
         public void RngMatchesTsForSeed1()
         {
-            // node: createWorld(2,2,1); rand(w) x3
             var w = new World(R, 2, 2, 1);
             Assert.That(w.Rand(), Is.EqualTo(0.6270739405881613));
             Assert.That(w.Rand(), Is.EqualTo(0.002735721180215478));
             Assert.That(w.Rand(), Is.EqualTo(0.5274470399599522));
             Assert.That(w.RngState, Is.EqualTo(1199730144u));
         }
-
-        // ---------- goldens (first taken from the TS sandbox, frozen 2026-10-31) ----------
 
         static void Set(World w, int x, int y, string t) => w.At(x, y).T = t;
 
@@ -206,15 +188,10 @@ namespace Chem.Tests
             }, w.Log.Select(Entry).ToArray());
         }
 
-        // ---------- fire ----------
-
         [TestCase(1)]
         [TestCase(2)]
         public void AFireballBurstsOnTheCellItIsAimedAt(int charge)
         {
-            // Playtest 0.1.8, run 811: a Fireball aimed at grass seemed to land elsewhere. In the core it
-            // bursts on the aimed cell: its crater is dug there (grass to dirt, so the middle itself
-            // doesn't burn) and the grass round it, out to the burst's radius, takes fire evenly.
             var fireball = R.Spell("fireball");
             var w = new World(R, 21, 21, 5, "grass");
             w.Cast("fireball", 10, 10, 0, charge);
@@ -252,10 +229,9 @@ namespace Chem.Tests
         [Test]
         public void FadingFireSpreadsAWayThenDiesOut()
         {
-            // How far right fire started at the left end of a long grass strip gets, in cells.
             int Reach(int fadeCells, uint seed)
             {
-                var ownRules = Rules.Load(RulesDir());   // a private copy: R is shared by every test
+                var ownRules = Rules.Load(RulesDir());
                 ownRules.Sim.Fire.FadeCells = fadeCells;
                 var w = new World(ownRules, 120, 9, seed, "grass");
                 w.Apply(0, 4, "fire");
@@ -271,7 +247,6 @@ namespace Chem.Tests
                 return far;
             }
 
-            // Grass fire is chancy (some fires die at once), so judge over many seeds.
             var unfaded = new System.Collections.Generic.List<int>();
             var faded = new System.Collections.Generic.List<int>();
             for (uint seed = 1; seed <= 12; seed++)
@@ -327,7 +302,6 @@ namespace Chem.Tests
             Assert.That(w.IsSlippery(w.At(6, 3)));
         }
 
-        // 12 units poured mid-way along a 16×9 meadow on this land; the water west and east of it after 300 ticks.
         static int Spread(int[] land, out int east)
         {
             var w = new World(NoSoak, 16, 9, 1, "grass");
@@ -342,17 +316,14 @@ namespace Chem.Tests
         [Test]
         public void WaterRunsDownTheLandsSlope()
         {
-            // Playtest #31: Create Water on a hillside pooled where it landed. The hill is the land's
-            // (the valley's baked ground), which the cells don't hold: SetLand tells the water.
             var slope = new int[16 * 9];
-            for (int k = 0; k < slope.Length; k++) slope[k] = (k % 16) * 3; // rising east, 0.375 m a cell
+            for (int k = 0; k < slope.Length; k++) slope[k] = (k % 16) * 3;
             int westOnSlope = Spread(slope, out int eastOnSlope);
             Assert.That(eastOnSlope, Is.EqualTo(0), "none runs uphill");
             Assert.That(westOnSlope, Is.GreaterThanOrEqualTo(10), "it runs down the slope");
             int westOnFlat = Spread(null, out int eastOnFlat);
             Assert.That(eastOnFlat, Is.GreaterThan(0), "on the flat it spreads both ways");
             Assert.That(westOnFlat, Is.LessThan(westOnSlope));
-            // A water body's cells keep level: no land between them and the slope.
             var lake = (int[])slope.Clone();
             for (int k = 0; k < lake.Length; k++) if (k % 16 >= 8) lake[k] = World.NoLand;
             Spread(lake, out int eastOfLake);
@@ -368,15 +339,13 @@ namespace Chem.Tests
             string json = LandFile.Write(land, 7, 5, 0.125);
             Assert.That(LandFile.Read(json, 7, 5), Is.EqualTo(land));
             Assert.That(LandFile.Read(json, 5, 7), Is.Empty, "another world's size");
-            // A pond on low land among high land: as a water body it keeps the flat rules and spills
-            // out; were its cell dry land, the high land round it would hold the water in.
             var w = new World(R, 7, 5, 1, "grass");
             w.At(3, 2).Water = 6;
             var high = new int[7 * 5];
             for (int k = 0; k < high.Length; k++) high[k] = 400;
             high[2 * 7 + 3] = 0;
             w.SetLand(high);
-            high[0] = 1; // a copy: changing the array after doesn't move the land
+            high[0] = 1;
             Run(w, 20);
             Assert.That(w.At(2, 2).Water + w.At(4, 2).Water + w.At(3, 1).Water + w.At(3, 3).Water, Is.GreaterThan(0), "the pond spills as on the flat");
         }
@@ -384,9 +353,6 @@ namespace Chem.Tests
         [Test]
         public void TheValleysLandIsPinned()
         {
-            // world/land.json is the same integers on every peer (lockstep): a re-bake that moves them
-            // shows here first. Rebake (Prototype > Bake Valley Land) and update these if the valley's
-            // shape changed on purpose.
             string path = System.IO.Path.Combine(WorldDir(), "land.json");
             var land = LandFile.Read(System.IO.File.ReadAllText(path), 576, 576);
             Assert.That(land.Length, Is.EqualTo(576 * 576));
@@ -397,8 +363,6 @@ namespace Chem.Tests
             Assert.That(land[575 * 576 + 575], Is.EqualTo(-174), "the south-east corner, by the sea");
         }
 
-        // A dirt field with a puddle (a unit: too little to run on the flat) at (3, 3), another at (3, 6),
-        // and a pond (4 units a cell, as deep as the field is high) in a 3 × 3 pit at (8..10, 3..5).
         static World Puddles(Rules rules = null)
         {
             var w = new World(rules ?? R, 14, 9, 1, "dirt");
@@ -423,10 +387,8 @@ namespace Chem.Tests
         [Test]
         public void ThinWaterSoaksInAndDeepWaterStays()
         {
-            // Andrew, 2026-10-28: thin water on open ground soaks in and dries up (materials.json
-            // soakEvery), more slowly on damp ground (soakEveryWet), and leaves the ground damp.
             var w = Puddles();
-            w.At(3, 6).DampUntil = 100000; // already damp
+            w.At(3, 6).DampUntil = 100000;
             Run(w, 80);
             Assert.That(w.At(3, 3).Water, Is.EqualTo(0), "dry dirt: a unit in 64 ticks");
             Assert.That(w.At(3, 3).DampUntil, Is.GreaterThan(w.Tick), "and it's damp now");
@@ -447,7 +409,7 @@ namespace Chem.Tests
             w.At(5, 1).Water = 2;
             w.At(12, 7).T = "rock";
             w.At(12, 7).Water = 1;
-            Run(w, 20); // part way: some puddles gone, some not
+            Run(w, 20);
             Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("20661f72 1"));
         }
 
@@ -486,7 +448,6 @@ namespace Chem.Tests
             Assert.That(w.AllCells().Sum(c => c.Water), Is.EqualTo(0), "all of it");
         }
 
-        // Thatch at (2, 1) and (3, 1) against a log wall at (4, 1), on dirt; the thatch set alight.
         static World ThatchByLogs(uint seed, Rules rules = null)
         {
             var w = new World(rules ?? R, 8, 3, seed, "dirt");
@@ -497,7 +458,6 @@ namespace Chem.Tests
             return w;
         }
 
-        // The tick the thatch burnt out, the logs caught (-1 never) and they burnt out.
         static (int thatchOut, int logsLit, int logsOut) BurnTimes(uint seed)
         {
             var w = ThatchByLogs(seed);
@@ -515,8 +475,6 @@ namespace Chem.Tests
         [Test]
         public void ThatchFlaresAndLightsTheLogWallWhichBurnsLong()
         {
-            // Andrew, 2026-10-28: thatch catches easily, burns hot and fast and is soon out; wood is slow to
-            // catch and burns long; the thatch's heat (materials.json "heat") is what lights the wood.
             int Lit(Rules rules)
             {
                 int lit = 0;
@@ -533,7 +491,6 @@ namespace Chem.Tests
             Assert.That(hot, Is.GreaterThan(plain), $"hot thatch lit the logs {hot} times in 40, at heat 1 {plain}");
             Assert.That($"{hot} {plain}", Is.EqualTo("32 23"), "the golden");
 
-            // The first of those runs where the logs caught: when the thatch was out, the logs lit, and they burnt out.
             var (thatchOut, logsLit, logsOut) = (-1, -1, -1);
             for (uint seed = 1; seed <= 40 && logsLit < 0; seed++) (thatchOut, logsLit, logsOut) = BurnTimes(seed);
             Assert.That(thatchOut, Is.InRange(12, 24), "thatch burns a few seconds, then is out");
@@ -541,8 +498,6 @@ namespace Chem.Tests
             Assert.That(logsOut - logsLit, Is.GreaterThanOrEqualTo(100), $"and burn long: lit at {logsLit}, out at {logsOut}");
         }
 
-        // A wall of 8 cells along y = 1 on dirt, the same fire at its west end; (ticks until the next cell caught,
-        // until the lit cell was gone, until the whole wall was; -1 if it never was), by seed.
         static (int next, int cell, int wall) WallBurn(string terrain, uint seed)
         {
             var w = new World(R, 10, 3, seed, "dirt");
@@ -563,7 +518,6 @@ namespace Chem.Tests
         [Test]
         public void StuccoBurnsSlowerThanLogs()
         {
-            // Andrew, 2026-11-02 (J-063): "Stucco burns, but slower than wood."
             var seeds = Enumerable.Range(1, 40).Select(s => (uint)s).ToList();
             var logs = seeds.Select(s => WallBurn("logwall", s)).ToList();
             var stucco = seeds.Select(s => WallBurn("stucco-wall", s)).ToList();
@@ -575,8 +529,6 @@ namespace Chem.Tests
             Assert.That(stucco.Count(b => b.wall >= 0), Is.InRange(25, 39), "stucco mostly does, and the fire sometimes dies in it");
         }
 
-        // Over 40 seeds, how often the second thatch (3, 1) caught from the first in one tick; damp sets
-        // its Cell.DampUntil, and the fire is lit at tick lightAt.
         static int ThatchCaught(int dampUntil, int lightAt)
         {
             int caught = 0;
@@ -597,7 +549,6 @@ namespace Chem.Tests
         [Test]
         public void SoakedThatchCatchesPoorlyUntilItDries()
         {
-            // docs/MATERIALS.md "Soaked burns poorly": a damp cell's catch is scaled by 1 - soak.dampens (thatch 0.5).
             Assert.That(R.Terrain["thatch"].Dampens, Is.EqualTo(0.5));
             int dry = ThatchCaught(0, 0), damp = ThatchCaught(int.MaxValue, 0);
             Assert.That(damp, Is.LessThan(dry), $"damp thatch caught {damp} times in 40, dry {dry}");
@@ -605,7 +556,6 @@ namespace Chem.Tests
             Assert.That(ThatchCaught(5, 10), Is.EqualTo(ThatchCaught(0, 10)), "once it has dried, it catches as dry thatch does");
         }
 
-        // How many ticks a lone thatch (3, 1) on dirt burns once lit; damp sets its Cell.DampUntil.
         static int ThatchBurnTicks(int dampUntil)
         {
             var w = new World(R, 8, 3, 1, "dirt");
@@ -624,13 +574,11 @@ namespace Chem.Tests
         [Test]
         public void SoakedThatchBurnsOutSooner()
         {
-            // docs/MATERIALS.md "Soaked burns poorly": caught damp, its fuel is scaled by 1 - soak.dampens too.
             int dry = ThatchBurnTicks(0), damp = ThatchBurnTicks(int.MaxValue);
             Assert.That(damp, Is.LessThan(dry), $"damp thatch burnt {damp} ticks, dry {dry}");
             Assert.That($"{dry} {damp}", Is.EqualTo("18 9"), "the golden");
         }
 
-        // Metal 8 x 4, its left half under 2 water, run for ticks; and how many cells rusted through and log lines it gave.
         static (World w, int rusted, int lines) WetMetal(int ticks)
         {
             var w = new World(R, 8, 4, 1, "metal");
@@ -642,7 +590,6 @@ namespace Chem.Tests
         [Test]
         public void WetMetalRustsThroughAndDryMetalDoesNot()
         {
-            // docs/MATERIALS.md: metal's rust { every 2000, leaves rusted-metal }, counted on the soak pass while wet.
             Assert.That(R.Terrain["metal"].RustEvery, Is.EqualTo(2000));
             var (early, none, _) = WetMetal(1000);
             Assert.That(none, Is.EqualTo(0), "not yet");
@@ -667,7 +614,6 @@ namespace Chem.Tests
             Assert.That(errors, Is.EqualTo(new[] { "terrain tin: rustsTo nope unknown", "terrain tin: rustEvery must be a whole number from 1" }));
         }
 
-        // A 10 x 5 pond (pit under 3 water) with oil spilt at (1, 2), left spreadTicks to float out.
         static World OilyPond(int spreadTicks)
         {
             var w = new World(R, 10, 5, 1, "pit");
@@ -680,13 +626,11 @@ namespace Chem.Tests
         [Test]
         public void OilFloatsOutOverWaterAndBurnsAcrossItUntilItIsUsedUp()
         {
-            // Oil floats (materials.json float.every 16): the slick grows a cell a turn over open water.
             var w = OilyPond(80);
             int slick = w.AllCells().Count(c => c.Cover == "oil");
             Assert.That(slick, Is.GreaterThan(5), "it spread across the surface");
             Assert.That(w.AllCells().Sum(c => c.Water), Is.EqualTo(150), "and the water stays as it was");
 
-            // Lit, the fire runs across the slick; the water doesn't burn, and the fire dies with the oil.
             w.Apply(1, 2, "fire", 1, -1, false);
             int most = 0;
             for (int t = 0; t < 120; t++)
@@ -713,8 +657,6 @@ namespace Chem.Tests
         [Test]
         public void LightningFusesSandIntoGlass()
         {
-            // A strike on sand (tag fuses) fuses it into glass (reactions.json lightning-fuse): glass is
-            // brittle, and doesn't burn or conduct. The glow balls are glass.
             var w = new World(R, 9, 5, 1, "sand");
             w.At(6, 2).Water = 2;
             w.Cast("shocking-grasp", 2, 2, 2);
@@ -731,8 +673,6 @@ namespace Chem.Tests
         [Test]
         public void MetalStaysHotAfterFireBurnsWhatStandsOnItAndSteamsWater()
         {
-            // materials.json metal hot { for 120, quench 30 }: fire leaves it hot, the heat burns a creature
-            // on it, and water on it boils off as steam, cooling it.
             var w = new World(R, 9, 5, 1, "metal");
             var r = w.SpawnRaider("giant-spider", 4, 2, 99);
             w.Cast("fire-bolt", 4, 2, 1);
@@ -757,8 +697,6 @@ namespace Chem.Tests
         [Test]
         public void SteamScaldsFleshNotBoneAndCondensesBackIntoWater()
         {
-            // Steam scalds a creature of a material that scalds (flesh, not bone), as fire damage; it drifts,
-            // and as it decays a cell's thick steam leaves water (gases.steam condenseEvery 2).
             var w = new World(R, 9, 5, 1, "metal");
             foreach (var c in w.AllCells())
             {
@@ -776,8 +714,6 @@ namespace Chem.Tests
             Assert.That($"{goblin.Hp} {hound.Hp} {steam} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("89 99 0 112 dc213318 2670964354"), "the golden");
         }
 
-        // A 9 x 5 metal field full of steam, (4, 2) left hot or not and the cells round it raised, run 60
-        // ticks; the water within one cell of (4, 2), and the water elsewhere.
         static (World w, int near, int far) SteamByHeat(bool hot)
         {
             var w = new World(R, 9, 5, 1, "metal");
@@ -786,7 +722,6 @@ namespace Chem.Tests
                 c.Gas = "steam";
                 c.GasAmt = 6;
             }
-            // Raised a step, so water condensed further off can't run in.
             for (int y = 1; y <= 3; y++)
                 for (int x = 3; x <= 5; x++) w.At(x, y).Height = 1;
             if (hot) w.At(4, 2).Heat = 120;
@@ -804,7 +739,6 @@ namespace Chem.Tests
         [Test]
         public void SteamCondensesOnlyAwayFromHeat()
         {
-            // gases.steam condenseAway 1: none of it condenses in, or next to, a burning or hot cell.
             var (hot, near, far) = SteamByHeat(true);
             Assert.That(near, Is.EqualTo(0), "beside the heat it doesn't condense");
             Assert.That(far, Is.GreaterThan(0), "drifted away from it, it does");
@@ -816,7 +750,6 @@ namespace Chem.Tests
         [Test]
         public void TheFireCombosCastScaldingSteamALavaPoolAndAFlameWave()
         {
-            // rules/combos.json fire+water, fire+earth and fire+air, each its own spell now.
             var w = new World(R, 24, 9, 1, "grass");
             var goblin = w.SpawnRaider("goblin", 18, 4, 99);
             var hound = w.SpawnRaider("bone-hound", 10, 4, 99);
@@ -841,7 +774,6 @@ namespace Chem.Tests
         [Test]
         public void TheAirCombosCastLightningBoltRainCloudSandBlastAndWhirlwind()
         {
-            // rules/combos.json air+fire, air+water, air+earth and air+air, each its own spell now.
             var w = new World(R, 24, 11, 1, "grass");
             w.Cast("sand-blast", 1, 2, 1);
             int sand = w.AllCells().Count(c => c.T == "sand");
@@ -870,8 +802,6 @@ namespace Chem.Tests
         [Test]
         public void LightLastsItsDurationThenFades()
         {
-            // SRD Light: the cell touched sheds the spell's light (bright 20 ft, dim 20 more, for the view) for
-            // an hour, 21600 ticks at 6 a second.
             var s = R.Spell("light");
             Assert.That((s.LightBright, s.LightDim, s.Duration), Is.EqualTo((20, 20, 21600)));
             var w = new World(R, 7, 5, 1, "dirt");
@@ -889,8 +819,6 @@ namespace Chem.Tests
         [Test]
         public void AGustPushesSmokeAndSteamFansTheFireAndKeepsMetalHot()
         {
-            // Gust of Wind east along row 2: air-gas pushes the smoke and steam along it, air-big-fire fans
-            // the fire hotter and on downwind, and air-hot keeps the hot metal hot.
             var w = new World(R, 16, 5, 1, "dirt");
             for (int x = 5; x <= 7; x++) w.At(x, 2).T = "grass";
             w.At(10, 2).T = "metal";
@@ -914,8 +842,6 @@ namespace Chem.Tests
         [Test]
         public void AWetThingOfADampenedMaterialCatchesPoorly()
         {
-            // Fire on a wet thing only sizzles (e-fire-wet); a spark still lights it, with its material's
-            // flammability less its soak.dampens.
             var straw = R.WithMods(new[] { ModPatch.Parse("{ \"entities\": { \"strawman\": { \"name\": \"Straw man\", \"material\": \"thatch\", \"hp\": 999, \"raider\": { \"ticksPerSquare\": 5 } } } }") });
             int Caught(bool wet)
             {
@@ -949,9 +875,6 @@ namespace Chem.Tests
         [Test]
         public void AWhirlwindDrawsGasAndCreaturesInAndRunsFireRoundItsRing()
         {
-            // A whirlwind on a field with smoke off to one side, a goblin and a bone hound on its edge and grass
-            // along its top ring; fire lit on the ring runs round it, the smoke and the creatures come in toward
-            // the middle, and after its ten seconds it's gone. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 15, 9, 4, "dirt");
             for (int x = 5; x <= 9; x++) w.At(x, 2).T = "grass";
             var gob = w.SpawnRaider("goblin", 5, 4, 10);
@@ -976,8 +899,6 @@ namespace Chem.Tests
         [Test]
         public void ForgeHeatsAndTheMaterialDecides()
         {
-            // docs/SPELL_COMBOS.md: sand to glass, mud to brick, metal hot, ice and snow melted, wet things dry,
-            // through the materials' bake and melt verbs. It lights nothing. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 24, 5, 4, "dirt");
             w.At(2, 2).T = "sand";
             w.At(6, 2).T = "mud";
@@ -1008,8 +929,6 @@ namespace Chem.Tests
         [Test]
         public void AGeyserBoilsThePondIntoAJetAndFizzlesOnDryGround()
         {
-            // docs/SPELL_COMBOS.md: it acts on water already there. The pond boils into scalding steam and throws
-            // what swims there up; on dry ground it fizzles and says so. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 12, 7, 5, "dirt");
             for (int y = 2; y <= 4; y++)
                 for (int x = 6; x <= 8; x++) w.At(x, y).Water = 3;
@@ -1032,8 +951,6 @@ namespace Chem.Tests
         [Test]
         public void AWaveRollsOutDousesKnocksBackAndLeavesMud()
         {
-            // docs/SPELL_COMBOS.md: it travels over the ground the way it's cast, puts fires out, soaks and knocks
-            // creatures back, and leaves mud where it stops. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 16, 7, 6, "dirt");
             w.At(6, 3).T = "grass";
             w.Ignite(w.At(6, 3), 2);
@@ -1059,8 +976,6 @@ namespace Chem.Tests
         [Test]
         public void AWaveRollsAlongASlantedAimAndLeavesWaterBehind()
         {
-            // GitHub #11: aimed off the grid's four ways it rolls along the aim, a cell along the aim's longer part a
-            // step (like a slanted line), and its front sweeps the band with no gaps. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 20, 16, 12, "dirt");
             w.At(6, 5).T = "grass";
             w.Ignite(w.At(6, 5), 2);
@@ -1081,9 +996,6 @@ namespace Chem.Tests
         [Test]
         public void HeatOnStandingWaterBoilsItAndBakesNothingUnderIt()
         {
-            // GitHub #15: water on a cell takes the heat first. A Geyser on a pool over mud, or Forge on water over sand,
-            // boils the water and leaves the ground as it was; Forge on wet mud with the last of its water boiled off
-            // still bakes brick (ForgeHeatsAndTheMaterialDecides). Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 14, 5, 8, "dirt");
             for (int x = 1; x <= 5; x++)
                 for (int y = 1; y <= 3; y++)
@@ -1104,8 +1016,6 @@ namespace Chem.Tests
             Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("cdece807 2305213897"), "the golden");
         }
 
-
-        // First taken from sandbox/test/terraform.test.ts (frozen 2026-10-31).
         static World SleetField()
         {
             var w = new World(R, 20, 20, 7);
@@ -1139,9 +1049,6 @@ namespace Chem.Tests
         [Test]
         public void FrostBridgesWaterFreezesTheWetAndGlazesTheGround()
         {
-            // docs/SPELL_COMBOS.md: water freezes into walkable ice, a wet creature freezes solid and the hits after
-            // crack then shatter it, and dry ground frosts over, slippery. Ray of Frost is too weak to frost the
-            // ground. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 14, 7, 7, "dirt");
             for (int y = 0; y <= 6; y++)
                 for (int x = 6; x <= 8; x++) w.At(x, y).Water = 3;
@@ -1169,9 +1076,6 @@ namespace Chem.Tests
         [Test]
         public void ARollingBoulderRollsDownhillSmashesKnocksOverAndDamsTheStream()
         {
-            // docs/SPELL_COMBOS.md: it rolls on over flat ground and turns down a slope, cracks what is brittle (the
-            // first knock), knocks creatures over, leaves dust a spark sets off, and stops in water as a dam.
-            // Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 16, 10, 8, "dirt");
             w.At(5, 4).T = "glass";
             w.At(6, 4).Water = 2;
@@ -1203,8 +1107,6 @@ namespace Chem.Tests
         [Test]
         public void ARollingBoulderRollsAlongASlantedAimAndThenDownhill()
         {
-            // GitHub #21: aimed off the grid's four ways it rolls along the aim like the wave, and a slope to its side
-            // turns it, then it keeps to the new way. Saved mid-roll it goes on the same. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 18, 14, 8, "dirt");
             w.At(5, 4).T = "glass";
             foreach (int y in new[] { 6, 7, 8, 9, 10 }) w.At(6, y).Height = -1;
@@ -1231,9 +1133,6 @@ namespace Chem.Tests
         [Test]
         public void PlantGrowthVinesClimbWallsBridgeGapsBurnAndRootsCrackStone()
         {
-            // docs/SPELL_COMBOS.md: vines climb walls and cross pits and streams (walkable), burn as fuel, and when they
-            // die they rot and their roots crack the stone wall they held; raised rock is too hard. Mirrors
-            // sandbox/test/terraform.test.ts.
             var w = new World(R, 12, 7, 9, "dirt");
             w.At(3, 3).T = "stone";
             w.At(5, 3).T = "pit";
@@ -1256,8 +1155,6 @@ namespace Chem.Tests
         [Test]
         public void WallOfStoneMakesStepsOverWaterRampsWhenHeldAndOnlyHardBlowsBreakIt()
         {
-            // docs/SPELL_COMBOS.md: a wall, stepping stones where it crosses water, a ramp held at the ground; rock is
-            // hard, so a Fireball doesn't dig it and a Falling Star does. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 14, 8, 10, "dirt");
             for (int y = 0; y <= 7; y++)
                 for (int x = 6; x <= 7; x++) w.At(x, y).Water = 3;
@@ -1281,8 +1178,6 @@ namespace Chem.Tests
         [Test]
         public void ADustFlashShovesARaiderTheSameAsTheSandbox()
         {
-            // The flash shoves what stands in it away from where it caught: a raider too, force less its mass plus 1 cells,
-            // in both engines (it was the sandbox's alone). Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 10, 5, 11, "dirt");
             for (int x = 3; x <= 5; x++) w.AddGas(w.At(x, 2), "dust", 3);
             var hound = w.SpawnRaider("bone-hound", 5, 2, 6);
@@ -1295,8 +1190,6 @@ namespace Chem.Tests
         [Test]
         public void LightningJumpsToAPuddleAndItsChargeOpensTheGate()
         {
-            // docs/SPELL_COMBOS.md: the bolt jumps to the nearest water or metal in range instead of flying straight, runs
-            // through it, and a coil it reaches powers the gate (machines.json). Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 16, 7, 12, "dirt");
             for (int x = 4; x <= 6; x++) w.At(x, 5).Water = 2;
             w.At(7, 5).T = "coil";
@@ -1321,8 +1214,6 @@ namespace Chem.Tests
         [Test]
         public void RainCloudsGreenAshLightningMakesAStormAndColdMakesSnow()
         {
-            // docs/SPELL_COMBOS.md: rain waters plants (burnt ground greens), lightning into a cloud makes a storm cloud
-            // that keeps striking, cold turns one to snow. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 16, 7, 13, "dirt");
             for (int y = 1; y <= 5; y++)
                 for (int x = 1; x <= 5; x++) w.At(x, y).Cover = "ash";
@@ -1341,9 +1232,6 @@ namespace Chem.Tests
         [Test]
         public void SandBlastScoursWearsAndLeavesSandAndGustDrivesOilAcrossAPond()
         {
-            // docs/SPELL_COMBOS.md: Sand Blast strips covers, scours rust, wears a log wall thin then through and raised
-            // earth down, and leaves sand Forge bakes to glass; Gust drives a floating cover across water. Mirrors
-            // sandbox/test/terraform.test.ts.
             var w = new World(R, 14, 7, 14, "dirt");
             w.At(2, 2).Cover = "snow";
             w.At(3, 2).T = "rusted-metal";
@@ -1371,8 +1259,6 @@ namespace Chem.Tests
         [Test]
         public void LavaRunsDownhillLeavingACrustAndSetsAtOnceInWater()
         {
-            // docs/SPELL_COMBOS.md: Lava Pool runs downhill like water, crusts over so it can be walked on, and turns to
-            // rock at once in water (materials.json run and quench). Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 12, 7, 15, "dirt");
             w.At(5, 3).Height = -1;
             w.At(6, 3).Height = -2;
@@ -1394,8 +1280,6 @@ namespace Chem.Tests
         [Test]
         public void ScaldingSteamRustsMetalFaster()
         {
-            // docs/SPELL_COMBOS.md: Scalding Steam rusts metal faster: each tick steam hangs over metal it adds 4 to its rust,
-            // on top of being wet (materials.json gases.steam.rusts). Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 8, 5, 16, "dirt");
             w.At(2, 2).T = "metal";
             w.At(2, 2).Water = 1;
@@ -1411,8 +1295,6 @@ namespace Chem.Tests
         [Test]
         public void CreateWaterWatersBurntGround()
         {
-            // docs/SPELL_COMBOS.md: Create Water waters plants: on ash over soil, green shoots come up (reactions.json
-            // water-ash, the same grow as Plant Growth on ash). Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 8, 6, 17, "dirt");
             for (int y = 1; y <= 4; y++)
                 for (int x = 1; x <= 4; x++) w.At(x, y).Cover = "ash";
@@ -1440,8 +1322,6 @@ namespace Chem.Tests
         [Test]
         public void AFallingStarMarksItsTargetThenStrikes()
         {
-            // docs/SPELL_COMBOS.md: a mark for a second (6 ticks), then a crater with a little lava in it, burning
-            // rock round it, snow and ice melted and water flashed to steam. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 15, 9, 6, "dirt");
             w.At(8, 4).Cover = "snow";
             w.At(7, 3).Water = 2;
@@ -1474,10 +1354,6 @@ namespace Chem.Tests
         [Test]
         public void TheWaterAndEarthCombosCastTheirOwnSpells()
         {
-            // docs/SPELL_COMBOS.md: Flood fills two pits (and in the sandbox shoves a crate along; pushing
-            // things is the view's here); Mud churns a patch of grass to
-            // mud; Molten Boulder blasts a crater with lava in it; Dust Storm raises a cloud of dust that hides
-            // what's behind it. Ported from sandbox/test/terraform.test.ts.
             foreach (var (combo, spell) in new[] { ("water+earth", "mud") })
                 Assert.That(R.Combos.Combo(combo).Spell, Is.EqualTo(spell), combo);
             var w = new World(R, 20, 12, 9, "dirt");
@@ -1499,9 +1375,6 @@ namespace Chem.Tests
         [Test]
         public void CreaturesBurnFreezeAndSoakByTheirMaterial()
         {
-            // docs/MATERIALS.md "Creatures as flesh": a goblin (flesh), a bone hound (bone) and an ash crab
-            // (chitin) in fire, then water, then cold. Flesh burns, soaks and freezes; bone doesn't burn;
-            // chitin doesn't freeze (it stays wet). Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 16, 7, 5, "dirt");
             var them = new[] { w.SpawnRaider("goblin", 3, 3, 10), w.SpawnRaider("bone-hound", 7, 3, 6), w.SpawnRaider("ash-crab", 11, 3, 9) };
             var states = new List<string>();
@@ -1519,10 +1392,6 @@ namespace Chem.Tests
         [Test]
         public void WaterSoaksDirtToMudWhichDriesBack()
         {
-            // docs/MATERIALS.md soak.leaves, soak.dries: shallow water over dirt, grass and rock; the dirt turns
-            // to mud as it soaks in (grass and rock don't), fire on the mud is smothered (fire-mud) even where
-            // oil lies, and once it's dry the mud is dirt again. Ported from sandbox/test/terraform.test.ts (which
-            // also walks a goblin into it: Thorns snags it for 1/speed - 1 of a second).
             Assert.That(R.Terrain["mud"].Speed, Is.EqualTo(0.5));
             var w = new World(R, 10, 5, 1, "dirt");
             w.At(6, 2).T = "grass";
@@ -1542,14 +1411,12 @@ namespace Chem.Tests
         [Test]
         public void AcidSplashEatsBramblesThornsAndOilAndBurnsAGoblin()
         {
-            // docs/MATERIALS.md dissolve: a row of brambles, thorns, grease and oil round a goblin; Acid Splash
-            // on the goblin eats them all (dissolve.by acid) and hurts it. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 12, 9, 3, "dirt");
             for (int x = 5; x <= 7; x++) w.At(x, 3).T = "brush";
             w.At(5, 4).Cover = "grease";
             w.At(7, 4).Cover = "thorns";
             w.At(6, 5).Cover = "oil";
-            w.At(4, 4).Cover = "oil"; // outside the splash
+            w.At(4, 4).Cover = "oil";
             var gob = w.SpawnRaider("goblin", 6, 4, 10);
             w.Cast("acid-splash", 6, 4, 0);
             for (int x = 5; x <= 7; x++) Assert.That(w.At(x, 3).T, Is.EqualTo("dirt"), $"brambles at {x} eaten");
@@ -1560,10 +1427,6 @@ namespace Chem.Tests
             Assert.That(ex.Errors, Is.EqualTo(new[] { "cover slime: dissolves by unknown element vinegar", "cover slime: dissolvesTo goo unknown" }));
         }
 
-        // A log wall with panes in it (the sandbox's window glass test, the same steps): fire beside a pane does
-        // nothing to it; two of Fireball's blasts, ground shaken twice under one and two hits by a heavy thing
-        // break it (the first of each cracks it), and a pane with its only wall burnt away falls. What it leaves
-        // is an open gap.
         static (World w, string panes) WindowGlass()
         {
             var w = new World(R, 16, 10, 5, "dirt");
@@ -1595,9 +1458,6 @@ namespace Chem.Tests
         [Test]
         public void GlassAndIceGoIntactCrackedShattered()
         {
-            // docs/MATERIALS.md shatter.cracks: glass ground, a window pane and ice take two hits. The first
-            // cracks them (a warning if a creature stands on the ice), a second in the same tick is the same hit,
-            // the next shatters them, and a crack goes with its ice. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 14, 7, 3, "dirt");
             w.At(2, 3).T = "glass";
             w.At(5, 3).T = "pane";
@@ -1669,8 +1529,6 @@ namespace Chem.Tests
             Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("e425b302 3234871980"), "the golden");
         }
 
-        // Over 40 seeds, a goblin (wet or not) hit by Ray of Frost, then Shocking Grasp: how many are gone,
-        // and the sum of the worlds' RngStates.
         static string FrostThenSpark(bool wet)
         {
             int gone = 0;
@@ -1691,8 +1549,6 @@ namespace Chem.Tests
             return $"{gone} {rng}";
         }
 
-        // Lightning into one end of a pond: a goblin swimming at the far end, a wet one on the bank beside the
-        // water and a dry one on the bank.
         static (World w, Raider swimmer, Raider wetBank, Raider dryBank) ShockWater(Rules rules)
         {
             var w = new World(rules, 14, 8, 3, "dirt");
@@ -1717,8 +1573,6 @@ namespace Chem.Tests
         [Test]
         public void ShockWaterReachesSwimmersAndTheWetOnTheBank()
         {
-            // conduct.chainsWet: the charge runs through all the connected water; the swimmer (wet) takes it
-            // twice, a wet goblin beside the water is shocked too, a dry one on the bank isn't.
             var (w, swimmer, wetBank, dryBank) = ShockWater(R);
             int zap = R.Sim.ZapDamage;
             Assert.That(10 - swimmer.Hp, Is.EqualTo(zap * 2), "the swimmer is wet, so twice");
@@ -1733,9 +1587,6 @@ namespace Chem.Tests
         [Test]
         public void AStruckFrozenGoblinShatters()
         {
-            // docs/MATERIALS.md "Frozen things shatter": a wet goblin freezes solid under Ray of Frost, and
-            // of the sparks that follow (any hurt but cold) the first cracks it and the second shatters it; a dry
-            // one only takes the damage.
             Assert.That($"{FrostThenSpark(true)} | {FrostThenSpark(false)}", Is.EqualTo("40 744566284 | 33 2136120018"), "the golden");
             var w = new World(R, 20, 9, 1, "dirt");
             var r = w.SpawnRaider("goblin", 8, 4, 10);
@@ -1800,8 +1651,6 @@ namespace Chem.Tests
             Assert.That(w.Log[w.Log.Count - 1].Text, Is.EqualTo("Grease hits the flames. Whoosh!"));
         }
 
-        // ---------- air / thunder ----------
-
         [Test]
         public void AirBlowsOutSmallFlamesAndFansBigOnes()
         {
@@ -1843,8 +1692,6 @@ namespace Chem.Tests
             Assert.That(w.Wind, Is.Null);
         }
 
-        // ---------- water ----------
-
         [Test]
         public void WaterFlowsDownhillIntoAPit()
         {
@@ -1867,12 +1714,9 @@ namespace Chem.Tests
             Run(w, 80);
             Assert.That(w.At(9, 2).Water, Is.GreaterThan(0), "water reached the wheel's square (x=9 in sim.test.ts)");
             Assert.That(w.AllCells().Sum(c => c.Water), Is.EqualTo(total));
-            // The same setup in the TS sandbox ends with exactly this row.
             CollectionAssert.AreEqual(new[] { 0, 2, 7, 6, 6, 5, 4, 3, 2, 1, 0, 0, 0, 0, 0, 0 },
                 Enumerable.Range(0, 16).Select(x => w.At(x, 2).Water).ToArray());
         }
-
-        // ---------- lightning ----------
 
         [Test]
         public void LightningConductsThroughWaterIntoMetal()
@@ -1898,8 +1742,6 @@ namespace Chem.Tests
             Direct(w, 3, 4, "lightning");
             Assert.That(w.At(6, 4).Fire, Is.EqualTo(3), "the charge reached the oil and lit it");
         }
-
-        // ---------- earth ----------
 
         [Test]
         public void EarthBreaksStoneFillsPitsAndRaisesPillars()
@@ -1927,8 +1769,6 @@ namespace Chem.Tests
             Assert.That(w.At(5, 3).Water, Is.EqualTo(0));
             Assert.That(w.AllCells().Sum(c => c.Water), Is.EqualTo(4));
         }
-
-        // ---------- shapes / log / determinism ----------
 
         [Test]
         public void SpellShapes()

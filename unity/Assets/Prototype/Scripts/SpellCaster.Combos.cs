@@ -14,25 +14,19 @@ using UnityEngine.InputSystem;
 // elements (ProbeScenario.LoadElement). The radial (SpellRadialHud) stays as a debug layout (F2).
 public partial class SpellCaster
 {
-    /// <summary>The solo wizard's name in the core's casts.</summary>
     public const string SoloPlayer = "solo";
 
     SurfaceEffects feet;
     ChemGrid heard;
     readonly FiredCastsHeard firedCasts = new();
-    // The frame a press cancelled the cast: that press is spent, even for what reads it after.
     int cancelledOnFrame = -1;
 
-    /// <summary>This player's name in the core's casts: online their client's, solo a fixed one.</summary>
     public string CastPlayer => Peers.Of(grid).Player;
 
-    /// <summary>Online and still replaying the game so far: the casts in the core were made long ago (CastBeats).</summary>
     public bool Replaying => !Peers.Of(grid).CaughtUp;
 
-    /// <summary>The meter is draining (ItemHolder: the throw button cancels instead).</summary>
     public bool CastInProgress => cancelledOnFrame == Time.frameCount || (grid != null && grid.World != null && grid.World.CastOf(CastPlayer)?.Casting == true);
 
-    /// <summary>The charge the held element has built so far, or 0 when none is held (CastHud's steps).</summary>
     public int HoldCharge
     {
         get
@@ -42,7 +36,6 @@ public partial class SpellCaster
         }
     }
 
-    // The spell a cast under way will go off as, and its charge so far; null with none under way.
     (string spell, int charge) HeldCast()
     {
         var world = grid.World;
@@ -56,7 +49,6 @@ public partial class SpellCaster
         return (combo?.SpellAt(charge, world.MaxChargeOf(combo)), charge);
     }
 
-    /// <summary>The spell a cast under way will go off as, at the charge it has so far; null if the elements make none yet.</summary>
     public string SpellOf(PlayerCast cast)
     {
         var world = grid.World;
@@ -70,18 +62,16 @@ public partial class SpellCaster
     void UpdateElements()
     {
         Listen();
-        OnTick(); // a tick finished from outside (World.FinishTick) tells no one
+        OnTick();
         var world = grid.World;
         string player = CastPlayer;
         if (feet != null || TryGetComponent(out feet)) feet.CastFactor = (float)world.MoveFactorOf(player);
         var cast = world.CastOf(player);
         bool busy = (shape != null && shape.Shifted) || (radial != null && radial.IsOpen);
 
-        // The hands, unless the debug layout (F2) has the buttons for the radial. The d-pad's down holds their menu open
-        // (HandsMenu), and while it is the hands cast nothing.
         bool handsOn = world.HandsOn(player) && controls.ElementPad;
         controls.HandPad = handsOn;
-        bool menuWasOpen = HandsMenu.OpenFor(this); // the frame that shuts it, its buttons were the menu's too
+        bool menuWasOpen = HandsMenu.OpenFor(this);
         if (handsOn && !busy) HandsMenu.Feed(this, controls.OpenSpellList.IsPressed(), controls.OpenSpellList.activeControl?.device as Gamepad);
         else if (HandsMenu.OpenFor(this)) HandsMenu.Close();
         busy |= menuWasOpen || HandsMenu.OpenFor(this);
@@ -96,11 +86,9 @@ public partial class SpellCaster
         if (controls.DpadNext.WasPressedThisFrame()) Send(ComboCommand.Cycle(player, 1));
         if (controls.DpadPrevious.WasPressedThisFrame()) Send(ComboCommand.Cycle(player, -1));
         if (controls.DpadCast.WasPressedThisFrame()) Send(ComboCommand.CastSelected(player));
-        // Without the hands the d-pad's down opens the spell list, every spell.
         if (!handsOn && controls.OpenSpellList.WasPressedThisFrame()) SpellListMenu.Show(this, true);
     }
 
-    /// <summary>Moves the kit's selection to this slot, for every peer (the spell list).</summary>
     public bool SelectKit(int slot)
     {
         if (grid == null || grid.World == null) return false;
@@ -110,26 +98,19 @@ public partial class SpellCaster
         for (int i = 0; i < dpad.Count; i++)
             if (dpad[i] == now) at = i;
         if (slot < 0 || slot >= dpad.Count) return false;
-        // A cycle is a step either way, so as many as it takes.
         for (int step = System.Math.Sign(slot - at), left = System.Math.Abs(slot - at); left > 0; left--)
             if (!Send(ComboCommand.Cycle(CastPlayer, step))) return false;
         return true;
     }
 
-    /// <summary>Lets go of an element loaded held, at the charge its meter has reached.</summary>
     public bool LetGo() => grid != null && grid.World != null && Send(ComboCommand.Release(CastPlayer));
 
-    /// <summary>Drops a cast under way, as Cancel does (WizardDown: a wizard that falls loses it).</summary>
     public void DropCast()
     {
         DropHeld();
         if (grid != null && grid.World != null && grid.World.CastOf(CastPlayer)?.Casting == true) Send(ComboCommand.Cancel(CastPlayer));
     }
 
-    /// <summary>
-    /// Where the crosshair is instead, for the marker and the casts, while set: the playtest bot, which
-    /// has no mouse and points its casts at cells, and the probe. Null for players.
-    /// </summary>
     public Vector3? AimOverride { get; set; }
 
     bool Send(ComboCommand command)
@@ -140,7 +121,6 @@ public partial class SpellCaster
         return true;
     }
 
-    // Hears the grid's ticks, and every frame in UpdateElements: FiredCastsHeard gives each cast once.
     void Listen()
     {
         if (heard == grid) return;
@@ -159,7 +139,6 @@ public partial class SpellCaster
     void OnTick()
     {
         var fireds = firedCasts.Take(grid.World);
-        // Replaying the game so far as a late joiner, those casts were made long ago.
         if (fireds.Count == 0 || Replaying) return;
         string player = CastPlayer;
         foreach (var fired in fireds)
@@ -171,7 +150,6 @@ public partial class SpellCaster
         }
     }
 
-    /// <summary>Aims a spell from the crosshair now (or a few cells ahead, with nothing under it) and casts it.</summary>
     void CastAtCrosshair(string spellId, int charge, int range = 0)
     {
         if (!FindCrosshair())

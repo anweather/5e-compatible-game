@@ -15,7 +15,6 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>The Hold's runs (World.HoldSystem).</summary>
     public sealed class HoldSystem
     {
         readonly World world;
@@ -25,31 +24,23 @@ namespace Chem
             this.world = world;
         }
 
-        // Where a raider's way may run, as the defense field's box; and blows taken by each cell, by index.
         DefenseState holdField;
         readonly SortedDictionary<int, int> battered = new SortedDictionary<int, int>();
         int holdPlate;
-        // Ticks someone has stood on the plate, for the save's test of whether there's a Hold to keep.
         internal int Plate => holdPlate;
-        // The cells of the road raiders take, and the ways to the heart by road and straight, worked out every RouteEvery ticks.
         readonly HashSet<int> holdRoad = new HashSet<int>();
         int[] roadWay = Array.Empty<int>(), straightWay = Array.Empty<int>();
         public const string ClimbRoute = "climb", FlyRoute = "fly";
         const string LandedStatus = "landed";
 
-        /// <summary>The map's Hold, or null: a world without one has no runs.</summary>
         public WorldHold Site { get; private set; }
 
-        /// <summary>The run under way or last lost, or null before any.</summary>
         public HoldState State { get; private set; }
 
-        /// <summary>Whether a run is under way.</summary>
         public bool Running => State != null && State.Phase == HoldPhase.Running;
 
-        /// <summary>Raiders still to beat in the wave under way.</summary>
         public int Left => State == null ? 0 : world.RaiderSystem.List.Count + State.ToSpawn;
 
-        /// <summary>Gives the world its map's Hold, before the first tick.</summary>
         public void Set(WorldHold site)
         {
             Site = site;
@@ -70,18 +61,14 @@ namespace Chem
                 if (cell.Part == BuildingPart.Road && cell.Terrain == site.RoadTerrain && world.InBounds(cell.X, cell.Y)) holdRoad.Add(world.Idx(cell.X, cell.Y));
         }
 
-        /// <summary>A raider wave's size: First, Growth more for each wave after, and PeerPercent of that for the wizards at the start.</summary>
         public static int WaveSize(HoldParams p, int wave, int peers = 1) =>
             (p.First + p.Growth * (wave - 1)) * ByPeers(p.PeerPercent, peers) / 100;
 
-        // A row of percents by the wizards at the run's start: the last for more.
         static int ByPeers(IReadOnlyList<int> percents, int peers) => percents[Math.Min(Math.Max(peers, 1), percents.Count) - 1];
 
-        /// <summary>A wave as the rules and this world's seed make it, however the run came to it.</summary>
         public WavePlan Plan(int wave, int peers, string theme) =>
             new WavePlan(wave, WaveSize(world.Rules.Sim.Hold, wave, peers), theme, BossWave(world.Rules.Sim.Hold, wave), 1 + (wave - 1) / world.Rules.Sim.Hold.KindEvery);
 
-        /// <summary>The theme a wave has if nothing forced one before it.</summary>
         public string ThemeOfWave(int wave)
         {
             var p = world.Rules.Sim.Hold;
@@ -90,14 +77,11 @@ namespace Chem
             return theme;
         }
 
-        /// <summary>What's coming, while a wave waits to start: the wave warning. Null with a wave under way.</summary>
         public (WavePlan plan, int ticks)? Warning =>
             Running && State.InWave == 0 && State.ToSpawn > 0 ? (Plan(State.Wave, State.Peers, State.Theme), Math.Max(0, State.NextSpawn - world.Tick)) : ((WavePlan, int)?)null;
 
-        /// <summary>Where a downed wizard gets up during a run, or null: then it's the yard, as ever.</summary>
         public (int x, int y)? Respawn() => Running ? Site.Rise : ((int x, int y)?)null;
 
-        /// <summary>How many blows this cell has taken in the run.</summary>
         public int BlowsOn(int x, int y) => battered.TryGetValue(world.Idx(x, y), out int n) ? n : 0;
 
         internal void Tick()
@@ -113,8 +97,6 @@ namespace Chem
             MarchHold(p);
             if (Running) NextHoldWave(p);
         }
-
-        // ---------- starting ----------
 
         void WatchPlate()
         {
@@ -132,10 +114,6 @@ namespace Chem
             world.AddLog("Wave 1 is coming! Hold the keep", LogKind.Notable);
         }
 
-        // ---------- moments ----------
-
-        // Straight into a moment's wave: what was going on goes, the castle stands as the row says, and every wizard's hands hold
-        // what it says. The wave is the one play would have reached, as a wave comes from the rules and the seed.
         internal bool StartMoment(string id)
         {
             var p = world.Rules.Sim.Hold;
@@ -173,7 +151,6 @@ namespace Chem
             return true;
         }
 
-        // A percent of the castle's breakable cells gone, by the seed.
         void BreakCastle(HoldParams p, int percent)
         {
             const uint broken = 5;
@@ -185,8 +162,6 @@ namespace Chem
                 if (WaveRoll(State.Wave, n++, broken) % 100 < percent) world.BreakWall(cell.X, cell.Y, c);
             }
         }
-
-        // ---------- waves ----------
 
         void SpawnHold(HoldParams p)
         {
@@ -211,7 +186,7 @@ namespace Chem
             var (x, y) = spawner.Cells[(int)(world.Rand() * spawner.Cells.Count)];
             int hp = def.Hp + (p.HpPerWave + (boss ? p.BossHpPerWave : 0)) * (h.Wave - 1);
             var r = world.SpawnRaider(kind, x, y, boss ? hp * ByPeers(p.BossPeerHealth, h.Peers) / 100 : hp);
-            if (r == null) return; // someone stands there: next tick
+            if (r == null) return;
             r.Wait = DefenseSystem.PaceOf(def) - 1;
             h.ToSpawn--;
             h.Spawned++;
@@ -219,7 +194,6 @@ namespace Chem
             h.NextSpawn = world.Tick + p.SpawnEvery;
         }
 
-        // A number for a raider's place in a wave, from the seed alone: so a wave is the same however a run reached it.
         internal uint WaveRoll(int wave, int slot, uint salt)
         {
             unchecked
@@ -233,7 +207,6 @@ namespace Chem
 
         static bool BossWave(HoldParams p, int wave) => p.BossEvery > 0 && p.BossAdjective != null && wave % p.BossEvery == 0;
 
-        // The kinds come in round the spawner's list; a boss is the newest of them.
         static string KindOf(HoldSpawner spawner, WavePlan plan, int slot)
         {
             int kinds = Math.Min(plan.Kinds, spawner.Kinds.Count);
@@ -253,7 +226,6 @@ namespace Chem
             return plain + Rules.AdjectiveMark + common[(int)(WaveRoll(plan.Wave, slot, which) % (uint)common.Count)].Id;
         }
 
-        // Any theme but the last, by the seed; before ThemeFrom, none.
         string NextTheme(HoldParams p, int wave, string last)
         {
             const uint pick = 4;
@@ -262,8 +234,6 @@ namespace Chem
             return themes.Count == 0 ? last : themes[(int)(WaveRoll(wave, 0, pick) % (uint)themes.Count)].Id;
         }
 
-        // The next wave: on the timer with timed waves (its warning BetweenWaves before it starts, so beating a wave buys no time,
-        // and one still coming in holds the next back), else once this one's beaten. Beating the last wave wins the run.
         void NextHoldWave(HoldParams p)
         {
             var h = State;
@@ -284,17 +254,12 @@ namespace Chem
             world.AddLog(p.Waves > 0 && h.Wave == p.Waves ? $"The last wave, {h.Wave}, is coming!" : $"Wave {h.Wave} is coming!", LogKind.Notable);
         }
 
-        /// <summary>With timed waves, ticks until the next wave starts (its warning shows for the last BetweenWaves); null without, or on the last.</summary>
         public int? NextWaveIn =>
             Running && State.NextWave > 0 && (world.Rules.Sim.Hold.Waves == 0 || State.Wave < world.Rules.Sim.Hold.Waves) ? Math.Max(0, State.NextWave - world.Tick) : (int?)null;
 
-        // ---------- barricades ----------
-
-        /// <summary>How many barricades a wave raises on the road.</summary>
         public static int BarricadesOf(HoldParams p, int wave) =>
             wave < p.BarricadeFrom ? 0 : Math.Min(p.BarricadeMost, p.BarricadeFirst + (wave - p.BarricadeFrom) / p.BarricadePerWaves);
 
-        // On the road's cells round a wave's places, by the seed. The run's mending takes them away.
         void RaiseBarricades(HoldParams p)
         {
             const uint where = 6;
@@ -309,8 +274,6 @@ namespace Chem
                         if (world.InBounds(x, y) && holdRoad.Contains(world.Idx(x, y)) && !world.HasTag(world.At(x, y), "blocking")) world.SetTerrainTo(x, y, world.At(x, y), p.BarricadeTerrain);
             }
         }
-
-        // ---------- what a raider does ----------
 
         void MarchHold(HoldParams p)
         {
@@ -338,12 +301,10 @@ namespace Chem
             }
         }
 
-        /// <summary>Whether this raider is in the air: a flyer nothing has brought down.</summary>
         public bool Flying(Raider r) => Flying(r, world.Rules.Entity(r.Kind));
 
         static bool Flying(Raider r, EntityDef def) => def.Raider?.Route == FlyRoute && r.StatusOf(LandedStatus) == 0;
 
-        // Over everything, straight at the heart.
         void Fly(Raider r, EntityDef def)
         {
             r.X = world.FoldX(r.X + Math.Sign(world.DeltaX(r.X, Site.Heart.x)));
@@ -351,7 +312,6 @@ namespace Chem
             r.Wait = DefenseSystem.PaceOf(def) - 1;
         }
 
-        // What an adjective keeps up: a status it never loses. And a flyer that a landing status has reached is down for good.
         void Upkeep(Raider r)
         {
             if (r.StatusOf(LandedStatus) > 0) r.Status[LandedStatus] = 2;
@@ -368,7 +328,6 @@ namespace Chem
 
         bool InReach(int x0, int y0, int x1, int y1, int reach) => Math.Max(Math.Abs(world.DeltaX(x0, x1)), Math.Abs(world.DeltaY(y0, y1))) <= reach;
 
-        // The 5E attack roll a punch uses: a d20, the Strength modifier and the proficiency bonus against the wizard's AC, then its dice.
         bool BlowAtWizard(Raider r, EntityDef def)
         {
             var dice = def.Raider?.AttackDice;
@@ -392,7 +351,6 @@ namespace Chem
             return true;
         }
 
-        // A blow as this wave and this raider's adjective make it.
         int Harder(int damage, Raider r)
         {
             int wave = 100 + world.Rules.Sim.Hold.DamagePerWave * (State.Wave - 1);
@@ -423,7 +381,7 @@ namespace Chem
                 return;
             }
             var ahead = world.RaiderAt(nx, ny);
-            if (ahead != null && !Flying(ahead) && !Swap(p, r, ahead)) return; // wait for the one ahead
+            if (ahead != null && !Flying(ahead) && !Swap(p, r, ahead)) return;
             bool rough = world.DefenseSystem.Rough(world.Rules.Sim.Defense, world.At(r.X, r.Y), to);
             r.X = world.FoldX(nx);
             r.Y = world.FoldY(ny);
@@ -432,7 +390,6 @@ namespace Chem
             if (r.Alive && world.Rules.AdjectiveOf(r.Kind)?.Lights == true) world.Apply(r.X, r.Y, "fire", 1, -1, false);
         }
 
-        // Two raiders on different ways can meet head on, each wanting the other's cell: they pass. True if this one may step.
         bool Swap(HoldParams p, Raider r, Raider ahead)
         {
             var route = world.Rules.Entity(ahead.Kind).Raider?.Route;
@@ -460,13 +417,9 @@ namespace Chem
             if (world.BreakWall(x, y, c) || world.SetTerrainTo(x, y, c, p.Rubble)) world.AddLog($"The {was} gives way", LogKind.Notable);
         }
 
-        // How many blows a blocking cell takes; 0 for anything else, or one that can't be battered.
         int Blows(HoldParams p, Cell c) =>
             world.HasTag(c, "blocking") && p.Strength.TryGetValue(c.T, out int blows) ? blows : 0;
 
-        // ---------- the end ----------
-
-        // The last wave beaten: the run is won, the points for every wave, and the castle mended for the next.
         void WinRun()
         {
             world.EarnPoints(world.Rules.Sim.Hold, State.Wave);
@@ -487,7 +440,6 @@ namespace Chem
             MendCastle();
         }
 
-        // The castle as the map has it: every cell that isn't, laid fresh, and the view told (ChunkFreshened).
         void MendCastle()
         {
             battered.Clear();
@@ -504,8 +456,6 @@ namespace Chem
             foreach (var key in touched) world.FreshenBuilt(key.x, key.y);
         }
 
-        // ---------- the way to the heart ----------
-
         int HoldStepCost(HoldParams p, Cell from, Cell to, int toIdx, bool road)
         {
             if (to == null) return -1;
@@ -518,7 +468,6 @@ namespace Chem
             return road && !holdRoad.Contains(toIdx) ? cost * p.OffRoadCost : cost;
         }
 
-        /// <summary>The cell a raider here steps to next, by road or straight; null if it has no way on.</summary>
         public (int x, int y)? Next(int x, int y, bool road)
         {
             int dir = roadWay.Length == 0 ? -1 : HoldStep(world.Rules.Sim.Hold, x, y, road);
@@ -585,16 +534,12 @@ namespace Chem
             return best;
         }
 
-        // ---------- the checksum and the save ----------
-
-        /// <summary>A run and its raiders as text, "" before any run and with no one on the plate, so a world without hashes as it did.</summary>
         public string Text()
         {
             if (State == null && holdPlate == 0) return "";
             var inv = CultureInfo.InvariantCulture;
             var sb = new System.Text.StringBuilder("|H").Append(holdPlate.ToString(inv));
             if (State != null) sb.Append(':').Append((int)State.Phase).Append(':').Append(State.Wave).Append(':').Append(State.Health).Append(':').Append(State.ToSpawn).Append(':').Append(State.NextSpawn).Append(':').Append(State.Spawned).Append(':').Append(State.Peers).Append(':').Append(State.InWave).Append(':').Append(State.Theme).Append(':').Append(State.Moment);
-            // Timed waves only, so a run without hashes as it did.
             if (State != null && State.NextWave != 0) sb.Append(":n").Append(State.NextWave);
             foreach (var b in battered) sb.Append("|b").Append(b.Key).Append(':').Append(b.Value);
             foreach (var r in world.RaiderSystem.List) sb.Append("|r").Append(r.Id).Append(':').Append(r.Kind).Append(':').Append(r.X).Append(':').Append(r.Y).Append(':').Append(r.Hp).Append(':').Append(r.Wait).Append(':').Append(r.StatusOf(LandedStatus));

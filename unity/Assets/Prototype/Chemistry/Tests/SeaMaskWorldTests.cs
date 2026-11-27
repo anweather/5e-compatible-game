@@ -7,8 +7,6 @@ namespace Chem.Tests
     [Category("Unit")]
     public class SeaMaskWorldTests
     {
-
-        // A map that isn't a whole number of chunks, with NoLand and big steps: the same land back, by Of and by Read.
         [Test]
         public void LandNotAWholeNumberOfChunksComesBackTheSame()
         {

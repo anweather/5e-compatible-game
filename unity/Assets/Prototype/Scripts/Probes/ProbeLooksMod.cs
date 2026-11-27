@@ -38,7 +38,6 @@ public class LooksModProbe : ClipProbe
         int handle = scene.handle;
         SceneManager.sceneLoaded += CountLoad;
 
-        // Noon, clear, and no fire spreading: the fire area is the blast's alone.
         yield return Switch(At(12f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 } }, 'fire': { 'spreadChance': 0 }");
         var mid = (grid.CellCenter(a.x, a.y) + grid.CellCenter(b.x, b.y)) / 2f;
         mid.y = grid.GroundAt(mid);
@@ -85,13 +84,11 @@ public class LooksModProbe : ClipProbe
         if (Filming) yield return EndFilm();
     }
 
-    // Where in the film a beat falls, for its captions.
     protected void Beat(string name)
     {
         if (Filming) Metric(name, FilmedSeconds);
     }
 
-    // What one Fireball did, in the cells and as drawn.
     sealed class Measure
     {
         public float BlastMetres, DrawnDrop, BeadScale;
@@ -138,7 +135,6 @@ public class LooksModProbe : ClipProbe
         m.DrawnDrop = before - TerrainGround(point);
     }
 
-    // The widest moment of the fire: what burns or has burnt within reach of the middle, and the flames drawn on it.
     void Burning(Vector2Int at, Measure m)
     {
         int cells = 0, radius = 0, flames = 0;
@@ -157,7 +153,6 @@ public class LooksModProbe : ClipProbe
         m.FlamesDrawn = Mathf.Max(m.FlamesDrawn, flames);
     }
 
-    // How far from the middle the blast's particles reach across the ground just now, without the slow smoke and debris.
     float Reach(GameObject show, Vector3 middle)
     {
         float far = 0f;
@@ -209,7 +204,6 @@ public class LooksModProbe : ClipProbe
         Check("moonstone_blocks", Physics.RaycastAll(top, Vector3.down, 12f, ~0, QueryTriggerInteraction.Collide).Any(h => CellBlockers.IsBlocker(h.collider)), "a blocker on its cell");
         Shot("moonstone");
 
-        // A look alone changes: what already stands is drawn again, on the rules' say.
         Beat("look_change_at_s");
         var relook = new ActiveMod("relook-moonstone", "{ 'patch': { 'terrain': { 'moonstone': { 'name': 'Moonstone', 'tags': ['blocking', 'trellis'], 'break': { 'leaves': 'rubble' }, 'look': { 'family': 'block', 'color': [1, 0.55, 0.75], 'height': 2.6, 'glow': 0.3, 'roughness': 0.25 } } } } }");
         string fingerprint = grid.CurrentRules.Fingerprint;
@@ -222,7 +216,6 @@ public class LooksModProbe : ClipProbe
         Check("look_only_keeps_the_fingerprint", grid.CurrentRules.Fingerprint == fingerprint, grid.CurrentRules.Fingerprint);
     }
 
-    // Open flat grass for the three casts, as near the yard as there is.
     protected bool FindMeadow(out Vector2Int found)
     {
         foreach (var o in Candidates())

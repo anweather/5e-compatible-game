@@ -11,7 +11,6 @@ public sealed partial class CellDressing
     static readonly Color StumpColor = new(0.13f, 0.10f, 0.08f);
     static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
-    /// <summary>A boulder round <paramref name="parent"/>'s middle, about <paramref name="size"/> across: a rock model, or a lump of spheres without the pack.</summary>
     public void Boulder(Transform parent, float size)
     {
         var rocks = grid.wallRocks;
@@ -30,7 +29,6 @@ public sealed partial class CellDressing
         }
     }
 
-    // A boulder that came to rest: half sunk on the cell's ground.
     void DressBoulder(Transform root, Vector3 surface, System.Random rng)
     {
         var middle = new GameObject("Boulder").transform;
@@ -39,7 +37,6 @@ public sealed partial class CellDressing
         Boulder(middle, CellSize);
     }
 
-    // Rock a step up with water beside it: Wall of Stone over water.
     bool SteppingStone(Chem.Cell c, int x, int y)
     {
         if (c.T != TerrainIds.Rock || c.Height != 1) return false;
@@ -52,7 +49,6 @@ public sealed partial class CellDressing
         return false;
     }
 
-    // A broad, flat stone a step out of the water; rough without the pack's stones.
     void DressSteppingStone(Transform root, Vector3 surface, int x, int y)
     {
         var rng = new System.Random(x * 15485863 + y * 32452843);
@@ -67,7 +63,6 @@ public sealed partial class CellDressing
         Paint(slab.GetComponent<Renderer>(), "Stone", Look(grid.World.Rules, TerrainIds.Rock).color, 0.1f, x, y);
     }
 
-    // A lightning coil: a bronze post wound with copper on a plate, a knob on top.
     void DressCoil(Transform root, Vector3 surface, Color post, int x, int y)
     {
         var foot = Part(root, PrimitiveType.Cube, surface + Vector3.up * 0.05f, new Vector3(CellSize * 0.7f, 0.1f, CellSize * 0.7f), "Coil base", Iron);
@@ -78,7 +73,6 @@ public sealed partial class CellDressing
         Part(root, PrimitiveType.Sphere, surface + Vector3.up * 1.6f, Vector3.one * 0.3f, Tinted("Coil post", post, Bronze), post, 0.5f);
     }
 
-    // A gate: iron bars and rails across the cell, its way along a run of gates. Opening, the bars rise through the lintel (DressingSlide).
     void DressGate(Transform root, Vector3 surface, Color iron, int x, int y, bool open)
     {
         var world = grid.World;
@@ -106,7 +100,6 @@ public sealed partial class CellDressing
 
     bool IsGate(Chem.Cell c) => c != null && Of(grid.World.Rules, c.T) is { Family: Machine, Form: GateShut or GateOpen };
 
-    // A log wall worn thin: a few pale, gapped logs on their posts, the way the wall runs.
     void DressWornLogs(Transform root, Vector3 surface, Color logs, System.Random rng, int x, int y)
     {
         var world = grid.World;
@@ -125,7 +118,6 @@ public sealed partial class CellDressing
 
     bool IsLogs(Chem.Cell c) => c != null && Of(grid.World.Rules, c.T) is { Family: Wall };
 
-    /// <summary>A plate a step further to rust (Cell.Rust on the way to rust.every): its parts' shades go that much of the way to rust.</summary>
     public void Tarnish(GameObject dressing, float amount)
     {
         if (dressing == null) return;

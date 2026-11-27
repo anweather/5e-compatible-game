@@ -8,12 +8,10 @@ using UnityEngine.InputSystem;
 public sealed class FrameReadout : MonoBehaviour
 {
     const string ShownKey = "frame-readout";
-    const int SectionOrder = 506; // the Settings sub menu, after the play log's
+    const int SectionOrder = 506;
     const float Budget = 1000f / 60f, RefreshSeconds = 0.25f;
-    // Enough for a second at 500 fps; past it the oldest go.
     const int Ring = 512;
 
-    /// <summary>The readout in this session, for the probe.</summary>
     public static FrameReadout Instance { get; private set; }
 
     readonly float[] times = new float[Ring], ages = new float[Ring], sorted = new float[Ring];
@@ -22,10 +20,8 @@ public sealed class FrameReadout : MonoBehaviour
     readonly GUIContent line = new();
     GUIStyle style;
 
-    /// <summary>Whether the readout shows.</summary>
     public bool Shown { get; private set; }
 
-    /// <summary>The last second's mean, 95th percentile and worst frame (ms), as last worked out.</summary>
     public float MeanMs { get; private set; }
     public float P95Ms { get; private set; }
     public float WorstMs { get; private set; }
@@ -54,7 +50,6 @@ public sealed class FrameReadout : MonoBehaviour
         if (Instance == this) Instance = null;
     }
 
-    /// <summary>Shows or hides the readout, and remembers it.</summary>
     public void Show(bool on)
     {
         Shown = on;
@@ -83,7 +78,6 @@ public sealed class FrameReadout : MonoBehaviour
         WorkOut(now);
     }
 
-    // The frames of the last second: their mean, 95th percentile and worst, and the line that says them.
     void WorkOut(float now)
     {
         int n = 0;
@@ -102,7 +96,6 @@ public sealed class FrameReadout : MonoBehaviour
         line.text = $"{MeanMs:0.0} ms mean  {P95Ms:0.0} p95  {WorstMs:0.0} worst  (16.7)";
     }
 
-    // Green with the 95th percentile in budget, amber with only the mean in it, red past it.
     Color Colour()
     {
         if (P95Ms <= Budget) return new Color(0.6f, 1f, 0.6f);

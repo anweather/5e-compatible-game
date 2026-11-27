@@ -12,10 +12,8 @@ using Chem;
 // so every chain is played against the real rules under dotnet test.
 namespace Playtest
 {
-    /// <summary>One chain: a setup cast and a trigger cast, by elements, and what each must leave in the cells.</summary>
     public sealed class Chain
     {
-        /// <summary>How far round the aimed cell the setup and the result are looked for (cells).</summary>
         public const int Near = 3;
 
         public Chain(string id, string name, string setup, string trigger, Func<Cell, bool> needs, string expect, Func<World, int, int, int, bool> done)
@@ -29,30 +27,17 @@ namespace Playtest
             Done = done;
         }
 
-        /// <summary>The coverage name, as in "Chain:forge-on-mud".</summary>
         public string Id { get; }
         public string Name { get; }
-        /// <summary>The setup's elements in order, a combo id (rules/combos.json: "water+earth").</summary>
         public string Setup { get; }
-        /// <summary>The trigger's elements in order.</summary>
         public string Trigger { get; }
-        /// <summary>What the setup must leave in a cell for the trigger to work on (mud, water, dust, fire).</summary>
         public Func<Cell, bool> Needs { get; }
-        /// <summary>What the trigger should do, in words, for the trace and the candidate.</summary>
         public string Expect { get; }
-        /// <summary>Whether the cells show the result: the world, the trigger's aimed cell, and the tick it was cast on.</summary>
         public Func<World, int, int, int, bool> Done { get; }
-        /// <summary>The wizard walks across the aimed cell afterwards (Frost's ice bridge).</summary>
         public bool WalkAcross { get; set; }
-        /// <summary>The setup is aimed under a prop, and the prop should be thrown (Geyser).</summary>
         public bool UnderProp { get; set; }
-        /// <summary>The charge the trigger is held to (Plant Growth at full charge).</summary>
         public int TriggerCharge { get; set; } = 1;
 
-        /// <summary>
-        /// The cell the trigger aims at: the one nearest (x, y) within <see cref="Near"/> that has what
-        /// the setup leaves, row by row on a tie; null when the setup left nothing there.
-        /// </summary>
         public (int x, int y)? Find(World w, int x, int y)
         {
             if (w is null) throw new ArgumentNullException(nameof(w));
@@ -72,7 +57,6 @@ namespace Playtest
 
         public override string ToString() => $"{Name} ({Setup}, then {Trigger})";
 
-        /// <summary>The cells within r of (x, y) on the world, row by row.</summary>
         internal static IEnumerable<(int x, int y)> Around(World w, int x, int y, int r)
         {
             for (int cy = y - r; cy <= y + r; cy++)
@@ -85,12 +69,9 @@ namespace Playtest
 
     public static class Chains
     {
-        /// <summary>The flash a fire sets off in dust (rules/materials.json, dust's burn).</summary>
         public const string DustFlash = "The dust goes up in a flash";
-        /// <summary>Water meeting fire (rules/reactions.json, water-fire).</summary>
         public const string Douse = "Water douses the fire in a hiss of steam";
 
-        /// <summary>The chains the bot plays, from docs/SPELL_COMBOS.md's setups and triggers.</summary>
         public static readonly IReadOnlyList<Chain> All = new[]
         {
             new Chain("forge-on-mud", "Forge on mud", "water+earth", "earth+fire",
@@ -110,23 +91,16 @@ namespace Playtest
                 (w, x, y, _) => Chain.AnyNear(w, x, y, 1, c => c.Gas == "steam")) { UnderProp = true },
             new Chain("wave-over-fire", "Wave over a fire", "fire", "water+water",
                 c => c.Fire > 0, "the wave douses the fire",
-                // Doused, not just out: a small fire burns itself out within the wait anyway.
                 (w, x, y, since) => w.Log.Any(l => l.Tick >= since && l.Text == Douse) && !Chain.AnyNear(w, x, y, 1, c => c.Fire > 0)),
             new Chain("growth-on-burnt", "Plant Growth held on burnt ground", "fire+fire", "earth+water",
                 c => c.Cover == "ash" && c.Fire == 0, "saplings take root in the ash",
                 (w, x, y, _) => Chain.AnyNear(w, x, y, Chain.Near * 2, c => c.T == "sapling")) { TriggerCharge = World.MaxCharge },
         };
 
-        /// <summary>The charge a cast by elements is held to: half the time a tap, else 2 or 3.</summary>
         public static int ChargeFor(PlaytestRandom dice) => dice.Range(0, 2) == 0 ? 1 : dice.Range(2, World.MaxCharge + 1);
 
-        /// <summary>A chain by its id, or null.</summary>
         public static Chain ById(string id) => All.FirstOrDefault(c => c.Id == id);
 
-        /// <summary>
-        /// Every cast by elements these rules have, as a player loads them: the singles, then the
-        /// ordered pairs, in the rules' element order ("fire", ..., "fire+water", ...).
-        /// </summary>
         public static IEnumerable<string> ElementCasts(CombosDef combos)
         {
             if (combos == null) yield break;
@@ -137,10 +111,8 @@ namespace Playtest
                     if (combos.Combo(CombosDef.IdOf(a, b)) != null) yield return CombosDef.IdOf(a, b);
         }
 
-        /// <summary>A combo id's elements in the order they're loaded: "water+earth" is water, then earth.</summary>
         public static string[] ElementsOf(string combo) => (combo ?? "").Split('+');
 
-        /// <summary>The chains whose casts all exist in these rules (a mod may take a combo away).</summary>
         public static IEnumerable<Chain> Possible(CombosDef combos) =>
             combos == null ? Enumerable.Empty<Chain>() : All.Where(c => combos.Combo(c.Setup) != null && combos.Combo(c.Trigger) != null);
     }

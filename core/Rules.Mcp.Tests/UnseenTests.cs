@@ -1,3 +1,5 @@
+// What a building mod says that nothing draws (#71): validate and apply name it in a line, so Claude
+// can't claim a change the player won't see. Andrew's "Lit windows on the lake house" is the case.
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -8,10 +10,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>
-    /// What a building mod says that nothing draws (#71): validate and apply name it in a line, so Claude
-    /// can't claim a change the player won't see. Andrew's "Lit windows on the lake house" is the case.
-    /// </summary>
     [Category("Simulation")]
     public class UnseenTests
     {
@@ -21,7 +19,6 @@ namespace Chem.Tests
 
         static BuildingTables Shipped => Rules.Load(ChemistryTests.RulesDir()).Buildings;
 
-        // A box of walls at a site the stand-in valley has room for, with these openings on its north wall.
         static JObject House(int x, int y, JArray north, JObject extra = null)
         {
             var row = JObject.Parse("{ \"style\": \"plain\", \"joins\": { \"nw\": [0, 0], \"ne\": [12, 0], \"se\": [12, 10], \"sw\": [0, 10] }," +
@@ -41,7 +38,6 @@ namespace Chem.Tests
             return patch.ToString();
         }
 
-        // Where a 6 by 5 house can stand on the stand-in valley.
         static (int x, int y) Site(Workbench bench)
         {
             string sites = new HouseToolsTests.Client(bench).Call("find_site", new { width = 7, depth = 6 });
@@ -53,7 +49,6 @@ namespace Chem.Tests
         [Test]
         public void TheLakeHousesLitPaneIsNamedAsUnseenInValidateAndApply()
         {
-            // The patch Claude applied in Andrew's play (chat record 51ba306f369d), moved to a free site.
             var bench = NewBench();
             var (x, y) = Site(bench);
             var lit = JObject.Parse("{ \"terrain\": { \"lit-pane\": { \"name\": \"Lit window\", \"tags\": [\"blocking\", \"seeThrough\"], \"look\": { \"family\": \"block\", \"color\": [1, 0.8, 0.4], \"height\": 1.2, \"glow\": 0.4 } } }," +
@@ -129,7 +124,6 @@ namespace Chem.Tests
                 var unseen = BuildingsShown.Unseen(json["patch"] as JObject ?? json, rules.WithMods(new[] { ModPatch.Parse(text) }).Buildings, shipped);
                 Assert.That(unseen, Is.Empty, Path.GetFileName(file));
             }
-            // The tables' own rows, as if a mod restated them all.
             var tables = new JObject { ["buildings"] = JObject.Parse(File.ReadAllText(Path.Combine(ChemistryTests.RulesDir(), "buildings.json"))) };
             ((JObject)tables["buildings"]).Remove("about");
             ((JObject)tables["buildings"]).Remove("ground");

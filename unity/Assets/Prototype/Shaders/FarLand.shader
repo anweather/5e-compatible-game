@@ -1,19 +1,19 @@
+// The far ring (FarRing, docs/design/world-squares.md section 4): the known chunks' coarse land, a hills map's far land
+// out to the horizon (FarRing.FarLand.cs, drawn at each copy of the torus), the sea plane to the horizon and
+// the far landmarks' stand-in meshes. The colour is in the vertices (linear), lit softly by the main light and the
+// ambient, no shadows. Everything takes the one air (Air.hlsl, docs/design/hills.md "One air"): toward the sky's
+// horizon on its bearing, by its distance from the eye. The far land pales toward the sky's colour past 3 km (_Dulls,
+// DulledFar) and isn't drawn nearer than _NearClip, where the known meshes and the chunk terrains are the land.
+// A far landmark (_OwnHaze 1) takes the same air and fades wholly into it over its last _FadeMetres, where it's no
+// longer drawn. Its horizon.json "far" look comes in past _FarStretchFrom (where it can no longer have
+// given way to the land): it stands _Stretch times as tall and its rim dips _Notch of its height where it faces the
+// eye, a crater's notch. The sea plane (_SkyFadeTo above 0) is drawn after the sky and goes clear between
+// _SkyFadeFrom and _SkyFadeTo, so it gives way to the sky as it's drawn there, not with a hard line against it. Over
+// the map itself (vertex alpha 1) it's also clear within _FarKnownMetres, the known ring, where the map's own land and
+// water draw, and there past it, where nothing else is: there the sky below the horizon, paler than the haze, showed
+// through as flat white wedges.
 Shader "Prototype/FarLand"
 {
-    // The far ring (FarRing, docs/design/world-squares.md section 4): the known chunks' coarse land, a hills map's far land
-    // out to the horizon (FarRing.FarLand.cs, drawn at each copy of the torus), the sea plane to the horizon and
-    // the far landmarks' stand-in meshes. The colour is in the vertices (linear), lit softly by the main light and the
-    // ambient, no shadows. Everything takes the one air (Air.hlsl, docs/design/hills.md "One air"): toward the sky's
-    // horizon on its bearing, by its distance from the eye. The far land pales toward the sky's colour past 3 km (_Dulls,
-    // DulledFar) and isn't drawn nearer than _NearClip, where the known meshes and the chunk terrains are the land.
-    // A far landmark (_OwnHaze 1) takes the same air and fades wholly into it over its last _FadeMetres, where it's no
-    // longer drawn. Its horizon.json "far" look comes in past _FarStretchFrom (where it can no longer have
-    // given way to the land): it stands _Stretch times as tall and its rim dips _Notch of its height where it faces the
-    // eye, a crater's notch. The sea plane (_SkyFadeTo above 0) is drawn after the sky and goes clear between
-    // _SkyFadeFrom and _SkyFadeTo, so it gives way to the sky as it's drawn there, not with a hard line against it. Over
-    // the map itself (vertex alpha 1) it's also clear within _FarKnownMetres, the known ring, where the map's own land and
-    // water draw, and there past it, where nothing else is: there the sky below the horizon, paler than the haze, showed
-    // through as flat white wedges.
     Properties
     {
         _OwnHaze ("Own haze (a far landmark)", Float) = 0
@@ -63,10 +63,8 @@ Shader "Prototype/FarLand"
             half _Dulls;
             CBUFFER_END
 
-            // How much of the sun's light the coarse land keeps when the sun is on the horizon (tools/handover.py at dusk).
             static const half LowSunLit = 0.8;
 
-            // Set by FarRing each frame: where the generated ring ends (m) and where the known ring ends (m, the view dial's).
             float _FarSightMetres;
             float _FarKnownMetres;
             float _FarStretchFrom;
@@ -96,8 +94,6 @@ Shader "Prototype/FarLand"
                 float3 n = input.normalOS;
                 UNITY_BRANCH if (_OwnHaze > 0.5 && p.y > 0.0)
                 {
-                    // A far landmark's far look, none where it gives way to the land. Its mesh isn't turned, so object
-                    // x and z are the world's.
                     float2 toEye = _WorldSpaceCameraPos.xz - GetObjectToWorldMatrix()._m03_m23;
                     float d = length(toEye);
                     float t = smoothstep(_FarStretchFrom, _FarStretchTo, d);
@@ -115,7 +111,6 @@ Shader "Prototype/FarLand"
                 return o;
             }
 
-            // How much of a far landmark is left at distance d: the one air, and none of it over its last _FadeMetres.
             half LandmarkSeen(float d)
             {
                 half fade = saturate((d - (_SeenMetres - _FadeMetres)) / max(1.0, _FadeMetres));
@@ -127,22 +122,16 @@ Shader "Prototype/FarLand"
                 half3 n = normalize(input.normalWS);
                 Light light = GetMainLight();
                 half3 albedo = input.color.rgb;
-                // The land lit as URP's terrain lights it (Lambert and the ambient, no shadows), so it meets the chunk
-                // terrains in one colour (tools/handover.py); a landmark keeps its soft wrapped light.
                 half diffuse = saturate(dot(n, light.direction) * 0.75 + 0.25);
-                // A low sun lights the coarse land less than its Lambert says: the chunk terrains' own relief (their normal
-                // maps) turns much of each slope away from it, and the coarse land has none.
                 half low = (half)lerp(LowSunLit, 1.0, smoothstep(0.05, 0.4, light.direction.y));
                 half3 color = albedo * (light.color * saturate(dot(n, light.direction)) * low + SampleSH(n));
                 UNITY_BRANCH if (_NearClip > 0)
                 {
-                    // A far mesh of land the chunk terrains and known meshes draw nearer (the hills' far land).
                     if (length(input.positionWS.xz - _WorldSpaceCameraPos.xz) < _NearClip) discard;
                 }
                 float3 toward = input.positionWS - _WorldSpaceCameraPos;
                 UNITY_BRANCH if (_OwnHaze > 0.5)
                 {
-                    // Far off, a landmark reads as a silhouette: the sun only shades it a little.
                     color = albedo * (light.color * diffuse * 0.35 + SampleSH(n));
                     return half4(lerp(AirToward(toward), color, LandmarkSeen(length(toward))), 1);
                 }

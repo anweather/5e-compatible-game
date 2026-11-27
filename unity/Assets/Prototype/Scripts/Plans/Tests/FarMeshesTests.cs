@@ -53,8 +53,6 @@ public class FarMeshesTests
         Assert.AreEqual(palette.Of("temperate"), palette.Of("valley"), "the pinned map's name is grass");
     }
 
-    // A biome's far colour is its ground's layers' colours by their weights, as the near ground draws them (#191): dry
-    // country mostly bare earth with a little sand and snow is brown, not the white of its snow.
     [Test]
     public void ABiomesColourIsItsGroundsLayersMixed()
     {

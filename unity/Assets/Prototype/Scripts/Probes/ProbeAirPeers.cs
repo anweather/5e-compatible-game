@@ -13,7 +13,6 @@ using UnityEngine;
 // Nothing here is in the game: no command puts a raider down, so each peer puts them in itself, after the same tick.
 public class AirPeersProbe : RoomProbe
 {
-    // Open ground (LandShapesProbe's stamp site); the wizards stand south of the raiders, on their columns.
     const int Row = 462, FlyerX = 104, FlyerY = 446, HoundX = 110, HoundY = 457, OtherX = 117, OtherY = 452;
     const int Hp = 400, StandStill = 600, Lead = 18;
     const float Settle = 1.5f, Lands = 2f;
@@ -21,7 +20,6 @@ public class AirPeersProbe : RoomProbe
     protected override ChangeMode Mode => ChangeMode.Open;
     protected override bool StartsWithAMod => false;
 
-    /// <summary>Puts this peer's wizard on a cell (online the stand goes through the host).</summary>
     public static void StandAt(ChemGrid grid, int x, int y)
     {
         var wizard = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject;
@@ -33,10 +31,6 @@ public class AirPeersProbe : RoomProbe
         body.enabled = true;
     }
 
-    /// <summary>
-    /// The three raiders, put down by each peer straight after it has run <paramref name="tick"/>: the same moment in the
-    /// world on both. Waits (up to a bound) till they're down; false if the tick never came.
-    /// </summary>
     public static IEnumerator SpawnAfter(ChemGrid grid, NetChem net, int tick, Action<bool> done = null)
     {
         bool put = false;
@@ -58,7 +52,6 @@ public class AirPeersProbe : RoomProbe
             if (w.SpawnRaider(kind, x, y, Hp) is { } r) r.Wait = StandStill;
     }
 
-    /// <summary>A cast from this peer, "spell,x,y,dir,charge,aimX,aimY".</summary>
     public static void CastFrom(string args)
     {
         var a = args.Split(',');
@@ -74,7 +67,6 @@ public class AirPeersProbe : RoomProbe
 
     protected override IEnumerator Steps()
     {
-        // The waves, from the client through the host: from here on the raiders are in the checksum.
         yield return Ask("defense");
         if (Theirs == null) yield break;
         Check("waves_run", World.Defense != null, World.Defense == null ? "no defense" : World.Defense.Phase.ToString());
@@ -99,7 +91,6 @@ public class AirPeersProbe : RoomProbe
         yield return Reach("raiders_down", Net.NetTick);
         if (Theirs == null) yield break;
 
-        // Lightning from the host, straight up the flyer's column.
         StandAt(grid, FlyerX, Row);
         yield return Wait(0.5f);
         int hp = flyer.Hp;
@@ -113,7 +104,6 @@ public class AirPeersProbe : RoomProbe
         yield return Whirlwind(other);
         if (Theirs == null) yield break;
 
-        // Long enough for a few more 30-tick checksums after the last cast, then compare from the raiders on.
         yield return Wait(11f);
         yield return Reach("air_spells", Net.NetTick);
         if (Theirs == null) yield break;
@@ -121,7 +111,6 @@ public class AirPeersProbe : RoomProbe
         Metric("peers", NetworkManager.Singleton.ConnectedClientsIds.Count);
     }
 
-    // Gust of Wind on the hound: tapped from the host, held from the client, then once more from the host, which it braces against.
     IEnumerator Gust(Raider hound)
     {
         StandAt(grid, HoundX, Row);
@@ -146,7 +135,6 @@ public class AirPeersProbe : RoomProbe
             $"tapped {tapped}, held {held}, third {third} cells; shoved {hound.StatusOf(World.ShovedStatus)}");
     }
 
-    // A Whirlwind from the client on the other raider: lifted, then flung.
     IEnumerator Whirlwind(Raider other)
     {
         var start = new Vector2Int(other.X, other.Y);

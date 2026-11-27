@@ -13,21 +13,17 @@ public static class ValleyCoast
 {
     public const float SeaLevel = ValleyShape.LakeLevel;
 
-    /// <summary>A point on the coastline (x, z), and the way out to sea, square to it.</summary>
     public static readonly Vector2 ShoreOrigin = new(225f, -160f);
     public static readonly Vector2 Seaward = new Vector2(0.62f, -0.78f).normalized;
     static Vector2 Along => Vector2.Perpendicular(Seaward);
 
-    /// <summary>The island's middle and its rough radius (m).</summary>
     public static readonly Vector2 IslandAt = new(350f, -285f);
     public const float IslandRadius = 58f;
 
-    // Distances out to sea (m, negative inland) where each part of the coast lies.
     const float HillAt = -72f, HillHalf = 26f, HillHeight = 9f;
     const float CoastStart = -58f, DunesEnd = -40f, BeachTop = -18f;
     const float IslandBeach = 12f;
 
-    /// <summary>How far out to sea a point is from the shoreline (m, negative inland), the line wandering into bays and points.</summary>
     public static float Out(Vector2 p)
     {
         float along = Vector2.Dot(p - ShoreOrigin, Along);
@@ -36,7 +32,6 @@ public static class ValleyCoast
         return Vector2.Dot(p - ShoreOrigin, Seaward) + wander;
     }
 
-    /// <summary>How far inside the island's shore a point is (m; negative out in the water).</summary>
     public static float InIsland(Vector2 p)
     {
         var q = p - IslandAt;
@@ -47,22 +42,18 @@ public static class ValleyCoast
         return radius - q.magnitude;
     }
 
-    /// <summary>How much of a point's height the coast decides, 0 inland to 1 from the dunes out.</summary>
     public static float Weight(Vector2 p) => Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(CoastStart, DunesEnd, Out(p)));
 
-    /// <summary>The ground at a point with the coast shaped in, from the valley's height there.</summary>
     public static float Shape(Vector2 p, float land)
     {
         float o = Out(p);
         if (o < HillAt - HillHalf * 2.2f) return land;
-        // The hill between the valley and the sea, its crest along the coast.
         float bell = Mathf.Exp(-Mathf.Pow((o - HillAt) / HillHalf, 2f));
         float hill = land + HillHeight * bell * (0.8f + 0.4f * Mathf.PerlinNoise(p.x * 0.02f, p.y * 0.02f));
         float h = Mathf.Lerp(hill, Profile(p, o), Weight(p));
         return Mathf.Max(h, IslandHeight(p));
     }
 
-    // Across the coast: dunes, the beach falling to the water's edge, then the sea bed shelving away.
     static float Profile(Vector2 p, float o)
     {
         if (o <= BeachTop)
@@ -74,7 +65,6 @@ public static class ValleyCoast
         return SeaLevel - Mathf.Min(o * 0.085f + Mathf.Max(0f, o - 30f) * 0.07f, 26f);
     }
 
-    // The island: a shelf rising out of the bay, a beach all round, a low hill inside.
     static float IslandHeight(Vector2 p)
     {
         float s = InIsland(p);
@@ -85,40 +75,30 @@ public static class ValleyCoast
         return SeaLevel + IslandBeach * 0.13f + Mathf.Min(rise, 2.5f) + 3.5f * Mathf.Clamp01(ValleyShape.Fbm(p * 0.03f + new Vector2(9f, 4f), 3) + 0.5f) * Mathf.InverseLerp(IslandBeach, IslandBeach + 18f, s);
     }
 
-    /// <summary>Whether a point is bare sand: the beach and dunes, or the island's beach (its squares are dirt, its ground sand).</summary>
     public static bool OnSand(Vector2 p, float ground) =>
         ground >= SeaLevel && ((Out(p) > DunesEnd + 4f && Weight(p) > 0.9f) || (InIsland(p) >= 0f && InIsland(p) < IslandBeach + 2f));
 
-    /// <summary>How much of the island's own lush green a point gets: none on its beach, all of it a few metres in.</summary>
     public static float Lush(Vector2 p) => Mathf.InverseLerp(IslandBeach, IslandBeach + 6f, InIsland(p));
 
-    /// <summary>Whether a point is the island (inside its shoreline).</summary>
     public static bool OnIsland(Vector2 p) => InIsland(p) >= 0f;
 
-    /// <summary>No grass or plants: the beach and the sea, the island's beach and shallows, and the path.</summary>
     public static bool NoGrass(Vector2 p)
     {
         float s = InIsland(p);
         return Out(p) > DunesEnd + 6f || (s > -40f && s < IslandBeach) || DistanceToPath(p) < PathHalfWidth + 0.5f;
     }
 
-    /// <summary>Whether a point belongs to the coast at all: the beach, the sea, the island (no valley trees there).</summary>
     public static bool Coastal(Vector2 p) => Out(p) > DunesEnd - 2f || InIsland(p) > -6f;
 
-    /// <summary>Sand's share of the terrain's paint at a point: the beaches, the dunes thinning into the hill's grass, and the sea bed.</summary>
     public static float Sand(Vector2 p, float ground)
     {
         float o = Out(p);
-        // The mainland's sand runs on out under the sea, but not up onto the island past its beach.
         float coast = Mathf.InverseLerp(DunesEnd - 6f, DunesEnd + 6f, o) * Mathf.InverseLerp(IslandBeach + 4f, IslandBeach - 2f, InIsland(p));
         float island = Mathf.InverseLerp(IslandBeach + 4f, IslandBeach - 2f, InIsland(p)) * (InIsland(p) > -60f ? 1f : 0f);
         float bed = ground < SeaLevel + 0.2f && (o > 0f || InIsland(p) > -60f) ? 1f : 0f;
         return Mathf.Clamp01(Mathf.Max(Mathf.Max(coast, island), bed));
     }
 
-    // --- palms and glowbulbs ------------------------------------------------------------
-
-    /// <summary>A plant of the coast: where it stands, palm or glowbulb, and its seed.</summary>
     public readonly struct Plant
     {
         public readonly Vector2 At;
@@ -135,11 +115,6 @@ public static class ValleyCoast
 
     static List<Plant> plants;
 
-    /// <summary>
-    /// The coast's plants, worked out once per plan: palms through the island and along the dunes
-    /// behind the beach, glowbulbs in among them on the island. Palms stand on tree squares (they
-    /// burn); glowbulbs on whatever is there.
-    /// </summary>
     public static IReadOnlyList<Plant> Plants
     {
         get
@@ -158,8 +133,6 @@ public static class ValleyCoast
         return list;
     }
 
-    // Whether a plant may stand at a point: room round it, inside the world's edge, off the path and
-    // the villages' cells.
     static bool Room(List<Plant> list, Vector2 p, float gap)
     {
         foreach (var q in list)
@@ -167,7 +140,6 @@ public static class ValleyCoast
         return p.x < 438f && p.y > -362f && DistanceToPath(p) > 3f && ValleyShape.DistanceToVillage(p) > 2.5f;
     }
 
-    // The island: palms all through it, glowbulbs back from the beach.
     static void LayIslandPlants(List<Plant> list, System.Random rng)
     {
         for (int i = 0; i < 4000 && list.Count < 110; i++)
@@ -178,7 +150,6 @@ public static class ValleyCoast
         }
     }
 
-    // The mainland: palms along the dunes, between the beach and the hill.
     static void LayDunePalms(List<Plant> list, System.Random rng)
     {
         int stop = list.Count + 60;
@@ -187,23 +158,17 @@ public static class ValleyCoast
             float along = ((float)rng.NextDouble() - 0.5f) * 560f;
             float o = Mathf.Lerp(DunesEnd - 10f, BeachTop - 2f, (float)rng.NextDouble());
             var p = ShoreOrigin + Along * along + Seaward * o;
-            // The shoreline wanders: put it where the coast's distance says.
             p += Seaward * (o - Out(p));
             if (Out(p) <= BeachTop && ValleyShape.HeightAt(p) >= SeaLevel + 0.5f && Room(list, p, 6f)) list.Add(new Plant(p, true, rng.Next()));
         }
     }
 
-    // --- the path ---------------------------------------------------------------------
-
-    /// <summary>The path's half width (m): two squares across.</summary>
     public const float PathHalfWidth = 1.4f;
 
     static Vector2[] path = System.Array.Empty<Vector2>();
 
-    /// <summary>The path's line, smoothed: from the yard to the bridge's west landing, and on from its east landing over the hill to the beach.</summary>
     public static IReadOnlyList<Vector2> PathLine => path;
 
-    /// <summary>Lays the path out once the bridge is planned (ValleyShape.Plan).</summary>
     public static void PlanPath(Vector2 yardCorner, Vector2 westLanding, Vector2 eastLanding)
     {
         var toBridge = new List<Vector2> { yardCorner, Vector2.Lerp(yardCorner, westLanding, 0.5f) + new Vector2(0f, 8f), westLanding };
@@ -217,18 +182,14 @@ public static class ValleyCoast
 
     static Vector2[] eastPath = System.Array.Empty<Vector2>();
 
-    /// <summary>The path from the bridge's east landing to the beach (its end is on the sand).</summary>
     public static IReadOnlyList<Vector2> BeachPath => eastPath;
 
-    /// <summary>The distance from a point to the path.</summary>
     public static float DistanceToPath(Vector2 p) =>
         Mathf.Min(path.Length > 1 ? ValleyShape.DistanceToCourse(p, path) : float.MaxValue,
             eastPath.Length > 1 ? ValleyShape.DistanceToCourse(p, eastPath) : float.MaxValue);
 
-    /// <summary>Whether a point is on the path's dirt (the bridge itself excepted: it has its deck).</summary>
     public static bool OnPath(Vector2 p) => DistanceToPath(p) < PathHalfWidth && !ValleyShape.InRiver(p);
 
-    // Catmull-Rom through the points, so the path curves rather than kinks.
     static List<Vector2> Smooth(List<Vector2> points, int per)
     {
         var line = new List<Vector2>();

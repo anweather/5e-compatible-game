@@ -30,16 +30,13 @@ public static class StartupTimeline
         SceneManager.sceneLoaded -= SceneLoaded;
         Mark($"scene {scene.name} loaded (its Awakes done)");
         if (done) return;
-        // The first frame's Starts and Updates, apart: the first and the last of them mark the timeline.
         var marks = new GameObject("Startup marks") { hideFlags = HideFlags.HideAndDontSave };
         marks.AddComponent<StartupFirst>();
         marks.AddComponent<StartupLast>();
     }
 
-    /// <summary>A step done: logged with the time since start and since the last step, until the first frame.</summary>
     public static void Mark(string step) => Mark(step, 0);
 
-    /// <summary>A step done, logged only if it took at least minMs (the time still counts as passed).</summary>
     public static void Mark(string step, double minMs)
     {
         if (done) return;
@@ -48,7 +45,6 @@ public static class StartupTimeline
         if (took >= minMs) UnityEngine.Debug.Log($"STARTUP {step} at {now:0} ms (+{took:0})");
     }
 
-    /// <summary>The first frame: the last line, and the timeline stops.</summary>
     public static void Done(string step)
     {
         Mark(step);

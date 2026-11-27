@@ -32,8 +32,6 @@ public class SleepProbe : ProbeScenario
             Check("far_ground_found", false, "no dry ground beyond the keep distance");
             yield break;
         }
-        // One crate up in the air for the camera (a few seconds of Levitate): asleep, it hangs
-        // there; back awake, with its float long run out, it falls.
         var floater = props.Find(p => p.kind == EntityIds.Crate);
         if (floater == null) floater = props[0];
         var seen = floater.transform.position;
@@ -41,7 +39,6 @@ public class SleepProbe : ProbeScenario
         floater.Levitate(3 * World.Rules.Sim.TicksPerSecond, 1.5f);
         yield return Wait(1.5f);
         Place(far.x - yard.x, far.y - yard.y);
-        // The yard may linger while anything there is still live; wait for it to deactivate.
         for (float t = 0f; t < 20f && grid.IsChunkActive(homeChunk.x, homeChunk.y); t += 0.5f)
             yield return Wait(0.5f);
         Check("yard_inactive", !grid.IsChunkActive(homeChunk.x, homeChunk.y));
@@ -85,7 +82,6 @@ public class SleepProbe : ProbeScenario
         }
     }
 
-    // Dry ground two chunks beyond the keep distance from the yard, the first found going round.
     bool FindFar(Vector2Int home, out Vector2Int found)
     {
         int d = (World.Rules.Sim.Streaming.Keep + 2) * Chunks.Size;

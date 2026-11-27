@@ -7,7 +7,6 @@ namespace Chem
 {
     public static class WorldHash
     {
-        /// <summary>murmur3 fmix32: full avalanche, so neighbouring inputs land far apart.</summary>
         public static int Fmix32(int value)
         {
             unchecked
@@ -22,10 +21,6 @@ namespace Chem
             }
         }
 
-        /// <summary>
-        /// 32-bit hash of (seed, salt, a, b). Each input is folded in and avalanched separately,
-        /// so (a, b) and (b, a) differ and negative coordinates are fine.
-        /// </summary>
         public static uint Hash4(int seed, int salt, int a, int b)
         {
             unchecked
@@ -37,7 +32,6 @@ namespace Chem
             }
         }
 
-        /// <summary>Hash4 mapped to [0, 1).</summary>
         public static double HashUnit(int seed, int salt, int a, int b) => Hash4(seed, salt, a, b) / 4294967296.0;
     }
 }

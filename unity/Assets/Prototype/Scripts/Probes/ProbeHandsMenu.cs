@@ -43,7 +43,6 @@ public class HandsMenuProbe : ProbeScenario
         return new Vector2(x, y);
     }
 
-    // The stick leaning out to an element over a moment, as a thumb does, the d-pad's down held.
     IEnumerator Lean(int hand, string element, Vector2 other)
     {
         var to = Toward(element);
@@ -110,7 +109,6 @@ public class HandsMenuProbe : ProbeScenario
         }
     }
 
-    // Down held, each stick to a new element, let go: the left attunes, then the right.
     IEnumerator PickBoth()
     {
         string left = Elements.First(e => e != Holds(HandsDef.Left) && Core.ElementOpen(Me, e));
@@ -144,7 +142,6 @@ public class HandsMenuProbe : ProbeScenario
         yield return Wait(0.6f);
     }
 
-    // The right trigger held: its icon shows, small, the other stays off; let go, it fires.
     IEnumerator Cast(CastHud hud)
     {
         heard.Take(Core);
@@ -169,7 +166,6 @@ public class HandsMenuProbe : ProbeScenario
         yield return Wait(1.6f);
     }
 
-    // B with the menu open lets go without attuning.
     IEnumerator Cancel()
     {
         string was = Holds(HandsDef.Left);
@@ -186,7 +182,6 @@ public class HandsMenuProbe : ProbeScenario
         Check("without_attuning", Holds(HandsDef.Left) == was, Holds(HandsDef.Left));
     }
 
-    // A run: away from the towers nothing can be picked; at one, its element, and the trigger casts it.
     IEnumerator InAHoldRun()
     {
         var site = Core.HoldSite;

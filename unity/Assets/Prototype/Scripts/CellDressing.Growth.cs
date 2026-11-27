@@ -13,11 +13,9 @@ public sealed partial class CellDressing
 {
     const float SaplingScale = 0.25f, SpringSeconds = 1.2f, FillOutSeconds = 3f;
 
-    // A tree the terrain doesn't draw: grown from a sapling here, or laid where the land had none.
     bool IsDrawnTree(LookDef look, int x, int y) =>
         look is { Baked: true } && grid.valley != null && grid.valley.NeedsTreeDrawn(x, y);
 
-    // A sapling (small) or a grown tree, at its trunk's spot when the valley drew a tree in this cell.
     void DressTree(Transform root, Vector3 surface, System.Random rng, int x, int y, bool sapling)
     {
         var foot = surface;

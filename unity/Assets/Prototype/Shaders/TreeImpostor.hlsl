@@ -16,20 +16,18 @@ TEXTURE2D(_AlbedoAtlas); SAMPLER(sampler_AlbedoAtlas);
 TEXTURE2D(_NormalAtlas); SAMPLER(sampler_NormalAtlas);
 
 CBUFFER_START(UnityPerMaterial)
-    float _Frames;      // views along the atlas's side (N)
-    float _FrameSize;   // one view's side as a share of the atlas (tile px / atlas px)
-    float _Radius;      // the tree's bounding sphere, object space (m)
-    float4 _Centre;     // its centre, object space
-    float _Cutoff;      // alpha clip
-    float _Wrap;        // how far round the light wraps onto the side away from it (leaves let light through)
-    float _Translucency; // light through the leaves, looking toward the sun
-    float _ShadowStrength; // how much of the shadows falling on it it takes (its own, cast from its centre plane, overshadow it)
+    float _Frames;
+    float _FrameSize;
+    float _Radius;
+    float4 _Centre;
+    float _Cutoff;
+    float _Wrap;
+    float _Translucency;
+    float _ShadowStrength;
     float4 _Tint;
     float _Debug;
 CBUFFER_END
 
-// Hemi-octahedral mapping: a direction of the upper hemisphere to a point of [-1, 1]^2 and back. The diamond
-// |x| + |z| <= 1 that the direction makes (its L1 length 1) turned 45 degrees fills the square.
 float2 ImpostorEncode(float3 d)
 {
     d.y = max(d.y, 0.0);
@@ -43,13 +41,11 @@ float3 ImpostorDecode(float2 c)
     return normalize(float3(x, 1.0 - abs(x) - abs(z), z));
 }
 
-// The direction view (i, j) of the grid was baked from (toward the camera that baked it).
 float3 ImpostorFrameDir(float2 cell)
 {
     return ImpostorDecode(cell / max(_Frames - 1.0, 1.0) * 2.0 - 1.0);
 }
 
-// A view's picture plane: right and up as Unity's LookRotation(-d, up) gives them (TreeImpostorBaker.Basis).
 void ImpostorBasis(float3 d, out float3 right, out float3 up)
 {
     float3 ref = abs(d.y) > 0.999 ? float3(0, 0, 1) : float3(0, 1, 0);
@@ -57,7 +53,6 @@ void ImpostorBasis(float3 d, out float3 right, out float3 up)
     up = cross(-d, right);
 }
 
-// The three views nearest direction v and their weights (summing to 1).
 void ImpostorFrames(float3 v, out float2 a, out float2 b, out float2 c, out float3 w)
 {
     float n1 = max(_Frames - 1.0, 1.0);
@@ -80,16 +75,16 @@ void ImpostorFrames(float3 v, out float2 a, out float2 b, out float2 c, out floa
 
 struct ImpostorAttributes
 {
-    float4 positionOS : POSITION; // the quad's corner, xy in [-1, 1]
+    float4 positionOS : POSITION;
     UNITY_VERTEX_INPUT_INSTANCE_ID
 };
 
 struct ImpostorVaryings
 {
     float4 positionCS : SV_POSITION;
-    float3 positionOS : TEXCOORD0;               // the quad's point, object space
-    nointerpolation float3 eyeOS : TEXCOORD1;    // the eye, object space
-    nointerpolation float4 cellsAB : TEXCOORD2;  // two of the three views
+    float3 positionOS : TEXCOORD0;
+    nointerpolation float3 eyeOS : TEXCOORD1;
+    nointerpolation float4 cellsAB : TEXCOORD2;
     nointerpolation float2 cellC : TEXCOORD3;
     nointerpolation float3 weights : TEXCOORD4;
     UNITY_VERTEX_INPUT_INSTANCE_ID
@@ -104,7 +99,6 @@ float3 _LightDirection;
 float3 ImpostorEye()
 {
 #ifdef IMPOSTOR_SHADOW
-    // The main light, a long way off along its direction: the rays come in all but parallel, as the shadow map sees them.
     float3 dirOS = normalize(TransformWorldToObjectDir(_LightDirection));
     return _Centre.xyz + dirOS * (_Radius * 200.0);
 #else
@@ -150,7 +144,6 @@ ImpostorVaryings ImpostorVertex(ImpostorAttributes input)
     return o;
 }
 
-// One view's albedo and normal-and-depth where the eye's ray (from o along r) crosses its plane; alpha 0 off it.
 void ImpostorSample(float2 cell, float3 o, float3 r, out float4 albedo, out float4 normalDepth)
 {
     float3 d = ImpostorFrameDir(cell);
@@ -173,7 +166,7 @@ struct ImpostorSurface
     float3 albedo;
     float alpha;
     float3 normalOS;
-    float3 positionOS; // on the tree's surface, the depth moved in
+    float3 positionOS;
 };
 
 ImpostorSurface ImpostorSurfaceOf(ImpostorVaryings input)
@@ -192,14 +185,12 @@ ImpostorSurface ImpostorSurfaceOf(ImpostorVaryings input)
     s.albedo = (a0.rgb * w.x + a1.rgb * w.y + a2.rgb * w.z) * k * _Tint.rgb;
     float3 n = (n0.xyz * w.x + n1.xyz * w.y + n2.xyz * w.z) * k * 2.0 - 1.0;
     s.normalOS = normalize(n + float3(0, 1e-4, 0));
-    // How far toward the eye the surface stood from the quad's plane, blended; the quad's point moved along the ray.
     float depth = ((n0.w * w.x + n1.w * w.y + n2.w * w.z) * k * 2.0 - 1.0) * _Radius;
     float3 v = normalize(o - _Centre.xyz);
     s.positionOS = input.positionOS - r * (depth / max(dot(-r, v), 0.2));
     return s;
 }
 
-// The clip-space depth of an object-space point, as SV_Depth wants it.
 float ImpostorDepth(float3 positionOS)
 {
     float4 cs = TransformWorldToHClip(TransformObjectToWorld(positionOS));

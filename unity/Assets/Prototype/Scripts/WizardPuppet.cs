@@ -28,7 +28,6 @@ public sealed class WizardPuppet
 
     public Vector3 Position => wizard.position;
 
-    /// <summary>Pushes the move stick toward a point, relative to the camera, until the wizard arrives.</summary>
     public IEnumerator WalkTo(Vector3 target)
     {
         var cam = Camera.main.transform;
@@ -55,7 +54,6 @@ public sealed class WizardPuppet
         if (to.sqrMagnitude > 0.01f) wizard.rotation = Quaternion.LookRotation(to);
     }
 
-    /// <summary>Turns the follow camera toward a point, easing by <paramref name="sharpness"/> per second.</summary>
     public void AimCamera(Vector3 point, float pitch, float sharpness)
     {
         if (cameraYaw == null) return;

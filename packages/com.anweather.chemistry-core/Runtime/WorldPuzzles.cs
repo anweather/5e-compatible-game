@@ -16,20 +16,17 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>One puzzle: its name, its top-left world cell, its rows and what each character lays (a terrain and water units).</summary>
     public sealed class Puzzle
     {
         public string Name;
         public int X, Y;
         public IReadOnlyList<string> Rows;
         public IReadOnlyDictionary<char, (string t, int water)> Legend;
-        /// <summary>The gates' legend characters, each with the character of the machine that alone opens it ("opensBy").</summary>
         public IReadOnlyDictionary<char, char> OpensBy = new Dictionary<char, char>();
 
         public int Width => Rows.Count == 0 ? 0 : Rows.Max(r => r.Length);
         public int Height => Rows.Count;
 
-        /// <summary>The world cells it lays, each with its terrain and water.</summary>
         public IEnumerable<(int x, int y, string t, int water)> Cells()
         {
             for (int j = 0; j < Rows.Count; j++)
@@ -37,7 +34,6 @@ namespace Chem
                     if (Legend.TryGetValue(Rows[j][i], out var lay)) yield return (X + i, Y + j, lay.t, lay.water);
         }
 
-        /// <summary>The world cells where a legend character stands, in row order.</summary>
         public IEnumerable<(int x, int y)> CellsOf(char ch)
         {
             for (int j = 0; j < Rows.Count; j++)
@@ -45,7 +41,6 @@ namespace Chem
                     if (Rows[j][i] == ch) yield return (X + i, Y + j);
         }
 
-        /// <summary>Each gate with an "opensBy" and the cell of its machine: the one cell its machine's character stands on.</summary>
         public IEnumerable<(int gx, int gy, int mx, int my)> Links() =>
             from link in OpensBy
             let machine = CellsOf(link.Value).ToList()
@@ -66,14 +61,12 @@ namespace Chem
 
         public IReadOnlyList<Puzzle> All => puzzles;
 
-        /// <summary>Reads world/puzzles.json from <paramref name="worldDir"/>; no file means no puzzles.</summary>
         public static WorldPuzzles Load(string worldDir)
         {
             var path = Path.Combine(worldDir, FileName);
             return File.Exists(path) ? FromJson(File.ReadAllText(path)) : Empty;
         }
 
-        /// <summary>The puzzles in the file's text. Throws <see cref="FormatException"/> for one that can't be read.</summary>
         public static WorldPuzzles FromJson(string json)
         {
             JObject doc;
@@ -106,10 +99,6 @@ namespace Chem
             return new Puzzle { Name = name, X = (int)at[0], Y = (int)at[1], Rows = lines, Legend = legend, OpensBy = opensBy };
         }
 
-        /// <summary>
-        /// What's wrong with the puzzles against these rules: terrain they lay that the rules don't know, and a gate
-        /// whose "opensBy" isn't one machine standing on one cell.
-        /// </summary>
         public IEnumerable<string> Check(Rules rules) =>
             (from p in puzzles
              from t in p.Legend.Values.Select(l => l.t).Distinct()
@@ -121,10 +110,6 @@ namespace Chem
              where !p.Legend.TryGetValue(link.Value, out var m) || m.t == null || !rules.Machines.ContainsKey(m.t) || p.CellsOf(link.Value).Count() != 1
              select $"{FileName}: {p.Name}'s '{link.Key}' opensBy '{link.Value}', which must be one machine on one cell");
 
-        /// <summary>
-        /// Lays every puzzle that fits wholly inside the world into its cells (one that doesn't, a smaller world's, is
-        /// left out), and links each gate with an "opensBy" to its own machine (World.LinkGate).
-        /// </summary>
         public void LayInto(World world)
         {
             foreach (var p in puzzles)

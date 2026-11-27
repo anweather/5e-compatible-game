@@ -14,18 +14,14 @@ public class WeatherFx : MonoBehaviour
 {
     static readonly Registry<WeatherFx> registry = new();
 
-    /// <summary>The first WeatherFx in play (what FindAnyObjectByType found), or null: see Registry.</summary>
     public static WeatherFx InPlay => registry.First;
 
     void Awake() => registry.Join(this);
 
     void OnDestroy() => registry.Leave(this);
 
-    /// <summary>The rain streaks' material (ChemYardBuilder makes it); no rain is drawn without one.</summary>
     public Material rainMaterial;
-    /// <summary>The snowflakes' material; no snow is drawn without one.</summary>
     public Material snowMaterial;
-    /// <summary>The lightning bolt's material, bright enough to bloom.</summary>
     public Material boltMaterial;
 
     const float SpeedOfSound = 343f;
@@ -40,7 +36,6 @@ public class WeatherFx : MonoBehaviour
     readonly System.Collections.Generic.HashSet<(int x, int y, int tick)> meteorsShown = new(), strikesShown = new();
     Chem.World seenWorld;
 
-    // The Meteor spell's look in the rules in force (its flames, blast and dust), from a wizard's spell visuals; a bare one without.
     static SpellVisuals.Entry MeteorLook()
     {
         var caster = SpellCaster.InPlay;
@@ -49,7 +44,6 @@ public class WeatherFx : MonoBehaviour
     }
     float rainShown, snowShown, windShown;
 
-    /// <summary>How hard the rain and the snow are drawn now, 0..1 (they ease toward the weather's), for the probe.</summary>
     public float RainShown => rainShown;
     public float SnowShown => snowShown;
 
@@ -79,8 +73,6 @@ public class WeatherFx : MonoBehaviour
         windLoop.volume = 0.15f * windShown * GameVolume.Ambience;
         Play(rainLoop, rainShown > 0.01f);
         Play(windLoop, windShown > 0.01f);
-        // Everything since the last tick seen, however many ticks this frame stepped (a new world
-        // counts from its own start).
         if (world != seenWorld)
         {
             seenWorld = world;
@@ -89,10 +81,8 @@ public class WeatherFx : MonoBehaviour
         if (world.Tick == seenTick) return;
         int since = seenTick;
         seenTick = world.Tick;
-        // Both from the tick before too: the core stamps them with a tick already seen here (as a flash, ChemGrid.RenderFlashes).
         foreach (var (x, y, tick) in world.StrikesSince(since - 1))
             if (strikesShown.Add((x, y, tick))) StartCoroutine(Strike(Ground(grid.CellCenter(x, y)), cam.transform.position));
-        // A meteor shower's meteors: each falls for the ticks until it lands, from beyond it as seen from here.
         foreach (var (x, y, lands, tick) in world.MeteorsSince(since - 1))
         {
             if (!meteorsShown.Add((x, y, tick))) continue;
@@ -108,8 +98,6 @@ public class WeatherFx : MonoBehaviour
         if (on && !source.isPlaying) source.Play();
         else if (!on && source.isPlaying) source.Stop();
     }
-
-    // --- rain -----------------------------------------------------------------
 
     ParticleSystem MakeRain()
     {
@@ -136,7 +124,6 @@ public class WeatherFx : MonoBehaviour
         renderer.renderMode = ParticleSystemRenderMode.Stretch;
         renderer.velocityScale = 0.045f;
         renderer.lengthScale = 1f;
-        // Drops passing right by the lens would fill the screen; keep them streaks.
         renderer.maxParticleSize = 0.006f;
         renderer.sharedMaterial = rainMaterial;
         renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -144,7 +131,6 @@ public class WeatherFx : MonoBehaviour
         return ps;
     }
 
-    // Falls over the camera, slanting downwind; dimmer at night.
     void Rain(Vector3 camera, int windDir)
     {
         rain.transform.position = camera + Vector3.up * 14f;
@@ -159,8 +145,6 @@ public class WeatherFx : MonoBehaviour
         float light = skyLight != null ? Mathf.Lerp(0.25f, 1f, skyLight.Daylight) : 1f;
         main.startColor = new Color(0.75f * light, 0.8f * light, 0.9f * light, 0.28f);
     }
-
-    // --- snow ---------------------------------------------------------------------
 
     ParticleSystem MakeSnow()
     {
@@ -182,7 +166,6 @@ public class WeatherFx : MonoBehaviour
         var velocity = ps.velocityOverLifetime;
         velocity.enabled = true;
         velocity.space = ParticleSystemSimulationSpace.World;
-        // Flakes flutter as they fall.
         var noise = ps.noise;
         noise.enabled = true;
         noise.strength = 0.6f;
@@ -197,7 +180,6 @@ public class WeatherFx : MonoBehaviour
         return ps;
     }
 
-    // Drifts down over the camera, carried downwind.
     void Snow(Vector3 camera, int windDir)
     {
         snow.transform.position = camera + Vector3.up * 10f;
@@ -210,7 +192,6 @@ public class WeatherFx : MonoBehaviour
         velocity.z = drift.z;
     }
 
-    /// <summary>The way a world direction (0..3, N E S W; north is -y, so -z in the scene) points.</summary>
     public static Vector3 Downwind(int dir) => dir switch
     {
         0 => Vector3.forward,
@@ -218,8 +199,6 @@ public class WeatherFx : MonoBehaviour
         2 => Vector3.back,
         _ => Vector3.left,
     };
-
-    // --- lightning --------------------------------------------------------------
 
     static Vector3 Ground(Vector3 p) =>
         Physics.Raycast(new Vector3(p.x, 400f, p.z), Vector3.down, out var hit, 800f, ~0, QueryTriggerInteraction.Ignore)
@@ -239,7 +218,6 @@ public class WeatherFx : MonoBehaviour
         StartCoroutine(Thunder(distance));
         for (float t = 0f; t < 0.35f; t += Time.deltaTime)
         {
-            // Two quick flickers, then fading.
             float k = 1f - t / 0.35f;
             float flicker = t < 0.06f || (t > 0.12f && t < 0.18f) ? 1f : 0.35f;
             flash.intensity = 40f * k * flicker;
@@ -250,7 +228,6 @@ public class WeatherFx : MonoBehaviour
         if (bolt != null) Destroy(bolt.gameObject);
     }
 
-    // A jagged line from the clouds down to the strike.
     LineRenderer Bolt(Vector3 at)
     {
         var line = new GameObject("Lightning bolt").AddComponent<LineRenderer>();
@@ -269,8 +246,6 @@ public class WeatherFx : MonoBehaviour
         return line;
     }
 
-    // Thunder arrives at the speed of sound: a new clap for every strike (ThunderSynth), made on a
-    // worker thread while the sound travels, a sharp crack close by and a low roll from far off.
     IEnumerator Thunder(float distance)
     {
         int seed = thunderRandom.Next();
@@ -289,8 +264,6 @@ public class WeatherFx : MonoBehaviour
         Destroy(go, clip.length + 0.2f);
         Destroy(clip, clip.length + 1f);
     }
-
-    // --- loops ------------------------------------------------------------------
 
     AudioSource MakeLoop(string name, AudioClip clip)
     {

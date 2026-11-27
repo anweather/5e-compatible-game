@@ -7,12 +7,10 @@ using UnityEngine;
 // ValleyTerrain, the bake whose last job was the ground pack.
 public static class EditorGround
 {
-    /// <summary>Where the map's chunks stand (map.json): the valley's, the map the yard is built for.</summary>
     public static TerrainGrid Layout => MapLand.Current?.Layout ?? TerrainGrid.Valley();
     static GameObject root;
     static Terrain[] terrains;
 
-    /// <summary>Builds the chunks from the map's ground/, with the template's prototypes and the terrains' material.</summary>
     public static void Open(TerrainData template, Material material)
     {
         Close();
@@ -21,7 +19,6 @@ public static class EditorGround
         terrains = MapTerrains.Place(root.transform, Layout, builder, material);
     }
 
-    /// <summary>Takes the chunks away again (before the scene is saved).</summary>
     public static void Close()
     {
         if (terrains != null)
@@ -32,7 +29,6 @@ public static class EditorGround
         root = null;
     }
 
-    /// <summary>The ground's height at a world point (the chunk under it, or the nearest one off the grid).</summary>
     public static float GroundAt(Vector3 p)
     {
         if (terrains == null) throw new System.InvalidOperationException("EditorGround.Open first: the ground is built only while the yard builds");

@@ -16,22 +16,15 @@ using UnityEngine;
 // (WizardStrike). Strength and timing are in Settings/CastFeel.asset.
 public partial class ItemHolder
 {
-    // How far ahead the fist lands and how much around it counts, in metres, at what height.
     const float PunchAhead = 0.9f, PunchRadius = 0.7f, PaneRadius = 1.2f, PunchHeight = 1f;
 
-    /// <summary>A punch: who threw it, what it's going to or has met, and the way it went.</summary>
     public readonly struct PunchLanding
     {
         public readonly ItemHolder Puncher;
-        /// <summary>The prop or item it knocks; null if none.</summary>
         public readonly PhysicsProp Prop;
-        /// <summary>The pane cell it strikes, when there's no prop; null if none.</summary>
         public readonly Vector2Int? Pane;
-        /// <summary>Another wizard by the fist, prop or not; null if none. The arm goes to it; whether it's hit is the core's (WizardStrike).</summary>
         public readonly Knockback Wizard;
-        /// <summary>Where the fist goes on what it met, or the middle of the air it punched.</summary>
         public readonly Vector3 Point;
-        /// <summary>The level way the punch goes.</summary>
         public readonly Vector3 Way;
 
         public PunchLanding(ItemHolder puncher, PhysicsProp prop, Vector2Int? pane, Knockback wizard, Vector3 point, Vector3 way)
@@ -44,15 +37,11 @@ public partial class ItemHolder
             Way = way;
         }
 
-        /// <summary>It knocked a thing or struck a pane.</summary>
         public bool Hit => Prop != null || Pane != null;
-        /// <summary>There's something for the fist to go to; otherwise it goes straight ahead.</summary>
         public bool Reached => Hit || Wizard != null;
     }
 
-    /// <summary>A punch has started, at what's in reach now.</summary>
     public event Action<PunchLanding> PunchStarted;
-    /// <summary>The fist has got there: once for each punch, hit or miss.</summary>
     public event Action<PunchLanding> PunchLanded;
 
     float punchLandsAt = -1f, nextPunch;
@@ -68,20 +57,14 @@ public partial class ItemHolder
         PunchStarted?.Invoke(InReachOfFist());
     }
 
-    /// <summary>
-    /// An empty hand's gesture in the Hold (rules/hold.json): a throw lets go of what's carried, and the rest are a punch, which
-    /// is all a free hand has today.
-    /// </summary>
     public void HandAct(string act)
     {
         if (act == "throw") Throw(hardThrow);
         else TryPunch(fromHand: true);
     }
 
-    /// <summary>Nothing stops the wizard punching right now.</summary>
     public bool MayPunchNow => MayPunchUnlessCasting((TryGetComponent<SpellCaster>(out var caster) && caster.CastInProgress) || beats.HandsBusy || (radial != null && radial.BusyThisFrame));
 
-    // A hand's own act is the cast that just went off, so it isn't one the punch would cancel.
     bool MayPunchUnlessCasting(bool cancelling) => Held == null && MayPunch(
         cancelling,
         Animal,
@@ -90,7 +73,6 @@ public partial class ItemHolder
         TryGetComponent<RollPose>(out var roll) && roll.Playing,
         TryGetComponent<DownedPose>(out var down) && down.Lying);
 
-    /// <summary>Whether the punch button punches: <paramref name="cancelling"/> is a cast under way or the radial open, which that press cancels.</summary>
     public static bool MayPunch(bool cancelling, bool animal, bool swimming, bool seated, bool rolling, bool downed) =>
         !cancelling && !animal && !swimming && !seated && !rolling && !downed;
 
@@ -105,18 +87,11 @@ public partial class ItemHolder
         PunchLanded?.Invoke(landing);
     }
 
-    // The puncher's flash at the fist: small, warm white, quick.
     const float FistFlash = 0.22f;
     static readonly Color FistFlashTint = new(1f, 0.93f, 0.75f, 1f);
 
-    /// <summary>How many of this wizard's punches have landed, as its puncher feels them (FistLanded), for the probe.</summary>
     public int FistHits { get; private set; }
 
-    /// <summary>
-    /// The puncher's own feel of a fist that lands, on its machine: on a thing or a pane here, on a wizard or a raider when the
-    /// core says the strike hit (WizardStrike; playtest 2026-11-08 B3, the puncher had nothing). The thud the one struck hears,
-    /// a small flash at the fist, and the stop, camera kick and pad rumble (CastImpact.Punched).
-    /// </summary>
     public void FistLanded(Vector3 at, Vector3 way)
     {
         FistHits++;
@@ -125,7 +100,6 @@ public partial class ItemHolder
         if (beats != null) CastImpact.Punched(beats, way);
     }
 
-    // A thing flies on from the fist, away from the wizard: the aim can be 70 degrees off where it stands.
     Vector3 AwayFromMe(PunchLanding landing)
     {
         var away = landing.Prop.transform.position - transform.position;
@@ -133,7 +107,6 @@ public partial class ItemHolder
         return away.sqrMagnitude > 1e-4f ? away.normalized : landing.Way;
     }
 
-    // What the fist would land on now.
     PunchLanding InReachOfFist()
     {
         var ahead = FrontArc(AimDirection);
@@ -166,7 +139,6 @@ public partial class ItemHolder
         return at;
     }
 
-    // The prop or item nearest the fist, not in anyone's hand.
     PhysicsProp NearestProp(Vector3 fist)
     {
         PhysicsProp best = null;
@@ -182,7 +154,6 @@ public partial class ItemHolder
         return best;
     }
 
-    // Another wizard by the fist, found by distance: other players' have no live collider on this machine (Forces).
     Knockback NearestWizard(Vector3 fist)
     {
         Knockback best = null;

@@ -14,14 +14,8 @@ using UnityEngine;
 // one frame stalled it (playtest F-0001: 199 ms on 0.1.5, 663 ms on dev).
 public partial class ChemGrid
 {
-    // --- fire ----------------------------------------------------------------------
-
-    // Burning cells (in the simulated chunks) past which gas draws on fewer cells.
     const int ThinFiresAt = 200;
-    // How long a retired smoke effect fades before it is reused.
     const float FxFadeSeconds = 1.5f;
-    // Smoke effects alive at once (fading ones too): past this a cell's smoke goes undrawn until
-    // it changes, rather than making ever more particle systems.
     const int MaxLiveFx = 320;
     int liveFx;
 
@@ -39,7 +33,6 @@ public partial class ChemGrid
 
     FlameBank flameBank;
 
-    /// <summary>The cells' flames as drawn (made with the first fire); null without its shader and sheets.</summary>
     public FlameBank Flames
     {
         get
@@ -49,13 +42,11 @@ public partial class ChemGrid
         }
     }
 
-    // Smoke over a fire takes its look: darker over wood, black over oil.
     void LookOfSmoke(View v, Cell c, string kind)
     {
         if (v.gas != null && kind == GasIds.Smoke) FireLook.SmokeOf(v.gas, c.Fire > 0 ? FireLookOf(c) : null);
     }
 
-    /// <summary>How a burning cell's fire looks (materials.json "fireLook"): its burning cover's, else its terrain's.</summary>
     string FireLookOf(Cell c)
     {
         var cover = World.CoverOf(c);
@@ -63,23 +54,17 @@ public partial class ChemGrid
         return World.TerrainOf(c).FireLook;
     }
 
-    // Gas drifts over many cells at once: its effects go on every other cell, and one in four when much burns.
-    // (Fire drawn per cell no longer thins: FlameBank costs what its pixels cost.)
     bool GasDrawnAt(int x, int y)
     {
         int burning = fireLights != null ? fireLights.BurningCount : 0;
         return burning < ThinFiresAt ? ((x + y) & 1) == 0 : (x & 1) == 0 && (y & 1) == 0;
     }
 
-    // New effects made in one frame, past which the rest wait for the next frames (the cells ask
-    // again each frame): a burst of smoke or flames would otherwise make dozens at once.
     const int MaxNewFxPerFrame = 3;
     int newFxFrame = -1, newFxThisFrame;
     Transform fxTemplates;
     readonly System.Collections.Generic.Dictionary<GameObject, GameObject> fxTemplate = new();
 
-    // An effect from the pool, or a new one (fresh: true) when none is free; null once this many
-    // are alive, or when this frame has made its share of new ones.
     GameObject TakeFx(GameObject prefab, Vector3 at, Quaternion turn, int limit, out bool fresh)
     {
         fresh = false;
@@ -104,20 +89,18 @@ public partial class ChemGrid
         liveFx++;
         PerfCounts.Add("fx.made");
         var made = MakeFx(prefab, at, turn);
-        made.SetActive(true); // a gas's copy in a look stands inactive
+        made.SetActive(true);
         fxPrefab[made] = prefab;
         fresh = true;
         return made;
     }
 
-    // A new effect, copied from its prefab's template.
     GameObject MakeFx(GameObject prefab, Vector3 at, Quaternion turn)
     {
         if (!fxTemplate.TryGetValue(prefab, out var template) || template == null) fxTemplate[prefab] = template = FxTemplate(prefab);
         return Instantiate(template, at, turn, transform);
     }
 
-    // A prefab's template: a copy kept under an inactive parent (so it never wakes), trimmed once (TrimFx).
     GameObject FxTemplate(GameObject prefab)
     {
         if (fxTemplates == null)
@@ -132,14 +115,6 @@ public partial class ChemGrid
         return template;
     }
 
-    /// <summary>
-    /// Sets an effect up to start cheaply, with nothing seen changed. Prewarm off: a prewarmed system simulates a whole
-    /// cycle when it starts (thousands of particle updates, collision included, for one smoke puff), and again each
-    /// time the pool replays it; a cell's gas or fire is better starting from nothing anyway. And no mesh on a renderer
-    /// that draws none: the pack's smoke is billboards with a sphere left in its mesh slot, and a renderer holding a
-    /// mesh was slow to wake each time, which was most of what a puff of smoke cost (#178: 5-10 ms to make one and as
-    /// much to wake a pooled one, in a player on the nine).
-    /// </summary>
     public static void TrimFx(GameObject fx)
     {
         foreach (var ps in fx.GetComponentsInChildren<ParticleSystem>(true))
@@ -151,7 +126,6 @@ public partial class ChemGrid
             if (drawn.renderMode != ParticleSystemRenderMode.Mesh && drawn.meshCount > 0) drawn.SetMeshes(System.Array.Empty<Mesh>());
     }
 
-    // Stops an effect emitting; once it has faded it goes back to the pool.
     void RetireFx(GameObject go)
     {
         if (go == null) return;
@@ -161,7 +135,6 @@ public partial class ChemGrid
         fadingFx.Add((go, Time.time + FxFadeSeconds));
     }
 
-    // A burst of sparks at a point, from the pool; false if none can be had this frame.
     bool Spark(Vector3 at)
     {
         var fx = TakeFx(sparksFx, at, Quaternion.identity, SparkLimit, out _);
@@ -170,8 +143,6 @@ public partial class ChemGrid
         return true;
     }
 
-    // Faded effects back into the pool, played sparks retired first, and waiting sparks tried
-    // again (those whose cell has lost its charge are dropped); call once a frame.
     void RecycleFx()
     {
         int tried = 0;
@@ -201,7 +172,6 @@ public partial class ChemGrid
         }
     }
 
-    // A new world's visuals start empty (its old children are destroyed).
     void ForgetFx()
     {
         if (fogBank != null) Destroy(fogBank.gameObject);
@@ -218,20 +188,13 @@ public partial class ChemGrid
         fadingFx.Clear();
         sparking.Clear();
         sparksWaiting.Clear();
-        // The templates nearly every fight needs are made with the world, not on the frame the first smoke rises.
         if (!Application.isPlaying) return;
         foreach (var prefab in new[] { smokeFx, steamFx, sparksFx })
             if (prefab != null) fxTemplate[prefab] = FxTemplate(prefab);
     }
 
-    // --- gas -----------------------------------------------------------------------
-
-    // Gas drifts over many cells at once, so effects go on every other cell (showFx) at
-    // reduced emission; a full effect per cell turns into a wall.
     void RenderGas(View v, Cell c, int x, int y, Vector3 center, float ground, bool showFx)
     {
-        // Fog, dust and every cloud are a bank of soft billboards on every square of them (FogBank), not an effect.
-        // A veil of weather's fog, on every open cell, isn't: the sky's distance fog draws that (SkyLight).
         bool veil = FogBank.IsVeil(c.Gas, c.GasAmt);
         bool fog = c.GasAmt > 0 && FogBank.Draws(c.Gas) && !veil;
         if (fog || v.fogged) Fog.Set(y * World.W + x, center, ground, fog ? c.GasAmt : 0, World.Rules.Sim.Gas.MaxAmount, c.Gas);
@@ -239,7 +202,6 @@ public partial class ChemGrid
         string kind = c.Gas != null && c.GasAmt > 0 && !fog && !veil ? c.Gas : null;
         var prefab = GasShowAt(kind, kind == GasIds.Steam ? steamFx : smokeFx, GasPrefab(kind), x, y);
         if (prefab != null && !showFx) kind = null;
-        // A cell whose effect waited (the frame's new effects were used up, or the budget was full) asks again.
         bool waiting = kind != null && prefab != null && v.gas == null;
         if (kind != v.gasKind || prefab != v.gasPrefab || (kind != null && prefab == null) || waiting) SwapGasEffect(v, kind, prefab, center, ground);
         if (kind == null) { Hide(v.gas); return; }
@@ -253,7 +215,6 @@ public partial class ChemGrid
 
     FogBank fogBank;
 
-    /// <summary>Fog Cloud's fog as drawn (made with the first fog).</summary>
     public FogBank Fog
     {
         get
@@ -277,9 +238,8 @@ public partial class ChemGrid
         v.gasPrefab = prefab;
         if (kind == null || prefab == null) return;
         Hide(v.gas);
-        // Smoke may use only part of the budget, so it never crowds out the flames.
         v.gas = TakeFx(prefab, new Vector3(center.x, ground + 0.3f, center.z), Quaternion.identity, MaxLiveFx * 3 / 5, out bool fresh);
-        if (!fresh) return; // pooled (its emission set already), or over budget
+        if (!fresh) return;
         float emission = kind == GasIds.Smoke ? 0.3f : 0.6f;
         foreach (var ps in v.gas.GetComponentsInChildren<ParticleSystem>())
         {
@@ -299,22 +259,11 @@ public partial class ChemGrid
             : materials.Lit("Smoke", GasColor(GasIds.Smoke, new Color(0.3f, 0.3f, 0.32f)), 0.1f);
     }
 
-    // --- charge --------------------------------------------------------------------
-
-    // Sparks alive at once (a charged pond needs a few to read as charged, not one per cell), and
-    // how long a burst plays before its effect goes back to the pool.
     const int SparkLimit = 24;
     const float SparkSeconds = 1f;
     readonly System.Collections.Generic.List<(GameObject go, float until)> sparking = new();
-    // Charged cells still waiting for their sparks (this frame's share was used up), tried again
-    // each frame while they stay charged. Only the sparks are retried, not the whole cell: a
-    // cell drawn again would also mark its water surface for working out again.
     readonly System.Collections.Generic.List<(View v, Cell c, Vector3 at)> sparksWaiting = new();
 
-    // With the sparks effect, a burst plays when a cell becomes charged, from the effects pool and a
-    // few new ones a frame (a cell that misses this frame's share asks again the next, while it is
-    // still charged); without it, a glowing plate shows while it is. Charged water flashes too, the
-    // whole connected pond at once (CellFxTexture, drawn by the water's shader: no objects).
     void RenderCharge(View v, Cell c, int x, int y, Vector3 center, float ground)
     {
         bool on = c.Charge > 0;
@@ -339,7 +288,6 @@ public partial class ChemGrid
         spark.GetComponent<Renderer>().sharedMaterial = materials.Lit("Charge", new Color(1f, 0.95f, 0.3f), 0.5f, new Color(1f, 0.9f, 0.2f) * 6f);
     }
 
-    // Let a particle effect finish its particles instead of popping out.
     static void Retire(GameObject go)
     {
         if (go == null) return;

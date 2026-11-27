@@ -14,7 +14,6 @@ public static class ProceduralFire
 {
     const int Rate = 44100;
 
-    /// <summary>A fire burning, made to loop (seconds long, crossfaded ends).</summary>
     public static float[] Loop(int seed, float seconds = 6f)
     {
         var r = new System.Random(seed);
@@ -26,7 +25,6 @@ public static class ProceduralFire
         return CrossfadeLoop(data, Rate * 3 / 10);
     }
 
-    /// <summary>Fire catching where a spell lands: a rushing whoomp, a thump, a burst of crackle and a short roar.</summary>
     public static float[] Burst(int seed)
     {
         var r = new System.Random(seed);
@@ -48,7 +46,6 @@ public static class ProceduralFire
         return data;
     }
 
-    /// <summary>A lightning zap (Shocking Grasp): strike, sizzle, sub-arcs, buzz and thump.</summary>
     public static float[] Zap(int seed)
     {
         var r = new System.Random(seed);
@@ -69,24 +66,20 @@ public static class ProceduralFire
         return data;
     }
 
-    // --- fire parts ----------------------------------------------------------------
-
-    // Burning gas: pink-ish noise, low-passed twice, its level flickering slowly at random.
     static void AddRoar(float[] data, System.Random r, float level)
     {
         float lpA = 0f, lpB = 0f, flicker = 0.8f, flickerTarget = 0.8f;
         for (int i = 0; i < data.Length; i++)
         {
-            if (i % 2205 == 0) flickerTarget = 0.55f + 0.45f * (float)r.NextDouble(); // a new target every 50 ms
+            if (i % 2205 == 0) flickerTarget = 0.55f + 0.45f * (float)r.NextDouble();
             flicker += (flickerTarget - flicker) * 0.0004f;
             float w = Noise(r);
-            lpA += 0.06f * (w - lpA);   // ~430 Hz
-            lpB += 0.015f * (w - lpB);  // ~105 Hz
+            lpA += 0.06f * (w - lpA);
+            lpB += 0.015f * (w - lpB);
             data[i] += (lpA * 2.2f + lpB * 5f) * flicker * level;
         }
     }
 
-    // The hiss of the flames: high-passed noise, faint, flickering faster than the roar.
     static void AddHiss(float[] data, System.Random r, float level)
     {
         float lp = 0f, am = 1f;
@@ -99,8 +92,6 @@ public static class ProceduralFire
         }
     }
 
-    // Crackle events between from and to seconds. rate(t) is ticks per second; ticks clump, since
-    // their rate is scaled by a slowly wandering "burstiness". pops are big snaps per second.
     static void AddCrackle(float[] data, System.Random r, float from, float to, Func<float, float> rate, float small, float pops)
     {
         float t = from, burst = 1f;
@@ -108,14 +99,13 @@ public static class ProceduralFire
         {
             burst = Mathf.Clamp(burst + ((float)r.NextDouble() - 0.5f) * 0.6f, 0.25f, 2.5f);
             float perSecond = Mathf.Max(0.5f, rate(t) * burst + pops);
-            t += -Mathf.Log(1f - (float)r.NextDouble()) / perSecond; // Poisson arrivals
+            t += -Mathf.Log(1f - (float)r.NextDouble()) / perSecond;
             if (t >= to) break;
             if (r.NextDouble() < pops / perSecond) Pop(data, r, t);
             else Tick(data, r, t, small * Pareto(r));
         }
     }
 
-    // A tiny resonant tick: a fibre bursting. Damped sinusoid, 1.5 to 7 kHz, under a millisecond, with a noise edge.
     static void Tick(float[] data, System.Random r, float at, float amplitude)
     {
         float f = 1500f + 5500f * (float)r.NextDouble();
@@ -123,7 +113,6 @@ public static class ProceduralFire
         Ring(data, r, at, f, tau, amplitude, noise: 0.5f);
     }
 
-    // A louder pop: a sap pocket bursting, lower and longer; sometimes a quick double or triple snap.
     static void Pop(float[] data, System.Random r, float at)
     {
         int snaps = r.NextDouble() < 0.3 ? 2 + r.Next(2) : 1;
@@ -136,9 +125,6 @@ public static class ProceduralFire
         }
     }
 
-    // --- lightning parts -----------------------------------------------------------
-
-    // The strike: a few milliseconds of full-band noise and an N-shaped pressure click.
     static void Strike(float[] data, System.Random r, float at, float amplitude)
     {
         int start = (int)(at * Rate), len = (int)(0.004f * Rate);
@@ -151,7 +137,6 @@ public static class ProceduralFire
         }
     }
 
-    // The sizzle: hundreds of very short, high crackles a second, dying away over a few tenths of a second.
     static void AddSizzle(float[] data, System.Random r)
     {
         float seconds = data.Length / (float)Rate, t = 0f;
@@ -166,7 +151,6 @@ public static class ProceduralFire
         }
     }
 
-    // The electric buzz: a jittery sawtooth near mains hum, band-passed, flickering, short.
     static void AddBuzz(float[] data, System.Random r)
     {
         var bp = new Biquad();
@@ -183,9 +167,6 @@ public static class ProceduralFire
         }
     }
 
-    // --- building blocks -----------------------------------------------------------
-
-    // A damped sinusoid with a noise edge, added at `at` seconds.
     static void Ring(float[] data, System.Random r, float at, float hz, float tau, float amplitude, float noise)
     {
         int start = (int)(at * Rate), len = Mathf.Min((int)(tau * 6f * Rate) + 1, data.Length - start);
@@ -197,13 +178,11 @@ public static class ProceduralFire
         }
     }
 
-    // Loudness for a crackle: Pareto-distributed, so most are quiet and a few are loud (capped at 1).
     static float Pareto(System.Random r) => Mathf.Min(1f, 0.08f / Mathf.Pow(1f - (float)r.NextDouble() * 0.999f, 1f / 1.6f));
 
     static float Noise(System.Random r) => (float)(r.NextDouble() * 2.0 - 1.0);
     static float Attack(float t, float seconds) => Mathf.Clamp01(t / seconds);
 
-    // Blends the last `fade` samples into the first ones and drops them, so the clip loops without a seam.
     static float[] CrossfadeLoop(float[] data, int fade)
     {
         int n = data.Length - fade;
@@ -217,7 +196,6 @@ public static class ProceduralFire
         return looped;
     }
 
-    // A biquad band-pass (RBJ cookbook), for sweeping or fixed resonances.
     sealed class Biquad
     {
         float b0, b1, b2, a1, a2, x1, x2, y1, y2;

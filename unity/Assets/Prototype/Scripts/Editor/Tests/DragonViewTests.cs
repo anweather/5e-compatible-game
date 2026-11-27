@@ -12,7 +12,6 @@ using UnityEngine;
 [OnTheValley]
 public class DragonViewTests
 {
-    // The Gauntlet's lava pit, its first booth (world/gauntlet.json, puzzles.json).
     const int LavaX = 303, LavaY = 433;
 
     static Rules Quick()
@@ -23,7 +22,6 @@ public class DragonViewTests
         return rules;
     }
 
-    // The whole valley's map is on the built yard's ChemGrid (ValleyBuilder writes it there).
     static void FlyAFlight(World world)
     {
         world.ApplyDragon(new DragonCommand());
@@ -48,7 +46,6 @@ public class DragonViewTests
         Assert.That(world.Golf, Is.Not.Null, "the ball is on its tee");
     }
 
-    // A stage the perf counts didn't know threw on every frame of a perf run, and no tick ran.
     [Test]
     public void ThePerfCountsNameEveryStageOfATick()
     {
@@ -79,11 +76,9 @@ public class DragonViewTests
             world.Step();
         }
         Assert.That(world.Dragon, Is.Null, "the flight ends");
-        // A quarter of a tick at the pass's speed, or a little more on the wheel round; a jump would be a chunk or more.
         Assert.That(worst, Is.LessThan(p.Speed * 2f), "cells between quarter ticks");
     }
 
-    // How big it's drawn, and what follows from that, comes from sim.json: a constant fails this.
     [Test]
     public void ItsSizeIsTheDatas()
     {
@@ -97,7 +92,6 @@ public class DragonViewTests
         Assert.That(DragonFlight.Cruise(modded), Is.EqualTo(DragonFlight.CruiseAtOne * 2.5f).Within(0.001f), "the flight's height goes with it");
     }
 
-    // On a pass it flies its scale's distance behind the core's breath, down the strip's middle.
     [Test]
     public void ABiggerDragonFliesFurtherBehindTheSameBreath()
     {
@@ -120,7 +114,6 @@ public class DragonViewTests
         Assert.That(bigger.Lead, Is.EqualTo(pose.Lead), "the fire stays where the core has it");
     }
 
-    // The funny bit: a whole roll or none, by the flight's hash, so every peer sees the same turns.
     [Test]
     public void ABarrelRollComesRoundToLevelAndIsTheSameOnEveryPeer()
     {

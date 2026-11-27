@@ -8,7 +8,6 @@ using UnityEngine;
 // the before and after pictures come from the same script.
 public class SlopeProbe : ProbeScenario
 {
-    // Measure: how far round the cast cell the water is looked for (a stream runs a cell a tick).
     const int Reach = 6, Search = 90, Measure = 40;
 
     protected override IEnumerator Run()
@@ -30,17 +29,13 @@ public class SlopeProbe : ProbeScenario
         var down = new Vector2Int(DirX(dir), DirY(dir));
         var at = grid.CellCenter(best.x, best.y);
         PlaceCell(best.x - down.x * 3, best.y - down.y * 3);
-        // From high on one side, over the hill and the way down it (a low camera sat inside the hill).
         var far = grid.CellCenter(best.x + down.x * Reach * 3, best.y + down.y * Reach * 3);
-        // A cell's centre is at the core's height; the valley's ground stands over it.
         at.y = grid.GroundAt(at);
         far.y = grid.GroundAt(far);
         var look = (at + far) / 2f;
         look.y = grid.GroundAt(look);
-        // From straight above, nearly: trees round a hillside hid it from the side.
         Cut(look + (at - far).normalized * 6f + Vector3.up * 20f, look);
         caster.Cast(SpellIds.CreateWater, best.x, best.y, dir);
-        // While it runs: close, from up the hill.
         yield return Wait(2.5f);
         foreach (var t in Terrain.activeTerrains) t.drawTreesAndFoliage = false;
         Cut(at + (at - far).normalized * 5f + Vector3.up * 4f, at + (far - at).normalized * 4f);
@@ -56,13 +51,11 @@ public class SlopeProbe : ProbeScenario
         Metric("ran_down_m", ranDown);
         Metric("centre_downhill_cells", centre);
         Check("water_runs_downhill", centre > 1.5f, $"the water's centre is {centre:0.0} cells down the hill from where it was cast; its lowest {ranDown:0.0} m below");
-        // The hillsides are wooded with the terrains' own trees: hidden for the picture, then back.
         foreach (var t in Terrain.activeTerrains) t.drawTreesAndFoliage = false;
         yield return Wait(0.3f);
         Shot("slope");
         yield return null;
         yield return null;
-        // Close, from up the hill: where it was cast and the first cells it ran down.
         Cut(at + (at - far).normalized * 5f + Vector3.up * 4f, at + (far - at).normalized * 4f);
         yield return Wait(0.3f);
         Shot("slope-close");
@@ -71,9 +64,6 @@ public class SlopeProbe : ProbeScenario
         foreach (var t in Terrain.activeTerrains) t.drawTreesAndFoliage = true;
     }
 
-    // Where the water went: its centre's distance down the hill from the cast cell, in cells (spread
-    // evenly it stays near 0; running downhill it moves down), how far below the cast its lowest wet
-    // ground is, and how much there is.
     (float centre, float ranDown, double units) WhereItWent(ValleyGround ground, Vector2Int best, Vector2Int down)
     {
         float top = ground.BaseHeight(best.x, best.y), lowest = top;
@@ -90,7 +80,6 @@ public class SlopeProbe : ProbeScenario
         return (units > 0 ? (float)(along / units) : 0f, top - lowest, units);
     }
 
-    // The dry, open cell near the start whose ground falls furthest over Reach cells in one direction.
     (Vector2Int at, int dir, float fall) Steepest(ValleyGround ground, Vector2Int start)
     {
         var best = (at: start, dir: 0, fall: 0f);
@@ -100,8 +89,6 @@ public class SlopeProbe : ProbeScenario
         return best;
     }
 
-    // The best so far, or this cell if one of its directions falls further (a hillside, not a cliff:
-    // over 6 m is a wall of the river's cut or the coast).
     (Vector2Int at, int dir, float fall) SteepestFrom(ValleyGround ground, int x, int y, (Vector2Int at, int dir, float fall) best)
     {
         for (int d = 0; d < 4; d++)
@@ -117,11 +104,9 @@ public class SlopeProbe : ProbeScenario
     {
         if (!World.InBounds(x, y)) return false;
         var c = World.At(x, y);
-        // Open ground: the woods' cells hide the water from the camera.
         return c != null && c.Water == 0 && (c.T == "grass" || c.T == "dirt") && !World.IsBlocking(c);
     }
 
-    // N, E, S, W as the core's directions (north is -y).
     static readonly int[] StepX = { 0, 1, 0, -1 }, StepY = { -1, 0, 1, 0 };
     static int DirX(int d) => StepX[d];
     static int DirY(int d) => StepY[d];

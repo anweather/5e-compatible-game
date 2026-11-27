@@ -8,13 +8,11 @@ using UnityEngine;
 // shows the shards of the breaks it sees.
 public static class ShardBurst
 {
-    // Most shards alive at once across every burst (the oldest go first past it).
     const int MaxShards = 600;
 
     static ParticleSystem shards;
     static Material material;
 
-    /// <summary>A burst of <paramref name="count"/> shards at <paramref name="at"/>, tinted toward <paramref name="tint"/> (a glow ball's light).</summary>
     public static void At(Vector3 at, Color tint, int count = 28)
     {
         var ps = Shards();
@@ -36,7 +34,6 @@ public static class ShardBurst
         }
     }
 
-    // A sharp sliver: a thin triangle, its point at the top, clear round it.
     static Texture2D Sliver(int size)
     {
         var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { name = "Glass sliver", wrapMode = TextureWrapMode.Clamp };
@@ -53,7 +50,6 @@ public static class ShardBurst
         return tex;
     }
 
-    // The one system, built in code: small sharp slivers that fall, bounce off the ground and fade.
     static ParticleSystem Shards()
     {
         if (shards != null) return shards;
@@ -62,7 +58,7 @@ public static class ShardBurst
         shards = go.AddComponent<ParticleSystem>();
         shards.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         var main = shards.main;
-        main.loop = true; // always playing: bursts are emitted into it, it never emits on its own
+        main.loop = true;
         main.playOnAwake = false;
         main.maxParticles = MaxShards;
         main.simulationSpace = ParticleSystemSimulationSpace.World;

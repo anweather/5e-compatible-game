@@ -36,7 +36,6 @@ public class ThrowPose : MonoBehaviour
         float wind = hands.Held != null ? hands.WindUp : 0f;
         if (wind > 0f)
         {
-            // Drawn back over the shoulder, the elbow up and out.
             var back = shoulder - forward * (0.15f + 0.3f * wind) + Vector3.up * (0.1f + 0.2f * wind) + right * 0.15f;
             LimbIK.Solve(arm, back, shoulder + right * 0.4f + Vector3.up * 0.1f - forward * 0.1f, Mathf.Clamp01(wind * 3f));
             hands.HoldInHand();
@@ -49,11 +48,9 @@ public class ThrowPose : MonoBehaviour
             thrownAt = -1f;
             return;
         }
-        // Whipped through: up and forward at the release, then down across the body.
         var through = Vector3.Lerp(shoulder + forward * 0.6f + Vector3.up * 0.15f, shoulder + forward * 0.45f - Vector3.up * 0.35f - right * 0.2f, t);
         float weight = Mathf.Lerp(0.6f, 1f, thrownWith) * (1f - Mathf.SmoothStep(0.5f, 1f, t));
         LimbIK.Solve(arm, through, shoulder + right * 0.4f - Vector3.up * 0.2f, weight);
-        // Still in the hand for the start of the whip (ItemHolder lets go a moment in).
         hands.HoldInHand();
     }
 }

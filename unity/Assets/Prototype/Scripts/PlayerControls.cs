@@ -45,7 +45,6 @@ using UnityEngine.InputSystem;
 // SeatInReach), it picks up, drops, sits or stands, and the hand and the spell stay put.
 public class PlayerControls : MonoBehaviour
 {
-    /// <summary>The pad's punch shares Circle with Cancel cast, which goes first (ItemHolder.MayPunch); Square only picks up and sits.</summary>
     public const string PadPunch = "<Gamepad>/buttonEast", PadInteract = "<Gamepad>/buttonWest";
 
     public InputAction Cast { get; private set; }
@@ -66,18 +65,12 @@ public class PlayerControls : MonoBehaviour
     public InputAction DpadNext { get; private set; }
     public InputAction DpadPrevious { get; private set; }
     public InputAction DpadCast { get; private set; }
-    /// <summary>The d-pad's down: held, the hands menu (HandsMenu); without the hands, the spell list (SpellListMenu).</summary>
     public InputAction OpenSpellList { get; private set; }
-    /// <summary>The hands (<see cref="HandPad"/>): each hand's two buttons, its thrust and its throw; both at once are its sweep.</summary>
     public InputAction ThrustLeft { get; private set; }
     public InputAction ThrustRight { get; private set; }
     public InputAction ThrowLeft { get; private set; }
     public InputAction ThrowRight { get; private set; }
 
-    /// <summary>
-    /// The layout: casting with the hands (the default), or with false the spell radial's, kept as a
-    /// debug tool (F2). The two share buttons, so each turns the other's bindings off.
-    /// </summary>
     public bool ElementPad
     {
         get => elementPad;
@@ -88,10 +81,6 @@ public class PlayerControls : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// The hands' layout, on wherever the rules have hands and the debug layout isn't (SpellCaster): the triggers, bumpers,
-    /// clicks, Q and E are hands' gestures, so what else they do is off. The d-pad and Cancel stay.
-    /// </summary>
     public bool HandPad
     {
         get => handPad;
@@ -103,10 +92,6 @@ public class PlayerControls : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// The Hold's offer between waves is open (ProgressKeeper): the pad's d-pad chooses an upgrade and takes it, so the kit's
-    /// d-pad buttons are off until it closes. The keyboard's stay.
-    /// </summary>
     public bool OfferPad
     {
         get => offerPad;
@@ -118,19 +103,15 @@ public class PlayerControls : MonoBehaviour
         }
     }
 
-    /// <summary>Set by ItemHolder: an item is in reach or in hand, so the E key goes to it.</summary>
     public bool ItemInReach { get; set; }
 
-    /// <summary>Set by Sitter: a seat is in reach or the wizard is sitting, so the E key goes to it.</summary>
     public bool SeatInReach { get; set; }
 
-    /// <summary>True when the last control the player touched was on a gamepad.</summary>
     public bool UsingGamepad { get; private set; }
 
     InputAction[] all;
     InputAction swapLayout;
     bool elementPad = true, handPad, offerPad;
-    // Each layout's own bindings, by action and index.
     (InputAction action, int binding)[] radialOnly, elementOnly, handsTake, kitDpad;
 
     void Awake()
@@ -179,7 +160,6 @@ public class PlayerControls : MonoBehaviour
         {
             (CancelCast, 1), (DpadNext, 1), (DpadPrevious, 1), (DpadCast, 1), (OpenSpellList, 0), (Roll, 2),
         };
-        // The mouse's clicks, Q and E are the hands'; so are the radial's keyboard keys, which stay the debug layout's.
         handsTake = new[]
         {
             (Cast, 0), (Throw, 1), (NextSpell, 0), (NextElement, 1),
@@ -189,7 +169,6 @@ public class PlayerControls : MonoBehaviour
         ApplyPadLayout();
     }
 
-    // An override to an empty path switches a binding off.
     void ApplyPadLayout()
     {
         Switch(radialOnly, !elementPad && !handPad);
@@ -216,7 +195,6 @@ public class PlayerControls : MonoBehaviour
 
     void Track(InputAction.CallbackContext ctx) => UsingGamepad = ctx.control.device is Gamepad;
 
-    // Movement and look belong to Starter Assets, so watch the devices too.
     void Update()
     {
         if (swapLayout.WasPressedThisFrame())
@@ -231,22 +209,18 @@ public class PlayerControls : MonoBehaviour
             UsingGamepad = false;
     }
 
-    /// <summary>Next spell was pressed this frame, unless it was the E key and E went to an item.</summary>
     public bool NextSpellPressed() =>
         NextSpell.WasPressedThisFrame() && !((ItemInReach || SeatInReach) && NextSpell.activeControl?.device is Keyboard);
 
-    /// <summary>The right hand's throw was pressed this frame, unless it was the E key and E went to an item or a seat.</summary>
     public bool ThrowRightPressed() =>
         ThrowRight.WasPressedThisFrame() && !((ItemInReach || SeatInReach) && ThrowRight.activeControl?.device is Keyboard);
 
-    /// <summary>A cast button was pressed this frame, of any way of casting: Cast, a hand or the d-pad's cast.</summary>
     public bool AnyCastPressed()
     {
         if (handPad && (ThrustLeft.WasPressedThisFrame() || ThrustRight.WasPressedThisFrame() || ThrowLeft.WasPressedThisFrame() || ThrowRightPressed())) return true;
         return Cast.WasPressedThisFrame() || DpadCast.WasPressedThisFrame();
     }
 
-    /// <summary>The element (0-7, radial order) of the number key pressed this frame, or -1.</summary>
     public int PickedElement()
     {
         if (!PickElement.WasPressedThisFrame() || PickElement.activeControl == null) return -1;

@@ -17,32 +17,24 @@ using Debug = UnityEngine.Debug;
 // in themselves. An account that can't use the chat's model is told so: there's never a second run (#64).
 public sealed class ClaudeChat : IChatHarness
 {
-    /// <summary>How long one message may run before it's stopped.</summary>
     const int MostSeconds = 240;
     const int StopWaitMs = 2000;
 
-    /// <summary>What the chat shows next: words, a tool in use, the end, or a failure with its reason.</summary>
     readonly ConcurrentQueue<(ClaudeSaid said, string text)> heard = new();
     Process running;
     string lastError = "";
     volatile bool timedOut, stopped;
 
-    /// <summary>A program to run instead of claude, for the probe's stand-in; empty, for no claude at all.</summary>
     public static string StandIn { get; set; }
 
-    /// <summary>Told each raw line and its clock, on the reading thread: the real-prompt probe keeps the stream, to check the record against. Null in play.</summary>
     public static Action<string, long> Tap { get; set; }
 
-    /// <summary>More arguments for claude, for the real-prompt probe's comparisons (a model, less context). Null in play.</summary>
     public static IReadOnlyList<string> Extra { get; set; }
 
-    /// <summary>A model for the real-prompt probe's comparisons, in place of the chat's own. Null in play.</summary>
     public static string Model { get; set; }
 
-    /// <summary>For the real-prompt probe's comparison: the notes stay in their file, and the message goes without them. False in play.</summary>
     public static bool NotesOff { get; set; }
 
-    // Each Play mode starts from these, with the domain reload off too (Enter Play Mode Options): a probe sets them.
     [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ResetStatics()
     {
@@ -53,18 +45,14 @@ public sealed class ClaudeChat : IChatHarness
         NotesOff = false;
     }
 
-    /// <summary>Whether a message is still being answered.</summary>
     public bool Busy => running != null;
 
-    /// <summary>Where claude is, or null if it isn't installed.</summary>
     public static string FindClaude() =>
         StandIn == "" ? null : StandIn ?? Locate(ChatSetup.ProgramPath);
 
-    /// <summary>Where this path leads (ChatSetup's), or null if nothing's there.</summary>
     public static string Locate(string path) =>
         ClaudeRun.Resolve(path, Environment.GetEnvironmentVariable("PATH"), Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), File.Exists);
 
-    /// <summary>The next thing heard, on the main thread; false when there's nothing yet.</summary>
     public bool Take(out (ClaudeSaid said, string text) line)
     {
         if (!heard.TryDequeue(out line)) return false;
@@ -72,7 +60,6 @@ public sealed class ClaudeChat : IChatHarness
         return true;
     }
 
-    /// <summary>Starts one process for this message, in a folder ready for it. False, with the reason heard, if it can't.</summary>
     public bool Send(string message, string folder, string url, ChatRecorder recorder, Func<long> clock)
     {
         if (Busy) return false;
@@ -115,7 +102,6 @@ public sealed class ClaudeChat : IChatHarness
         return start;
     }
 
-    /// <summary>A run of this install with its streams taken, and the game's key out of its environment.</summary>
     public static ProcessStartInfo Starting(string claude, string folder, string arguments)
     {
         bool script = claude.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase);
@@ -139,7 +125,6 @@ public sealed class ClaudeChat : IChatHarness
         if (File.Exists(notes)) File.WriteAllText(notes, ClaudeRun.Trimmed(File.ReadAllText(notes)));
     }
 
-    // On its own thread: the message's whole life. A failure is told once the process has gone, as what's told depends on how it ended.
     void Follow(Process process, string model, byte[] input, ChatRecorder recorder, Func<long> clock)
     {
         string failure = Hear(process, input, recorder, clock);
@@ -153,10 +138,8 @@ public sealed class ClaudeChat : IChatHarness
         if (failure != null) heard.Enqueue((ClaudeSaid.Failed, told));
     }
 
-    // What the player listed for claude's environment, cut from all it says before anyone keeps it.
     static string[] secrets = Array.Empty<string>();
 
-    // The message in, each line out, and a watchdog so one that never ends can't hold the chat. Null if the process said it was done, else what went wrong.
     string Hear(Process process, byte[] input, ChatRecorder recorder, Func<long> clock)
     {
         using var watchdog = new Timer(_ =>
@@ -210,7 +193,6 @@ public sealed class ClaudeChat : IChatHarness
         }
     }
 
-    /// <summary>Stops a message in progress: the player asked, or the game is closing.</summary>
     public void Cancel()
     {
         if (running == null) return;

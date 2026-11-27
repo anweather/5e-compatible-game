@@ -8,13 +8,10 @@ public static class WindowsCaptureDevice
 {
     const int Capture = 1, Console = 0, Communications = 2;
 
-    /// <summary>Windows' default recording device, or null if it won't say.</summary>
     public static string Default() => Name(Console);
 
-    /// <summary>Windows' default communications recording device, which can be a different one.</summary>
     public static string ForCalls() => Name(Communications);
 
-    /// <summary>The device a name like "Microphone (2- Scarlett 2i2 USB)" is on; the whole name if it isn't like that.</summary>
     public static string Short(string name)
     {
         if (name == null) return null;

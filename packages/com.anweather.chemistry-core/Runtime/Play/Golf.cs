@@ -22,20 +22,13 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>sim.json's "golf": how far a spell's force sends the ball and how much room the course has.</summary>
     public sealed class GolfParams
     {
-        /// <summary>The ball moves a cell every this many ticks.</summary>
         public int Every = 1;
-        /// <summary>Cells it rolls for each point of a spell's force push, and flies for each point of its throw.</summary>
         public int PushRoll = 5, ThrowCarry = 3;
-        /// <summary>Cells round the tee and the hole that are still the course; past them it's out of bounds.</summary>
         public int Margin = 16;
-        /// <summary>Cells more a spell with no force sends it for each level, over a point of push.</summary>
         public int LevelRoll = 2;
-        /// <summary>The ticks a player who hit the ball waits for someone else's shot.</summary>
         public int TurnTicks = 90;
-        /// <summary>Cells round a placed cup that drop the ball in; the valley's hole takes only its own cell.</summary>
         public int CupReach = 1;
 
         internal static GolfParams Parse(JToken t)
@@ -53,7 +46,6 @@ namespace Chem
         }
     }
 
-    /// <summary>Puts the ball on the tee of a hole (the tee's cell and the hole's), a new round with no strokes.</summary>
     public readonly struct GolfCommand
     {
         public GolfCommand(int teeX, int teeY, int holeX, int holeY)
@@ -71,7 +63,6 @@ namespace Chem
 
         public const string FileName = "golf.json";
 
-        /// <summary>The course in world/golf.json (tee and hole, grid cells), or null without the file.</summary>
         public static GolfCommand? Load(string worldDir)
         {
             string path = Path.Combine(worldDir, FileName);
@@ -83,21 +74,14 @@ namespace Chem
         }
     }
 
-    /// <summary>
-    /// The hole being played: the tee and the hole, where the ball is, the strokes so far, whether it's in, and the way
-    /// on it: the way it's going, cells still to fly (Carry) and then to roll (Roll), and its age in ticks.
-    /// </summary>
     public sealed class GolfState
     {
         public int TeeX, TeeY, HoleX, HoleY, X, Y, Strokes, Dir, Roll, Carry, Age;
         public bool Holed;
-        /// <summary>Who hit it last, null until a player's cast has, and the tick they may hit it again though others are playing.</summary>
         public string LastBy;
         public int TurnEnds;
-        /// <summary>An act placed this round. Until both are placed one of the two is missing, and its cell is the other's.</summary>
         public bool Placed, NoBall, NoCup;
         public bool Moving => !Holed && (Roll > 0 || Carry > 0);
-        /// <summary>Both are there and the ball isn't in yet: a spell can hit it.</summary>
         public bool InPlay => !Holed && !NoBall;
         internal bool Plain => LastBy == null && !Placed;
         internal GolfState Copy() => (GolfState)MemberwiseClone();

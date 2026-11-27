@@ -22,7 +22,6 @@ public class SwellProbe : ProbeScenario
         yield return Wait(4f);
         Check("swims_at_sea", surface.Swimming, "SurfaceEffects.Swimming");
 
-        // Six seconds of the wizard's height against the wave under it.
         var heights = new List<float>();
         var waves = new List<float>();
         var times = new List<float>();
@@ -44,10 +43,6 @@ public class SwellProbe : ProbeScenario
             $"the wizard rose and fell {rise:0.00} m over a {wave:0.00} m swell (correlation {r:0.00})");
     }
 
-    // Where to float: 30 m seaward of the map's shore, which is the sea on the valley. A map whose shore origin isn't its sea (the nine
-    // keeps the valley's (0, 0), in the middle of its land: the wizard was put 107 m under a mountain and fell 1,330 m, #215)
-    // gets a spot in its sea with open sea round it, a floor below the surface, and the swell's full reach (it fades toward the
-    // shore map's edge): the first by a scan from its middle row outward, else the first of its open sea.
     Vector2 SeaSpot(Ocean ocean)
     {
         var shore = ocean.shoreOrigin + ocean.seaward.normalized * 30f;
@@ -77,7 +72,6 @@ public class SwellProbe : ProbeScenario
         return null;
     }
 
-    // A cell of the sea with sea round it, 8 cells each way.
     static bool OpenSea(MapLand land, int cx, int cy)
     {
         for (int y = cy - 8; y <= cy + 8; y += 4)
@@ -97,8 +91,6 @@ public class SwellProbe : ProbeScenario
         return hi - lo;
     }
 
-    // Pearson correlation, with the wave a quarter second ahead (the float lags behind its target): by the clock, not by frames,
-    // since a frame is 30 ms on the valley and over 250 ms in the Editor on the nine (#215).
     static float Correlation(List<float> a, List<float> b, List<float> times)
     {
         const float Lag = 0.25f;

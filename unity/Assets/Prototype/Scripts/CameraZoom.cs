@@ -23,8 +23,6 @@ public class CameraZoom : MonoBehaviour
         float input = controls.Zoom.ReadValue<float>();
         if (Mathf.Approximately(input, 0f)) return;
 
-        // The d-pad reports -1/1 while held. Wheels and trackpads report deltas of very
-        // different sizes per platform, so each scroll event moves at most one step.
         float change = controls.UsingGamepad ? input * padSpeed * Time.deltaTime : -Mathf.Clamp(input * 0.1f, -wheelStep, wheelStep);
         follow.CameraDistance = Mathf.Clamp(follow.CameraDistance + change, minDistance, maxDistance);
     }

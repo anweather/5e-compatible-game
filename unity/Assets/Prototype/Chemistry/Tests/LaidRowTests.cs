@@ -17,7 +17,6 @@ namespace Chem.Tests
         static WorldBuildings Valley => WorldBuildings.Load(LandFolders.WorldDir());
         static JObject Row => Valley.FileRows.Single(r => (string)r["id"] == Hold);
 
-        // The valley's corner the hold stands in, as grass, with the rows laid.
         static World Laid(out BuildingRow row, Rules rules = null)
         {
             var w = new World(rules ?? Rules, 576, 576, 7);
@@ -30,7 +29,6 @@ namespace Chem.Tests
 
         static List<BuildingCell> Cells(BuildingRow row, World w) => BuildingRaster.Cells(row, w.Rules.Buildings);
 
-        // Every open cell reached on foot from here, north, east, south and west.
         static HashSet<(int x, int y)> Walked(World w, (int x, int y) from, int x0, int y0, int x1, int y1)
         {
             var seen = new HashSet<(int, int)> { from };
@@ -148,7 +146,6 @@ namespace Chem.Tests
             Assert.That(gate.All(c => !w.IsBlocking(w.At(c.X, c.Y))), "burnt through, it's a way in");
         }
 
-        // The east gate's cells: the open gate furthest east (the south gate is the other, since hold-east-path).
         static List<BuildingCell> EastGate(BuildingRow row, World w)
         {
             var open = Cells(row, w).Where(c => c.Terrain == Open).ToList();
@@ -170,7 +167,6 @@ namespace Chem.Tests
             Assert.That(walked.Contains((row.X + 12, row.Y + 19)), "the keep's hall");
             Assert.That(walked.Contains((row.X + 22, row.Y + 8)), "the foot of the north stair");
             Assert.That(walked.Contains((row.X + 22, row.Y + 26)), "the foot of the south stair");
-            // Both gates shut (the south one since hold-east-path) keep the court shut.
             w.ApplyEffect(new EffectCommand(EffectKind.Swing, row.X + 28, row.Y + 15, null));
             var south = cells.Where(c => c.Terrain == Open).OrderByDescending(c => c.Y).First();
             w.ApplyEffect(new EffectCommand(EffectKind.Swing, south.X, south.Y, null));
@@ -197,8 +193,6 @@ namespace Chem.Tests
             var byX = road.Select(c => c.X).Distinct().OrderBy(x => x).ToList();
             Assert.That(byX.Zip(byX.Skip(1), (a, b) => b - a).All(d => d == 1), "no gap in it");
         }
-
-        // ---------- a mod's own, within the budgets ----------
 
         const string Second = @"{ ""world"": { ""buildings"": { ""second#1"": {
             ""at"": [40, 40], ""style"": ""stronghold"", ""level"": true,

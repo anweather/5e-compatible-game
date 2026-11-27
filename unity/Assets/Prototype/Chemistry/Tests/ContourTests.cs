@@ -1,3 +1,4 @@
+// The view's smooth noise and the rounded outlines of water and slicks (ValueNoise, CellContour).
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -5,7 +6,6 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>The view's smooth noise and the rounded outlines of water and slicks (ValueNoise, CellContour).</summary>
     [Category("Simulation")]
     public class ContourTests
     {
@@ -62,7 +62,6 @@ namespace Chem.Tests
             CollectionAssert.AreEqual(expected.Triangles, actual.Triangles, what + ": triangles");
         }
 
-        // Patches scattered over a wide box, in-between values as a bank has, some on the box's edge.
         static Dictionary<(int x, int y), float> Patches(int seed)
         {
             var rng = new Random(seed);
@@ -78,8 +77,6 @@ namespace Chem.Tests
             return cells;
         }
 
-        // The specs water and slicks really use, one whose noise alone would reach the iso value (so
-        // nothing may be skipped), and one with a coarser lattice and a lower iso value.
         static readonly ContourSpec[] SkippingSpecs =
         {
             new ContourSpec(4, 0.5f, 0.7f, 31), new ContourSpec(4, 0.5f, 0.8f, 47),
@@ -105,7 +102,6 @@ namespace Chem.Tests
         [Test]
         public void AReusedContourDrawsWhatAFreshOneDoes()
         {
-            // Big box, then small, then big: the arrays kept from the first must not leak into the rest.
             Func<int, int, float> value = (x, y) => (x - 8) * (x - 8) + (y - 4) * (y - 4) < 12 ? 1f : 0f;
             var kept = new CellContour(Wobbly);
             var mesh = new ContourMesh();
@@ -121,9 +117,6 @@ namespace Chem.Tests
         [Test]
         public void AReusedTileDrawsWhatAFreshOneDoesAndKeepsItsNoise()
         {
-            // A tile keeps its lattice's noise between redraws (the water's and slicks' tiles): as its
-            // water grows, and once its box moves, it must draw what a fresh contour does, and a redraw
-            // over the same points works no noise out again.
             var kept = new CellContour(Wobbly) { Tiled = true };
             var mesh = new ContourMesh();
             foreach (var (x0, r) in new[] { (0, 3), (0, 5), (0, 7), (8, 7), (8, 4) })
@@ -143,8 +136,6 @@ namespace Chem.Tests
         [Test]
         public void TilesSideBySideCoverWhatOneTileDoes()
         {
-            // A wobbly blob across where two tiles meet (x 0..7 and 8..15): together they cover
-            // what one tile over both does, so they neither overlap nor leave a gap.
             Func<int, int, float> value = (x, y) => (x - 8) * (x - 8) + (y - 4) * (y - 4) < 12 ? 1f : 0f;
             float Tile(int x0, int x1)
             {

@@ -1,3 +1,4 @@
+// fauna-read (bodies-and-surfaces.md sections 1, 3 and 4; #80 parts 3 and 4): Claude reads the bodies it can't see.
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -6,14 +7,12 @@ using NUnit.Framework;
 
 namespace Chem.Tests
 {
-    /// <summary>fauna-read (bodies-and-surfaces.md sections 1, 3 and 4; #80 parts 3 and 4): Claude reads the bodies it can't see.</summary>
     [Category("Simulation")]
     public class FaunaReadTests
     {
         static Workbench bench;
         static Workbench Bench => bench ??= new Workbench(ChemistryTests.Folders);
 
-        // "...; 1.4 m tall, 1.6 m long, ..." as (tall, long).
         static (double tall, double length) Size(string described)
         {
             var m = Regex.Match(described, @"([\d.]+) m tall, ([\d.]+) m long");
@@ -87,7 +86,6 @@ namespace Chem.Tests
             Assert.That(outside, Does.Contain("one coat").And.Contain("coat own isn't drawn yet"));
         }
 
-        // #80 part 3
         [Test]
         public void WhatsOnSaysANewSpeciesAndAChangedPart()
         {
@@ -101,7 +99,6 @@ namespace Chem.Tests
             Assert.That(b.WhatsOn(), Does.Contain("2. Big deer: Deer: size from"));
         }
 
-        // #80 part 4
         [Test]
         public void AVariantKeepsOnlyTheHabitsItsReaderTakes()
         {

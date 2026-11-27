@@ -7,7 +7,7 @@ using System.Globalization;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 
-#pragma warning disable S107 // a tool's parameters are its schema (RulesTools)
+#pragma warning disable S107
 
 namespace Chem.Mcp
 {
@@ -18,7 +18,6 @@ namespace Chem.Mcp
 
         static bool IsThingTable(string table) => table == "entities" || table == "items";
 
-        /// <summary>A new kind of thing to carry, with the look that draws it.</summary>
         public Draft AddItem(string draftId, string id, string name, double? mass, string material, string look, string extra)
         {
             var entry = NewThing("items", id, name, material, look, extra);
@@ -26,7 +25,6 @@ namespace Chem.Mcp
             return PutThing(draftId, "items", id.Trim(), entry);
         }
 
-        /// <summary>A new kind of prop, with the look that draws it.</summary>
         public Draft AddEntity(string draftId, string id, string name, int? hp, int? mass, string material, string look, string extra)
         {
             var entry = NewThing("entities", id, name, material, look, extra);
@@ -52,7 +50,6 @@ namespace Chem.Mcp
             return entry;
         }
 
-        // The look as the rules keep it, each parameter checked as set_look checks it.
         JObject ThingLook(string table, string json)
         {
             if (!(Value(json) is JObject given)) throw new RulesToolException("look is a JSON object, such as {\"family\": \"creature\", \"species\": ..., \"color\": [1, 0.8, 0.2], \"scale\": 1}.");
@@ -75,7 +72,6 @@ namespace Chem.Mcp
             return draft;
         }
 
-        /// <summary>A thing of this kind on this cell, appended to its chunk's list by the mod.</summary>
         public Draft AddThing(string draftId, string kind, string at, double? chance, double? rot)
         {
             kind = Required(kind, "kind");
@@ -100,7 +96,6 @@ namespace Chem.Mcp
 
         static string CellKey(JToken cell) => string.Format(CultureInfo.InvariantCulture, "{0},{1}", (int)cell[0], (int)cell[1]);
 
-        // apply's words for one row of the draft.
         static string ThingChange(Draft draft, string key)
         {
             var row = (draft.Patch["world"]?["add"] as JArray)?.FirstOrDefault(t => CellKey(t["cell"]) == key);
@@ -112,7 +107,6 @@ namespace Chem.Mcp
         static IEnumerable<JToken> ThingsIn(Dictionary<string, JToken> raw) =>
             raw.TryGetValue(Rules.WorldThingsKey, out var rows) ? rows : Enumerable.Empty<JToken>();
 
-        // list things: what the mods on add, and which of those are in this world.
         IEnumerable<string> ModThingLines() =>
             OnWorld(w =>
             {

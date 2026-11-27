@@ -15,12 +15,10 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    /// <summary>The continent's core (the theme in full) and fade band, in cells round the origin.</summary>
     public sealed class Continent
     {
         public double CoreHalf, FadeEnd;
 
-        /// <summary>1 inside the core, easing to 0 across the fade band, 0 beyond (Chebyshev, cell centres).</summary>
         public double FadeAt(int x, int y)
         {
             double d = Math.Max(Math.Abs(x + 0.5), Math.Abs(y + 0.5));
@@ -35,9 +33,7 @@ namespace Chem
     {
         public string Id, Look;
         public Blob Blob;
-        /// <summary>Higher paints over lower.</summary>
         public int Priority;
-        /// <summary>The start setting's zone ignores the fade and always paints.</summary>
         public bool Start;
     }
 
@@ -50,31 +46,24 @@ namespace Chem
     public sealed class BpRiver
     {
         public string Id, Material;
-        /// <summary>A course with nothing in it ("dry"): it lays out as a river does (and what's along it), but fills no cell and cuts no channel.</summary>
         public bool Dry;
         public GeoPath Path;
-        /// <summary>The in-core anchors (source, lakes passed through, mouth).</summary>
         public List<Pt> Anchors;
     }
 
-    /// <summary>A solved influence: a soft field over the continent tilting the land toward a look.</summary>
     public sealed class BpInfluence
     {
         public string Id, Look;
         public double Strength, Falloff, Edge;
-        /// <summary>continent, blob, around or along.</summary>
         public string Shape;
         public Blob Blob;
         public GeoPath Path;
-        /// <summary>Cells (around / along).</summary>
         public double Reach;
-        /// <summary>Scattered blobs covering a share of the field; lattice in cells. Zero share for none.</summary>
         public double PatchShare, PatchLattice;
         public string HeartTerrain;
         public double HeartAbove;
         public bool OntoAny, OntoFiller;
         public List<string> OntoLooks = new List<string>();
-        /// <summary>Declaration order: later influences sit inside earlier ones where they overlap.</summary>
         public int Order;
     }
 
@@ -84,18 +73,15 @@ namespace Chem
         public int Seed;
         public Continent Continent;
         public string StartSetting;
-        /// <summary>Lowest priority first.</summary>
         public List<BpZone> Zones = new List<BpZone>();
         public List<BpLake> Lakes = new List<BpLake>();
         public List<BpRiver> Rivers = new List<BpRiver>();
         public List<BpInfluence> Influences = new List<BpInfluence>();
-        /// <summary>Feature id → centre, as continent fractions.</summary>
         public Dictionary<string, Pt> Centres = new Dictionary<string, Pt>();
     }
 
     public static class ThemeBlueprint
     {
-        /// <summary>Water keeps this far (cells) from the start; hazards (lava) this far.</summary>
         public const double StartWaterClear = 24, StartHazardClear = 104;
         const double RiverbankClear = 14, LakeshoreEdge = 16, StartTownHalf = 4;
         const int SaltTheme = 0x54484d45;
@@ -126,11 +112,9 @@ namespace Chem
             ["nwse"] = Math.PI / 4,
         };
         static readonly Dictionary<string, double> DefaultStretch = new Dictionary<string, double> { ["zone"] = 1.3, ["mountains"] = 3, ["lake"] = 1.35 };
-        /// <summary>The start zone's radius (cells) by setting; 38 for the rest.</summary>
         static readonly Dictionary<string, double> StartZoneRadius = new Dictionary<string, double> { ["desert"] = 46, ["lakeshore"] = 30 };
         static readonly Dictionary<string, double> PatchLattice = new Dictionary<string, double> { ["small"] = 6, ["medium"] = 10, ["large"] = 16 };
 
-        /// <summary>The look a start setting paints round the start (null: none, the meadow start).</summary>
         public static readonly IReadOnlyDictionary<string, string> StartSettingLook = new Dictionary<string, string>
         {
             ["meadow"] = null,
@@ -143,7 +127,6 @@ namespace Chem
             ["ashland"] = "ashflats",
         };
 
-        /// <summary>The continent for a theme, with regions <paramref name="regionCells"/> across.</summary>
         public static Continent ContinentFor(Theme theme, double regionCells)
         {
             double r = (theme.CoreRegions - 1) / 2.0;
@@ -161,7 +144,6 @@ namespace Chem
             }
         }
 
-        // Scratch state while solving.
         sealed class Draft
         {
             public int Seed;
@@ -172,7 +154,6 @@ namespace Chem
             public readonly List<(string id, Blob blob)> Mountains = new List<(string, Blob)>();
         }
 
-        /// <summary>Solves a theme for a seed. <paramref name="regionCells"/> sizes the continent (see ContinentFor).</summary>
         public static Blueprint Solve(int seed, Theme theme, double regionCells)
         {
             var c = ContinentFor(theme, regionCells);
@@ -194,9 +175,6 @@ namespace Chem
             return d.Bp;
         }
 
-        // ---------- places and sizes ----------
-
-        /// <summary>A place as continent fractions, jittered for variety (compass) or near-exact (coordinates).</summary>
         static Pt PlacePoint(Draft d, JToken place, string distance)
         {
             if (place == null || place.Type == JTokenType.String)
@@ -242,12 +220,9 @@ namespace Chem
             return pen;
         }
 
-        // ---------- area features ----------
-
         static void PlaceAreaFeatures(Draft d)
         {
             int order = 0;
-            // Lakeshore start: the theme's first water lake is the one the start sits beside.
             string shoreLake = d.Theme.StartSetting == "lakeshore"
                 ? (string)d.Theme.Features.FirstOrDefault(f => (string)f["kind"] == "lake" && ((string)f["material"] ?? "water") == "water")?["id"]
                 : null;
@@ -280,7 +255,6 @@ namespace Chem
             else AddLake(d, f, id, blob, material);
         }
 
-        // An area's spot and how bad it is: lakes kept clear of the start (a lakeshore start's lake on its shore).
         static (Pt p, double pen) Judge(Draft d, JObject f, Pt p, (double rx, double ry, double angle) shape, string lakeMaterial, bool shore)
         {
             var (rx, ry, angle) = shape;
@@ -294,7 +268,6 @@ namespace Chem
             return (p, RelationPenalty(d, f, p) * 4 + LakeStartPenalty(d, p, rx, ry, lakeMaterial));
         }
 
-        // Up to 40 tries at a place against the feature's relations: the first that breaks nothing, else the least bad.
         static Pt BestSpot(Draft d, JObject f, Func<Pt, (Pt p, double pen)> judge)
         {
             Pt best = default;
@@ -315,7 +288,6 @@ namespace Chem
             return best;
         }
 
-        // Foothills (highlands) round the range, the range itself, snow on its core.
         static void AddMountains(Draft d, JObject f, string id, Blob blob, int order)
         {
             d.Mountains.Add((id, blob));
@@ -345,7 +317,6 @@ namespace Chem
             d.Bp.Lakes.Add(new BpLake { Id = id, Material = material, Blob = blob, Island = island, IslandLook = islandLook });
         }
 
-        /// <summary>Pushes a lake centre (fractions) straight away from the start until its outline keeps clear.</summary>
         static Pt ClearOfStart(Draft d, Pt p, double rx, double ry, string material)
         {
             double clear = material == "lava" ? StartHazardClear : StartWaterClear;
@@ -357,14 +328,12 @@ namespace Chem
                 double a = r > 1e-6 ? ThemeGeometry.Atan2(p.Y, p.X) : d.Rng.Range(0, Math.PI * 2);
                 q = new Pt(ThemeGeometry.Cos(a) * need, ThemeGeometry.Sin(a) * need);
             }
-            // ...and clear of the start itself, with room for a start town.
             double needT = (StartTownHalf + 10 + Math.Max(rx, ry) * 1.25) / d.C.CoreHalf;
             double rt = ThemeGeometry.Hypot(q.X, q.Y);
             if (rt >= needT || rt == 0) return q;
             return new Pt(q.X / rt * needT, q.Y / rt * needT);
         }
 
-        /// <summary>Lakeshore start: moves a lake along its bearing from the start so its near edge sits LakeshoreEdge cells away.</summary>
         static Pt OnShoreOfStart(Draft d, Pt p, double rx, double ry, double angle)
         {
             var m = ToCells(d, p);
@@ -396,7 +365,6 @@ namespace Chem
             return Math.Max(0, clear - gap) / d.C.CoreHalf * 3;
         }
 
-        /// <summary>An implicit zone round the start painting the start setting's look.</summary>
         static void PlaceStartZone(Draft d)
         {
             string look = (string)d.Theme.Start["biome"] ?? StartSettingLook[d.Theme.StartSetting];
@@ -409,9 +377,6 @@ namespace Chem
             d.Bp.Zones.Add(new BpZone { Id = "start", Look = look, Blob = blob, Priority = 1000, Start = true });
         }
 
-        // ---------- rivers ----------
-
-        /// <summary>A point on the core's rim in a compass direction (fractions), jittered along the rim.</summary>
         static Pt RimPoint(Draft d, string side)
         {
             var (dx, dy) = Dirs[side];
@@ -441,7 +406,6 @@ namespace Chem
             anchors.Add(ToCells(d, to.p));
             if (d.Theme.StartSetting == "riverbank" && d.Bp.Rivers.Count == 0) BendPastStart(d, anchors);
             var pts = ThemeGeometry.MeanderCurve(d.Rng, anchors, MeanderOf[(string)f["meander"] ?? "medium"], 3);
-            // Keep the start clear (lava much further than water).
             double clear = d.Theme.StartSetting == "riverbank" ? RiverbankClear : StartWaterClear;
             if (material == "lava") clear = StartHazardClear + 6;
             double townClear = StartTownHalf + (d.Theme.StartSetting == "riverbank" ? 5 : 10);
@@ -451,7 +415,6 @@ namespace Chem
             double band = d.C.FadeEnd - d.C.CoreHalf;
             if (band > 0)
             {
-                // Tails into the fade band, tapering to nothing, so a river doesn't stop dead at the core's rim.
                 var head = Tail(d, pts[0], from.rim, half, band);
                 var foot = Tail(d, pts[pts.Count - 1], to.rim, half, band);
                 head.pts.Reverse();
@@ -459,7 +422,6 @@ namespace Chem
                 pts = head.pts.Concat(pts).Concat(foot.pts).ToList();
                 halves = head.half.Concat(halves).Concat(foot.half).ToList();
             }
-            // Never reach past the fade band.
             double limit = d.C.FadeEnd - 16;
             int lo = pts.FindIndex(p => Math.Max(Math.Abs(p.X), Math.Abs(p.Y)) < limit);
             int hi = pts.FindLastIndex(p => Math.Max(Math.Abs(p.X), Math.Abs(p.Y)) < limit);
@@ -479,7 +441,6 @@ namespace Chem
             return r >= r0 || r == 0 ? p : new Pt(p.X / r * r0, p.Y / r * r0);
         }
 
-        // Riverbank start: bend the first river past the start, a short walk away.
         static void BendPastStart(Draft d, List<Pt> anchors)
         {
             var a = anchors[0];
@@ -513,12 +474,6 @@ namespace Chem
             return (pts, halves);
         }
 
-        // ---------- influences ----------
-
-        /// <summary>
-        /// Every influence, after everything it can refer to is placed. Draws from the stream only here,
-        /// at the end, so adding an influence to a theme never moves its other features.
-        /// </summary>
         static void PlaceInfluences(Draft d)
         {
             int order = 0;
@@ -576,7 +531,6 @@ namespace Chem
             }
             if (f["along"] != null)
             {
-                // A river; a road has no geometry yet (roads aren't ported), so its field is empty.
                 var river = d.Bp.Rivers.FirstOrDefault(r => r.Id == (string)f["along"]);
                 inf.Shape = "along";
                 inf.Path = river?.Path ?? new GeoPath();
@@ -588,13 +542,11 @@ namespace Chem
                 var blob = d.Bp.Zones.FirstOrDefault(z => z.Id == id)?.Blob
                     ?? d.Bp.Lakes.FirstOrDefault(l => l.Id == id)?.Blob
                     ?? d.Mountains.FirstOrDefault(m => m.id == id).blob
-                    // A settlement or the start: a small disc (settlements aren't ported: at the start).
                     ?? new Blob { Cx = 0, Cy = 0, Rx = 5, Ry = 5 };
                 inf.Shape = "around";
                 inf.Blob = blob;
                 return;
             }
-            // A placed ellipse, against its relations like a zone.
             double r = SizeOf(f["size"], ZoneSize, "large") * d.Rng.Range(0.9, 1.1);
             double stretch = (double?)f["stretch"] ?? 1.3;
             double angle = f["orientation"] != null ? Orient[(string)f["orientation"]] + d.Rng.Range(-0.15, 0.15) : d.Rng.Range(0, Math.PI);
