@@ -36,11 +36,11 @@ public partial class ChemGrid
     readonly Dictionary<int, LitNote> litBy = new();
     readonly Queue<(float until, int index)> litByCheck = new();
 
-    public void LightInLook(SpellCaster caster, SpellDef spell, SpellVisuals.Entry look, CastCommand cast)
+    public void LightInLook(Caster caster, SpellDef spell, bool keepsFire, CastCommand cast)
     {
-        if (spell == null || look == null || (!look.KeepsFire && !noteCasters)) return;
+        if (spell == null || (!keepsFire && !noteCasters)) return;
         showman = caster;
-        var note = new LitNote(look.KeepsFire ? spell.Id : null, noteCasters ? SlotOf(caster) : -1);
+        var note = new LitNote(keepsFire ? spell.Id : null, noteCasters ? SlotOf(caster) : -1);
         int reach = spell.Scatter?.Reach ?? 0;
         foreach (var (x, y) in World.SpellCells(spell, cast.X, cast.Y, cast.Dir, cast.Charge, cast.AimX, cast.AimY))
             for (int dy = -reach; dy <= reach; dy++)
@@ -70,9 +70,7 @@ public partial class ChemGrid
             tint = LookTint.Between(ToColor(fireArt), ToColor(note.Colour.Value));
             return true;
         }
-        if (note.Spell == null || Showman == null || Showman.LookOf(note.Spell) is not { KeepsFire: true } look) return false;
-        tint = look.Tint;
-        return true;
+        return note.Spell != null && Showman != null && Showman.FireLookOf(note.Spell, out tint, out _);
     }
 
     public float EmberTurnOn(int x, int y) => lava.TurnOn(x, y);

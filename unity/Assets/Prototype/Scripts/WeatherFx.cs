@@ -36,12 +36,6 @@ public class WeatherFx : MonoBehaviour
     readonly System.Collections.Generic.HashSet<(int x, int y, int tick)> meteorsShown = new(), strikesShown = new();
     Chem.World seenWorld;
 
-    static SpellVisuals.Entry MeteorLook()
-    {
-        var caster = SpellCaster.InPlay;
-        var look = caster != null ? caster.LookOf(SpellIds.Meteor) : null;
-        return look ?? new SpellVisuals.Entry { fromSky = true };
-    }
     float rainShown, snowShown, windShown;
 
     public float RainShown => rainShown;
@@ -87,7 +81,7 @@ public class WeatherFx : MonoBehaviour
         {
             if (!meteorsShown.Add((x, y, tick))) continue;
             float seconds = (lands - world.Tick) / (float)world.Rules.Sim.TicksPerSecond;
-            MeteorFall.Launch(Ground(grid.CellCenter(x, y)), cam.transform.position, MeteorLook(), null, null, seconds);
+            Caster.Meteor(Caster.InPlay, Ground(grid.CellCenter(x, y)), cam.transform.position, seconds, 1f, true);
         }
         meteorsShown.RemoveWhere(m => m.tick < since - 1);
         strikesShown.RemoveWhere(m => m.tick < since - 1);

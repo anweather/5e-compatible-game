@@ -62,7 +62,7 @@ public class WaterSplashes : MonoBehaviour
     {
         nextFind = Time.time + FindEvery;
         waders.RemoveAll(w => w.body == null);
-        foreach (var caster in SpellCaster.All)
+        foreach (var caster in Caster.All)
             if (!waders.Exists(w => w.body == caster.transform))
                 waders.Add(new Wader { body = caster.transform, last = caster.transform.position });
     }

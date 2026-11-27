@@ -134,6 +134,8 @@ public class PeersTests
         public string Player => "";
         public bool CaughtUp => true;
         public bool Resetting => false;
+        public bool WizardSpawned => false;
+        public void AskForReset() => Assert.Fail("not sent here");
         public void StampFound(string peer, ThingId thing) => Assert.Fail("not sent here");
         public void SummonDragon() => Assert.Fail("not sent here");
         public void StampReset() => Assert.Fail("not sent here");

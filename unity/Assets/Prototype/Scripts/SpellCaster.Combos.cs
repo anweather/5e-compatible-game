@@ -14,8 +14,6 @@ using UnityEngine.InputSystem;
 // elements (ProbeScenario.LoadElement). The radial (SpellRadialHud) stays as a debug layout (F2).
 public partial class SpellCaster
 {
-    public const string SoloPlayer = "solo";
-
     SurfaceEffects feet;
     ChemGrid heard;
     readonly FiredCastsHeard firedCasts = new();

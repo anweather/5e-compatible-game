@@ -72,7 +72,7 @@ public sealed class SoloMap : MonoBehaviour
 
     void DrawEntry()
     {
-        if (NetWizard.Local != null) return;
+        if (Peers.InPlay.WizardSpawned) return;
         maps ??= ChemGrid.Maps();
         if (maps.Length < 2) return;
         int at = System.Array.FindIndex(maps, m => m.id == ChemGrid.MapId);

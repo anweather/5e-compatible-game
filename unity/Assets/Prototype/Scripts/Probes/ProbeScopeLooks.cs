@@ -174,11 +174,11 @@ public class ScopeLooksProbe : LooksModProbe
         var bolt = World.Rules.Spell(SpellIds.FireBolt);
         var ball = World.Rules.Spell(SpellIds.Fireball);
         var left = new Vector2Int(row.x + 2, row.y);
-        grid.LightInLook(caster, bolt, caster.LookOf(bolt.Id), new CastCommand(bolt.Id, left.x, left.y, 0));
+        LightInLook(caster, bolt, new CastCommand(bolt.Id, left.x, left.y, 0));
         int boltEnd = Reach(bolt, left, +1);
         var between = new Vector2Int(boltEnd + 1, left.y);
         int ballAt = between.x + 1 + (between.x + 1 - Reach(ball, between + Vector2Int.right, -1));
-        grid.LightInLook(caster, ball, caster.LookOf(ball.Id), new CastCommand(ball.Id, ballAt, left.y, 0));
+        LightInLook(caster, ball, new CastCommand(ball.Id, ballAt, left.y, 0));
         var right = new Vector2Int(between.x + 1, left.y);
         Light(boltEnd, left.y);
         Light(right.x, right.y);
@@ -199,6 +199,12 @@ public class ScopeLooksProbe : LooksModProbe
         int scatter = spell.Scatter?.Reach ?? 0;
         var cells = World.SpellCells(spell, cast.x, cast.y, 0, 1, 0, 0).Select(c => c.Item1).ToList();
         return way > 0 ? cells.Max() + scatter : cells.Min() - scatter;
+    }
+
+    void LightInLook(SpellCaster by, SpellDef spell, CastCommand cast)
+    {
+        var look = by.LookOf(spell.Id);
+        if (look != null) grid.LightInLook(by, spell, look.KeepsFire, cast);
     }
 
     static Color Mixed(string a, string b)

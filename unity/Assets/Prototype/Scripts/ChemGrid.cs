@@ -87,7 +87,7 @@ public partial class ChemGrid : MonoBehaviour
     readonly List<ChunkFresh> freshChunks = new();
 
     public void SummonDragon() => World.ApplyDragon(new DragonCommand());
-    SpellCaster[] wizards = System.Array.Empty<SpellCaster>();
+    Caster[] wizards = System.Array.Empty<Caster>();
     float nextWizardLookup;
 
     float tickTimer;
@@ -673,7 +673,7 @@ public partial class ChemGrid : MonoBehaviour
     {
         if (ChoreClock >= nextWizardLookup)
         {
-            wizards = SpellCaster.AllByInstanceId;
+            wizards = Caster.AllByInstanceId;
             nextWizardLookup = ChoreClock + 1f;
         }
         playerCells.Clear();

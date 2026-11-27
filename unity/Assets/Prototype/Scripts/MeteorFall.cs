@@ -25,6 +25,16 @@ public class MeteorFall : MonoBehaviour
 
     void OnDestroy() => registry.Leave(this);
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ShowForCasters() => Caster.MeteorShow = FromSky;
+
+    static void FromSky(Caster lookFrom, Vector3 target, Vector3 viewer, float seconds, float size, bool plainIfNoLook)
+    {
+        var look = lookFrom != null ? ((SpellCaster)lookFrom).LookOf(SpellIds.Meteor) : null;
+        if (look == null && plainIfNoLook) look = new SpellVisuals.Entry { fromSky = true };
+        Launch(target, viewer, look, null, null, seconds, size);
+    }
+
     public const float Seconds = 1.8f;
     const float Height = 110f, Reach = 75f, RockSize = 1.6f;
 

@@ -18,15 +18,15 @@ using UnityEngine;
 // world when the show lands, and its shove to whatever moves (SpellForces);
 // online it goes to NetChem, which applies it on every machine at the same
 // tick, with where the caster stood (the centre of a burst's shove).
-public partial class SpellCaster : MonoBehaviour
+public partial class SpellCaster : Caster
 {
     static readonly Registry<SpellCaster> registry = new();
 
-    public static SpellCaster[] All => registry.All();
+    public static new SpellCaster[] All => registry.All();
 
-    public static SpellCaster[] AllByInstanceId => registry.AllByInstanceId();
+    public static new SpellCaster[] AllByInstanceId => registry.AllByInstanceId();
 
-    public static SpellCaster InPlay => registry.First;
+    public static new SpellCaster InPlay => registry.First;
 
     public ChemGrid grid;
     public PlayerControls controls;
@@ -57,6 +57,7 @@ public partial class SpellCaster : MonoBehaviour
     void Awake()
     {
         registry.Join(this);
+        JoinCasters();
         TryGetComponent(out pose);
         TryGetComponent(out beats);
         TryGetComponent(out hands);
@@ -69,6 +70,7 @@ public partial class SpellCaster : MonoBehaviour
     void OnDestroy()
     {
         registry.Leave(this);
+        LeaveCasters();
         marker?.Destroy();
     }
 
@@ -291,7 +293,7 @@ public partial class SpellCaster : MonoBehaviour
             look?.PlayImpact(landing, Quaternion.LookRotation(Flat(landing - Hand)), look.ScaleFor(def, charge));
             ElementBurst(def, look, landing, charge);
             if (def != null && def.Jagged > 0) Spires(def, cast);
-            grid.LightInLook(this, def, look, cast);
+            LightInLook(def, look, cast);
             GameSounds.Play(GameSounds.LandingOf(def), landing);
             CastImpact.Landed(def, landing, charge);
             onArrive?.Invoke();
@@ -302,7 +304,7 @@ public partial class SpellCaster : MonoBehaviour
         else if (look.fromSky)
             MeteorFall.Launch(landing, transform.position, look, () =>
             {
-                grid.LightInLook(this, def, look, cast);
+                LightInLook(def, look, cast);
                 GameSounds.Play(GameSounds.LandingOf(def), landing);
                 onArrive?.Invoke();
             }, this, fall, blastScale: look.ScaleFor(def, charge));
@@ -325,6 +327,24 @@ public partial class SpellCaster : MonoBehaviour
         float halfWidth = (radius + 0.5f) * grid.cellSize;
         float seconds = def != null && def.Duration > 0 ? def.Duration / (float)grid.World.Rules.Sim.TicksPerSecond : SleetStorm.Seconds;
         SleetStorm.Launch(landing, halfWidth, seconds, transform.position, land, this, look.Tint);
+    }
+
+    public override Color? LookGlow(string spellId) => LookOf(spellId)?.glow;
+
+    public override int Slot => TryGetComponent<NetWizard>(out var net) ? (int)net.OwnerClientId : 0;
+
+    public override bool FireLookOf(string spellId, out LookTint tint, out Color glow)
+    {
+        var look = LookOf(spellId);
+        bool keeps = look is { KeepsFire: true };
+        tint = keeps ? look.Tint : default;
+        glow = keeps ? look.glow : default;
+        return keeps;
+    }
+
+    void LightInLook(SpellDef def, SpellVisuals.Entry look, CastCommand cast)
+    {
+        if (look != null) grid.LightInLook(this, def, look.KeepsFire, cast);
     }
 
     public SpellVisuals.Entry LookOf(string spellId) => visuals != null && grid != null ? visuals.For(grid.World?.Rules, spellId, grid.CurrentRules?.Base) : null;
