@@ -32,7 +32,8 @@ public static class ChemEffects
     public static void Strike(ChemGrid grid, Vector2Int cell)
     {
         if (grid == null || grid.World == null) return;
-        if (grid.TryGetComponent<NetChem>(out var net) && net.Online && !net.IsServer) net.RequestStrike(cell);
+        var peers = Peers.Of(grid);
+        if (peers.IsClient()) peers.RequestStrike(cell);
         else Request(grid, new EffectCommand(EffectKind.Shatter, cell.x, cell.y, "", ThingId.None));
     }
 
@@ -47,7 +48,8 @@ public static class ChemEffects
                 {
                     var cell = new Vector2Int(from.x + dx, from.y + dy);
                     if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) != ring || !grid.World.InBounds(cell.x, cell.y) || grid.World.TerrainOf(grid.World.At(cell.x, cell.y)).SwingsTo == null) continue;
-                    if (grid.TryGetComponent<NetChem>(out var net) && net.Online && !net.IsServer) net.RequestSwing(cell);
+                    var peers = Peers.Of(grid);
+                    if (peers.IsClient()) peers.RequestSwing(cell);
                     else Request(grid, new EffectCommand(EffectKind.Swing, cell.x, cell.y, "", ThingId.None));
                     return;
                 }
@@ -57,9 +59,10 @@ public static class ChemEffects
     public static void Request(ChemGrid grid, EffectCommand effect)
     {
         if (grid == null || grid.World == null) return;
-        if (grid.TryGetComponent<NetChem>(out var net) && net.Online)
+        var peers = Peers.Of(grid);
+        if (peers.Online())
         {
-            if (net.IsServer) net.StampEffect(effect);
+            if (peers.Role == PeerRole.Host) peers.StampEffect(effect);
             return;
         }
         grid.World.ApplyEffect(effect);

@@ -24,10 +24,10 @@ public partial class SpellCaster
     int cancelledOnFrame = -1;
 
     /// <summary>This player's name in the core's casts: online their client's, solo a fixed one.</summary>
-    public string CastPlayer => Net != null && Net.Online ? Net.LocalPlayer : SoloPlayer;
+    public string CastPlayer => Peers.Of(grid).Player;
 
     /// <summary>Online and still replaying the game so far: the casts in the core were made long ago (CastBeats).</summary>
-    public bool Replaying => Net != null && Net.Online && !Net.CaughtUp;
+    public bool Replaying => !Peers.Of(grid).CaughtUp;
 
     /// <summary>The meter is draining (ItemHolder: the throw button cancels instead).</summary>
     public bool CastInProgress => cancelledOnFrame == Time.frameCount || (grid != null && grid.World != null && grid.World.CastOf(CastPlayer)?.Casting == true);
@@ -134,8 +134,8 @@ public partial class SpellCaster
 
     bool Send(ComboCommand command)
     {
-        var online = Net;
-        if (online == null || !online.Online) return grid.World.ApplyCombo(command);
+        var online = Peers.Of(grid);
+        if (!online.Online()) return grid.World.ApplyCombo(command);
         online.RequestCombo(command);
         return true;
     }

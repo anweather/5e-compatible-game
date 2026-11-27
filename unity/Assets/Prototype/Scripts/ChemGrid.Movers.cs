@@ -139,7 +139,7 @@ public partial class ChemGrid
         frontCells.Clear();
         frontCells.AddRange(World.WaveFront(wave));
         PackIceBehind(wave);
-        bool hosting = !TryGetComponent<NetChem>(out var net) || !net.Online || net.IsServer;
+        bool hosting = !Peers.Of(this).IsClient();
         var wizard = WizardRig.FindLocal();
         var way = WaveStep(wave);
         foreach (var rider in Forces.OnCells(this, frontCells, null, p => p is PhysicsProp prop && hosting && Light(prop, wave.MaxMass)))

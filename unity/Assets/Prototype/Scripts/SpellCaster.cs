@@ -36,7 +36,6 @@ public partial class SpellCaster : MonoBehaviour
     ItemHolder hands;
     SpellRadialHud radial;
     Shapeshift shape;
-    NetChem net;
     RaycastHit crosshair;
     bool hasCrosshair;
     // Holding Cast charges a spell that can be (World.SecondsPerLevel a level, to World.MaxCharge); release casts it.
@@ -202,8 +201,8 @@ public partial class SpellCaster : MonoBehaviour
             EventLog.Add($"You can't cast spells in the {shape.FormName}'s shape. Cast to change back first.");
             return;
         }
-        var online = Net;
-        if (online != null && online.Online)
+        var online = Peers.Of(grid);
+        if (online.Online())
         {
             // Just joined and still replaying the game so far: the world on this screen is behind
             // the host's, so aiming at it would cast at what isn't there any more. A moment's wait.
@@ -367,16 +366,6 @@ public partial class SpellCaster : MonoBehaviour
         float halfWidth = (radius + 0.5f) * grid.cellSize;
         float seconds = def != null && def.Duration > 0 ? def.Duration / (float)grid.World.Rules.Sim.TicksPerSecond : SleetStorm.Seconds;
         SleetStorm.Launch(landing, halfWidth, seconds, transform.position, land, this, look.Tint);
-    }
-
-    // Found lazily: a networked wizard gets its grid assigned after Awake.
-    NetChem Net
-    {
-        get
-        {
-            if (net == null && grid != null) net = grid.GetComponent<NetChem>();
-            return net;
-        }
     }
 
     /// <summary>A spell's show from the rules in force (SpellVisuals.For), or null.</summary>

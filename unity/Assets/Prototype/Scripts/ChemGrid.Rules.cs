@@ -58,7 +58,7 @@ public partial class ChemGrid
         HearRoom();
         var mode = plannedMode ?? was?.Mode ?? ChangeMode.Open;
         plannedMode = null;
-        string host = was?.Host ?? NetChem.PeerName(0);
+        string host = was?.Host ?? Peers.NameOf(0);
         try
         {
             World.OpenRoom(mode, host, CurrentRules.Base, Budgets, was?.Mods);

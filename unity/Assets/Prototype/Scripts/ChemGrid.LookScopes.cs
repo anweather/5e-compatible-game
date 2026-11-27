@@ -119,7 +119,7 @@ public partial class ChemGrid
             if (w == null) continue;
             var cell = CellAt(w.transform.position);
             int slot = SlotOf(w);
-            string name = NetChem.PeerName((ulong)slot);
+            string name = Peers.NameOf(slot);
             spots.Add(new PlayerSpot(name, cell.x, cell.y, slot));
             if (spotWas.TryGetValue(name, out var was) && was != cell) MarkEdges(name, was, cell);
             spotWas[name] = cell;

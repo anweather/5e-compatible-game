@@ -133,11 +133,12 @@ public class WizardStrike : MonoBehaviour
         return false;
     }
 
-    static bool Online(ChemGrid grid) => grid.TryGetComponent<NetChem>(out var online) && online.Online;
+    static bool Online(ChemGrid grid) => Peers.Of(grid).Online();
 
     static void Send(ChemGrid grid, StrikeCommand command)
     {
-        if (grid.TryGetComponent<NetChem>(out var online) && online.Online) online.RequestStrikeCommand(command);
+        var peers = Peers.Of(grid);
+        if (peers.Online()) peers.RequestStrikeCommand(command);
         else grid.World.ApplyStrike(command);
     }
 }

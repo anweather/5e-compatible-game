@@ -185,7 +185,7 @@ public partial class ItemHolder : MonoBehaviour
     void GrantSolo(Carryable item)
     {
         Grant(item);
-        if (item.Prop.FromMod) item.Grid.QueueRoom(RoomCommand.Found(NetChem.PeerName(0), item.Prop.Thing));
+        if (item.Prop.FromMod) item.Grid.QueueRoom(RoomCommand.Found(Peers.Solo.Me, item.Prop.Thing));
     }
 
     /// <summary>Mage Hand: lets go of what this hand holds at <paramref name="spot"/>, at rest.</summary>

@@ -23,7 +23,6 @@ using UnityEngine;
 public class RuleSwitcher : MonoBehaviour
 {
     ChemGrid grid;
-    NetChem net;
 
     /// <summary>The shipped mods and the player's own.</summary>
     public ModCatalog Catalog { get; private set; }
@@ -34,14 +33,16 @@ public class RuleSwitcher : MonoBehaviour
     /// <summary>The rules in force on this machine.</summary>
     public RuleSet Rules => grid.CurrentRules;
 
-    bool Online => net != null && net.Online;
-    bool IsClient => Online && !net.IsServer;
+    // The grid's peers (IPeers): NetChem online, else solo.
+    IPeers Net => Peers.Of(this);
+    bool Online => Net.Online();
+    bool IsClient => Net.IsClient();
 
     /// <summary>The room this world is played in.</summary>
     public RoomState Room => grid.World.Room;
 
     /// <summary>This peer's name in the room.</summary>
-    public string Me => Online ? net.LocalPeer : NetChem.PeerName(0);
+    public string Me => Net.Me;
 
     /// <summary>Whether this machine may change the rules from files: solo or the host.</summary>
     public bool OwnsRules => !IsClient;
@@ -57,7 +58,6 @@ public class RuleSwitcher : MonoBehaviour
     void Awake()
     {
         grid = GetComponent<ChemGrid>();
-        TryGetComponent(out net);
         Catalog = new ModCatalog(ChemGrid.Folders.ShippedMods, ChemGrid.Folders.Mods);
         if (!TryGetComponent<ModsPanel>(out _)) gameObject.AddComponent<ModsPanel>();
         if (!TryGetComponent<RowHouses>(out _)) gameObject.AddComponent<RowHouses>();
@@ -107,7 +107,7 @@ public class RuleSwitcher : MonoBehaviour
     /// <summary>Sends a room command on its way: decided before the next solo tick, or at the tick the host stamps.</summary>
     public string Ask(RoomCommand command)
     {
-        if (Online) net.RequestRoom(command);
+        if (Online) Net.RequestRoom(command);
         else grid.QueueRoom(command);
         return null;
     }

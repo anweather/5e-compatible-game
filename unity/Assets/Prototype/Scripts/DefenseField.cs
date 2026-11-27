@@ -59,9 +59,10 @@ public partial class DefenseField : MonoBehaviour
     public static void Request(ChemGrid grid, DefenseCommand command)
     {
         if (grid == null || grid.World == null) return;
-        if (grid.TryGetComponent<NetChem>(out var net) && net.Online)
+        var peers = Peers.Of(grid);
+        if (peers.Online())
         {
-            net.RequestDefense(command);
+            peers.RequestDefense(command);
             return;
         }
         grid.World.ApplyDefense(command);

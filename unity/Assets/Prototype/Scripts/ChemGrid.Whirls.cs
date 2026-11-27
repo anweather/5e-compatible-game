@@ -232,7 +232,7 @@ public partial class ChemGrid
         middle.y = GroundTop(first.x, first.y, World.At(first.x, first.y));
         BurstFx.Play(BurstFx.Kind.Flash, middle, Mathf.Min(reach + cellSize, FlashMost));
         // Props are the host's (D4): a client's are puppets that follow it.
-        bool hosting = !TryGetComponent<NetChem>(out var net) || !net.Online || net.IsServer;
+        bool hosting = !Peers.Of(this).IsClient();
         if (hosting && first.push > 0) Forces.Radial(middle, reach, first.push * Forces.ImpulsePerPush, null);
     }
 }

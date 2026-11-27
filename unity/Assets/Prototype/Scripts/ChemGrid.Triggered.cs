@@ -31,7 +31,7 @@ public partial class ChemGrid
             triggeredSeen = 0;
         }
         if (World.TriggeredCasts <= triggeredSeen) return;
-        bool replaying = TryGetComponent<NetChem>(out var net) && net.Online && !net.CaughtUp;
+        bool replaying = !Peers.Of(this).CaughtUp;
         int tps = Mathf.Max(1, World.Rules.Sim.TicksPerSecond);
         foreach (var cast in World.TriggeredAfter(triggeredSeen))
         {
