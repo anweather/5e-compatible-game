@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The view plans' tests, from unity/Assets/Prototype/Scripts/Plans/Tests (Unity's Prototype.Plans.Tests), on
+       Prototype.Plans alone: no scene, no asset, no game type (docs/design/architecture-review.md step 6). -->
+  <Import Project="../Chem.Tests.props" />
+
+  <ItemGroup>
+    <Compile Include="../../unity/Assets/Prototype/Scripts/Plans/Tests/*.cs" Link="Plans/Tests/%(Filename)%(Extension)" />
+    <Compile Include="*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Prototype.Plans/Prototype.Plans.csproj" />
+  </ItemGroup>
+</Project>

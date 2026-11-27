@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The view's plans (docs/design/architecture-review.md step 6): the game's plain C# in
+       unity/Assets/Prototype/Scripts/Plans (Unity's Prototype.Plans assembly), the budgets, tables, menu logic and mesh
+       arrays a MonoBehaviour draws from. Unity compiles them against UnityEngine; here the UnityMath shim stands in for
+       the few engine types they use (Vector2/3, Mathf, Color...), so they build and test without the Editor. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Prototype.Plans</AssemblyName>
+    <RootNamespace></RootNamespace>
+    <!-- The game's analyzer debt in these files, which the Unity console counts with the rest of Scripts/ (its baseline,
+         docs/QUALITY.md): reported there, not here. -->
+    <NoWarn>$(NoWarn);S107;S3776;S1075;S1121;S1168;S2234;S2245;S3358;S3887;S6444</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../../unity/Assets/Prototype/Scripts/Plans/*.cs" Link="Plans/%(Filename)%(Extension)" />
+    <Compile Include="../UnityMath/*.cs" Link="UnityMath/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Unity's Prototype.Plans references Chemistry and Chem.Land; Game.Core is both here. -->
+    <ProjectReference Include="../Game.Core/Game.Core.csproj" />
+  </ItemGroup>
+</Project>

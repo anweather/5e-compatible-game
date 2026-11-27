@@ -67,6 +67,10 @@
     { "name": "mcp", "projects": ["Game.Core"], "paths": ["unity/Assets/Prototype/Chemistry/Mcp/*.cs"] },
     { "name": "playtest-logic", "projects": ["Game.Core"], "paths": ["unity/Assets/Prototype/Scripts/Playtest/Logic/*.cs"] },
     { "name": "playtest-tests", "projects": ["Chem.Playtest.Tests"], "paths": ["unity/Assets/Prototype/Scripts/Playtest/Editor/*Tests.cs"] },
+    { "name": "plans-tests", "projects": ["Prototype.Plans.Tests"], "paths": ["unity/Assets/Prototype/Scripts/Plans/Tests/*.cs"],
+      "_": "The view plans' tests (step 6): Unity's Prototype.Plans.Tests, and core/Prototype.Plans.Tests on Prototype.Plans alone." },
+    { "name": "plans", "projects": ["Prototype.Plans"], "reads": ["Rules.Mcp.Tests"], "paths": ["unity/Assets/Prototype/Scripts/Plans/*.cs"],
+      "_": "The view plans (step 6): Unity's Prototype.Plans, core/Prototype.Plans with the UnityMath shim. HiddenThingTests reads them as it reads the rest of the view." },
     { "name": "view-code", "reads": ["Rules.Mcp.Tests"], "paths": ["unity/Assets/Prototype/**/*.cs"],
       "_": "No dotnet project compiles the view; Rules.Mcp.Tests's HiddenThingTests reads every non-test .cs under unity/Assets/Prototype." },
     { "name": "view-assets", "paths": ["unity/Assets/**"],
@@ -76,6 +80,8 @@
 
     { "name": "core-land", "projects": ["Chem.Land"], "paths": ["core/Chem.Land/**"] },
     { "name": "core-game", "projects": ["Game.Core"], "paths": ["core/Game.Core/**"] },
+    { "name": "core-plans", "projects": ["Prototype.Plans"], "paths": ["core/Prototype.Plans/**", "core/UnityMath/**"],
+      "_": "The plans' project and the shim it links in place of UnityEngine." },
     { "name": "core-mcp", "projects": ["Rules.Mcp"], "paths": ["core/Rules.Mcp/**"] },
     { "name": "core-hold-runner", "projects": ["Hold.Runner"], "paths": ["core/Hold.Runner/**"] },
     { "name": "core-playtest-runner", "projects": ["Playtest.Runner"], "paths": ["core/Playtest.Runner/**"] },
@@ -95,6 +101,7 @@
     { "name": "core-lockstep-tests", "projects": ["Chem.Lockstep.Tests"], "paths": ["core/Chem.Lockstep.Tests/**"] },
     { "name": "core-sim-tests", "projects": ["Chem.Sim.Tests"], "paths": ["core/Chem.Sim.Tests/**"] },
     { "name": "core-playtest-tests", "projects": ["Chem.Playtest.Tests"], "paths": ["core/Chem.Playtest.Tests/**"] },
+    { "name": "core-plans-tests", "projects": ["Prototype.Plans.Tests"], "paths": ["core/Prototype.Plans.Tests/**"] },
 
     { "name": "rules", "paths": ["rules/**"],
       "reads": ["Chem.Shared.Tests", "Chem.Rules.Tests", "Chem.Land.Tests", "Chem.LandWorld.Tests", "Chem.Sim.Tests", "Chem.Play.Tests", "Chem.Lockstep.Tests", "Chem.Playtest.Tests", "Rules.Mcp.Tests", "Hold.Runner.Tests", "Chat.Bench.Tests"],

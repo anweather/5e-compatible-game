@@ -9,6 +9,9 @@
     build on the land without the core (docs/design/chem-land-split.md, 5b); LandWorld references Land and Shared;
     Sim references Rules; Lockstep references Sim (ComboTests.Blank). Play, Rules and Playtest need nothing else. A
     reference that isn't in that list is a coupling: say why where it's added.
+    The other test projects that import this for its settings and packages compile their own files, not these lists:
+    Chem.Playtest.Tests (Scripts/Playtest/Editor) and Prototype.Plans.Tests (Scripts/Plans/Tests, on Prototype.Plans
+    alone: docs/design/architecture-review.md step 6).
   -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>

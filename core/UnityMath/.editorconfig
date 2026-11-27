@@ -1,0 +1,9 @@
+# The UnityMath shim keeps UnityEngine's own names and signatures (Vector3.up, magnitude, Equals(object other)) and its
+# exact float comparisons, so the plans compile the same against it as against the engine: the rules those break are
+# off for these files only.
+[*.cs]
+dotnet_diagnostic.IDE1006.severity = none
+dotnet_diagnostic.CA1725.severity = none
+dotnet_diagnostic.S927.severity = none
+dotnet_diagnostic.S1244.severity = none
+dotnet_diagnostic.CA2231.severity = none
