@@ -57,7 +57,7 @@ public class VoiceTraceTests
     [TestCase("SpeechCheck.cs")]
     public void EveryWordInATraceGoesThroughWords(string file)
     {
-        string[] lines = File.ReadAllLines(Path.Combine(Application.dataPath, "Prototype/Scripts/Net", file));
+        string[] lines = File.ReadAllLines(Path.Combine(Application.dataPath, "Prototype/Scripts/Chat", file));
         int traces = 0;
         foreach (string line in lines)
         {

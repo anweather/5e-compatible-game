@@ -13,7 +13,7 @@ public class VoiceSeamTests
     {
         foreach (string file in GameSide)
         {
-            string text = File.ReadAllText(Path.Combine(Application.dataPath, "Prototype/Scripts/Net", file));
+            string text = File.ReadAllText(Path.Combine(Application.dataPath, "Prototype/Scripts/Chat", file));
             foreach (string word in new[] { "Windows", "Dictation", "Whisper", "Microphone" })
                 Assert.IsFalse(text.Contains(word), $"{file} names {word}");
         }
