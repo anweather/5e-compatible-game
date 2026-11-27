@@ -513,6 +513,7 @@ namespace Chem.Tests
         [Test]
         [NonParallelizable] // it times itself: it needs the machine to itself
         [Category("Timing")]
+        [Category("Sweep")] // the landing runs test projects side by side, so its timing fails under load: CI and the nightly time it
         public void AFullSweepStaysWithinTheTickBudget()
         {
             const double budget = 1000.0 / 6;
