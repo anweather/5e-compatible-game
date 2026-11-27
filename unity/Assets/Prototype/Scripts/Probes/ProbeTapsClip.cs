@@ -47,7 +47,7 @@ public class TapsClipProbe : HandsClipProbe
         Note("merge: both triggers held");
         Pads(1f, 1f);
         yield return Hold(level * World.MaxCharge + 0.6f);
-        var hud = EventLog.CastShown;
+        var hud = WizardHud.CastShown;
         Check("merged_on_screen", hud != null && hud.MergeShown, $"{Core.CastOf(Me)?.Merge}");
         Note($"let go, merged as {Core.CastOf(Me)?.Merge}");
         Pads(0f, 0f);

@@ -117,7 +117,11 @@ public class PlaytestBot : MonoBehaviour
             new GameObject("Playtest bot").AddComponent<PlaytestBot>();
     }
 
-    public static bool Active { get; private set; }
+    public static bool Active
+    {
+        get => WizardHud.BotPlaying;
+        private set => WizardHud.BotPlaying = value;
+    }
 
     void Awake()
     {

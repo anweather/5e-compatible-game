@@ -214,7 +214,11 @@ public class ChatPromptsProbe : RowHousesProbe
         yield return Wait(SettleSeconds);
     }
 
-    bool Busy() => grid.valley != null && grid.valley.Recolouring;
+    bool Busy()
+    {
+        var valley = ValleyChemistry.Of(grid);
+        return valley != null && valley.Recolouring;
+    }
 
     IEnumerator Send(int n, JObject prompt, Action<JObject> done)
     {

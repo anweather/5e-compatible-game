@@ -82,8 +82,8 @@ public class SpellListMenu : MonoBehaviour
 
     void DrawEntry()
     {
-        if (EventLog.TrackedCaster == null || !PauseMenu.Button("Spells", PauseMenu.ButtonStyle)) return;
-        caster = EventLog.TrackedCaster;
+        if (WizardHud.TrackedCaster == null || !PauseMenu.Button("Spells", PauseMenu.ButtonStyle)) return;
+        caster = WizardHud.TrackedCaster;
         openedInPlay = false;
         said = null;
         Fill();

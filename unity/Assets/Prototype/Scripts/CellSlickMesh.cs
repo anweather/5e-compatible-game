@@ -21,7 +21,7 @@ using UnityEngine;
 // A look's glow (look.glow 0 to 1, docs/design/primitives.md P4: a cover's, or a ground terrain's
 // under no cover) is a second film in the same tiles over those cells alone, added on top in the
 // look's colour times the glow (Strength), through one shared material whose brightness follows the
-// lamps (Nightfall.Lamps, as the windows' _LampGlow does): next to nothing by day, full after dark. No
+// lamps (NightLamps.Lamps, as the windows' _LampGlow does): next to nothing by day, full after dark. No
 // lights and no material per cell; with no look glowing in the rules nothing of it is made or asked.
 public sealed class CellSlickMesh
 {
@@ -261,7 +261,7 @@ public sealed class CellSlickMesh
 
     public int GlowCells => glows.Count;
 
-    float Light() => DayGlow + (1f - DayGlow) * Nightfall.Lamps(grid.World);
+    float Light() => DayGlow + (1f - DayGlow) * NightLamps.Lamps(grid.World);
 
     void LightGlow()
     {

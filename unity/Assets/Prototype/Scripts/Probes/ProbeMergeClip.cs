@@ -35,7 +35,7 @@ public class MergeClipProbe : HandsClipProbe
         Both(bumpers, true, false);
         yield return Hold(0.15f);
         Both(bumpers, true, true);
-        var hud = EventLog.CastShown;
+        var hud = WizardHud.CastShown;
         float level = (float)Core.SecondsPerLevel;
         for (float s = 0f; s < level * (World.MaxCharge + 1) && !(hud != null && hud.MergeShown && Core.HandCharge(Me, HandsDef.Left) >= 2); s += Time.deltaTime)
             yield return null;

@@ -30,7 +30,7 @@ public partial class ChemGrid
     readonly HashSet<(int x, int y, int tick)> flashesShown = new();
     readonly HashSet<World.Star> starsFalling = new();
     readonly List<World.Star> starsGone = new();
-    SpellCaster showman;
+    Caster showman;
 
     static Color ColumnTint(string carrying) => carrying switch
     {
@@ -126,16 +126,16 @@ public partial class ChemGrid
         return columnMaterial;
     }
 
-    SpellCaster Showman
+    Caster Showman
     {
         get
         {
-            if (showman == null) showman = SpellCaster.InPlay;
+            if (showman == null) showman = Caster.InPlay;
             return showman;
         }
     }
 
-    Color? SpellLookColor(string spell) => Showman != null ? Showman.LookOf(spell)?.glow : null;
+    Color? SpellLookColor(string spell) => Showman != null ? Showman.LookGlow(spell) : null;
 
     void RenderStars()
     {
@@ -150,9 +150,9 @@ public partial class ChemGrid
                 SkyStrike(star, at, seconds);
                 continue;
             }
-            var look = Showman != null ? Showman.LookOf(SpellIds.Meteor) : null;
+            var lookFrom = Showman;
             var viewer = Camera.main != null ? Camera.main.transform.position : at + Vector3.back;
-            MeteorFall.Launch(at, viewer, look, null, null, seconds, StarSize);
+            Caster.Meteor(lookFrom, at, viewer, seconds, StarSize, false);
         }
         if (starsFalling.Count == 0) return;
         starsGone.Clear();

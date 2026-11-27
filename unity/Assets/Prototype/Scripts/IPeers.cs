@@ -2,7 +2,8 @@ using Chem;
 using UnityEngine;
 
 // The view's one door to the other peers (docs/design/architecture-review.md step 7): whether this machine plays
-// solo, hosts or is a client, its peer name in the room, and the intents it sends the host. Two adapters: SoloPeers,
+// solo, hosts or is a client, its peer name in the room, whether its own wizard is spawned there (NetWizard.Local),
+// and the intents it sends the host (asking the host for a reset goes through that wizard). Two adapters: SoloPeers,
 // and NetChem (Prototype.Net, over NGO), which is Solo until its lockstep session is up. Find the grid's with Peers.Of(grid).
 //
 // A send is made only online (Role is Host or Client), in the same place and order the view made it before: each
@@ -18,6 +19,8 @@ public interface IPeers
     bool CaughtUp { get; }
 
     bool Resetting { get; }
+
+    bool WizardSpawned { get; }
 
     void RequestCast(CastCommand command, int delayTicks, Vector3 from);
 
@@ -40,6 +43,8 @@ public interface IPeers
     void SummonDragon();
 
     void StampReset();
+
+    void AskForReset();
 }
 
 public enum PeerRole

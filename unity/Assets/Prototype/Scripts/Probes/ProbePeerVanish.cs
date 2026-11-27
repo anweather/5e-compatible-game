@@ -171,7 +171,7 @@ public class PeerVanishProbe : RoomProbe
         yield return Look("after_the_loss");
 
         int lastReset = Net.LastResetTick;
-        EventLog.RebuildYard();
+        WizardHud.RebuildYard();
         for (float t = 0f; t < 15f && Net.LastResetTick == lastReset; t += Time.unscaledDeltaTime) yield return null;
         Check("reset_happened", Net.LastResetTick > lastReset, $"last reset at {Net.LastResetTick}");
         yield return Wait(1f);

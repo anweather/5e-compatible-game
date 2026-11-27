@@ -65,6 +65,7 @@ public class RegistryTests
         yield return Single(() => ThingSpawner.InPlay);
         yield return Many(() => PhysicsProp.All, NewProp);
         yield return Many(() => SpellCaster.All);
+        yield return Many<Caster>(() => Caster.All, go => go.AddComponent<SpellCaster>());
         yield return Many(() => Carryable.All, go => NewProp(go).gameObject.AddComponent<Carryable>());
         yield return Single(() => SkyLight.InPlay);
         var village = Many(() => Village.All);

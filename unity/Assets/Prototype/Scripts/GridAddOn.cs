@@ -5,13 +5,15 @@ using UnityEngine;
 
 // Grid add-ons: the components a feature puts on the grid's GameObject, so the grid never names the feature.
 // A MonoBehaviour marks itself [GridAddOn(stage, order)]; the grid adds every marked type at its stage
-// (Grid at the end of ChemGrid.Awake, Rules in RuleSwitcher.Awake), lowest order first, skipping one already
+// (Grid at the end of ChemGrid.Awake, Rules in RuleSwitcher.Awake; Hud goes on the event log's GameObject, in
+// EventLog.Awake, so the log never names the wizard's HUD), lowest order first, skipping one already
 // there. The types are found once by reflection over the Prototype.* assemblies, so a feature in its own
 // assembly joins by the mark alone, in Edit mode tests as in Play.
 public enum GridStage
 {
     Rules,
     Grid,
+    Hud,
 }
 
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]

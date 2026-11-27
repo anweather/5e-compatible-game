@@ -12,7 +12,7 @@ public static class OnlineReset
         var net = Peers.InPlay;
         if (!net.Online()) return false;
         if (net.Role == PeerRole.Host) net.SummonDragon();
-        else AskHost();
+        else AskHost(net);
         return true;
     }
 
@@ -25,14 +25,13 @@ public static class OnlineReset
             net.StampReset();
             return true;
         }
-        AskHost();
+        AskHost(net);
         return true;
     }
 
-    static void AskHost()
+    static void AskHost(IPeers net)
     {
-        var me = NetWizard.Local;
-        if (me != null) me.AskForReset();
+        net.AskForReset();
         EventLog.Add("You asked the host to reset the world");
     }
 

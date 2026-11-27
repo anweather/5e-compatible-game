@@ -19,11 +19,21 @@ using UnityEngine.SceneManagement;
 // All view and all float: the ring and the landmarks are pure functions of the seed and the plan, and nothing shared
 // reads anything here (D4). Starts itself on a generated map (PinnedValley.InGenerated); the valley alone keeps its
 // skyline and its linear haze.
-public sealed partial class FarRing : MonoBehaviour
+public sealed partial class FarRing : MonoBehaviour, IFarLandFace
 {
     public const float HazeK = Air.HazeK;
 
-    public static FarRing Instance { get; private set; }
+    static FarRing instance;
+
+    public static FarRing Instance
+    {
+        get => instance;
+        private set
+        {
+            instance = value;
+            LandFaces.FarLand = value;
+        }
+    }
 
     public float HazeMetres { get; private set; }
 

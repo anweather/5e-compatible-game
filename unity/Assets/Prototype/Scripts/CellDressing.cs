@@ -173,7 +173,7 @@ public sealed partial class CellDressing
     static readonly string BrushPrefix = TerrainIds.Brush + " ";
 
     float DrawnGround(Vector3 at) =>
-        MapTerrains.Instance != null && MapTerrains.Instance.TerrainAt(at) is { terrainData: not null } t
+        LandFaces.Terrains is { } terrains && terrains.TerrainAt(at) is { terrainData: not null } t
             ? t.transform.position.y + t.SampleHeight(at)
             : grid.GroundAt(at);
 
@@ -229,7 +229,8 @@ public sealed partial class CellDressing
 
     static GameObject[] Grasses()
     {
-        var template = MapTerrains.Instance != null ? MapTerrains.Instance.template : null;
+        var terrains = LandFaces.Terrains;
+        var template = terrains != null ? terrains.Template : null;
         if (template == grassesOf && grasses != null) return grasses;
         grassesOf = template;
         var found = new System.Collections.Generic.List<GameObject>();

@@ -454,7 +454,7 @@ public class RowHouses : MonoBehaviour
 
     void Moved(BuildingsChange change)
     {
-        var caster = EventLog.TrackedCaster;
+        var caster = EventLog.TrackedWizard;
         if (caster == null) return;
         var wizard = caster.transform;
         var at = grid.CellAt(wizard.position);
@@ -463,7 +463,7 @@ public class RowHouses : MonoBehaviour
         to.y = grid.GroundAt(to);
         bool hasBody = wizard.TryGetComponent<CharacterController>(out var body);
         if (hasBody) body.enabled = false;
-        if (wizard.TryGetComponent<NetWizard>(out var net) && net.IsSpawned) net.Teleport(to);
+        if (caster is Caster mover) mover.MoveTo(to);
         else wizard.position = to;
         if (hasBody) body.enabled = true;
     }

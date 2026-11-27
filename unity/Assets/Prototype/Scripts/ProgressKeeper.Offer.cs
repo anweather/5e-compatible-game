@@ -53,7 +53,7 @@ public partial class ProgressKeeper
     public string OfferText()
     {
         var world = grid != null ? grid.World : null;
-        var caster = EventLog.TrackedCaster;
+        var caster = WizardHud.TrackedCaster;
         var run = caster != null ? world?.RunOf(caster.CastPlayer) : null;
         if (run == null || run.Offer.Count == 0) return "";
         var lines = new System.Text.StringBuilder(OfferTitle(world));
@@ -96,7 +96,7 @@ public partial class ProgressKeeper
     void OnGUI()
     {
         var world = grid.World;
-        var caster = EventLog.TrackedCaster;
+        var caster = WizardHud.TrackedCaster;
         if (world?.HoldSite == null || caster == null || !EventLog.HudVisible) return;
         HudScale.Apply();
         Styles();

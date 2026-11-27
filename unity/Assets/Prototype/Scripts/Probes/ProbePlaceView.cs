@@ -207,11 +207,12 @@ public class PlaceViewProbe : RoomProbe
     int OpenAround(System.Func<int, int, bool> open, Vector2Int c)
     {
         int n = 0;
+        var valley = ValleyChemistry.Of(grid);
         for (int y = -Around; y <= Around; y++)
             for (int x = -Around; x <= Around; x++)
             {
                 if (open(c.x + x, c.y + y)) n++;
-                if (grid.valley != null && grid.valley.TreeStands(c.x + x, c.y + y)) n -= TreePenalty;
+                if (valley != null && valley.TreeStands(c.x + x, c.y + y)) n -= TreePenalty;
             }
         return n;
     }

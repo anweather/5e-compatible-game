@@ -98,7 +98,7 @@ public class DragonProbe : ProbeScenario
     {
         float sunBefore = sky.sun.intensity, ambientBefore = RenderSettings.ambientIntensity;
         int mark = ConsoleMark;
-        EventLog.ResetYard();
+        WizardHud.ResetYard();
         Check("r_summons_it", World.Dragon?.Phase == DragonPhase.Warning, $"phase {World.Dragon?.Phase}, flights {World.DragonFlights}");
         float started = Time.time;
         yield return ThroughTheWarning(started);
@@ -585,7 +585,7 @@ public class DragonProbe : ProbeScenario
             world.Paint(meadow.x, meadow.y, TerrainIds.Dirt);
             world.At(meadow.x, meadow.y).Height += 2;
 
-            tree = Find(world, from, c => c.T == TerrainIds.Tree, (x, y) => probe.grid.valley.TreeStands(x, y));
+            tree = Find(world, from, c => c.T == TerrainIds.Tree, (x, y) => ValleyChemistry.Of(probe.grid).TreeStands(x, y));
             world.Paint(tree.x, tree.y, TerrainIds.Stump);
 
             var things = probe.spawner.Live.Where(t => t.prop.State != null && !t.prop.Held && t.prop.kind == EntityIds.Crate).OrderBy(t => (probe.wizard.transform.position - t.prop.transform.position).sqrMagnitude).Take(2).ToList();
@@ -599,7 +599,7 @@ public class DragonProbe : ProbeScenario
                 things[1].prop.Hurt(9999);
             }
             yield return Wait(1f);
-            probe.Check("tree_felled_first", !probe.grid.valley.TreeStands(tree.x, tree.y), $"at {tree}");
+            probe.Check("tree_felled_first", !ValleyChemistry.Of(probe.grid).TreeStands(tree.x, tree.y), $"at {tree}");
             probe.Check("thing_broke_first", probe.spawner.Find(broken) == null, $"{broken}");
         }
 
@@ -618,7 +618,7 @@ public class DragonProbe : ProbeScenario
             probe.Check("gauntlet_back", world.At(LavaX, LavaY).T == lavaAsBuilt, $"({LavaX}, {LavaY}) is {world.At(LavaX, LavaY).T}");
             var m = world.At(meadow.x, meadow.y);
             probe.Check("meadow_back", m.T == meadowAsBuilt && m.Height == 0, $"{m.T}, height {m.Height}");
-            probe.Check("tree_back", world.At(tree.x, tree.y).T == TerrainIds.Tree && probe.grid.valley.TreeStands(tree.x, tree.y), $"at {tree}: {world.At(tree.x, tree.y).T}");
+            probe.Check("tree_back", world.At(tree.x, tree.y).T == TerrainIds.Tree && ValleyChemistry.Of(probe.grid).TreeStands(tree.x, tree.y), $"at {tree}: {world.At(tree.x, tree.y).T}");
             var thing = probe.spawner.Find(moved);
             float off = thing != null ? (thing.transform.position - movedHome).magnitude : float.PositiveInfinity;
             probe.Check("moved_thing_home", off < 1.5f, $"{off:0.0} m from where it stood");

@@ -71,7 +71,7 @@ public class HandsClipProbe : ProbeScenario
     protected virtual IEnumerator Takes()
     {
         float level = (float)Core.SecondsPerLevel;
-        var hud = EventLog.CastShown;
+        var hud = WizardHud.CastShown;
         yield return Hold(1f);
 
         Note("charge: right trigger held");

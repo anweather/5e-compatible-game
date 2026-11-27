@@ -62,7 +62,7 @@ public class DragonShadow : MonoBehaviour
             for (int x = 0; x < Side; x++)
             {
                 var p = at + right * ((x / (Side - 1f) - 0.5f) * size) + forward * ((y / (Side - 1f) - 0.5f) * size);
-                p.y = Mathf.Max(grid.GroundAt(p), grid.valley != null ? grid.valley.lakeLevel : 0f) + Above;
+                p.y = Mathf.Max(grid.GroundAt(p), grid.valley != null ? grid.valley.LakeLevel : 0f) + Above;
                 vertices[y * Side + x] = p;
             }
         mesh.vertices = vertices;

@@ -11,7 +11,7 @@ using UnityEngine;
 // water or fills again (Vitals.Breath), faded in and out the same way.
 public sealed class VitalsHud
 {
-    public const float Margin = 24f, BlockHeight = 80f;
+    public const float Margin = EventLog.HudMargin, BlockHeight = 80f;
 
     const float BarWidth = 200f, BarHeight = 30f, Gap = 6f, StaminaHeight = 8f;
     const float Inset = 2f;

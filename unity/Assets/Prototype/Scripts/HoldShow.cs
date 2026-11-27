@@ -208,7 +208,7 @@ public class HoldShow : MonoBehaviour
         DrawHurt();
         var world = grid.World;
         if (!EventLog.HudVisible || world?.HoldSite == null) return;
-        var caster = EventLog.TrackedCaster;
+        var caster = WizardHud.TrackedCaster;
         style ??= new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, richText = true };
         if (caster != null && world.TowerOf(caster.CastPlayer) != null)
             GUI.Label(new Rect(HudScale.Width / 2f - 450f, HudScale.Height - 280f, 900f, 36f), $"<color=#bfe3ff>{TowerLine(world, caster.CastPlayer)}</color>", style);

@@ -60,7 +60,7 @@ public class Village : MonoBehaviour
         }
         var world = grid?.World;
         float lit;
-        if (world != null) lit = Nightfall.Lamps(world);
+        if (world != null) lit = NightLamps.Lamps(world);
         else if (sky != null) lit = Mathf.SmoothStep(0f, 1f, 1f - sky.Daylight);
         else return;
         Shader.SetGlobalFloat(LampGlow, lit);

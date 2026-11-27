@@ -10,11 +10,13 @@ public sealed class SoloPeers : IPeers
 
     public string Me => Peers.NameOf(0);
 
-    public string Player => SpellCaster.SoloPlayer;
+    public string Player => Caster.SoloPlayer;
 
     public bool CaughtUp => true;
 
     public bool Resetting => false;
+
+    public bool WizardSpawned => false;
 
     public void RequestCast(CastCommand command, int delayTicks, Vector3 from)
     {
@@ -57,6 +59,10 @@ public sealed class SoloPeers : IPeers
     }
 
     public void StampReset()
+    {
+    }
+
+    public void AskForReset()
     {
     }
 }

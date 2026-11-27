@@ -34,7 +34,7 @@ public partial class ChemGrid
 
     public bool LooksScoped => anyScoped;
 
-    public static int SlotOf(SpellCaster caster) => caster != null && caster.TryGetComponent<NetWizard>(out var net) ? (int)net.OwnerClientId : 0;
+    public static int SlotOf(Caster caster) => caster != null ? caster.Slot : 0;
 
     static Color ToColor(LookColour c, float a = 1f) => new(c.R, c.G, c.B, a);
 
@@ -189,7 +189,7 @@ public partial class ChemGrid
         if (litBy.Count == 0 || !litBy.TryGetValue(index, out var note)) return null;
         if (note.Caster >= 0) caster = note.Caster;
         if (note.Colour.HasValue) return note.Colour;
-        return note.Spell != null && Showman != null && Showman.LookOf(note.Spell) is { KeepsFire: true } look ? Of(look.glow) : null;
+        return note.Spell != null && Showman != null && Showman.FireLookOf(note.Spell, out _, out var glow) ? Of(glow) : null;
     }
 
     LookTint ScopedFireTint(int x, int y)

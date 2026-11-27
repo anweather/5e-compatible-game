@@ -77,7 +77,7 @@ public class HandsMenuProbe : ProbeScenario
             yield return Wait(0.8f);
             Check("the_hands_are_on", controls.HandPad);
             if (!controls.HandPad) yield break;
-            var hud = EventLog.CastShown;
+            var hud = WizardHud.CastShown;
             Check("no_hand_icons_at_rest", hud != null && !hud.HandDrawn(HandsDef.Left) && !hud.HandDrawn(HandsDef.Right));
             heard.StartFrom(Core);
 

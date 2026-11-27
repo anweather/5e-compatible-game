@@ -133,7 +133,7 @@ public class DragonBreath : MonoBehaviour
     Vector3 OnGround(Vector3 at)
     {
         at.y = grid.GroundAt(at);
-        if (grid.valley != null) at.y = Mathf.Max(at.y, grid.valley.lakeLevel);
+        if (grid.valley != null) at.y = Mathf.Max(at.y, grid.valley.LakeLevel);
         return at;
     }
 

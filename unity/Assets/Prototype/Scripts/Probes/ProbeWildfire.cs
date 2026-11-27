@@ -42,12 +42,13 @@ public class WildfireProbe : ProbeScenario
             lights += grid.LightsMs;
             surfaces += grid.SurfacesMs;
             worstRender = System.Math.Max(worstRender, grid.RenderMs);
-            if (grid.valley != null)
+            var valley = ValleyChemistry.Of(grid);
+            if (valley != null)
             {
-                trees += grid.valley.TreesMs;
-                ground += grid.valley.GroundMs;
-                worstTrees = System.Math.Max(worstTrees, grid.valley.TreesMs);
-                worstGround = System.Math.Max(worstGround, grid.valley.GroundMs);
+                trees += valley.TreesMs;
+                ground += valley.GroundMs;
+                worstTrees = System.Math.Max(worstTrees, valley.TreesMs);
+                worstGround = System.Math.Max(worstGround, valley.GroundMs);
             }
             if (frames.Count % 30 == 1) peak = Mathf.Max(peak, BurningCells());
             if (t < 6f && t + Time.unscaledDeltaTime >= 6f) Shot("mid-burn");

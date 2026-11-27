@@ -194,7 +194,7 @@ public class HandsProbe : ProbeScenario
 
     IEnumerator Charges(string left, string right)
     {
-        var hud = EventLog.CastShown;
+        var hud = WizardHud.CastShown;
         int full = World.MaxCharge;
         float levelSeconds = (float)Core.SecondsPerLevel;
         heard.StartFrom(Core);

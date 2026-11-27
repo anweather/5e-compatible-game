@@ -51,7 +51,7 @@ public class PadRumble : MonoBehaviour
         {
             if (PauseMenu.Instance != null && PauseMenu.Instance.Open) return false;
             if (Testing) return true;
-            var controls = EventLog.TrackedCaster != null ? EventLog.TrackedCaster.controls : null;
+            var controls = WizardHud.TrackedCaster != null ? WizardHud.TrackedCaster.controls : null;
             return Application.isFocused && controls != null && controls.UsingGamepad;
         }
     }

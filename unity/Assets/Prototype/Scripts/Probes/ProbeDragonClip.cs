@@ -39,7 +39,7 @@ public class DragonClipProbe : ClipProbe
 
         StartFilm();
         int firstTick = World.Tick;
-        EventLog.ResetYard();
+        WizardHud.ResetYard();
         flight = World.Dragon;
         Check("r_summons_it", flight?.Phase == DragonPhase.Warning, $"phase {flight?.Phase}");
         if (flight == null) yield break;

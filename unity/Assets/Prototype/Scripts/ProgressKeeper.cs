@@ -52,20 +52,20 @@ public partial class ProgressKeeper : MonoBehaviour
         asIf = null;
         heard = false;
         EventLog.Add(fromTheSave ? $"Playing with your own unlocks: {file.Points} points" : "Playing with everything unlocked");
-        EventLog.TrackedCaster?.BringPoints(Points);
+        WizardHud.TrackedCaster?.BringPoints(Points);
     }
 
     public void PlayAsIf(int points)
     {
         asIf = points;
         heard = false;
-        EventLog.TrackedCaster?.BringPoints(Points);
+        WizardHud.TrackedCaster?.BringPoints(Points);
     }
 
     void Update()
     {
         var world = grid.World;
-        var caster = EventLog.TrackedCaster;
+        var caster = WizardHud.TrackedCaster;
         if (world?.HoldSite == null || caster == null || caster.Replaying) return;
         string me = caster.CastPlayer;
         if (HoldMoments.Offered && Keyboard.current != null && Keyboard.current.f7Key.wasPressedThisFrame) PlayFromTheSave(!fromTheSave);

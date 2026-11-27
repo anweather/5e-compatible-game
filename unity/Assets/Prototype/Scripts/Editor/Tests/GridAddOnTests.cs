@@ -18,4 +18,11 @@ public class GridAddOnTests
         var names = GridAddOns.At(GridStage.Grid).Select(t => t.Name).ToArray();
         Assert.That(names, Is.EqualTo(new[] { "HoldShow", "ProgressKeeper", "HoldBarricades", "HoldMoments", "Waystones" }));
     }
+
+    [Test]
+    public void TheEventLogAddsTheWizardHud()
+    {
+        var names = GridAddOns.At(GridStage.Hud).Select(t => t.Name).ToArray();
+        Assert.That(names, Is.EqualTo(new[] { "WizardHud" }));
+    }
 }

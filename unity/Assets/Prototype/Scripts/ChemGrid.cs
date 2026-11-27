@@ -22,7 +22,7 @@ public partial class ChemGrid : MonoBehaviour
     [Tooltip("The yard's cells within the map; empty means the whole map is the yard.")]
     public RectInt yardCells;
     [Tooltip("Optional: the valley's terrains, which the cells shape and paint. Without it the ground is flat at 0.")]
-    public ValleyChemistry valley;
+    public ValleyFace valley;
 
     [Header("Tuning for this scene (0 keeps rules/sim.json); applied as part of the base rules")]
     [Tooltip("Fire weakens as it spreads and dies out after about this many cells (see FireParams.FadeCells).")]
@@ -87,7 +87,7 @@ public partial class ChemGrid : MonoBehaviour
     readonly List<ChunkFresh> freshChunks = new();
 
     public void SummonDragon() => World.ApplyDragon(new DragonCommand());
-    SpellCaster[] wizards = System.Array.Empty<SpellCaster>();
+    Caster[] wizards = System.Array.Empty<Caster>();
     float nextWizardLookup;
 
     float tickTimer;
@@ -153,7 +153,7 @@ public partial class ChemGrid : MonoBehaviour
     int[] MapLandUnits()
     {
         if (World?.Source is IGeneratedSource) return null;
-        var land = valley != null ? ValleyChemistry.LandOf(World) : null;
+        var land = valley != null ? ValleyFace.LandOf(World) : null;
         if (land == null) return null;
         var units = new int[land.W * land.H];
         var band = new int[Chunks.Size * land.W];
@@ -450,7 +450,7 @@ public partial class ChemGrid : MonoBehaviour
         chosenMap = null;
         playedSource = null;
         playedSourceOf = null;
-        ValleyChemistry.ForgetLand();
+        ValleyFace.ForgetLand();
     }
 
     public static string CellMap() => MapFile.ReadCells(Folders.World);
@@ -500,7 +500,7 @@ public partial class ChemGrid : MonoBehaviour
     {
         var before = testMap;
         testMap = id;
-        ValleyChemistry.ForgetLand();
+        ValleyFace.ForgetLand();
         return new MapScope(before);
     }
 
@@ -515,7 +515,7 @@ public partial class ChemGrid : MonoBehaviour
             if (ended) return;
             ended = true;
             testMap = before;
-            ValleyChemistry.ForgetLand();
+            ValleyFace.ForgetLand();
         }
     }
 
@@ -541,7 +541,7 @@ public partial class ChemGrid : MonoBehaviour
     static void SwitchFolders(string id)
     {
         folders = FoldersFor(id);
-        ValleyChemistry.ForgetLand();
+        ValleyFace.ForgetLand();
     }
 
     public static string MapId => PlayedMaps.TryGetValue(Folders.World, out var m) ? m.id : Folders.Map;
@@ -673,7 +673,7 @@ public partial class ChemGrid : MonoBehaviour
     {
         if (ChoreClock >= nextWizardLookup)
         {
-            wizards = SpellCaster.AllByInstanceId;
+            wizards = Caster.AllByInstanceId;
             nextWizardLookup = ChoreClock + 1f;
         }
         playerCells.Clear();

@@ -8,9 +8,9 @@ using UnityEngine;
 // marked for a delayed one); this is only the show. ChemGrid.RenderTriggered picks the wizard.
 public partial class SpellCaster
 {
-    public string StandPlayer => TryGetComponent<NetWizard>(out var wizard) && wizard.IsSpawned ? wizard.CastPlayer : SoloPlayer;
+    public override string StandPlayer => TryGetComponent<NetWizard>(out var wizard) && wizard.IsSpawned ? wizard.CastPlayer : SoloPlayer;
 
-    public void PlayTriggered(TriggeredCast cast, float seconds)
+    public override void PlayTriggered(TriggeredCast cast, float seconds)
     {
         if (grid == null || grid.World == null) return;
         var command = new CastCommand(cast.Spell, cast.X, cast.Y, cast.Dir);

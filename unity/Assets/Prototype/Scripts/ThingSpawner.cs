@@ -271,7 +271,7 @@ public class ThingSpawner : MonoBehaviour
         live.Remove(id);
         gone.Remove(id);
         if (prop == null) return;
-        if (prop.TryGetComponent<Carryable>(out var item)) item.Lost();
+        if (prop.TryGetComponent<ItemFace>(out var item)) item.Lost();
         Remove(prop);
     }
 
@@ -345,13 +345,13 @@ public class ThingSpawner : MonoBehaviour
     {
         var thing = grid.Things.Find(id);
         var mine = Find(id);
-        if (thing == null || mine == null || !mine.TryGetComponent<Carryable>(out var a)) return;
+        if (thing == null || mine == null || !mine.TryGetComponent<ItemFace>(out var a)) return;
         foreach (var other in grid.Things.LinkedTo(thing))
         {
             var theirs = Find(other.Id);
-            if (theirs == null || !theirs.TryGetComponent<Carryable>(out var b)) continue;
-            a.partner = b;
-            b.partner = a;
+            if (theirs == null || !theirs.TryGetComponent<ItemFace>(out var b)) continue;
+            a.PairWith(b);
+            b.PairWith(a);
         }
     }
 
@@ -414,6 +414,6 @@ public class ThingSpawner : MonoBehaviour
     static void Enable(NetProp net, bool on)
     {
         net.GetComponent<PhysicsProp>().enabled = on;
-        if (net.TryGetComponent<Carryable>(out var item)) item.enabled = on;
+        if (net.TryGetComponent<ItemFace>(out var item)) item.enabled = on;
     }
 }

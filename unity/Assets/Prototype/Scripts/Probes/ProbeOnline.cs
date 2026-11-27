@@ -596,7 +596,7 @@ public class OnlineProbe : ProbeScenario
     void Summon()
     {
         int flights = World.DragonFlights;
-        bool reloaded = EventLog.ResetYard();
+        bool reloaded = WizardHud.ResetYard();
         StartCoroutine(SummonLands(flights, reloaded));
     }
 
@@ -850,7 +850,7 @@ public class OnlineProbe : ProbeScenario
         int lastReset = net.LastResetTick, heard = -1;
         void Heard(int tick) => heard = tick;
         net.ResetComing += Heard;
-        bool reloaded = EventLog.RebuildYard();
+        bool reloaded = WizardHud.RebuildYard();
         float waited = 0f;
         for (; waited < 8f && net.LastResetTick == lastReset; waited += Time.unscaledDeltaTime) yield return null;
         net.ResetComing -= Heard;

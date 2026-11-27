@@ -20,7 +20,7 @@ using UnityEngine.Rendering;
 // swimmer (SurfaceEffects) rides the waves they see. On a generated map the fine sea is laid in tiles
 // round the drawn tier and a coarse sea past them (Ocean.Tiles.cs, #214), so its cost never follows the map's size.
 [ExecuteAlways]
-public partial class Ocean : MonoBehaviour
+public partial class Ocean : MonoBehaviour, ISeaFace
 {
     public Material material;
     [Tooltip("The sea's surface height, from the map (MapLand): the lake's, so the cells' water is one level.")]
@@ -36,7 +36,17 @@ public partial class Ocean : MonoBehaviour
     [Tooltip("Spacing over the beaches and the near sea (m), and how far each way it holds.")]
     public float fineStep = 2.5f, fineAlong = 430f, fineOut = 330f;
 
-    public static Ocean Instance { get; private set; }
+    static Ocean instance;
+
+    public static Ocean Instance
+    {
+        get => instance;
+        private set
+        {
+            instance = value;
+            LandFaces.Sea = value;
+        }
+    }
 
     public void Recolour(Color tint)
     {

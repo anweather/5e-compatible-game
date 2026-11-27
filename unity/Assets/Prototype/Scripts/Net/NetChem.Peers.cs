@@ -20,5 +20,13 @@ public partial class NetChem : IPeers
 
     bool IPeers.Resetting => Online && Resetting;
 
+    bool IPeers.WizardSpawned => NetWizard.Local != null;
+
     void IPeers.StampReset() => StampReset(ResetCountdownTicks);
+
+    void IPeers.AskForReset()
+    {
+        var me = NetWizard.Local;
+        if (me != null) me.AskForReset();
+    }
 }

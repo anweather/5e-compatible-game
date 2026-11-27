@@ -15,7 +15,7 @@ using UnityEngine;
 // own surface.
 // Works on runtime copies of the terrain data, so playing never changes the
 // saved valley.
-public partial class ValleyChemistry : MonoBehaviour
+public partial class ValleyChemistry : ValleyFace
 {
     public ChemGrid grid;
     [Tooltip("The chunk terrains, made from the map's folder as the scene starts (the scene holds none).")]
@@ -28,6 +28,10 @@ public partial class ValleyChemistry : MonoBehaviour
     static readonly Registry<ValleyChemistry> registry = new();
 
     public static ValleyChemistry InPlay => registry.First;
+
+    public static ValleyChemistry Of(ChemGrid grid) => grid != null ? grid.valley as ValleyChemistry : null;
+
+    public override float LakeLevel => lakeLevel;
 
     void Awake() => registry.Join(this);
 
@@ -47,7 +51,7 @@ public partial class ValleyChemistry : MonoBehaviour
         return null;
     }
 
-    public void RecolourGround(Rules was, Rules now)
+    public override void RecolourGround(Rules was, Rules now)
     {
         wet?.Tint(layer => ChemGrid.TintBetween(LayerLook(was, layer), LayerLook(now, layer)));
         var tint = ChemGrid.TintBetween(LayerLook(was, CellPaint.Grass), LayerLook(now, CellPaint.Grass));
@@ -110,7 +114,7 @@ public partial class ValleyChemistry : MonoBehaviour
 
     public bool Recolouring => grassToTint.Count > 0;
 
-    public void RecolourWater(Color tint)
+    public override void RecolourWater(Color tint)
     {
         if (!lakeSought)
         {
@@ -148,7 +152,7 @@ public partial class ValleyChemistry : MonoBehaviour
     bool[] cabinCharred;
     Material charred;
 
-    public bool FlatUnderWalls => grid != null && grid.wallRocks != null && grid.wallRocks.Length > 0 && grid.wallRocks[0] != null;
+    public override bool FlatUnderWalls => grid != null && grid.wallRocks != null && grid.wallRocks.Length > 0 && grid.wallRocks[0] != null;
 
     public ValleyGround Ground => ground;
 
@@ -220,7 +224,7 @@ public partial class ValleyChemistry : MonoBehaviour
 
     public float Wetness => wet != null ? wet.Wetness : 0f;
 
-    public void Bind(World world)
+    public override void Bind(World world)
     {
         var steps = new StepTimes("valley bind");
         lakeSought = false;
@@ -442,7 +446,7 @@ public partial class ValleyChemistry : MonoBehaviour
         }
     }
 
-    public bool TrunkAt(int x, int y, out Vector3 at)
+    public override bool TrunkAt(int x, int y, out Vector3 at)
     {
         at = default;
         if (!treesByCell.TryGetValue(grid.World.Idx(x, y), out var list) || list.Count == 0) return false;
@@ -454,7 +458,7 @@ public partial class ValleyChemistry : MonoBehaviour
         return true;
     }
 
-    public bool FelledTree(int x, int y, out GameObject prefab, out Vector3 scale)
+    public override bool FelledTree(int x, int y, out GameObject prefab, out Vector3 scale)
     {
         prefab = null;
         scale = Vector3.one;
@@ -468,19 +472,19 @@ public partial class ValleyChemistry : MonoBehaviour
         return prefab != null;
     }
 
-    public float BaseHeight(int x, int y) => ground != null ? ground.BaseHeight(x, y) : 0f;
+    public override float BaseHeight(int x, int y) => ground != null ? ground.BaseHeight(x, y) : 0f;
 
-    public float ShownGround(int x, int y) => ground != null ? ground.ShownGround(x, y) : 0f;
+    public override float ShownGround(int x, int y) => ground != null ? ground.ShownGround(x, y) : 0f;
 
-    public float GroundAt(Vector3 p) => ground != null ? ground.GroundAt(p.x, p.z) : 0f;
+    public override float GroundAt(Vector3 p) => ground != null ? ground.GroundAt(p.x, p.z) : 0f;
 
-    public bool GroundMoving => ground != null && ground.Shaping;
+    public override bool GroundMoving => ground != null && ground.Shaping;
 
-    public void AdvanceShaping(float dt) => ground?.Advance(dt);
+    public override void AdvanceShaping(float dt) => ground?.Advance(dt);
 
-    public bool IsLake(Cell c, int x, int y) => LakeLevelOf(c, x, y) > float.NegativeInfinity;
+    public override bool IsLake(Cell c, int x, int y) => LakeLevelOf(c, x, y) > float.NegativeInfinity;
 
-    public float LakeLevelOf(Cell c, int x, int y)
+    public override float LakeLevelOf(Cell c, int x, int y)
     {
         if (c.T != TerrainIds.Pit) return float.NegativeInfinity;
         if (hillsRivers != null)
@@ -492,16 +496,6 @@ public partial class ValleyChemistry : MonoBehaviour
     }
 
     HillsRivers hillsRivers;
-
-    static LandChunks landFromFile;
-
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetLand()
-    {
-        landFromFile = null;
-    }
-
-    public static void ForgetLand() => landFromFile = null;
 
     void CheckGround(World world)
     {
@@ -517,19 +511,6 @@ public partial class ValleyChemistry : MonoBehaviour
         var land = LandOf(world);
         if (land == null) world.SetLand((int[])null);
         else world.SetLandByChunk(land);
-    }
-
-    public static LandChunks LandOf(World world)
-    {
-        if (landFromFile == null || landFromFile.W != world.W || landFromFile.H != world.H)
-        {
-            string path = Path.Combine(ChemGrid.Folders.World, "land.json");
-            var map = MapLand.Current;
-            landFromFile = map != null && (map.FromFile || map.Land.IsFromSource) && map.Land.W == world.W && map.Land.H == world.H ? map.Land
-                : File.Exists(path) ? LandChunks.Read(File.ReadAllText(path), world.W, world.H) : null;
-            if (landFromFile == null) Debug.LogWarning($"No land for a {world.W}×{world.H} world in {path}: water won't run down the hills");
-        }
-        return landFromFile;
     }
 
     public string BakeLand()
@@ -548,15 +529,7 @@ public partial class ValleyChemistry : MonoBehaviour
         return $"wrote {path} ({new FileInfo(path).Length / 1024} KB)";
     }
 
-    public static float FireHeight(string terrainType) => terrainType switch
-    {
-        TerrainIds.Tree => 2.6f,
-        TerrainIds.LogWall => 1.4f,
-        TerrainIds.Deadfall => 0.5f,
-        _ => 0f,
-    };
-
-    public void LandMoved(int x, int y, int reach)
+    public override void LandMoved(int x, int y, int reach)
     {
         if (ground == null) return;
         for (int v = y - reach - 1; v <= y + reach + 1; v++)
@@ -569,7 +542,7 @@ public partial class ValleyChemistry : MonoBehaviour
         rocks?.Moved(x, y, reach + 1);
     }
 
-    public void CellChanged(int x, int y, string from, string to, bool reshaped)
+    public override void CellChanged(int x, int y, string from, string to, bool reshaped)
     {
         if (ground == null) return;
         if (from == null && (to == TerrainIds.Deadfall || to == TerrainIds.Stump)) BurnTrees(x, y);
@@ -603,7 +576,7 @@ public partial class ValleyChemistry : MonoBehaviour
 
     public void UnbindPanes(WindowPanes panes) => panes.Unbind(panesByCell);
 
-    public void PaneCracked(int key, bool cracked)
+    public override void PaneCracked(int key, bool cracked)
     {
         if (panesByCell.TryGetValue(key, out var pane) && pane != null) pane.Cracked(key, cracked);
     }
@@ -772,13 +745,13 @@ public partial class ValleyChemistry : MonoBehaviour
 
     public bool Grown(int x, int y) => grown.Contains(grid.World.Idx(x, y));
 
-    public bool NeedsTreeDrawn(int x, int y)
+    public override bool NeedsTreeDrawn(int x, int y)
     {
         int key = grid.World.Idx(x, y);
         return grown.Contains(key) || (startTrees != null && !startTrees.At(x, y) && !TreeStands(x, y));
     }
 
-    public bool TreeModel(int x, int y, out GameObject prefab, out Vector3 scale)
+    public override bool TreeModel(int x, int y, out GameObject prefab, out Vector3 scale)
     {
         if (FelledTree(x, y, out prefab, out scale)) return true;
         scale = Vector3.one;

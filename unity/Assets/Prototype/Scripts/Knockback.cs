@@ -12,7 +12,7 @@ using UnityEngine;
 // on to its owner (NetWizard), who applies it.
 [DefaultExecutionOrder(110)]
 [RequireComponent(typeof(CharacterController))]
-public class Knockback : MonoBehaviour, IPushable
+public class Knockback : WizardBody
 {
     [Tooltip("For the wizard's mass in rules/entities.json; without it the mass is 1.")]
     public ChemGrid grid;
@@ -28,7 +28,7 @@ public class Knockback : MonoBehaviour, IPushable
     Vector3 shuntTo;
     float shuntLeft;
 
-    public static IReadOnlyList<Knockback> All => all;
+    public static new IReadOnlyList<Knockback> All => all;
 
     public Vector3 Velocity { get; private set; }
 
@@ -38,8 +38,17 @@ public class Knockback : MonoBehaviour, IPushable
         TryGetComponent(out net);
     }
 
-    void OnEnable() => all.Add(this);
-    void OnDisable() => all.Remove(this);
+    void OnEnable()
+    {
+        all.Add(this);
+        Listed();
+    }
+
+    void OnDisable()
+    {
+        all.Remove(this);
+        Unlisted();
+    }
 
     public void Shunt(Vector3 to, float seconds)
     {
@@ -47,7 +56,12 @@ public class Knockback : MonoBehaviour, IPushable
         shuntLeft = Mathf.Max(seconds, 0.01f);
     }
 
-    public void Push(Vector3 impulse)
+    public override void Toss(float speed)
+    {
+        if (TryGetComponent<SurfaceEffects>(out var feet)) feet.Toss(speed);
+    }
+
+    public override void Push(Vector3 impulse)
     {
         if (net != null && net.IsSpawned && !net.IsOwner)
         {

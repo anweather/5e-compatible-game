@@ -16,7 +16,7 @@ public partial class ChemGrid
 
     World triggeredWorld;
     int triggeredSeen;
-    readonly List<SpellCaster> casters = new();
+    readonly List<Caster> casters = new();
 
     public IReadOnlyList<(int n, string spell, int x, int y, int tick, int lands, string player)> TriggeredShown => triggeredShown;
     readonly List<(int n, string spell, int x, int y, int tick, int lands, string player)> triggeredShown = new();
@@ -52,10 +52,10 @@ public partial class ChemGrid
             if (star.Spell == cast.Spell && star.X == cast.X && star.Y == cast.Y && star.Lands == cast.Lands && starsFalling.Add(star)) return;
     }
 
-    SpellCaster CasterOf(string player)
+    Caster CasterOf(string player)
     {
         casters.Clear();
-        casters.AddRange(SpellCaster.All);
+        casters.AddRange(Caster.All);
         foreach (var c in casters)
             if (c.isActiveAndEnabled && c.StandPlayer == player) return c;
         return null;

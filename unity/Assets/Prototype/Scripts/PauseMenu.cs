@@ -230,10 +230,11 @@ public class PauseMenu : MonoBehaviour
 
     void PauseWizard()
     {
-        var caster = EventLog.TrackedCaster;
-        if (caster != null && caster.controls != null && caster.controls.enabled)
+        var caster = EventLog.TrackedWizard;
+        var wizardControls = EventLog.TrackedControls;
+        if (caster != null && wizardControls != null && wizardControls.enabled)
         {
-            pausedControls = caster.controls;
+            pausedControls = wizardControls;
             pausedControls.enabled = false;
         }
         lookInput = caster != null ? caster.GetComponent(WizardRig.InputsComponent) : null;

@@ -842,7 +842,8 @@ public sealed class CellWaterMesh
         var c = world.CellAt(key);
         var at = grid.CellCenter(x, y);
         at.y = grid.GroundTop(x, y, c);
-        var current = WaterCurrents.Instance != null ? WaterCurrents.Instance.At(at) : Vector3.zero;
+        var currents = LandFaces.Currents;
+        var current = currents != null ? currents.At(at) : Vector3.zero;
         var flow = new Vector2(current.x, current.z);
         if (flow.sqrMagnitude < 0.0001f && c.T != TerrainIds.River) flow = Downhill(x, y);
         ref var read = ref cells.Write(key);

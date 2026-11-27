@@ -74,7 +74,7 @@ public class GrimoireMenu : MonoBehaviour
     {
         row ??= new GUIStyle(GUI.skin.label) { fontSize = 18, richText = true, alignment = TextAnchor.MiddleLeft };
         head ??= new GUIStyle(row) { fontSize = 20 };
-        var caster = EventLog.TrackedCaster;
+        var caster = WizardHud.TrackedCaster;
         var world = caster != null && caster.grid != null ? caster.grid.World : null;
         if (world == null)
         {

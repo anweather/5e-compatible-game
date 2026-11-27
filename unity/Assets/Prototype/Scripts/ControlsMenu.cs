@@ -87,7 +87,7 @@ public class ControlsMenu : MonoBehaviour
 
     void Update()
     {
-        if (shownAt >= 0f || !EventLog.HudVisible || PlayerPrefs.GetInt(SeenKey, 0) == 1 || EventLog.TrackedCaster == null) return;
+        if (shownAt >= 0f || !EventLog.HudVisible || PlayerPrefs.GetInt(SeenKey, 0) == 1 || WizardHud.TrackedCaster == null) return;
         shownAt = Time.unscaledTime;
         PlayerPrefs.SetInt(SeenKey, 1);
         PlayerPrefs.Save();
