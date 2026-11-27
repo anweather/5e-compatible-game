@@ -26,11 +26,11 @@ public class BallProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        var early = FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None).FirstOrDefault(p => p.kind == ItemIds.Ball);
+        var early = PhysicsProp.All.FirstOrDefault(p => p.kind == ItemIds.Ball);
         if (early != null) ballYAtSpawn = early.transform.position.y;
         var court = GameObject.Find("Ball court");
         Check("court_built", court != null && court.GetComponentsInChildren<Collider>().Length >= 8, "the Ball court with its rails and goals");
-        var ball = FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None).FirstOrDefault(p => p.kind == ItemIds.Ball);
+        var ball = PhysicsProp.All.FirstOrDefault(p => p.kind == ItemIds.Ball);
         Check("ball_spawned", ball != null, "a ball from world/things.json");
         if (ball == null || court == null) yield break;
 

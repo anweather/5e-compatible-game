@@ -76,7 +76,7 @@ public class BallCourt : MonoBehaviour
         ball = null;
         if (Time.time < nextFind) return false;
         nextFind = Time.time + FindEvery;
-        foreach (var prop in FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None))
+        foreach (var prop in PropsNearCourt())
         {
             if (prop.kind != ItemIds.Ball || !OnCourt(prop.transform.position)) continue;
             ball = prop;
@@ -85,6 +85,15 @@ public class BallCourt : MonoBehaviour
             return true;
         }
         return false;
+    }
+
+    // The props in the court's chunks (and around them): no walk over every prop in the world (J-086).
+    PhysicsProp[] PropsNearCourt()
+    {
+        var grid = ChemGrid.Current?.Grid;
+        if (grid == null) return PhysicsProp.All;
+        var reach = new Vector3(length / 2f + OutMargin, 0f, width / 2f + OutMargin);
+        return PhysicsProp.Near(grid.ChunkAt(centre - reach), grid.ChunkAt(centre + reach));
     }
 
     void Watch()

@@ -452,7 +452,8 @@ public sealed class PlaytestPlayer
 
     // The nearest prop within a walk, by distance then name (the same on every run).
     PhysicsProp NearestProp() =>
-        UnityEngine.Object.FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None)
+        PhysicsProp.Near(grid.ChunkAt(wizard.transform.position - new Vector3(PropSearch, 0f, PropSearch)),
+                grid.ChunkAt(wizard.transform.position + new Vector3(PropSearch, 0f, PropSearch)))
             .Where(p => Flat(p.transform.position - wizard.transform.position).magnitude < PropSearch)
             .OrderBy(p => (p.transform.position - wizard.transform.position).sqrMagnitude).ThenBy(p => p.name, StringComparer.Ordinal)
             .FirstOrDefault();

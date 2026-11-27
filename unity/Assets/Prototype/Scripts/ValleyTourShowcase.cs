@@ -46,7 +46,7 @@ public class ValleyTourShowcase : ShowcaseScript
             var flight = Fly(W(p + V(6f, 4f, -13f), p + V(0f, 2f, 0f), 4f));
             yield return new WaitUntil(() => flight.Done);
         }
-        var ball = FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None).FirstOrDefault(b => b.kind == ItemIds.Ball);
+        var ball = PhysicsProp.All.FirstOrDefault(b => b.kind == ItemIds.Ball);
         if (ball == null) yield break;
         var start = ball.transform.position;
         var from = start - Vector3.right * 7f;

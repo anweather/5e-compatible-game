@@ -256,7 +256,7 @@ public class LooksProbe : ProbeScenario
         Shot("window-glass");
         yield return null;
 
-        var crate = FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None).Where(p => p.kind == EntityIds.Crate && p.State != null)
+        var crate = PhysicsProp.All.Where(p => p.kind == EntityIds.Crate && p.State != null)
             .OrderBy(p => (p.transform.position - at).sqrMagnitude).FirstOrDefault();
         Check("crate_near", crate != null, crate != null ? $"{Vector3.Distance(crate.transform.position, at):0} m away" : "no crate");
         if (crate != null)

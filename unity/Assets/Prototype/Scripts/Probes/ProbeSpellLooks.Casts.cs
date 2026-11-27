@@ -39,7 +39,7 @@ public partial class SpellLooksProbe
             for (int x = 0; x < w; x++) World.At(o.x + x, o.y + y).Water = water;
     }
 
-    protected static PhysicsProp NearestCrate(Vector3 to) => FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None)
+    protected static PhysicsProp NearestCrate(Vector3 to) => PhysicsProp.All
         .Where(p => p.kind == EntityIds.Crate && p.State != null)
         .OrderBy(p => Vector3.Distance(p.transform.position, to)).FirstOrDefault();
 

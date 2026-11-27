@@ -166,7 +166,7 @@ public class FeelProbe : SpellLooksProbe
         if (crate != null) yield return SquareLeavesIt(crate, ahead);
         if (crate != null) yield return OffIsStill(crate, ahead);
         yield return Miss();
-        var ball = FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None).FirstOrDefault(p => p.kind == "ball" && p.State != null);
+        var ball = PhysicsProp.All.FirstOrDefault(p => p.kind == "ball" && p.State != null);
         Check("ball_found", ball != null, "the court's ball");
         if (ball == null) yield break;
         // In its court: dropped outside it, the court would put it back. No stick, so it isn't kicked.

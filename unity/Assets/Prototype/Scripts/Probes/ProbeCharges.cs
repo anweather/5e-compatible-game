@@ -145,7 +145,7 @@ public class ChargesProbe : ProbeScenario
 
     // The free-standing physics prop nearest a point (not <paramref name="except"/>), or null.
     static PhysicsProp Nearest(Vector3 at, PhysicsProp except) =>
-        FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None)
+        PhysicsProp.All
             .Where(p => p != except && p.State != null && p.TryGetComponent<Rigidbody>(out var body) && !body.isKinematic)
             .OrderBy(p => (p.transform.position - at).sqrMagnitude)
             .FirstOrDefault();

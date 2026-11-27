@@ -56,7 +56,7 @@ public class FireLooksProbe : ProbeScenario
     IEnumerator Crate()
     {
         // On dry ground: the pond's crates float, and fire doesn't reach them.
-        var crate = FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None).FirstOrDefault(p => p.kind == EntityIds.Crate && p.State != null && Dry(p));
+        var crate = PhysicsProp.All.FirstOrDefault(p => p.kind == EntityIds.Crate && p.State != null && Dry(p));
         if (crate == null)
         {
             Check("crate_found", false, "no crate");

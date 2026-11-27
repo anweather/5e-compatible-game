@@ -323,7 +323,7 @@ public class PlaytestBot : MonoBehaviour
 
     void WatchProps()
     {
-        foreach (var prop in FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None))
+        foreach (var prop in PhysicsProp.All)
         {
             if (!props.TryGetValue(prop, out var known))
             {

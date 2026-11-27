@@ -29,7 +29,7 @@ public class StampClipProbe : LandShapesProbe
         centre.y = valley.GroundAt(centre);
         yield return Say("act", $"{{\"what\":\"crate\",\"count\":{Crates},\"near\":\"[{X}, {Y}]\",\"within\":12,\"spacing\":3}}");
         yield return Wait(3f);
-        var crates = FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None)
+        var crates = PhysicsProp.All
             .Where(p => p.name.StartsWith("crate", System.StringComparison.Ordinal) &&
                         new Vector2(p.transform.position.x - centre.x, p.transform.position.z - centre.z).magnitude < 25f)
             .ToList();

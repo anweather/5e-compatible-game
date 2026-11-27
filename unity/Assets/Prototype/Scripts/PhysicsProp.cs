@@ -40,6 +40,16 @@ public class PhysicsProp : MonoBehaviour, IPushable
     const float AirSpin = 0.05f, WaterSpin = 1.5f;
 
     static PhysicsMaterial slick;
+    static readonly Registry<PhysicsProp> registry = new();
+
+    /// <summary>Every prop in play (what FindObjectsByType found), as a new array: see Registry.</summary>
+    public static PhysicsProp[] All => registry.All();
+
+    /// <summary>
+    /// The props in play that may be in the chunks between corners <paramref name="from"/> and <paramref name="to"/>: those
+    /// there, a ring of chunks around them and any prop not placed (Registry.Near). Test each one's position yourself.
+    /// </summary>
+    public static PhysicsProp[] Near(Vector2Int from, Vector2Int to) => registry.Near(from, to);
 
     public PropState State { get; private set; }
 
@@ -92,6 +102,7 @@ public class PhysicsProp : MonoBehaviour, IPushable
         body.position = at;
         body.rotation = turn;
         Physics.SyncTransforms();
+        Place();
         if (State == null) return;
         home = grid.ChunkAt(at);
         if (InInactiveChunk(home)) Sleep();
@@ -102,6 +113,7 @@ public class PhysicsProp : MonoBehaviour, IPushable
 
     void Awake()
     {
+        registry.Join(this);
         body = GetComponent<Rigidbody>();
         shapes = GetComponents<Collider>();
         look = GetComponent<Renderer>();
@@ -124,6 +136,7 @@ public class PhysicsProp : MonoBehaviour, IPushable
         body.mass = item != null ? (float)item.Mass : def.Mass * Forces.KgPerMass;
         halfHeight = look.bounds.extents.y;
         lastTick = grid.World.Tick;
+        Place();
         grid.RulesChanged += ReadRules;
         grid.ChunkSwitched += ChunkSwitched;
         grid.WorldReset += Wake;
@@ -133,6 +146,7 @@ public class PhysicsProp : MonoBehaviour, IPushable
 
     void OnDestroy()
     {
+        registry.Leave(this);
         if (flames != null) Destroy(flames);
         if (grid == null) return;
         grid.RulesChanged -= ReadRules;
@@ -188,8 +202,20 @@ public class PhysicsProp : MonoBehaviour, IPushable
         body.mass = item != null ? (float)item.Mass : def.Mass * Forces.KgPerMass;
     }
 
+    // Its chunk in the registry (Near), kept to the chunk it's in now: every physics step, whoever moves it.
+    void Place()
+    {
+        if (grid != null) registry.Place(this, grid.ChunkAt(transform.position));
+    }
+
+    // A disabled prop runs no FixedUpdate to keep its chunk, so Near counts it everywhere until it's enabled again.
+    void OnEnable() => Place();
+
+    void OnDisable() => registry.Unplace(this);
+
     void FixedUpdate()
     {
+        Place();
         if (State == null || grid.World == null) return;
         if (Puppet)
         {

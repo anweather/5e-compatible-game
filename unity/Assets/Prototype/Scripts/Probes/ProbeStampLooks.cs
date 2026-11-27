@@ -120,7 +120,7 @@ public class StampLooksProbe : LandShapesProbe
         // #147: crates on a dome as it rises.
         yield return Say("act", $"{{\"what\":\"crate\",\"count\":{Crates},\"near\":\"[{X}, {Y}]\",\"within\":12,\"spacing\":3}}");
         yield return Wait(3f);
-        var crates = FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None)
+        var crates = PhysicsProp.All
             .Where(p => p.name.StartsWith("crate", System.StringComparison.Ordinal) && Flat(p.transform.position, centre) < 25f)
             .Select(p => new Watched { Prop = p, Body = p.GetComponent<Rigidbody>(), Home = p.transform.position }).ToList();
         Check("crates_placed", crates.Count >= Crates / 2, $"{crates.Count} crates");

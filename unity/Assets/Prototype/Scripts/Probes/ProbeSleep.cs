@@ -49,7 +49,7 @@ public class SleepProbe : ProbeScenario
         int asleep = props.Count(p => p != null && p.Asleep && p.GetComponent<Rigidbody>().isKinematic);
         Metric("asleep", asleep);
         Check("props_sleep_with_chunk", asleep == props.Count(p => p != null), $"{asleep} of {props.Count} asleep and kinematic");
-        int awakeElsewhere = FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None)
+        int awakeElsewhere = PhysicsProp.All
             .Count(p => p.Asleep && grid.IsChunkActive(grid.ChunkAt(p.transform.position).x, grid.ChunkAt(p.transform.position).y));
         Check("none_asleep_in_active_chunks", awakeElsewhere == 0, $"{awakeElsewhere} asleep in an active chunk");
         var before = props.Where(p => p != null).Select(p => p.transform.position).ToList();

@@ -76,7 +76,7 @@ public class CurrentProbe : ProbeScenario
         // A crate on the river floats downstream.
         // A crate (not the court's ball, which the court puts back in play).
         PhysicsProp crate = null;
-        foreach (var prop in FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None))
+        foreach (var prop in PhysicsProp.All)
             if (prop.name.StartsWith("crate", System.StringComparison.Ordinal)) crate = prop;
         Check("crate_found", crate != null, "a physics prop to float");
         if (crate == null) yield break;
