@@ -9,6 +9,7 @@
         "Prototype.Plans",
         "Prototype.Punchy",
         "Prototype.Kit",
+        "Prototype.World",
         "Prototype.Analyzers",
         "Unity.InputSystem",
         "Unity.Mathematics",

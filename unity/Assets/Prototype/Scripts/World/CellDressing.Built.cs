@@ -99,7 +99,7 @@ public sealed partial class CellDressing
         Rock(root, stones[rng.Next(stones.Length)], top, CellSize * (0.5f + 0.2f * (float)rng.NextDouble()), 0.3f + 0.25f * (float)rng.NextDouble(), rng);
     }
 
-    internal static GameObject Rock(Transform root, GameObject prefab, Vector3 foot, float width, float height, System.Random rng)
+    public static GameObject Rock(Transform root, GameObject prefab, Vector3 foot, float width, float height, System.Random rng)
     {
         if (prefab == null) return null;
         var b = BoundsOf(prefab);

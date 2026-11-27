@@ -8,6 +8,7 @@
         "Prototype.AssetPacks.Editor",
         "Prototype.Punchy",
         "Prototype.Kit",
+        "Prototype.World",
         "Chemistry",
         "Chem.Land",
         "Chemistry.Mcp",
