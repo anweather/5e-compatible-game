@@ -130,7 +130,7 @@ public partial class SpellCaster
     Vector3 RaiderAim(Raider r, Vector2Int at)
     {
         var cell = grid.CellCenter(at.x, at.y);
-        float up = grid.World.Flying(r) ? DefenseField.FlyHeight : StandingAim;
+        float up = grid.World.Flying(r) ? Raiders.FlyHeight : StandingAim;
         return new Vector3(cell.x, grid.GroundAt(cell) + up, cell.z);
     }
 

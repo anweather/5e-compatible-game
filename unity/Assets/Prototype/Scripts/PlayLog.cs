@@ -71,6 +71,7 @@ public class PlayLog : MonoBehaviour
     void Awake()
     {
         Instance = this;
+        PlayNotes.To = Note;
         QuickExit.BeforeExit += End;
     }
 
@@ -158,7 +159,11 @@ public class PlayLog : MonoBehaviour
     {
         QuickExit.BeforeExit -= End;
         End();
-        if (Instance == this) Instance = null;
+        if (Instance == this)
+        {
+            Instance = null;
+            PlayNotes.To = null;
+        }
     }
 
     void Update()

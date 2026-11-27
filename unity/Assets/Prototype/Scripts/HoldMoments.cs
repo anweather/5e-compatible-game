@@ -17,7 +17,7 @@ public class HoldMoments : MonoBehaviour
     string chosen;
     bool showPage;
 
-    public static bool Offered => Application.isEditor || Debug.isDebugBuild;
+    public static bool Offered => GridAddOns.DevBuild;
 
     void Awake()
     {

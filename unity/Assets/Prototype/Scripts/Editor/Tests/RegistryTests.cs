@@ -61,6 +61,7 @@ public class RegistryTests
     public static IEnumerable<Kind> Types()
     {
         yield return Single(() => ValleyFauna.InPlay);
+        yield return Single<FaunaFace>(() => FaunaFace.InPlay, go => go.AddComponent<ValleyFauna>());
         yield return Single(() => ValleyChemistry.InPlay);
         yield return Single(() => ThingSpawner.InPlay);
         yield return Many(() => PhysicsProp.All, NewProp);

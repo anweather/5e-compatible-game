@@ -98,7 +98,7 @@ public partial class SpellCaster
 
     public bool BringPoints(int points) => grid != null && grid.World != null && Send(ComboCommand.Bring(CastPlayer, points));
 
-    public bool Moment(string id) => ComboCommand.Moment(CastPlayer, id).TakenBy(HoldMoments.Offered) && grid != null && grid.World != null && Send(ComboCommand.Moment(CastPlayer, id));
+    public bool Moment(string id) => ComboCommand.Moment(CastPlayer, id).TakenBy(GridAddOns.DevBuild) && grid != null && grid.World != null && Send(ComboCommand.Moment(CastPlayer, id));
 
     public string AttuneTo(int hand, string element)
     {

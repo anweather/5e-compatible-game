@@ -8,7 +8,8 @@ using UnityEngine;
 // (Grid at the end of ChemGrid.Awake, Rules in RuleSwitcher.Awake; Hud goes on the event log's GameObject, in
 // EventLog.Awake, so the log never names the wizard's HUD), lowest order first, skipping one already
 // there. The types are found once by reflection over the Prototype.* assemblies, so a feature in its own
-// assembly joins by the mark alone, in Edit mode tests as in Play.
+// assembly joins by the mark alone, in Edit mode tests as in Play. A DevOnly add-on, and anything else offered only in
+// the Editor and development builds (the Hold's moments), asks DevBuild.
 public enum GridStage
 {
     Rules,
@@ -34,12 +35,14 @@ public static class GridAddOns
 {
     static List<(Type type, GridAddOnAttribute mark)> found;
 
+    public static bool DevBuild => Application.isEditor || Debug.isDebugBuild;
+
     public static IReadOnlyList<Type> At(GridStage stage) =>
         All().Where(a => a.mark.Stage == stage).Select(a => a.type).ToList();
 
     public static void Add(GameObject on, GridStage stage)
     {
-        bool dev = Application.isEditor || Debug.isDebugBuild;
+        bool dev = DevBuild;
         foreach (var (type, mark) in All())
         {
             if (mark.Stage != stage || (mark.DevOnly && !dev)) continue;

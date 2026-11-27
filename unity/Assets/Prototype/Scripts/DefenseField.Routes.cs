@@ -9,7 +9,7 @@ using UnityEngine;
 // boss is only bigger here: it holds one cell like any raider. Only the show: the core decides everything.
 public partial class DefenseField
 {
-    public const float FlyHeight = 11f;
+    public const float FlyHeight = Raiders.FlyHeight;
     const float WhirlLift = 2.5f;
     const float LiftRate = 2.6f, FlapRate = 9f, FlapReach = 0.55f, Hover = 0.35f;
     const float WingSpan = 0.62f, BodyLength = 0.8f, ShadowSize = 2.2f, ShadowFade = 0.55f;

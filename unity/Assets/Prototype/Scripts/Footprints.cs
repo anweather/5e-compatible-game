@@ -46,7 +46,7 @@ public class Footprints : MonoBehaviour
     Mesh mesh;
     Material drawn;
     ChemGrid grid;
-    ValleyFauna fauna;
+    FaunaFace fauna;
     float nextRebuild, nextLook;
 
     public int Count => count;
@@ -55,7 +55,7 @@ public class Footprints : MonoBehaviour
     void Start()
     {
         grid = ChemGrid.Current?.Grid;
-        fauna = ValleyFauna.InPlay;
+        fauna = FaunaFace.InPlay;
         for (int i = 0; i < Max; i++) prints[i].born = float.NegativeInfinity;
         mesh = new Mesh { name = "Footprints" };
         mesh.MarkDynamic();

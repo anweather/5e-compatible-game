@@ -29,11 +29,19 @@ public class WizardStrike : MonoBehaviour
     int health = -1;
     float tellAt = -1f;
 
+    public static float HurtAt { get; private set; } = -1f;
+
     public event System.Action<StrikeHit> Struck;
     public int HitsTaken { get; private set; }
     public float DamageTaken { get; private set; }
 
     bool Mine => net == null || !net.IsSpawned || net.IsOwner;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        HurtAt = -1f;
+    }
 
     void Awake()
     {
@@ -97,7 +105,7 @@ public class WizardStrike : MonoBehaviour
         DamageTaken += was - vitals.Health;
         GameSounds.Play(SoundIds.Earth, transform.position);
         if (TryGetComponent<HandPose>(out var body)) body.Flinch();
-        HoldShow.Hurt();
+        HurtAt = Time.time;
         var feel = beats.feel;
         CastImpact.Felt(transform.position, feel.punchFelt);
         tellAt = Time.time;

@@ -11,13 +11,6 @@ public class HoldShow : MonoBehaviour
     static readonly Color PlateColor = new(0.8f, 0.68f, 0.25f);
 
     const float HurtSeconds = 0.35f;
-    static float hurtAt = -1f;
-
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics()
-    {
-        hurtAt = -1f;
-    }
 
     ChemGrid grid;
     World shownFor;
@@ -175,10 +168,9 @@ public class HoldShow : MonoBehaviour
         banner.fontSize = 48;
     }
 
-    public static void Hurt() => hurtAt = Time.time;
-
     static void DrawHurt()
     {
+        float hurtAt = WizardStrike.HurtAt;
         float left = 1f - (Time.time - hurtAt) / HurtSeconds;
         if (left <= 0f || hurtAt < 0f) return;
         var before = GUI.color;

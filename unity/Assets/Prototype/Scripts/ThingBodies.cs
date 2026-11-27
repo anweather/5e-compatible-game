@@ -127,7 +127,7 @@ public class ThingBodies : MonoBehaviour, ICreatureGround
             CreatureDrawer.HideAtLens(instances, first, count - first, cam);
         }
         if (count == 0) return;
-        drawer ??= ValleyFauna.InPlay is { } fauna ? new CreatureDrawer(fauna.material) : null;
+        drawer ??= FaunaFace.InPlay is { } fauna ? new CreatureDrawer(fauna.CreatureMaterial) : null;
         drawer?.Draw(instances, count, cam != null ? cam.transform.position : Vector3.zero);
     }
 

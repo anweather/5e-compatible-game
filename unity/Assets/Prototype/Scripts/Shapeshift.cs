@@ -34,7 +34,7 @@ public partial class Shapeshift : MonoBehaviour
     public float FormHp { get; private set; }
     public float FormHpMax { get; private set; }
 
-    ValleyFauna fauna;
+    FaunaFace fauna;
     ChemGrid grid;
     PlayerControls controls;
     Vitals vitals;
@@ -53,11 +53,11 @@ public partial class Shapeshift : MonoBehaviour
         AwakeBody();
     }
 
-    ValleyFauna Fauna
+    FaunaFace Fauna
     {
         get
         {
-            if (fauna == null) fauna = ValleyFauna.InPlay;
+            if (fauna == null) fauna = FaunaFace.InPlay;
             return fauna;
         }
     }

@@ -55,7 +55,7 @@ public partial class Shapeshift : ICreatureGround
             Seed = 1u,
         };
         if (instances.Length < b.Segments.Length) instances = new SegmentInstance[Mathf.NextPowerOfTwo(b.Segments.Length)];
-        drawer ??= new CreatureDrawer(Fauna.material);
+        drawer ??= new CreatureDrawer(Fauna.CreatureMaterial);
     }
 
     void LateUpdate()

@@ -20,7 +20,7 @@ using UnityEngine;
 // clear, unburnt cells.
 // Presentation only, like the fireflies: each machine has its own animals,
 // and nothing they do reaches the chemistry.
-public partial class ValleyFauna : MonoBehaviour, ICreatureGround
+public partial class ValleyFauna : FaunaFace, ICreatureGround
 {
     public Material material;
     public float radius = 90f;
@@ -69,7 +69,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
     int nextId;
     Unity.Mathematics.Random rng = new(0x9E3779B9u);
 
-    public int Count => creatures.Count;
+    public override int Count => creatures.Count;
 
     public int AtLens { get; private set; }
 
@@ -80,9 +80,9 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
 
     public int SpeciesIndex(string id) => bodies.IndexOf(id);
 
-    public CreatureState State(int index) => creatures[index].state;
+    public override CreatureState State(int index) => creatures[index].state;
 
-    public int Id(int index) => creatures[index].id;
+    public override int Id(int index) => creatures[index].id;
 
     public int IndexOf(int id) => creatures.FindIndex(c => c.id == id);
 
@@ -101,19 +101,19 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         c.state.Leash = leash;
     }
 
-    public int SpeciesOf(int index) => creatures[index].species;
+    public override int SpeciesOf(int index) => creatures[index].species;
 
     public float RowSize(int index) => creatures[index].size;
 
-    public int Coat(int index) => creatures[index].coat;
+    public override int Coat(int index) => creatures[index].coat;
 
     public CreatureTraits Traits(int index) => creatures[index].traits;
 
-    public CreatureBody Body(int speciesIndex) => bodies[speciesIndex];
+    public override CreatureBody Body(int speciesIndex) => bodies[speciesIndex];
 
-    public string SpeciesName(int speciesIndex) => bodies[speciesIndex]?.Name;
+    public override string SpeciesName(int speciesIndex) => bodies[speciesIndex]?.Name;
 
-    public int Aimed(Ray ray, float maxDistance)
+    public override int Aimed(Ray ray, float maxDistance)
     {
         int best = -1;
         float bestAlong = maxDistance;
@@ -135,9 +135,15 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
 
     static readonly Registry<ValleyFauna> registry = new();
 
-    public static ValleyFauna InPlay => registry.First;
+    public static new ValleyFauna InPlay => registry.First;
 
-    void Awake() => registry.Join(this);
+    public override Material CreatureMaterial => material;
+
+    void Awake()
+    {
+        registry.Join(this);
+        JoinFauna();
+    }
 
     void Start()
     {
@@ -174,6 +180,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
     void OnDestroy()
     {
         registry.Leave(this);
+        LeaveFauna();
         if (grid != null) grid.RulesChanged -= ReadRows;
         drawer?.Dispose();
     }
