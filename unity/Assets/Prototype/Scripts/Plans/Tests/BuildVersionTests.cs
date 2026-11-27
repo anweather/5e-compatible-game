@@ -3,6 +3,7 @@ using NUnit.Framework;
 // BuildVersion: parsing and comparing versions, finding a newer release in
 // GitHub's releases JSON (the update check), and the join handshake the host
 // checks (NetSession.Approve).
+[Category("Unit")]
 public class BuildVersionTests
 {
     [TestCase("0.1.0", 0, 1, 0)]
@@ -69,7 +70,7 @@ public class BuildVersionTests
         Assert.That((back.Version, back.Commit, back.Editor), Is.EqualTo(("0.1.0", "abc1234", true)));
         Assert.That(BuildVersion.Decode(BuildVersion.Encode(Stamp("0.1.0", "abc1234"), "valley:12ab,isle:34cd")).Maps, Is.EqualTo("valley:12ab,isle:34cd"));
         Assert.That(BuildVersion.Decode(System.Text.Encoding.UTF8.GetBytes("scv1|0.1.0|abc1234|0")), Is.Null, "a build from before maps");
-        Assert.That(BuildVersion.Decode(new byte[0]), Is.Null);
+        Assert.That(BuildVersion.Decode(System.Array.Empty<byte>()), Is.Null);
         Assert.That(BuildVersion.Decode(System.Text.Encoding.UTF8.GetBytes("hello")), Is.Null);
     }
 

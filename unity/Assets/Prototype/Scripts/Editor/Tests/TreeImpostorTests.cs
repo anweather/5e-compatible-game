@@ -71,4 +71,10 @@ public class TreeImpostorTests
     [Test]
     public void WithAGpuAMissingImpostorIsBaked() =>
         Assert.That(TreeImpostorBaker.NoGpuRefusal(new[] { "Conifer" }, GraphicsDeviceType.Metal), Is.Null);
+
+    [Test]
+    public void ThePlayerKeepsTheBudget()
+    {
+        Assert.That(TreeImpostors.Budget, Is.True, "the tree budget is on unless -no-tree-budget");
+    }
 }

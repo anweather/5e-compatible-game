@@ -12,6 +12,7 @@ public sealed class StartTrees
 
     readonly bool fromStart;
 
+    /// <param name="world">The world whose start's trees these are.</param>
     /// <param name="fromStart">The world was loaded from a save: its cells have its changes in, its kept start doesn't.</param>
     public StartTrees(World world, bool fromStart = false)
     {

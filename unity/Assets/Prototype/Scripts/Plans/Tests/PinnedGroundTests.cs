@@ -14,11 +14,15 @@ public class PinnedGroundTests
 
     static GroundChunk Chunk(int i, int j, ushort height, string[] layers) => new GroundChunk
     {
-        I = i, J = j, Resolution = Res, Texels = Texels, DetailResolution = Detail,
+        I = i,
+        J = j,
+        Resolution = Res,
+        Texels = Texels,
+        DetailResolution = Detail,
         Heights = Enumerable.Repeat(height, Res * Res).ToArray(),
         Paint = new byte[layers.Length * Texels * Texels],
         Details = new byte[Detail * Detail],
-        Trees = new GroundTree[0],
+        Trees = System.Array.Empty<GroundTree>(),
     };
 
     // The generated map: flat at 0 m over [-10, 90].

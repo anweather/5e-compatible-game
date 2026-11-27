@@ -125,7 +125,11 @@ public static class PinnedGround
         int area = from.Texels * from.Texels, detail = from.DetailResolution * from.DetailResolution;
         var c = new GroundChunk
         {
-            I = at.i, J = at.j, Resolution = from.Resolution, Texels = from.Texels, DetailResolution = from.DetailResolution,
+            I = at.i,
+            J = at.j,
+            Resolution = from.Resolution,
+            Texels = from.Texels,
+            DetailResolution = from.DetailResolution,
             Heights = (ushort[])from.Heights.Clone(),
             Paint = new byte[layers * area],
             Details = new byte[grasses * detail],

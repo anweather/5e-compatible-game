@@ -11,12 +11,12 @@ using UnityEngine;
 // and forgotten as each Play starts.
 public static class LoadedMaps
 {
-    static readonly Dictionary<string, Task<GeneratedMap>> loads = new();
+    static readonly Dictionary<string, Task<GeneratedMap>> Loads = new();
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void Forget()
     {
-        lock (loads) loads.Clear();
+        lock (Loads) Loads.Clear();
     }
 
     /// <summary>The generated map in this folder, loaded now or by whoever asked first (throws as GeneratedMap.Load does).</summary>
@@ -37,9 +37,9 @@ public static class LoadedMaps
     {
         string full = Path.GetFullPath(mapDir);
         string key = full + "|" + File.GetLastWriteTimeUtc(Path.Combine(full, MapFile.FileName)).Ticks;
-        lock (loads)
+        lock (Loads)
         {
-            if (!loads.TryGetValue(key, out var load)) loads[key] = load = Task.Run(() => Timed(mapDir));
+            if (!Loads.TryGetValue(key, out var load)) Loads[key] = load = Task.Run(() => Timed(mapDir));
             return load;
         }
     }

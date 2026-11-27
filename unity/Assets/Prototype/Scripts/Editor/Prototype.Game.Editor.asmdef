@@ -3,6 +3,7 @@
     "rootNamespace": "",
     "references": [
         "Prototype.Game",
+        "Prototype.Plans",
         "Prototype.AssetPacks.Editor",
         "Chemistry",
         "Chem.Land",

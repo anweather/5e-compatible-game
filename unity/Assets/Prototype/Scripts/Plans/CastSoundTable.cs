@@ -103,8 +103,13 @@ public static class CastSoundTable
         foreach (var hum in Hums)
             rows.Add(new Row
             {
-                Sound = hum, TargetDb = HumDb, MaxSeconds = 30f, PitchJitter = 0f, Loop = true,
-                Files = new[] { $"{Rendered}/{hum}.ogg" }, Make = new Func<float[]>[] { () => ProceduralCast.ChargeLoop() },
+                Sound = hum,
+                TargetDb = HumDb,
+                MaxSeconds = 30f,
+                PitchJitter = 0f,
+                Loop = true,
+                Files = new[] { $"{Rendered}/{hum}.ogg" },
+                Make = new Func<float[]>[] { () => ProceduralCast.ChargeLoop() },
             });
         return rows.ToArray();
     }

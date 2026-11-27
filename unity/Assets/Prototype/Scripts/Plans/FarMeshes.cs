@@ -10,26 +10,13 @@ using UnityEngine;
 // the cells (D4).
 public static class FarMeshes
 {
-    /// <summary>A mesh's arrays, ready for Mesh.SetVertices and the rest on the main thread.</summary>
+    /// <summary>A mesh's arrays, ready for Mesh.SetVertices and the rest on the main thread (FarMeshesMesh.ToMesh, in the game).</summary>
     public sealed class Data
     {
         public readonly List<Vector3> Vertices = new();
         public readonly List<Vector3> Normals = new();
         public readonly List<Color32> Colors = new();
         public readonly List<int> Triangles = new();
-
-        /// <summary>A mesh of these arrays (32-bit indices only when it needs them).</summary>
-        public Mesh ToMesh(string name)
-        {
-            var mesh = new Mesh { name = name };
-            if (Vertices.Count > 65535) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
-            mesh.SetVertices(Vertices);
-            mesh.SetNormals(Normals);
-            mesh.SetColors(Colors);
-            mesh.SetTriangles(Triangles, 0);
-            mesh.RecalculateBounds();
-            return mesh;
-        }
 
         int Add(Vector3 v, Vector3 n, Color32 c)
         {
@@ -40,7 +27,7 @@ public static class FarMeshes
         }
 
         // A flat-shaded triangle, front face clockwise as seen.
-        internal void Flat(Vector3 a, Vector3 b, Vector3 c, Color32 colour)
+        public void Flat(Vector3 a, Vector3 b, Vector3 c, Color32 colour)
         {
             var n = Vector3.Cross(b - a, c - a).normalized;
             Triangles.Add(Add(a, n, colour));
@@ -48,7 +35,7 @@ public static class FarMeshes
             Triangles.Add(Add(c, n, colour));
         }
 
-        internal void Quad(int a, int b, int c, int d)
+        public void Quad(int a, int b, int c, int d)
         {
             Triangles.Add(a);
             Triangles.Add(b);
@@ -58,7 +45,7 @@ public static class FarMeshes
             Triangles.Add(c);
         }
 
-        internal int Vertex(Vector3 v, Vector3 n, Color32 c) => Add(v, n, c);
+        public int Vertex(Vector3 v, Vector3 n, Color32 c) => Add(v, n, c);
     }
 
     /// <summary>How far a known chunk's skirt hangs below its edge (m), to cover the step to a chunk terrain beside it.</summary>
@@ -325,6 +312,9 @@ public static class FarMeshes
         return looks;
     }
 
+    /// <summary>The sea plane's vertex alpha over the map itself, cleared near the eye (FarLand.shader).</summary>
+    public const byte UnderTheMap = 255;
+
     /// <summary>
     /// The sea plane: a frame at <paramref name="level"/> round the rectangle (x0, z0)-(x1, z1), out <paramref name="reach"/>
     /// metres past it on every side, so the sky never shows below the horizon past the coast; and the map's own rectangle,
@@ -332,9 +322,6 @@ public static class FarMeshes
     /// water draw there) and leaves past it, where nothing else is drawn and the sky below the horizon, paler than the
     /// haze, showed through as flat white wedges between the known ring and the coast.
     /// </summary>
-    /// <summary>The sea plane's vertex alpha over the map itself, cleared near the eye (FarLand.shader).</summary>
-    public const byte UnderTheMap = 255;
-
     public static Data SeaFrame(float x0, float z0, float x1, float z1, float reach, float level, Color colour)
     {
         var d = new Data();

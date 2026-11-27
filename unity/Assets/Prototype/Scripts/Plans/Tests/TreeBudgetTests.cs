@@ -4,6 +4,7 @@ using NUnit.Framework;
 // The tree budget (TreeBudget): in a dense wood (the Wide World's temperate band, ~5,000 trees within 150 m on its walk,
 // 54 ms a frame) the prefabs and impostors draw to a shorter distance; in the nine's sparser woods (~530 within 150 m)
 // they draw as far as ever. These fail if the dense distances are lost.
+[Category("Unit")]
 public class TreeBudgetTests
 {
     // Trees spread evenly over a disc of this radius (m), this many: their squared distances from the middle.
@@ -56,11 +57,5 @@ public class TreeBudgetTests
     {
         var chunks = new List<(float d2, int trees)> { (0f, 500), (200f * 200f, 4000), (600f * 600f, 8000) };
         Assert.That(TreeBudget.Far(chunks, 700f), Is.EqualTo(700f));
-    }
-
-    [Test]
-    public void ThePlayerKeepsTheBudget()
-    {
-        Assert.That(TreeImpostors.Budget, Is.True, "the tree budget is on unless -no-tree-budget");
     }
 }

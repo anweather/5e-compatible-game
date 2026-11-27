@@ -3,6 +3,7 @@ using UnityEngine;
 
 // Tag's rules (TagRules), without the network: who starts it, tagging within
 // reach, no instant tag-backs, and "it" leaving the game.
+[Category("Unit")]
 public class TagRulesTests
 {
     static (ulong, Vector3)[] At(params (ulong player, float x)[] spots)

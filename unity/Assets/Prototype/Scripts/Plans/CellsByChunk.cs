@@ -11,6 +11,7 @@ public sealed class CellsByChunk<T>
     readonly T[][] blocks;
     readonly System.Func<int, T> missing;
 
+    /// <param name="layout">The world's chunks and cells.</param>
     /// <param name="missing">What a cell of a chunk with no block reads as, by its world index; default when null.</param>
     public CellsByChunk(TerrainGrid layout, System.Func<int, T> missing = null)
     {

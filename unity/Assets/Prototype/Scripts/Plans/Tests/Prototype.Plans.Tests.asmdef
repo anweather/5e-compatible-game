@@ -1,0 +1,25 @@
+{
+    "name": "Prototype.Plans.Tests",
+    "rootNamespace": "",
+    "references": [
+        "Prototype.Plans",
+        "Chemistry",
+        "Chem.Land",
+        "Prototype.Analyzers",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

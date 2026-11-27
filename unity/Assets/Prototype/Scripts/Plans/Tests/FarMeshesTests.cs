@@ -88,14 +88,18 @@ public class FarMeshesTests
         },
         new System.Collections.Generic.Dictionary<string, Color>
         {
-            [CellPaint.Grass] = Grass, [CellPaint.Rock] = Rock, [CellPaint.Earth] = Earth, [CellPaint.Sand] = Sand,
-            [CellPaint.Snow] = Snow, [CellPaint.Charred] = Charred,
+            [CellPaint.Grass] = Grass,
+            [CellPaint.Rock] = Rock,
+            [CellPaint.Earth] = Earth,
+            [CellPaint.Sand] = Sand,
+            [CellPaint.Snow] = Snow,
+            [CellPaint.Charred] = Charred,
         });
 
     [Test]
     public void EveryHorizonShapeIsDrawnWithinItsSize()
     {
-        string world = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "world"));
+        string world = Path.Combine(PlansFolders.Folders.Repo, "world");
         var table = HorizonTable.Load(world);
         Assert.That(table.Rows.Count, Is.GreaterThan(0));
         foreach (var row in table.Rows.Values)
@@ -112,7 +116,7 @@ public class FarMeshesTests
     [Test]
     public void TheVolcanosFarLookIsReadAndItsApronRunsDownToTheWater()
     {
-        string world = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "world"));
+        string world = Path.Combine(PlansFolders.Folders.Repo, "world");
         var looks = FarMeshes.FarLooks(File.ReadAllText(Path.Combine(world, HorizonTable.FileName)));
         Assert.That(looks.ContainsKey("volcano"), "the volcano has a far look");
         var v = looks["volcano"];

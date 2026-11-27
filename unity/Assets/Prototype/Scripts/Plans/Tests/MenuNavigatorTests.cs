@@ -3,6 +3,7 @@ using NUnit.Framework;
 // The Esc menu's controller focus (MenuNavigator): wrapping up and down,
 // activating the highlighted item once, sub-pages on a back stack, and the
 // hold-to-repeat timing; and the join code picker (CodePicker).
+[Category("Unit")]
 public class MenuNavigatorTests
 {
     // A layout pass that draws this many focusable items.
