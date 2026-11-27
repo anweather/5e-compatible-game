@@ -19,7 +19,7 @@ namespace Chem
     {
         /// <summary>A player's stand moves to another cell (not a first stand, not while downed).</summary>
         Step,
-        /// <summary>A golf ball goes in the cup (World.Golf.cs): the player who hit it, at the cup.</summary>
+        /// <summary>A golf ball goes in the cup (Play/GolfSystem.cs): the player who hit it, at the cup.</summary>
         Holed,
         /// <summary>A player calls it by name (call_act): a named act, each action an act's ask, at the place they name.</summary>
         Called,

@@ -69,7 +69,7 @@ namespace Chem
             return !InWater(At(b.X, b.Y));
         }
 
-        static bool InWater(Cell c) => c.Water > 0 && !c.Frozen;
+        internal static bool InWater(Cell c) => c.Water > 0 && !c.Frozen;
 
         // RollTo's answers besides a grid way to turn onto.
         const int RollAhead = 4, NoRoll = -1;

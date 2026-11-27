@@ -235,7 +235,7 @@ namespace Chem
 
         /// <summary>What CastHash hashes, with <paramref name="stands"/> in the stands' place (StrikeText): a late joiner's test compares the stands apart.</summary>
         public string CastText(string stands) =>
-            CastState() + WhirlState() + WaveState() + BoulderState() + GolfText() + CourseSystem.ZoneText() + CourseSystem.Text() + RoomText() + stands + HoldText() + HandsText() + PlacedText() + ActText() + LaidText() + TriggerText();
+            CastState() + WhirlState() + WaveState() + BoulderState() + GolfSystem.Text() + CourseSystem.ZoneText() + CourseSystem.Text() + RoomText() + stands + HoldText() + HandsText() + PlacedText() + ActText() + LaidText() + TriggerText();
 
         /// <summary>The whirlwinds as text, "" when there are none (so worlds without any hash as they did): where, its age, and what it carries.</summary>
         public string WhirlState() => string.Concat(whirls.Select(ww => $"|{Whole(ww.X)}:{Whole(ww.Y)}:{Whole(ww.Age)}:{ww.Carrying ?? "-"}"));
@@ -250,6 +250,6 @@ namespace Chem
 
         static string ChargeState(PlayerCast c) => (c.Holding ? ":hold" : "") + (c.Holding || c.Charge > 1 ? ":c" + Whole(c.Charge) : "");
 
-        static string Whole(int n) => n.ToString(CultureInfo.InvariantCulture);
+        internal static string Whole(int n) => n.ToString(CultureInfo.InvariantCulture);
     }
 }

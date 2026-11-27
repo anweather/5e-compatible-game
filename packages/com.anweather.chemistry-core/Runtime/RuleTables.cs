@@ -574,7 +574,7 @@ namespace Chem
         public DefenseParams Defense = new DefenseParams();
         /// <summary>hold.json: the Hold's run.</summary>
         public HoldParams Hold = new HoldParams();
-        /// <summary>Spell golf's ball (sim.json golf, World.Golf.cs).</summary>
+        /// <summary>Spell golf's ball (sim.json golf, Play/GolfSystem.cs).</summary>
         public GolfParams Golf = new GolfParams();
         /// <summary>A swimmer's breath and drowning (sim.json breath, Breath.cs).</summary>
         public BreathParams Breath = new BreathParams();

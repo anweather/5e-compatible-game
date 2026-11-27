@@ -734,6 +734,15 @@ namespace Chem
 
         /// <summary>Terrain elevation plus raised or dug height, in water units, so it compares directly with Cell.Water.</summary>
         public int ElevationUnits(Cell c) => (TerrainOf(c).Elevation + HeightOf(c)) * Rules.Sim.WaterUnitsPerStep;
+
+        /// <summary>The ground's level at (x, y) in water units: the cell's elevation and the land's hills under it.</summary>
+        internal int GroundUnits(int x, int y)
+        {
+            int units = ElevationUnits(At(x, y));
+            int land = LandAtCell(x, y);
+            if (land != NoLand) units += land;
+            return units;
+        }
         /// <summary>Whether the cell's cover burns (oil, grease, thorns).</summary>
         public bool CoverBurns(Cell c) => CoverOf(c)?.Burns == true;
 

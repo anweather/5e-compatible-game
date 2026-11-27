@@ -673,7 +673,7 @@ that long, and doesn't march.
   Spike Growth) or a **lock** (brackets round one target).
 
 **Spell golf**
-: One hole played with spells (`World.Golf.cs`, `golf.ts`, BACKLOG §24).
+: One hole played with spells (`Play/GolfSystem.cs`, `golf.ts`, BACKLOG §24).
   The **ball** (core state, not a thing) starts on the **tee**; a cast
   whose force moves it is a **stroke**; it drops in on the **hole** cell.
   Lost in water or out of the course's bounds, it goes back on the tee for

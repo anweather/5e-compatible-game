@@ -295,8 +295,11 @@ namespace Chem
             castPower = 100;
         }
 
-        // The player of the cast going off now, when the batch names one: golf's turns (World.Golf.cs).
+        // The player of the cast going off now, when the batch names one: golf's turns (Play/GolfSystem.cs).
         string castBy;
+
+        // Who cast the spell going off now, null for a delayed one (a star, a wave): for the golf ball's turns.
+        internal string CastBy => castBy;
 
         // The percent of its damage the cast going off now does: a wizard's upgrades (World.Progress.cs).
         int castPower = 100;
@@ -636,7 +639,7 @@ namespace Chem
             if (s.Crater != null) Blast(cells);
             Crater(x, y, s.Crater);
             BlastRaiders(s, cells, x, y);
-            SpellOnBall(s, cells, (x, y), dir, charge);
+            GolfSystem.SpellOnBall(s, cells, (x, y), dir, charge);
             var forced = new HashSet<int>();
             if (s.Element == null)
             {

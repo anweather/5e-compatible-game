@@ -124,7 +124,7 @@ namespace Chem
                     TickWhirlwinds();
                     TickWaves();
                     TickBoulders();
-                    TickGolf();
+                    GolfSystem.Tick();
                     TickPlaced();
                     TickMachines(tickRows);
                     NextStage(TickStage.Timers);

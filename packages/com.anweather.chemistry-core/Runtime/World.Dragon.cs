@@ -463,7 +463,7 @@ namespace Chem
             FreshenMachines(ch);
             crackedThings.RemoveWhere(t => new ThingId(t).ChunkX == ch.X && new ThingId(t).ChunkY == ch.Y);
             var tee = Golf ?? startGolf;
-            if (tee != null && Chunks.ChunkOf(tee.TeeX) == ch.X && Chunks.ChunkOf(tee.TeeY) == ch.Y) Golf = startGolf?.Copy();
+            if (tee != null && Chunks.ChunkOf(tee.TeeX) == ch.X && Chunks.ChunkOf(tee.TeeY) == ch.Y) GolfSystem.State = startGolf?.Copy();
             ChunkFreshened?.Invoke(new ChunkFresh(ch.X, ch.Y));
         }
 
@@ -545,7 +545,7 @@ namespace Chem
         {
             if (startSource == null) return;
             var start = new JObject();
-            if (startGolf != null) start["golf"] = GolfRow(startGolf);
+            if (startGolf != null) start["golf"] = GolfSystem.Row(startGolf);
             save["start"] = start;
             SaveStarts(start);
             save["audit"] = new JArray(DragonFlights, auditAt);
@@ -625,7 +625,7 @@ namespace Chem
         {
             if (!(s["start"] is JObject start)) return;
             KeepStart();
-            startGolf = start["golf"] is JArray g ? ReadGolf(g) : null;
+            startGolf = start["golf"] is JArray g ? GolfSystem.Read(g) : null;
             DragonFlights = (int)s["audit"][0];
             auditAt = (int)s["audit"][1];
             if (!(s["dragon"] is JArray a)) return;

@@ -96,7 +96,7 @@ namespace Chem
             if (whirls.Count > 0) save["whirls"] = new JArray(whirls.Select(ww => new JArray(ww.X, ww.Y, ww.Radius, ww.Ticks, ww.Age, ww.Every, ww.MaxMass, ww.Spell, ww.Dir, ww.Travel, ww.Carrying)));
             if (waves.Count > 0) save["waves"] = new JArray(waves.Select(wv => new JArray(wv.Spell, wv.X, wv.Y, wv.Dir, wv.Width, wv.Left, wv.Every, wv.Age, wv.Power, wv.MaxMass, wv.OX, wv.OY, wv.AX, wv.AY, wv.Step)));
             SaveMachines(save);
-            SaveGolf(save);
+            GolfSystem.Save(save);
             SaveDragon(save);
             CourseSystem.Save(save);
             SaveRoom(save);
@@ -275,7 +275,7 @@ namespace Chem
             foreach (var wv in s["waves"] ?? new JArray())
                 waves.Add(LoadWave((JArray)wv));
             LoadMachinesAndBoulders(s);
-            LoadGolf(s);
+            GolfSystem.Load(s);
             CourseSystem.Load(s);
             LoadPlaced(s);
             LoadActs(s);

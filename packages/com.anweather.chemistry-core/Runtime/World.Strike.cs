@@ -132,7 +132,7 @@ namespace Chem
         public bool TriggersReadStands => Rules.TriggersOn(TriggerEvent.Step).Count > 0 || Rules.TriggersOn(TriggerEvent.Tick).Count > 0;
 
         // A rule reads the stands now (StandReads).
-        void ReadStands() => standReads++;
+        internal void ReadStands() => standReads++;
 
         /// <summary>The strikes since the view last took them, oldest first; taking them empties the list.</summary>
         public IReadOnlyList<StrikeHit> TakeStrikeHits()

@@ -176,7 +176,7 @@ namespace Chem.Tests
             }
             Assert.That(b.CastHash(), Is.EqualTo(a.CastHash()));
             var back = World.Load(a.Save(new ComboTests.Blank()), a.Rules, new ComboTests.Blank(), ModBudgets.Load(ChemistryTests.RulesDir()));
-            Assert.That(back.GolfText(), Is.EqualTo(a.GolfText()));
+            Assert.That(back.GolfSystem.Text(), Is.EqualTo(a.GolfSystem.Text()));
             Assert.That((back.Golf.LastBy, back.Golf.HoleX, back.Golf.Placed), Is.EqualTo((Ana, 40, true)));
         }
 

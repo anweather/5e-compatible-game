@@ -103,7 +103,7 @@ namespace Chem
         }
 
         // The ball went in: the holed triggers of who hit it fire at the cup, facing south as nobody stepped.
-        void BallHoled(GolfState g)
+        internal void BallHoled(GolfState g)
         {
             var list = Rules.TriggersOn(TriggerEvent.Holed);
             if (list.Count == 0) return;
