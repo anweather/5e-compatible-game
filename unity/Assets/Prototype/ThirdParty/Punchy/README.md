@@ -2,7 +2,7 @@
 
 Code adapted from **Punchy** by Zachary Franklin
 (<https://github.com/Skeleman/Punchy>), used with his permission and
-credited in the game's Credits (`Scripts/Credits.cs`).
+credited in the game's Credits (`Scripts/Plans/Credits.cs`).
 
 Vendored from upstream commit **b183507**; upstream's later work is ported by
 hand, a change at a time, and listed against the file below (from `7ee4511`:

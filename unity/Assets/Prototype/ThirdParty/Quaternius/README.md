@@ -5,7 +5,7 @@ game's Dragon (`Scripts/DragonView.cs`, tinted red there; `docs/BACKLOG.md` 26).
 
 - Licence: CC0 1.0 Universal, public domain (<https://creativecommons.org/publicdomain/zero/1.0/>). The
   pack's own licence text is `License.txt` here, also unchanged. Attribution isn't required; the game
-  credits it anyway (`Scripts/Credits.cs`).
+  credits it anyway (`Scripts/Plans/Credits.cs`).
 - Source: <https://opengameart.org/content/lowpoly-animated-monsters> (`Animated Monster Pack by
   @Quaternius.zip`, 1.4 MB; OpenGameArt lists it as CC0), downloaded 2026-10-31 with no account.
 - `Dragon.fbx`: 879 KB, 678 vertices, in Git LFS (`.gitattributes`). SHA-256

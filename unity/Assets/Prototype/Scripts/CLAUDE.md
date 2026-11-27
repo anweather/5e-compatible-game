@@ -26,7 +26,7 @@ things go" table is the recipe for adding a spell, material, prop or item.
   `Request`, or `.Grid` to draw on it), never by searching the scene for a
   `ChemGrid`. It is null outside Play mode, so Editor code and EditMode
   tests that open a scene still find the grid in it.
-- Rule ids are referenced only through `RuleIds.cs` (`SpellIds`, `ItemIds`).
+- Rule ids are referenced only through `Plans/RuleIds.cs` (`SpellIds`, `ItemIds`).
 - Runtime singletons that every scene needs can start themselves with
   `[RuntimeInitializeOnLoadMethod]` (`FpsProbe`, `PauseMenu`) so no builder
   or scene change is needed.
@@ -44,7 +44,13 @@ things go" table is the recipe for adding a spell, material, prop or item.
   `Prototype.Game.Tests`. The probes are apart: `Probes/` is
   `Prototype.Probes` (it references the game; the game never references it),
   `Probes/Editor/` the Editor-only `Prototype.Probes.Editor` (the CLI),
-  `Probes/Editor/Tests/` `Prototype.Probes.Tests`. A
+  `Probes/Editor/Tests/` `Prototype.Probes.Tests`. The view's plans are apart too: `Plans/` is
+  `Prototype.Plans` (plain C# a MonoBehaviour draws from: budgets, tables, menu logic, mesh arrays; it references
+  only `Chemistry`, `Chem.Land` and UnityEngine's maths, and the game references it), `Plans/Tests/`
+  `Prototype.Plans.Tests`, which `core/Prototype.Plans.Tests` also runs under dotnet with the `core/UnityMath` shim
+  (`docs/design/architecture-review.md` step 6). A file goes in `Plans/` only if it names no game type and no engine
+  API past `Vector2`/`Vector3`, `Mathf`, `Color`/`Color32` and `Debug.Log` (grow the shim for one more, never for a
+  `Mesh` or a MonoBehaviour): keep the `Mesh` call in the game, as `FarMeshesMesh.ToMesh` does for `FarMeshes`. A
   new folder named `Editor` here joins an Editor-only assembly with an
   `.asmref`, or its code goes into player builds. A new package the code
   uses goes into the asmdef's references. CI still can't build these

@@ -1,7 +1,7 @@
 # punchy-sync
 
 Brings the newest creatures from Punchy (Zachary Franklin's game, <https://github.com/Skeleman/Punchy>,
-credited in `Scripts/Credits.cs`) into `rules/fauna.json` and `rules/parts.json`. Punchy has no model files:
+credited in `Scripts/Plans/Credits.cs`) into `rules/fauna.json` and `rules/parts.json`. Punchy has no model files:
 a creature is a species `.asset` and the limb `.asset`s it hangs together (`Assets/Game/Fauna/**`, YAML
 linked by GUID through the `.meta` files). This reads those and writes them as our rows, the same way the
 one-off `CreatureRowExport` did at Punchy `c52d9ff` (it reproduces every row of that export exactly).

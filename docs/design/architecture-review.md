@@ -198,6 +198,21 @@ must compile it (one compile can serve a batch of steps, as the boat's PC did fo
    `Editor/Tests` files, with those tests moved to a dotnet project; then the plan halves of `RowMesher`,
    `CellWaterMesh` and `FarRing` (arrays out, the `Mesh` call stays). Each file moves with its test. **Cloud** for
    the plain files; **Unity** to compile the asmdef split, batched.
+   *Done 2026-11-26 (the Mac, with a Unity compile): `Scripts/Plans/` is `Prototype.Plans` (Unity: Chemistry, Chem.Land
+   and UnityEngine's maths; the game, its Editor tools, tests and the probes reference it) and `core/Prototype.Plans`
+   (the same files on the `core/UnityMath` shim: Vector2/3, Mathf, Color/Color32, Debug.Log, the
+   RuntimeInitializeOnLoadMethod mark). 21 files moved (`TreeBudget`, `CastSoundTable`, `CellsByChunk`, `SwimStyle`,
+   `MenuNavigator`, `CodePicker`, `StartTrees`, `PinnedGround`, `FrameStats`, `RuleIds`, `WeatherMods`, `GroundSwitch`,
+   `Credits`, `TagRules`, `TreeImpostorMath`, `ProceduralCast`, `SoundMastering`, `DragonFlight`, `BuildVersion`,
+   `LoadedMaps`, `FarMeshes`), with 6 test files (56 tests) to `Scripts/Plans/Tests/`, which `core/Prototype.Plans.Tests`
+   runs and the Editor's default EditMode group still runs under Mono. The far ring's plan half is `FarMeshes` (its
+   one `Mesh` call is `FarMeshesMesh.ToMesh`, in the game). Left in place because each names a game type or an
+   engine API past the shim: `GroundFromLand` (`ValleyGround`), `StepTimes` and `BiomeGround` (`StartupTimeline`),
+   `SpawnPoints` (`ChemGrid`), `PairGlyphs` (`HudDraw`), `CastBeat` (`CastFeel`, a ScriptableObject), `ApiStandIn` and
+   the plain `Net/` files (Net's, for step 7), `CreatureBodies` and `FolkJobs` (Punchy), `BuildingMesher` and
+   `ContourSurface` (meshes, materials); `PadGlyphs`, `PadLog` and `MenuControls` read the Input System. `RowMesher`
+   (`MeshKit`, `WindowPanes`, its result holds `Mesh`es) and `CellWaterMesh` (built on a `ChemGrid`, materials and
+   GameObjects) need a real split, not a move, so they wait; `FarRing` is a MonoBehaviour.*
 7. **An `IPeers` port and a `Prototype.Net` assembly.** Solo and NGO adapters; `SpellCaster`, `RuleSwitcher`,
    `PhysicsProp`, `ItemHolder` and the 19 files with `IsServer`/`IsSpawned` go through it; then `Net/` becomes its
    own asmdef so a view-to-Net reference is a compile error. Proof: `probe online`, `roomopen`, `roomruin`, the

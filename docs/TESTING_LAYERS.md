@@ -12,7 +12,7 @@ reach them.
 | Layer | Who | Runs | Doesn't run |
 |---|---|---|---|
 | 1. **Author** | the worker writing the change (u2, the Mac, a PC job) | New or changed tests for what it changed; `dotnet build core -c Release -warnaserror` and the tests nearest the change while working | The whole suite on every edit |
-| 2. **Unity check** | a `unity-task` on the PC, or the Mac | Compile with 0 errors; the Unity-side tests (`Scripts/Editor/Tests`, `Scripts/Playtest/Editor`, `Scripts/Probes/Editor/Tests`) and the touched fixtures; `smoke` and the probes the change can reach; a clip only when asked. **`tools/editmode.sh chem` (the Chemistry tests under Mono) only when `Chemistry/` code changed** | Core tests under Mono for view-only changes; unrelated probes |
+| 2. **Unity check** | a `unity-task` on the PC, or the Mac | Compile with 0 errors; the Unity-side tests (`Scripts/Editor/Tests`, `Scripts/Playtest/Editor`, `Scripts/Probes/Editor/Tests`, and `Scripts/Plans/Tests` under Mono) and the touched fixtures; `smoke` and the probes the change can reach; a clip only when asked. **`tools/editmode.sh chem` (the Chemistry tests under Mono) only when `Chemistry/` code changed** | Core tests under Mono for view-only changes; unrelated probes |
 | 3. **Landing gates** | `land.sh` | Core build, format, **the touched modules' core tests** (.NET, by `tools/workers/modules.json`: their projects, the projects that reference them, every other project's `Unit` fixtures) but the `Sweep` category, the workers and chat tests | Unity, probes, the `Sweep` category, duplicate code (CI and the sweep), the core tests a change can't reach |
 | 4. **Sweep** | the idle Unity machine, at least once a day and after a big batch of landings | `tools/editmode.sh sweep`: all of EditMode, duplicate code (jscpd), the Chemistry tests under Mono and the `Timing` tests (`--include_explicit true`), the core's `Sweep` category (`dotnet test core -s core/sweep.runsettings --filter TestCategory=Sweep`), every probe, a two-peer run, the hitch budget, on dev as it stands: what the layers above skip and what only appears when branches meet | Nothing skipped; it's the net |
 | 5. **Release** | the release steps (`docs/RELEASING.md`) | `smoke`, `online`, the release's own probes, install from the draft, the PC joining a Mac host | Anything a sweep already covered on that commit |
@@ -48,7 +48,9 @@ The holes, on purpose:
   (its `engine_free` line): `dotnet build core` compiles those the way Unity does (netstandard2.1, C# 9), so the
   landing gates prove them. The package `packages/com.anweather.chemistry-core/` never needed it. A branch that mixes
   them with other Unity C# still needs `--compiled`. What only Unity sees (code behind `#if UNITY_5_3_OR_NEWER`, the
-  asmdefs' references) waits for the next Unity check or sweep.
+  asmdefs' references) waits for the next Unity check or sweep. The view's plans (`Scripts/Plans/`, step 6 of
+  `docs/design/architecture-review.md`) aren't engine-free: dotnet builds them against `core/UnityMath`, a stand-in for
+  the few engine types they use, and only Unity proves them against UnityEngine, so they still need `--compiled`.
 
 A failure in the sweep goes to whoever landed the change that broke it, found by bisecting the day's landings.
 
@@ -57,12 +59,14 @@ A failure in the sweep goes to whoever landed the change that broke it, found by
 Measured on the Mac 2026-11-10: a full EditMode run was 1987 tests in 42.6 minutes, and 98% of that (1555 tests, 2476 s)
 was `Chemistry.Tests`, the same tests `dotnet test core` runs under .NET (the `core/Chem.*.Tests` projects compile that folder).
 Every Chemistry test method the Editor ran also exists in the `dotnet test core` list, so none is Unity-only. The
-Unity-only tests (`Prototype.Game.Tests`: `Scripts/Editor/Tests`, `Scripts/Playtest/Editor`; and `Prototype.Probes.Tests`: `Scripts/Probes/Editor/Tests`) are 470 tests in
-about 4 minutes. So the Editor's default is the Unity-only group, and the Mono pass over the Chemistry tests is asked for:
+Unity-only tests (`Prototype.Game.Tests`: `Scripts/Editor/Tests`, `Scripts/Playtest/Editor`; and `Prototype.Probes.Tests`: `Scripts/Probes/Editor/Tests`) are 414 tests;
+with the view plans' 56 (`Prototype.Plans.Tests`: `Scripts/Plans/Tests`, which `core/Prototype.Plans.Tests` also runs under
+.NET, so the Editor's run is their Mono pass) the default group is 470 tests in about 4 minutes. So the Editor's default is
+that group, and the Mono pass over the Chemistry tests is asked for:
 
 | Command | Runs | Time (Mac) | When |
 |---|---|---|---|
-| `tools/editmode.sh` (`unity`) | the Unity-only tests (`Prototype.Game.Tests`, `Prototype.Probes.Tests`), ~470 | ~4 min | any change under `Scripts/` or `Net/`; layer 2 |
+| `tools/editmode.sh` (`unity`) | the Unity-only tests (`Prototype.Game.Tests`, `Prototype.Probes.Tests`) and the plans' (`Prototype.Plans.Tests`), ~470 | ~4 min | any change under `Scripts/` or `Net/`; layer 2 |
 | `tools/editmode.sh chem` | `Chemistry.Tests` under Mono, ~1570 | ~40 min (PC ~14), background | a change to `Chemistry/`; the sweep |
 | `tools/editmode.sh all` | both, as a bare `unity command test run --mode EditMode` | ~45 min | rarely |
 | `tools/editmode.sh sweep` | all, plus the Explicit `Timing` tests | ~45 min | the sweep, on an idle Editor |
@@ -122,6 +126,7 @@ fixtures are split in two since step 5b (`docs/design/chem-land-split.md`): `Hil
 | `Chem.Play.Tests` | the Hold (with `HoldLockstepTests`), the hands, golf, the Gauntlet, puzzles, defense, the dragon | 245 (243 without Sweep) | 47 s |
 | `Chem.Lockstep.Tests` | the lockstep session and wire, late joins, rooms, resets, the open world over the loopback | 80 | 110 s |
 | `Chem.Playtest.Tests` | the playtest bot (`Scripts/Playtest/Editor/*Tests.cs`) | 41 | 2 s |
+| `Prototype.Plans.Tests` | the view's plans (`Scripts/Plans/Tests/*.cs`, on `Prototype.Plans` and the `core/UnityMath` shim; step 6): the tree budget, the menu navigator, pinned ground, tag rules, build versions, the far ring's meshes | 57 | 1 s (the Mac) |
 
 Measured 2026-11-26 on a 4-core cloud VM, Release, 6 workers, `-s core/sweep.runsettings`. The whole of `dotnet test
 core` (the eleven projects side by side, the tools' four included) was 380 s there, against 334 s for the one
@@ -142,7 +147,8 @@ the rules; LandWorld references Land (`LandmarkIntentTests.Village`, `ChunkGenTe
 `SparseWorldBench.Build` and `GameWorldDir`, is `BuiltWorlds.Build` and `ChemistryTests.GameWorldDir` in Shared, and the
 mod-switch bench, which bakes the nine, is LandWorld's); Lockstep references Sim (`ComboTests.Blank`). Where a file sits away from its subject, that is why: `HeightfieldThreadingTests` is in Sim
 (it uses `FogTickBench`), `HoldLockstepTests` in Play (it uses `HoldTests`), `AirTests` in Play (`HoldTests.Field`).
-`Rules.Mcp.Tests` references Sim (`ComboTests.Blank`, `BuildingTests`); the other tools' tests only Shared.
+`Rules.Mcp.Tests` references Sim (`ComboTests.Blank`, `BuildingTests`); the other tools' tests only Shared. `Prototype.Plans.Tests` references `Prototype.Plans`
+alone (with its own `PlansFolders` and kinds check), not Shared.
 There is no Chemistry Mcp project: no file in `Chemistry/Tests/` is chiefly the rules MCP's (`PlayerModsTests` drives a
 `Workbench` for player mods, and sits in Rules), so the Mcp module's tests are `core/Rules.Mcp.Tests`.
 
