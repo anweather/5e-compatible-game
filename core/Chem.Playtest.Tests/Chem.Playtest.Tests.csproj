@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- The playtest bot's tests, from unity/Assets/Prototype/Scripts/Playtest/Editor. -->
+  <!-- The playtest bot's tests, from unity/Assets/Prototype/Scripts/Shell/Playtest/Editor. -->
   <Import Project="../Chem.Tests.props" />
 
   <ItemGroup>
     <!-- The playtest bot's tests (its logic is in Game.Core; playtest/DESIGN.md). -->
-    <Compile Include="../../unity/Assets/Prototype/Scripts/Playtest/Editor/*Tests.cs" Link="Playtest/Tests/%(Filename)%(Extension)" />
+    <Compile Include="../../unity/Assets/Prototype/Scripts/Shell/Playtest/Editor/*Tests.cs" Link="Playtest/Tests/%(Filename)%(Extension)" />
     <Compile Include="*.cs" />
   </ItemGroup>
 

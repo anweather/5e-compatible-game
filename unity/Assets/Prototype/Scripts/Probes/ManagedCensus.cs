@@ -58,7 +58,12 @@ public static class ManagedCensus
                 Walk(v, $"{mb.GetType().Name}.{f.Name}");
             }
         }
-        var assemblies = new[] { typeof(ChemGrid).Assembly, typeof(Chem.World).Assembly };
+        var assemblies = new[]
+        {
+            typeof(Punchy.Fauna.CreatureBody).Assembly, typeof(Registry<>).Assembly, typeof(ChemGrid).Assembly, typeof(MapTerrains).Assembly,
+            typeof(ValleyChemistry).Assembly, typeof(SpellCaster).Assembly, typeof(ValleyFauna).Assembly, typeof(HoldShow).Assembly,
+            typeof(ChatTelemetry).Assembly, typeof(PlayLog).Assembly, typeof(Chem.World).Assembly,
+        };
         foreach (var asm in assemblies.Distinct())
             foreach (var type in SafeTypes(asm))
             {

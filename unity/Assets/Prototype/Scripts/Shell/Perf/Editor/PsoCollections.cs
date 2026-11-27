@@ -10,7 +10,7 @@ using UnityEngine.Experimental.Rendering;
 // docs/RELEASING.md says when to record them again.
 public static class PsoCollections
 {
-    const string Folder = "Assets/Prototype/Scripts/Perf/Resources";
+    const string Folder = "Assets/Prototype/Scripts/Shell/Perf/Resources";
 
     public static string Merge(params string[] traces)
     {

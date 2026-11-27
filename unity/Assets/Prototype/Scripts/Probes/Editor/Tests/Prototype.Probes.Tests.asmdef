@@ -4,7 +4,7 @@
     "references": [
         "Prototype.Probes",
         "Prototype.Probes.Editor",
-        "Prototype.Game",
+        "Prototype.Shell",
         "Prototype.Net",
         "Prototype.Game.Editor",
         "Prototype.AssetPacks.Editor",

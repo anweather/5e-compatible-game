@@ -1,5 +1,5 @@
 {
-    "name": "Prototype.Game",
+    "name": "Prototype.Shell",
     "rootNamespace": "",
     "references": [
         "Chemistry",

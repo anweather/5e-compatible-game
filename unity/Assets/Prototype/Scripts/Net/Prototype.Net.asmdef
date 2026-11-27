@@ -2,7 +2,7 @@
     "name": "Prototype.Net",
     "rootNamespace": "",
     "references": [
-        "Prototype.Game",
+        "Prototype.Shell",
         "Chemistry",
         "Chem.Land",
         "Chemistry.Mcp",

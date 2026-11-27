@@ -2,7 +2,7 @@
     "name": "Prototype.Game.Editor",
     "rootNamespace": "",
     "references": [
-        "Prototype.Game",
+        "Prototype.Shell",
         "Prototype.Net",
         "Prototype.Plans",
         "Prototype.AssetPacks.Editor",
