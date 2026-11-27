@@ -3,7 +3,7 @@
 // to a flag in waves, and players stop them with spells. This file holds the
 // rule rows (raider stats, sim.json's "defense", reactions.json's "entity"
 // rules), the command that starts the waves and the state the world keeps;
-// World.Raiders.cs and Play/DefenseSystem.cs are the systems, mirroring
+// Play/RaiderSystem.cs and Play/DefenseSystem.cs are the systems, mirroring
 // sandbox/src/entities.ts and sandbox/src/defense.ts. Everything here is
 // whole numbers and ordered lists, so every machine in lockstep agrees.
 using System;

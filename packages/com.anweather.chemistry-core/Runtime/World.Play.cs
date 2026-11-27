@@ -1,10 +1,18 @@
 // The game modes' systems, which the world owns (docs/design/architecture-review.md step 9, D9): each is a class in
 // Play/ over the world's data, made with the world and run at the place in the tick its mode always had. What's left
 // here are the thin members code outside the core still calls on the world; they forward to a system.
+using System.Collections.Generic;
+
 namespace Chem
 {
     public sealed partial class World
     {
+        /// <summary>The raiders on the board (Play/RaiderSystem.cs).</summary>
+        public RaiderSystem RaiderSystem { get; private set; }
+
+        /// <summary>The status counting the casts that have knocked a raider back, and a raider thrown off its feet (RaiderSystem).</summary>
+        public const string ShovedStatus = RaiderSystem.ShovedStatus, ThrownStatus = RaiderSystem.ThrownStatus;
+
         /// <summary>The spell zones and the course's runs (Play/CourseSystem.cs).</summary>
         public CourseSystem CourseSystem { get; private set; }
 
@@ -29,11 +37,21 @@ namespace Chem
         // Made in both constructors (World.cs, OpenWorld.cs), before the chunks: none of them draws from the world's generator.
         void MakeSystems()
         {
+            RaiderSystem = new RaiderSystem(this);
             CourseSystem = new CourseSystem(this);
             DefenseSystem = new DefenseSystem(this);
             GolfSystem = new GolfSystem(this);
             HoldSystem = new HoldSystem(this);
         }
+
+        /// <summary>The raiders on the board, oldest first (RaiderSystem.Raiders); for the view, the probes and the tests.</summary>
+        public IReadOnlyList<Raider> Raiders => RaiderSystem.Raiders;
+
+        /// <summary>The raider standing on a square, or null (RaiderSystem.RaiderAt); for SpellCaster, and the world's own passes.</summary>
+        public Raider RaiderAt(int x, int y) => RaiderSystem.RaiderAt(x, y);
+
+        /// <summary>Puts a raider of a kind on a square (RaiderSystem.SpawnRaider); for Desk and the probes.</summary>
+        public Raider SpawnRaider(string kind, int x, int y, int hp) => RaiderSystem.SpawnRaider(kind, x, y, hp);
 
         /// <summary>Where a wizard downed at (x, y) gets up (CourseSystem.Respawn); for WizardDown.</summary>
         public (int x, int y)? CourseRespawn(string player, int x, int y) => CourseSystem.Respawn(player, x, y);

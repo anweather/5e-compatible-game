@@ -47,7 +47,7 @@ namespace Chem
         public bool Running => State != null && State.Phase == HoldPhase.Running;
 
         /// <summary>Raiders still to beat in the wave under way.</summary>
-        public int Left => State == null ? 0 : world.RaiderList.Count + State.ToSpawn;
+        public int Left => State == null ? 0 : world.RaiderSystem.List.Count + State.ToSpawn;
 
         /// <summary>Gives the world its map's Hold, before the first tick.</summary>
         public void Set(WorldHold site)
@@ -123,7 +123,7 @@ namespace Chem
             holdPlate = on ? holdPlate + 1 : 0;
             if (holdPlate < p.PlateTicks || (world.DefenseSystem.State != null && world.DefenseSystem.State.Phase == DefensePhase.Running)) return;
             holdPlate = 0;
-            world.ClearRaiders();
+            world.RaiderSystem.ClearRaiders();
             world.ReadStands();
             int peers = world.Stands.Values.Count(s => !s.Down);
             State = new HoldState { Phase = HoldPhase.Running, Wave = 1, Health = p.Health, Peers = peers, ToSpawn = WaveSize(p, 1, peers), NextSpawn = world.Tick + p.Warmup, Theme = ThemeOfWave(1) };
@@ -141,7 +141,7 @@ namespace Chem
             var p = world.Rules.Sim.Hold;
             var m = p.Moment(id);
             if (Site == null || m == null) return false;
-            world.ClearRaiders();
+            world.RaiderSystem.ClearRaiders();
             MendCastle();
             world.ReadStands();
             int peers = world.Stands.Values.Count(s => !s.Down);
@@ -270,10 +270,10 @@ namespace Chem
             if (h.ToSpawn > 0) return;
             if (p.Waves > 0 && h.Wave >= p.Waves)
             {
-                if (world.RaiderList.Count == 0) WinRun();
+                if (world.RaiderSystem.List.Count == 0) WinRun();
                 return;
             }
-            if (p.WaveTicks > 0 ? world.Tick < h.NextWave - p.BetweenWaves : world.RaiderList.Count > 0) return;
+            if (p.WaveTicks > 0 ? world.Tick < h.NextWave - p.BetweenWaves : world.RaiderSystem.List.Count > 0) return;
             h.Wave++;
             h.Theme = NextTheme(p, h.Wave, h.Theme);
             h.InWave = 0;
@@ -314,11 +314,11 @@ namespace Chem
 
         void MarchHold(HoldParams p)
         {
-            if (world.RaiderList.Count == 0) return;
+            if (world.RaiderSystem.List.Count == 0) return;
             if (roadWay.Length == 0 || world.Tick % p.RouteEvery == 0) WorkOutWays(p);
-            world.RaiderScratch.Clear();
-            world.RaiderScratch.AddRange(world.RaiderList);
-            foreach (var r in world.RaiderScratch)
+            world.RaiderSystem.Scratch.Clear();
+            world.RaiderSystem.Scratch.AddRange(world.RaiderSystem.List);
+            foreach (var r in world.RaiderSystem.Scratch)
             {
                 if (!r.Alive) continue;
                 Upkeep(r);
@@ -428,7 +428,7 @@ namespace Chem
             r.X = world.FoldX(nx);
             r.Y = world.FoldY(ny);
             r.Wait = DefenseSystem.PaceOf(def) - 1 + (rough ? world.Rules.Sim.Defense.RoughTicks : 0);
-            world.Thorns(r, to);
+            world.RaiderSystem.Thorns(r, to);
             if (r.Alive && world.Rules.AdjectiveOf(r.Kind)?.Lights == true) world.Apply(r.X, r.Y, "fire", 1, -1, false);
         }
 
@@ -482,7 +482,7 @@ namespace Chem
             State.Phase = HoldPhase.Lost;
             State.Health = 0;
             State.ToSpawn = 0;
-            world.ClearRaiders();
+            world.RaiderSystem.ClearRaiders();
             world.AddLog($"The keep falls in wave {State.Wave}", LogKind.Notable);
             MendCastle();
         }
@@ -597,7 +597,7 @@ namespace Chem
             // Timed waves only, so a run without hashes as it did.
             if (State != null && State.NextWave != 0) sb.Append(":n").Append(State.NextWave);
             foreach (var b in battered) sb.Append("|b").Append(b.Key).Append(':').Append(b.Value);
-            foreach (var r in world.RaiderList) sb.Append("|r").Append(r.Id).Append(':').Append(r.Kind).Append(':').Append(r.X).Append(':').Append(r.Y).Append(':').Append(r.Hp).Append(':').Append(r.Wait).Append(':').Append(r.StatusOf(LandedStatus));
+            foreach (var r in world.RaiderSystem.List) sb.Append("|r").Append(r.Id).Append(':').Append(r.Kind).Append(':').Append(r.X).Append(':').Append(r.Y).Append(':').Append(r.Hp).Append(':').Append(r.Wait).Append(':').Append(r.StatusOf(LandedStatus));
             return sb.ToString();
         }
 

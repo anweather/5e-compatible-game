@@ -103,7 +103,7 @@ namespace Chem
         public bool IsActiveAt(int x, int y) => LocateActive(x, y, out _, out _) != null;
 
         /// <summary>Neighbours in N, E, S, W order that the simulation may change.</summary>
-        IEnumerable<(int x, int y, int dir)> ActiveNeighbours(int x, int y)
+        internal IEnumerable<(int x, int y, int dir)> ActiveNeighbours(int x, int y)
         {
             foreach (var n in Neighbours(x, y))
                 if (IsActiveAt(n.x, n.y)) yield return n;

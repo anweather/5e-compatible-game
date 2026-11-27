@@ -382,7 +382,7 @@ namespace Chem
         void KnockDown()
         {
             int ticks = DownedTicks(Rules.Sim);
-            foreach (var r in raiders)
+            foreach (var r in RaiderSystem.List)
             {
                 if (r.StatusOf(DownedStatus) > 0 || !CaughtByBreath(r.X, r.Y)) continue;
                 r.Status[DownedStatus] = ticks;

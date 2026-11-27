@@ -117,7 +117,7 @@ namespace Chem
             // now and every other chunk's when it activates (World.Fit.cs, #190).
             rulesStamp++;
             if (Unfits(before, rules)) Refit(before);
-            SanitizeRaiders();
+            RaiderSystem.Sanitize();
             LayBuildings(before, rules);
             LayCells(before, rules);
         }
@@ -794,6 +794,14 @@ namespace Chem
         // ---------- randomness ----------
 
         /// <summary>mulberry32, bit-for-bit the same as `rand` in world.ts.</summary>
+        /// <summary>[n, sides] dice with the world's generator (roll in the TS).</summary>
+        internal int Roll(int[] dice)
+        {
+            int total = 0;
+            for (int i = 0; i < dice[0]; i++) total += 1 + (int)Math.Floor(Rand() * dice[1]);
+            return total;
+        }
+
         public double Rand()
         {
             unchecked

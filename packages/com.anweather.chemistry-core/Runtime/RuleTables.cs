@@ -556,7 +556,7 @@ namespace Chem
         /// </summary>
         public int CliffSteps = 4, FallStepsPerHurt = 2;
         /// <summary>
-        /// A cast's shove (World.CastShove): a creature shoved this many times braces against the next, and staggers
+        /// A cast's shove (RaiderSystem.CastShove): a creature shoved this many times braces against the next, and staggers
         /// ShoveStaggerTicks after each (sim.json shove most, staggerTicks).
         /// </summary>
         public int MostShoves = 2, ShoveStaggerTicks = 6;

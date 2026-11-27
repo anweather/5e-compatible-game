@@ -5,7 +5,7 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>
-    /// The defense field (Play/DefenseSystem.cs, World.Raiders.cs). Ported from sandbox/test/defense.test.ts;
+    /// The defense field (Play/DefenseSystem.cs, Play/RaiderSystem.cs). Ported from sandbox/test/defense.test.ts;
     /// the golden numbers come from running the same script there.
     /// </summary>
     [Category("Simulation")]

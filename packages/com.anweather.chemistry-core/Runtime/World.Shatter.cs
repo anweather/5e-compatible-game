@@ -51,7 +51,7 @@ namespace Chem
             c.Frozen && FrozenWater() is TerrainDef ice && ice.Cracks ? ice : null;
 
         // The terrain frozen water is (sim.json water.freezes), whose shatter it borrows; null for none.
-        TerrainDef FrozenWater() =>
+        internal TerrainDef FrozenWater() =>
             Rules.Sim.WaterFreezes != null && Rules.Terrain.TryGetValue(Rules.Sim.WaterFreezes, out var ice) ? ice : null;
 
         // Cracked, with a warning if a creature stands on it.

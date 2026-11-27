@@ -229,7 +229,7 @@ namespace Chem
         // Raiders on a cell just built on, in id order, each to the nearest free cell.
         void PushRaiders(BuildingsChange change)
         {
-            foreach (var r in raiders.Where(r => r.Alive && change.Covers(r.X, r.Y)).OrderBy(r => r.Id))
+            foreach (var r in RaiderSystem.List.Where(r => r.Alive && change.Covers(r.X, r.Y)).OrderBy(r => r.Id))
             {
                 var to = NearestFree(r.X, r.Y);
                 if (to == null) continue;

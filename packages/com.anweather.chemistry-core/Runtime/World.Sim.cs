@@ -1,7 +1,7 @@
 // One tick of the cell world. Port of sandbox/src/sim.ts with the critter and
 // machine systems left out, and of its entities only the defense field's
 // raiders. The order of what remains is the TS order: fire -> water -> gas ->
-// weather -> raiders (World.Raiders.cs) -> the defense's waves
+// weather -> raiders (Play/RaiderSystem.cs) -> the defense's waves
 // (Play/DefenseSystem.cs) -> charge decay -> wind decay, then the day clock
 // (Hasten Time, World.Time.cs).
 using System;
@@ -117,7 +117,7 @@ namespace Chem
                     return false;
                 case TickStage.Rest:
                     TickWeather(tickRows);
-                    TickRaiders();
+                    RaiderSystem.Tick();
                     DefenseSystem.Tick();
                     HoldSystem.Tick();
                     TickCombos();

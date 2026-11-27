@@ -1,6 +1,6 @@
 // The defense field's waves (docs/BACKLOG.md 17), the defense field's system (docs/design/architecture-review.md
 // step 9, D9). Port of sandbox/src/defense.ts, line for line. A DefenseCommand starts them; each tick (after the
-// raiders' upkeep, World.Raiders.cs) the next raider of the wave comes through the gate on its schedule, every raider
+// raiders' upkeep, Play/RaiderSystem.cs) the next raider of the wave comes through the gate on its schedule, every raider
 // takes a step toward the flag along the cheapest way there, and a raider reaching the flag costs a life. The way is
 // a cost field over the squares round the field (a Dijkstra search from the flag in the world's WayField, worked out
 // afresh each tick, so a wall or a trench reroutes them at once): open ground costs 1, rough going (deep water, a
@@ -35,7 +35,7 @@ namespace Chem
         public DefenseState State { get; private set; }
 
         /// <summary>Raiders still to beat in the wave under way: on the board and still to come.</summary>
-        public int Left => State == null ? 0 : world.RaiderList.Count + State.ToSpawn;
+        public int Left => State == null ? 0 : world.RaiderSystem.List.Count + State.ToSpawn;
 
         /// <summary>How many raiders a wave brings: First, and Growth more for each wave after.</summary>
         public static int WaveSize(DefenseParams p, int wave) => p.First + p.Growth * (wave - 1);
@@ -56,7 +56,7 @@ namespace Chem
             if (!world.InBounds(command.GateX, command.GateY) || !world.InBounds(command.FlagX, command.FlagY)) return;
             var p = world.Rules.Sim.Defense;
             int m = Math.Max(0, p.Margin);
-            world.ClearRaiders();
+            world.RaiderSystem.ClearRaiders();
             State = new DefenseState
             {
                 Phase = DefensePhase.Running,
@@ -109,11 +109,11 @@ namespace Chem
 
         void March(DefenseState d, DefenseParams p)
         {
-            if (world.RaiderList.Count == 0) return;
+            if (world.RaiderSystem.List.Count == 0) return;
             CostField(d, p);
-            world.RaiderScratch.Clear();
-            world.RaiderScratch.AddRange(world.RaiderList);
-            foreach (var r in world.RaiderScratch)
+            world.RaiderSystem.Scratch.Clear();
+            world.RaiderSystem.Scratch.AddRange(world.RaiderSystem.List);
+            foreach (var r in world.RaiderSystem.Scratch)
             {
                 if (!r.Alive) continue;
                 if (r.Wait > 0)
@@ -147,26 +147,26 @@ namespace Chem
             r.X = world.FoldX(nx);
             r.Y = world.FoldY(ny);
             r.Wait = PaceOf(def) - 1 + (rough ? p.RoughTicks : 0);
-            world.Thorns(r, to);
+            world.RaiderSystem.Thorns(r, to);
             if (r.Alive && r.X == d.FlagX && r.Y == d.FlagY) ReachFlag(d, r, def);
         }
 
         void ReachFlag(DefenseState d, Raider r, EntityDef def)
         {
-            world.RaiderList.Remove(r);
+            world.RaiderSystem.List.Remove(r);
             r.Alive = false;
             d.Lives--;
             world.AddLog($"A {def.Name.ToLowerInvariant()} reaches the flag! {Math.Max(0, d.Lives)} lives left", LogKind.Hurt);
             if (d.Lives > 0) return;
             d.Phase = DefensePhase.Lost;
             d.ToSpawn = 0;
-            world.ClearRaiders();
+            world.RaiderSystem.ClearRaiders();
             world.AddLog("The flag falls: the raiders win this time", LogKind.Notable);
         }
 
         void NextWave(DefenseState d, DefenseParams p)
         {
-            if (d.ToSpawn > 0 || world.RaiderList.Count > 0) return;
+            if (d.ToSpawn > 0 || world.RaiderSystem.List.Count > 0) return;
             if (d.Wave >= p.Waves)
             {
                 d.Phase = DefensePhase.Won;
@@ -283,7 +283,7 @@ namespace Chem
             var sb = new StringBuilder();
             sb.Append(((int)d.Phase).ToString(inv)).Append('/').Append(d.Wave.ToString(inv)).Append('/').Append(d.Lives.ToString(inv)).Append('/')
               .Append(d.ToSpawn.ToString(inv)).Append('/').Append(d.NextSpawn.ToString(inv)).Append('/').Append(d.Spawned.ToString(inv)).Append('|');
-            foreach (var r in world.RaiderList)
+            foreach (var r in world.RaiderSystem.List)
             {
                 sb.Append(r.Id.ToString(inv)).Append(',').Append(r.Kind).Append(',').Append(r.X.ToString(inv)).Append(',').Append(r.Y.ToString(inv)).Append(',')
                   .Append(r.Hp.ToString(inv)).Append(',').Append(r.Wait.ToString(inv));
@@ -292,7 +292,7 @@ namespace Chem
                 if (r.StatusOf(World.ThrownStatus) > 0) sb.Append(",t").Append(r.StatusOf(World.ThrownStatus).ToString(inv));
                 // Downed by the dragon's breath, the same.
                 if (r.StatusOf(World.DownedStatus) > 0) sb.Append(",d").Append(r.StatusOf(World.DownedStatus).ToString(inv));
-                // Shoved by casts (World.CastShove), the same.
+                // Shoved by casts (RaiderSystem.CastShove), the same.
                 if (r.StatusOf(World.ShovedStatus) > 0) sb.Append(",s").Append(r.StatusOf(World.ShovedStatus).ToString(inv));
                 sb.Append(';');
             }

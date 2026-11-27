@@ -81,9 +81,9 @@ namespace Chem
                 ["weather"] = WeatherSet.HasValue ? new JArray((int)WeatherSet.Value.kind, WeatherSet.Value.from, WeatherSet.Value.until) : null,
                 ["wind"] = Wind.HasValue ? new JArray(Wind.Value.dir, Wind.Value.ticks) : null,
                 ["meteors"] = new JArray(falling.Select(m => new JArray(m.x, m.y, m.lands))),
-                ["nextEntityId"] = NextEntityId,
+                ["nextEntityId"] = RaiderSystem.NextEntityId,
                 ["defense"] = DefenseSystem.Save(),
-                ["raiders"] = new JArray(raiders.Select(SaveRaider)),
+                ["raiders"] = new JArray(RaiderSystem.List.Select(SaveRaider)),
             };
             if (WrapX) save["wrap"] = WrapY ? "torus" : "ew"; // only a world that wraps says so: other saves are as they were
             if (IsOpen) save["open"] = SaveFills(); // an open world's grounds, the chunks' sources
@@ -283,7 +283,7 @@ namespace Chem
             LoadLaid(s);
             LoadTriggers(s);
             LoadStands(s);
-            NextEntityId = (int)s["nextEntityId"];
+            RaiderSystem.NextEntityId = (int)s["nextEntityId"];
             HoldSystem.Load(s["hold"]);
             LoadHands(s["hands"]);
             LoadProgress(s["progress"]);
@@ -294,7 +294,7 @@ namespace Chem
                 var at = o["at"];
                 var r = new Raider { Id = (int)o["id"], Kind = (string)o["kind"], X = (int)at[0], Y = (int)at[1], Hp = (int)at[2], MaxHp = (int)at[3], Wait = (int)at[4], Alive = (bool)o["alive"] };
                 foreach (var p in ((JObject)o["status"]).Properties()) r.Status[p.Name] = (int)p.Value;
-                raiders.Add(r);
+                RaiderSystem.List.Add(r);
             }
         }
 

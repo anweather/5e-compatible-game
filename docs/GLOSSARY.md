@@ -436,7 +436,7 @@ touch them.
 
 **Shove**
 : A charged cast's knock-back of a creature (`force.push` cells for each
-  charge level and one more; `World.CastShove`). The second goes half as
+  charge level and one more; `RaiderSystem.CastShove`). The second goes half as
   far; after `sim.json` `shove.most` the creature **braces** and doesn't
   move. Each staggers it `shove.staggerTicks`. Thrown along the ground, it
   goes over a drop of `fall.cliffSteps` height steps and takes
