@@ -15,6 +15,8 @@ public sealed partial class FarRing
 
     public (int drawn, int known) Dials => (sight, know);
 
+    int IFarLandFace.KnownChunks => know;
+
     public bool Settled => ring != null && !ring.Busy && building == null && ring.Version == builtVersion;
 
     public static void SetView(int? drawn, int? known)

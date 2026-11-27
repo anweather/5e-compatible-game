@@ -15,9 +15,9 @@ using UnityEngine;
 // the chunks left behind go back to. The far ring's known meshes draw the land past them. Nothing is made for the rest of
 // the map, so what the terrains cost follows the drawn tier, never the map's size. The valley keeps all of its 81.
 [DefaultExecutionOrder(-1000)]
-public sealed class MapTerrains : MonoBehaviour
+public sealed class MapTerrains : MonoBehaviour, ITerrainFace
 {
-    public const float DetailMetres = 80f;
+    public const float DetailMetres = LandFaces.DetailMetres;
 
     public static float TreeDistance { get; private set; } = 900f;
 
@@ -29,10 +29,22 @@ public sealed class MapTerrains : MonoBehaviour
             if (t != null) t.treeDistance = metres;
     }
 
-    public static MapTerrains Instance { get; private set; }
+    static MapTerrains instance;
+
+    public static MapTerrains Instance
+    {
+        get => instance;
+        private set
+        {
+            instance = value;
+            LandFaces.Terrains = value;
+        }
+    }
 
     [Tooltip("The prototypes every chunk is built with: terrain layers, trees, grass (Generated/Ground/Template.asset).")]
     public TerrainData template;
+
+    TerrainData ITerrainFace.Template => template;
     [Tooltip("The terrains' material: URP's terrain with rock mapped from the sides (TerrainRock.shader).")]
     public Material material;
     [Tooltip("The terrain pack's own tuft meshes, which the template's grass is made lighter from (LightTufts); for -perf-look-pair-tufts and -perf-pack-tufts only.")]

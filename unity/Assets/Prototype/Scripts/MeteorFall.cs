@@ -13,6 +13,8 @@ using UnityEngine;
 // SpellProjectile. Falling Star is a small one (size under 1), lands in a second
 // and starts from the core's World.Stars (ChemGrid.RenderStars), so it has no onArrive.
 // All of it takes its look (LookTint): the flames, the trail, the rock's heat and the light.
+// It fills in Caster.MeteorShow, so the weather's meteors and the grid's falling stars launch one, in a caster's
+// Meteor look, without naming it.
 public class MeteorFall : MonoBehaviour
 {
     static readonly Registry<MeteorFall> registry = new();
@@ -25,6 +27,9 @@ public class MeteorFall : MonoBehaviour
 
     void OnDestroy() => registry.Leave(this);
 
+#if UNITY_EDITOR
+    [UnityEditor.InitializeOnLoadMethod]
+#endif
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void ShowForCasters() => Caster.MeteorShow = FromSky;
 

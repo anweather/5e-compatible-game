@@ -189,7 +189,7 @@ public class ChatTelemetry : MonoBehaviour
 
     bool ViewBusy()
     {
-        var valley = hooked != null ? hooked.valley : null;
+        var valley = ValleyChemistry.Of(hooked);
         return valley != null && valley.Recolouring;
     }
 

@@ -10,9 +10,19 @@ using UnityEngine;
 // CurrentRider pushes the local wizard with it, PhysicsProp drifts floating
 // things on it. Physics only, never the chemistry (D4): each machine pushes
 // its own wizard, and the host its props.
-public class WaterCurrents : MonoBehaviour
+public class WaterCurrents : MonoBehaviour, ICurrentsFace
 {
-    public static WaterCurrents Instance { get; private set; }
+    static WaterCurrents instance;
+
+    public static WaterCurrents Instance
+    {
+        get => instance;
+        private set
+        {
+            instance = value;
+            LandFaces.Currents = value;
+        }
+    }
 
     public ChemGrid grid;
     [Tooltip("The river's line from the falls down to the lake (x, z), downstream.")]

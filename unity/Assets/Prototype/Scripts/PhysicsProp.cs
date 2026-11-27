@@ -235,7 +235,7 @@ public class PhysicsProp : MonoBehaviour, IPushable
 
     void Drift()
     {
-        var currents = WaterCurrents.Instance;
+        var currents = LandFaces.Currents;
         if (currents == null) return;
         var flow = currents.At(transform.position);
         if (flow.sqrMagnitude < 1e-4f) return;

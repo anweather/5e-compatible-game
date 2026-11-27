@@ -1,33 +1,16 @@
 using Chem;
 using UnityEngine;
 
-// The view's half of the night (backlog #8; the rules' half is World.Night): how
-// lit the lamps are and how bright the stars, from the light level the rules
-// give (World.Daylight: bright, dim at dawn and dusk, dark at night), eased so a
-// change fades over a few seconds. Every peer's world has the same light level
-// at the same tick, so every screen lights its lamps together. Village lights
-// its windows and door lamps from Lamps, CloudSky its stars from Stars, and
-// AmbientCritters its fireflies by the hour. It also says once a night, when
-// the wizard stands in the dark with no light of its own, how to see.
+// The view's half of the night (backlog #8; the rules' half is World.Night): how lit the lamps are and how bright the
+// stars are NightLamps', and this says once a night, when the wizard stands in the dark with no light of its own, how
+// to see. AmbientCritters lights its fireflies by the hour.
 public class Nightfall : MonoBehaviour
 {
-    static float lamps, stars;
-    static int steppedFrame = -1;
-
-    const float DimLamps = 0.6f, DimStars = 0.5f, DarkStars = 1.6f;
-    const float Ease = 1.2f;
     const float OwnLightReach = 6f;
 
     ChemGrid grid;
     float nextLook;
     bool hinted;
-
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void ResetStatics()
-    {
-        lamps = stars = 0f;
-        steppedFrame = -1;
-    }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Boot()
@@ -35,31 +18,6 @@ public class Nightfall : MonoBehaviour
         var go = new GameObject("Nightfall");
         DontDestroyOnLoad(go);
         go.AddComponent<Nightfall>();
-    }
-
-    public static float Lamps(World world)
-    {
-        Step(world);
-        return lamps;
-    }
-
-    public static float Stars(World world)
-    {
-        Step(world);
-        return stars;
-    }
-
-    static void Step(World world)
-    {
-        if (world == null || steppedFrame == Time.frameCount) return;
-        bool first = steppedFrame < 0;
-        steppedFrame = Time.frameCount;
-        var level = world.Daylight;
-        float lampsTo = level switch { LightLevel.Bright => 0f, LightLevel.Dim => DimLamps, _ => 1f };
-        float starsTo = level switch { LightLevel.Bright => 0f, LightLevel.Dim => DimStars, _ => DarkStars };
-        float k = first ? 1f : 1f - Mathf.Exp(-Time.deltaTime * Ease);
-        lamps = Mathf.Lerp(lamps, lampsTo, k);
-        stars = Mathf.Lerp(stars, starsTo, k);
     }
 
     void Update()

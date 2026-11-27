@@ -224,7 +224,7 @@ of `Rules.Fingerprint` and the cell hash (`LookTests.AGlowLeavesTheFingerprintAn
 mod never moves the netcode checksum. How it's drawn (`CellSlickMesh`): over every cell whose cover glows (a cover
 hides its ground's), or whose ground terrain does with no cover, a second film in the films' tiles adds the look's
 colour times `0.55 × (1 − e^(−glow / 0.3))` (0.1 gives 0.16, 0.3 gives 0.35, 1 gives 0.53), mottled by a small
-tiling noise texture, through one shared additive material lit as the lamps are (`Nightfall.Lamps`, the windows'
+tiling noise texture, through one shared additive material lit as the lamps are (`NightLamps.Lamps`, the windows'
 light): 4% of it by day, all of it at night. No lights, no material per cell, nothing made while nothing glows; a
 cell's own film and paint are drawn as before. 0.1 is a shimmer, 0.3 a clear glow at dusk; past about 0.6 a patch
 reads as a lamp. Probe `glowmoss`.

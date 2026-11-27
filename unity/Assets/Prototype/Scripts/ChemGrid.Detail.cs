@@ -12,7 +12,7 @@ using UnityEngine;
 // world of another size there are no chunk terrains to tell.
 public partial class ChemGrid
 {
-    public float DetailDistance { get; set; } = MapTerrains.DetailMetres;
+    public float DetailDistance { get; set; } = LandFaces.DetailMetres;
 
     public IReadOnlyCollection<(int i, int j)> DetailChunks => detailChunks;
 

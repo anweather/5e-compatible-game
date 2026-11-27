@@ -17,7 +17,7 @@ public class WetProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        var valley = grid.valley;
+        var valley = ValleyChemistry.Of(grid);
         Check("valley_built", valley != null);
         if (valley == null) yield break;
 

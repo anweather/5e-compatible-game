@@ -232,8 +232,8 @@ public partial class ChemGrid
 
     static int DrawRadius()
     {
-        var far = FarRing.Instance;
-        int known = far != null ? far.Dials.known : 0;
+        var far = LandFaces.FarLand;
+        int known = far != null ? far.KnownChunks : 0;
         return known > 0 ? known : int.MaxValue;
     }
 
@@ -732,7 +732,7 @@ public partial class ChemGrid
 
         using (WaterMarker.Auto()) ground = RenderWater(v, c, x, y, ground, groundTop, lake);
         RenderCover(v, c, x, y, center, ground);
-        using (FireMarker.Auto()) RenderFire(v, c, x, y, center, ground + ValleyChemistry.FireHeight(c.T), c.T == TerrainIds.Tree ? 1.8f : 1f);
+        using (FireMarker.Auto()) RenderFire(v, c, x, y, center, ground + ValleyFace.FireHeight(c.T), c.T == TerrainIds.Tree ? 1.8f : 1f);
         using (GasMarker.Auto()) RenderGas(v, c, x, y, center, ground, GasDrawnAt(x, y));
         if (!lake || (x % 5 == 0 && y % 5 == 0)) RenderCharge(v, c, x, y, center, ground);
     }

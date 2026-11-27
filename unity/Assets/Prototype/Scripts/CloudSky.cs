@@ -153,7 +153,7 @@ public class CloudSky : MonoBehaviour
         Shader.SetGlobalVector(CloudsId, new Vector4(shown.coverage, 0f, 1f, 0f));
         Shader.SetGlobalVector(CloudOffsetId, cloudOffset);
         Shader.SetGlobalFloat(NightId, night);
-        Shader.SetGlobalFloat(StarBrightId, Mathf.Max(0.001f, Nightfall.Stars(world) * (1f - shown.coverage)));
+        Shader.SetGlobalFloat(StarBrightId, Mathf.Max(0.001f, NightLamps.Stars(world) * (1f - shown.coverage)));
         var toStrike = (strikeAt - cam.transform.position).normalized;
         Shader.SetGlobalVector(LightningId, new Vector4(toStrike.x, toStrike.y, toStrike.z, strike));
         Shader.SetGlobalVector(LightningPosId, new Vector4(strikeAt.x, strikeAt.y, strikeAt.z, strike));

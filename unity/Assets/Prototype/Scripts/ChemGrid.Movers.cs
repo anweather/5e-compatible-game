@@ -11,7 +11,8 @@ using UnityEngine;
 // ride it to where it breaks (the host's, D4), and it knocks the local wizard back.
 // A wave takes its spell's look: its crest, foam and break; a cold one (the Iceberg)
 // carries ice and sleet too (ChemGrid.Ice.cs). The boulder doesn't: it
-// is rock, and the pillar it comes to rest as is the cell's.
+// is rock, and the pillar it comes to rest as is the cell's. Spell golf's hole is laid
+// with the first frame of a world that has one, by GolfShow (GolfCourse fills it in).
 public partial class ChemGrid
 {
     const float WaveTall = 1.15f, WaveDeep = 1.4f, BoulderSize = 1.5f;
@@ -41,10 +42,12 @@ public partial class ChemGrid
     readonly List<World.Boulder> bouldersGone = new();
     readonly HashSet<int> boulderRests = new();
     readonly List<(int x, int y)> frontCells = new();
-    GolfCourse golf;
+    Object golf;
     Mesh crestMesh;
     Material crestMaterial;
     readonly Dictionary<LookTint, Material> crestLooks = new();
+
+    public static System.Func<ChemGrid, Object> GolfShow { get; set; }
 
     public bool BoulderRestsAt(int x, int y) => boulderRests.Contains(World.Idx(x, y));
 
@@ -66,7 +69,7 @@ public partial class ChemGrid
 
     void RenderMovers()
     {
-        if (golf == null && World.Golf != null) golf = GolfCourse.On(this);
+        if (golf == null && World.Golf != null && GolfShow != null) golf = GolfShow(this);
         RenderWaves();
         RenderPackIce();
         RenderBoulders();

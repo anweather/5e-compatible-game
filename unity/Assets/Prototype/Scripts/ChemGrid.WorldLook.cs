@@ -78,7 +78,7 @@ public partial class ChemGrid
     public (int vertices, int worn) WornWaterVertices => waterSurface.WornVertices();
     public (Color color, float own)? WaterDrawnAt(int x, int y) => waterSurface.DrawnAt(x, y);
 
-    public ValleyChemistry Valley => valley;
+    public ValleyFace Valley => valley;
 
     public bool GasInLookAt(int x, int y)
     {
@@ -144,7 +144,8 @@ public partial class ChemGrid
         var water = TintBetween(was.ElementLook(ElementIds.Water), now.ElementLook(ElementIds.Water));
         spotWas.Clear();
         waterSurface.Recolour(water, now);
-        if (Ocean.Instance != null) Ocean.Instance.Recolour(water);
+        var sea = LandFaces.Sea;
+        if (sea != null) sea.Recolour(water);
         if (valley != null)
         {
             valley.RecolourWater(water);

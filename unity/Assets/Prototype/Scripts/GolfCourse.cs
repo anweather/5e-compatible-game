@@ -7,7 +7,7 @@ using UnityEngine;
 // every machine alike, so there's no command to send. An act can place a ball and a
 // cup anywhere (World.PlaceGolf): the parts follow, and the ball going in sets off
 // fireworks over the cup on every machine. Presentation only; made by ChemGrid with
-// the first frame of a world that has a hole, on a child of the grid.
+// the first frame of a world that has a hole (ChemGrid.GolfShow), on a child of the grid.
 public class GolfCourse : MonoBehaviour
 {
     const float BallSize = 0.7f, HoleSize = 1f, TeeSize = 1.3f, PoleTall = 3.2f, FlagLong = 0.9f, FlagHigh = 0.55f;
@@ -24,6 +24,12 @@ public class GolfCourse : MonoBehaviour
     bool wasHoled;
 
     World World => grid.World;
+
+#if UNITY_EDITOR
+    [UnityEditor.InitializeOnLoadMethod]
+#endif
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void LayForGrids() => ChemGrid.GolfShow = On;
 
     public static GolfCourse On(ChemGrid grid)
     {

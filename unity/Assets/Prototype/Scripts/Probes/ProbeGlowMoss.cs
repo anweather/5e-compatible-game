@@ -144,8 +144,8 @@ public class GlowMossProbe : RoomProbe
     {
         yield return Tool("set_time", new JObject { ["time"] = when });
         Check($"set_time_{when}", answer != null && !answer.Contains("refused"), answer);
-        for (float t = 0f; t < LightWait && (up ? Nightfall.Lamps(World) < lamps : Nightfall.Lamps(World) > lamps); t += UnityEngine.Time.unscaledDeltaTime) yield return null;
-        Metric($"lamps_{when}", Nightfall.Lamps(World));
+        for (float t = 0f; t < LightWait && (up ? NightLamps.Lamps(World) < lamps : NightLamps.Lamps(World) > lamps); t += UnityEngine.Time.unscaledDeltaTime) yield return null;
+        Metric($"lamps_{when}", NightLamps.Lamps(World));
     }
 
     bool RiverBank(Vector2Int from, out System.Collections.Generic.List<Vector2Int> stones, out Vector2Int bare)

@@ -16,7 +16,7 @@ public class RockWake : MonoBehaviour
     ParticleSystem foam;
     float owed;
 
-    void Start() => foam = WaterSplashes.MakeSystem(gameObject, "River rock foam", 0f);
+    void Start() => foam = PuffParticles.Make(gameObject, "River rock foam", 0f);
 
     void Update()
     {

@@ -242,7 +242,7 @@ public class DragonView : MonoBehaviour
     float Ground(Vector3 at)
     {
         float ground = grid.GroundAt(at);
-        return grid.valley != null ? Mathf.Max(ground, grid.valley.lakeLevel) : ground;
+        return grid.valley != null ? Mathf.Max(ground, grid.valley.LakeLevel) : ground;
     }
 
     void Breathe(World world, DragonFlight.Pose pose)
