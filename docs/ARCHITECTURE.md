@@ -13,7 +13,7 @@ Five layers. Each one only knows about the layers above it in this list.
 | 1 | **Rules data** | `rules/*.json` (repo root) | What exists and how it reacts: materials, reactions, spells, sim numbers. (The frozen web sandbox has its own copy, `sandbox/rules-frozen/`.) Next to it, `world/things.json`: where the props and items stand, per chunk | No (it's data) |
 | 2 | **Chem core** | `packages/com.anweather.chemistry-core/Runtime/` (namespace `Chem`; called `Chemistry/` below) | Loads the rules and runs the world: a grid of cells, one tick at a time. Same results on every machine | **No**, the compiler forbids it |
 | 3 | **View** (presentation) | `Scripts/` | Draws the world, reads input, plays the show (gestures, projectiles, particles), moves the wizard | Yes |
-| 4 | **Networking** | `Scripts/Net/` | Lets friends share one world: sends cast intents, not cells | Yes |
+| 4 | **Networking** | `Scripts/Net/` (asmdef `Prototype.Net`), with each thing's network half in `Scripts/Online/` | Lets friends share one world: sends cast intents, not cells | Yes |
 | 5 | **Editor tooling** | `Scripts/Editor/` | Builds the scenes, records demos, makes player builds, restores Asset Store packs. Never runs in the game | Yes (Editor only) |
 
 ```
@@ -189,7 +189,7 @@ the lake level for lake cells) are the one height function. Height is cell
 state, hashed in `CellHash`, so online it arrives through lockstep like
 everything else.
 
-### 4. Networking (`Scripts/Net/`)
+### 4. Networking (`Scripts/Net/`, the `Prototype.Net` assembly, and `Scripts/Online/`)
 `NetChem.cs` is **lockstep**: the host owns the clock and broadcasts, every
 tick, the casts due on that tick (with the caster's position), the effects
 its physics props had on cells (`EffectIntent`: a barrel's blast, a
@@ -288,10 +288,16 @@ Who may use whom. Breaking one of these is a design bug even if it compiles.
    names, caught up, the intents to send), whose adapters are `SoloPeers`
    and `NetChem`: `SpellCaster`, `RuleSwitcher`, `ItemHolder`,
    `ChemEffects`, `DefenseField`, `WizardStrike` and the `ChemGrid` partials
-   ask it, never `NetChem`. Each thing's own network half is still named
-   directly: `PhysicsProp` and `Carryable` (and the item behaviours) hand
-   theirs to `NetProp` / `NetItem`, `Knockback` and the wizard's parts to
-   `NetWizard`. Solo none of them is used.
+   ask it, never `NetChem`, and so do `OnlineReset`'s doors (the dragon and
+   the reset) and the things' network halves. Those halves are the game's,
+   in `Scripts/Online/` (the network part of their prefabs): `PhysicsProp`
+   and `Carryable` (and the item behaviours) hand theirs to `NetProp` /
+   `NetItem`, `Knockback` and the wizard's parts to `NetWizard`, `BallCourt`
+   to `NetCourt`. Solo none of them is used. The session itself (`NetChem`,
+   `NgoLockstepTransport`, `NetSession`, `NetCommandLine`, `NetTag`,
+   `NetDemo`, `ResetCountdown`) is `Scripts/Net/`, the `Prototype.Net`
+   assembly, which the game doesn't reference: a view-to-Net reference is
+   a compile error.
 4. **Editor code may use everything; nothing may use editor code.**
 5. **Asset Store packs are optional.** Runtime code reaches them by name
    or through prefab references set by a builder, and every missing
@@ -312,8 +318,8 @@ why in an ADR first. A table lags the code, so the `.asmdef` and `.csproj` files
 | `Scripts/Playtest/Logic/` (compiled into `Game.Core` too) | `Chemistry/`, .NET | `UnityEngine`, the rest of `Scripts/` |
 | `Scripts/Plans/` (the view's plans: budgets, tables, menu logic, mesh arrays with no `Mesh`; asmdef `Prototype.Plans`, in player builds; `docs/design/architecture-review.md` step 6) | `Chemistry/`, `Chem.Land`, `UnityEngine`'s maths only (`Vector2`/`3`, `Mathf`, `Color`, `Debug.Log`: what `core/UnityMath` stands in for) | `Scripts/` (no game type), MonoBehaviours, scenes and assets |
 | `Scripts/Plans/Tests/` (asmdef `Prototype.Plans.Tests`, Editor only) | `Scripts/Plans/`, `Chemistry/`, `Chem.Land`, NUnit | `Scripts/`, anything under `core/` (`core/Prototype.Plans.Tests` compiles it too) |
-| `Scripts/` (the view, with `Net/`, `Playtest/`, `Perf/` and `ThirdParty/Punchy`: asmdef `Prototype.Game`) | `Scripts/Plans/`, `Chemistry/`, Unity, the packs by name (rule 5) | editor code; the core never references it back |
-| `Scripts/Net/` | `Scripts/`, `Chemistry/` | the view uses it only as the door of rule 3 |
+| `Scripts/` (the view, with `Chat/` (Claude, the rules MCP, speech), `Online/` (the things' network halves), `Playtest/`, `Perf/` and `ThirdParty/Punchy`: asmdef `Prototype.Game`) | `Scripts/Plans/`, `Chemistry/`, Unity, Netcode, the packs by name (rule 5) | `Scripts/Net/` (the peers only through `IPeers`), editor code; the core never references it back |
+| `Scripts/Net/` (the session: asmdef `Prototype.Net`, in player builds) | `Scripts/`, `Scripts/Plans/`, `Chemistry/`, Netcode, the transport and services | nothing in the game references it; the Editor tools, the probes and the tests may |
 | `Scripts/Editor/` (with `Perf/Editor/` and `Punchy/Terrain/Editor/`: asmdef `Prototype.Game.Editor`, Editor only) | everything but the probes | nothing references it but its tests and the probes' CLI |
 | `Scripts/Editor/Tests/`, `Scripts/Playtest/Editor/` (asmdef `Prototype.Game.Tests`, Editor only; sees `Prototype.Game.Editor`'s internals) | everything but the probes, NUnit | nothing references it |
 | `Scripts/Probes/` (the Play-mode probe scenarios: asmdef `Prototype.Probes`, in player builds too) | `Scripts/`, `Chemistry/`, Unity | the game never references it back |
@@ -369,12 +375,10 @@ What this clean-up left alone, roughly in order of value.
   with the sandbox frozen they can be split on their own, with the goldens
   as the safety net. Then drop `S3776` from `WarningsNotAsErrors` in
   `core/Directory.Build.props`.
-- **One assembly for the whole view.** `Scripts/` has an asmdef
-  (`Prototype.Game`) but `Net/` and the view share it, so rules 2 to 4
-  above are still kept by review, not by the compiler. The grid's peers go
-  through `IPeers` now; 26 view files still name a `Net/` type (mostly
-  `NetWizard`, `NetProp`, and the chat files that live in `Net/`), which
-  keeps `Net/` from being its own assembly (`docs/design/architecture-review.md` step 7).
+- **Rules 2 and 4 are still kept by review.** The view (`Prototype.Game`)
+  and the session (`Prototype.Net`) are apart, so rule 3's direction is the
+  compiler's; the view and the core's commands, and editor code, share no
+  such wall yet.
 - **The two demo directors** (`DemoDirector`, `NetDemoDirector`) script
   similar tours in two formats (a coroutine and a step table).
 - **The valley builders keep their layout in static fields**

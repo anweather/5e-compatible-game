@@ -217,29 +217,26 @@ must compile it (one compile can serve a batch of steps, as the boat's PC did fo
    `PhysicsProp`, `ItemHolder` and the 19 files with `IsServer`/`IsSpawned` go through it; then `Net/` becomes its
    own asmdef so a view-to-Net reference is a compile error. Proof: `probe online`, `roomopen`, `roomruin`, the
    core's lockstep tests. Risk: medium (the order of sends). **Unity.**
-   *Half done 2026-11-26 (the Mac, Unity batch compile and EditMode tests; the probes not run): the port is in, the
-   assembly is not. `IPeers` (`Role` solo, host or client; `Me`, the room name; `Player`, the core's; `CaughtUp`;
-   `RequestCast`, `RequestCombo`, `RequestRoom`, `RequestStrike`, `RequestSwing`, `StampEffect`, `RequestDefense`,
-   `RequestStrikeCommand`), found with `Peers.Of(grid)`; adapters `SoloPeers` and `NetChem` (`NetChem.Peers.cs`,
-   which answers as solo until its session is up). `SpellCaster` (and `.Combos`), `RuleSwitcher`, `ItemHolder`,
-   `ChemEffects`, `DefenseField`, `WizardStrike` and `ChemGrid`'s `Movers`, `Whirls`, `Triggered`, `Rules`,
-   `LookScopes` go through it, each check and send in its old place and order. The asmdef waits: 26 game files still
-   name a `Net/` type, none of which the port fits without changing when something happens. Per-thing network
-   halves: `NetWizard` in `CastBeats`, `ChemGrid.LookScopes` (`SlotOf`), `DodgeRoll`, `Knockback`, `MistyStep`,
-   `OnlineReset`, `PlaytestTools`, `RowHouses`, `Shapeshift`, `SoloMap`, `SpellCaster.Triggered`, `WizardDown`,
-   `WizardOutfit`, `WizardStats`, `WizardStrike`; `NetProp` in `PhysicsProp`, `Fragile`, `Kicker`, `BallCourt`,
-   `ThingSpawner`; `NetItem` in `Carryable`; `NetCourt` in `BallCourt`. The session's own glue: `OnlineReset`,
-   `PerfScenario` and `ThingSpawner` (`NetChem`; `ThingSpawner` also keys off `NetworkManager.IsListening`, earlier
-   than the session). Not networking at all, only filed in `Net/`: `ClaudeMenu`, `ClaudeSetupSettings`, `ModsPanel`,
-   `ApiStandIn` (`ApiKey`, `ChatSetup`, `ClaudeCheck`, `ClaudeTerminal`, `RulesMcpServer`, `ApiWire`). Next, in
-   this order: move the chat, Claude and speech files out of `Net/` into a `Scripts/Chat/` of the game (moves only,
-   with their `.meta`s); keep the per-thing halves (`NetWizard`, `NetProp`, `NetItem`, `NetCourt`) in the game too,
-   as the network part of their prefabs (they reach `NetChem` only for names and `StampFound`, which go through
-   `IPeers` or a static name in the game); move `OnlineReset` into `Net/` (its callers `EventLog` and
-   `ThingSpawner` ask `IPeers` for a `Resetting` and the dragon and reset doors instead) and have `PerfScenario` wait on
-   `Peers.Of(ChemGrid.Current).Online()`. Then `Net/` is the session layer alone (`NetChem`, `NgoLockstepTransport`,
-   `NetSession`, `NetCommandLine`, `NetTag`, `NetDemo*`, `GameRoomDesk`, ...) and can become `Prototype.Net` with
-   `NetChem` installing itself as the grid's `IPeers` as it does now (it is a component on the grid).*
+   *Done 2026-11-26 (the Mac: Unity batch compiles, EditMode tests, Win64 and Linux64 player-script compiles; `probe
+   online`, `roomopen` and `roomruin` not run, they need an open Editor). The port: `IPeers` (`Role` solo, host or
+   client; `Me`, the room name; `Player`, the core's; `CaughtUp`; `Resetting`; the sends `RequestCast`,
+   `RequestCombo`, `RequestRoom`, `RequestStrike`, `RequestSwing`, `StampEffect`, `RequestDefense`,
+   `RequestStrikeCommand`, `StampFound`, `SummonDragon`, `StampReset`), found with `Peers.Of(grid)` (or `Peers.InPlay`
+   for the grid in play); adapters `SoloPeers` and `NetChem` (`NetChem.Peers.cs`, solo until its session is up, its
+   sends its own methods). Nothing installs it: NetChem is a component on the grid. `SpellCaster` (and `.Combos`),
+   `RuleSwitcher`, `ItemHolder`, `ChemEffects`, `DefenseField`, `WizardStrike`, `ThingSpawner`, `PerfScenario`,
+   `OnlineReset`'s doors and `ChemGrid`'s `Movers`, `Whirls`, `Triggered`, `Rules`, `LookScopes` go through it, each
+   check and send in its old place and order. The assembly: `Scripts/Net/` is `Prototype.Net` (`NetChem`,
+   `NgoLockstepTransport`, `NetSession`, `NetCommandLine`, `NetTag`, `NetDemo`, `NetDemoDirector`, `ResetCountdown`,
+   the countdown HUD that was `OnlineReset`'s); the game doesn't reference it (`PeersTests.TheGameDoesNotReferenceNet`),
+   the Editor tools, probes and tests do. Moved out of `Net/` with their `.meta`s: the chat, Claude, rules MCP,
+   speech and API-key files to `Scripts/Chat/` (they never named the session), and `NetWizard`, `NetProp`, `NetItem`,
+   `NetCourt` to `Scripts/Online/` in the game, as the network halves of their prefabs (their three uses of
+   `NetChem`, `OnlineReset.Happened`, the names by client id and `StampFound`, now go through the port). Two things
+   changed beyond routing: `OnlineReset.Summon`/`Ask` and `PerfScenario` find the peers through `ChemGrid.Current`
+   instead of a scene search for `NetChem` (the same object in every scene that has one), and `OnlineReset.cs`'s
+   `.meta` stayed with the MonoBehaviour (`ResetCountdown`), so the new static `OnlineReset` has a new GUID (nothing
+   serializes it). `ThingSpawner`'s `NetworkManager.IsListening` checks are as they were.*
 8. **Registries for the scene searches, and a narrower `ChemGrid`.** `ValleyFauna`, `PhysicsProp`, `ThingSpawner`
    lists joined on enable (chunk-keyed, J-086), in place of the 244 `Find*` calls; the menu's sections as data;
    readers of `ChemGrid` that only need world, rules and effects take `CurrentGrid`. Done file by file as work

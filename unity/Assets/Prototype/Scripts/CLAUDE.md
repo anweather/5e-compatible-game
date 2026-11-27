@@ -1,4 +1,4 @@
-# The view (`Scripts/`), networking (`Net/`) and Editor tools (`Editor/`)
+# The view (`Scripts/`), networking (`Net/`, `Online/`) and Editor tools (`Editor/`)
 
 `docs/ARCHITECTURE.md` sections 3 to 5 map these files, and its "Where new
 things go" table is the recipe for adding a spell, material, prop or item.
@@ -13,9 +13,13 @@ things go" table is the recipe for adding a spell, material, prop or item.
   doors, and solo none of them are used. The grid's peers (solo, host or client;
   this peer's names; caught up; the intents to send) are the `IPeers` port:
   ask `Peers.Of(grid)`, never `NetChem` (its adapters are `SoloPeers` and
-  `NetChem`; `PeersTests`). A thing's own network half is still a door by name
-  (`NetProp`, `NetItem`, `NetWizard`, `NetCourt`). Keep a send where it was and
-  in the same order when routing it: the port changes who you ask, not when.
+  `NetChem`; `PeersTests`). `Net/` is the session, the `Prototype.Net` assembly,
+  and the game can't reference it: a game file that names `NetChem`,
+  `NetSession` or `NgoLockstepTransport` doesn't compile. Needing one means a
+  member on `IPeers` (with `SoloPeers`' answer). A thing's own network half is
+  the game's, a door by name in `Online/` (`NetProp`, `NetItem`, `NetWizard`,
+  `NetCourt`); it reaches the session through `IPeers` too. Keep a send where it
+  was and in the same order when routing it: the port changes who you ask, not when.
 - Editor code may use everything; nothing may use editor code.
 - Asset Store packs are optional at runtime: Starter Assets parts are
   reached by name and reflection (`WizardRig`, `WizardPuppet`,
@@ -40,8 +44,10 @@ things go" table is the recipe for adding a spell, material, prop or item.
   use `PadGlyphs` (`Text("{South} choose")`, `Label(PadButton.East)`),
   which names it as printed on the pad used last (Xbox, PlayStation,
   Switch, Steam).
-- Assemblies: this folder and `ThirdParty/Punchy` compile into
-  `Prototype.Game`; `Editor/`, `Perf/Editor/` and `Punchy/Terrain/Editor/`
+- Assemblies: this folder (with `Chat/`, the Claude, rules MCP and speech
+  files, and `Online/`) and `ThirdParty/Punchy` compile into
+  `Prototype.Game`; `Net/` into `Prototype.Net` (it references the game; the
+  game never references it; the Editor tools, probes and tests do); `Editor/`, `Perf/Editor/` and `Punchy/Terrain/Editor/`
   into the Editor-only `Prototype.Game.Editor` (`Editor/AssetPacks/` keeps
   `Prototype.AssetPacks.Editor`; `Editor/Playtest/` holds `PlaytestBuild`);
   `Editor/Tests/` and `Playtest/Editor/` into the test assembly
