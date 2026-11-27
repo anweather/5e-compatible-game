@@ -1166,7 +1166,7 @@ that long, and doesn't march.
 
 **The Reset / rebuild**
 : The **Reset** (R, View on a pad) calls the dragon. Held for 3 s it's a **rebuild**, the valley rebuilt at once
-  with no dragon (`EventLog.RebuildYard`): the way out of a world gone wrong.
+  with no dragon (`WizardHud.RebuildYard`): the way out of a world gone wrong.
 
 **Starting state**
 : The world as built, kept by `World.KeepStart` before the first tick: each chunk's cells as their changes

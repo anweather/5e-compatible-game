@@ -214,7 +214,7 @@ and `SpellCaster.Cast` (the spell must be in the rules).
 `online` needs a second Editor, so `probe run` does more for it:
 
 - It checks `dragon_summoned_online` too: the host's R calls the dragon, and the checksums compared after it carry
-  the dragon's state (`World.DragonHash`). Holding R is its `reset_online` (`EventLog.RebuildYard`). `dragon_seen_on_the_client` is what the client made of it: the warning in its own core, its flight count, its own sky darkening. A whole flight online isn't run: it would take a rule switch for the staged numbers, on both peers, and the client's reports to go on past `reset-reported`.
+  the dragon's state (`World.DragonHash`). Holding R is its `reset_online` (`WizardHud.RebuildYard`). `dragon_seen_on_the_client` is what the client made of it: the warning in its own core, its flight count, its own sky darkening. A whole flight online isn't run: it would take a rule switch for the staged numbers, on both peers, and the client's reports to go on past `reset-reported`.
 - If Player 2 (Window > Multiplayer > Multiplayer Play Mode) isn't
   running, `probe run` starts it (`VirtualPlayers`, by reflection: MPPM
   2.0 keeps that API internal) and enters Play mode once it is up, about

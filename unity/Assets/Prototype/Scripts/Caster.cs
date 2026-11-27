@@ -3,10 +3,11 @@ using Chem;
 using UnityEngine;
 
 // A wizard who casts, as the world sees one (docs/design/architecture-review.md step 10): the face the grid, the
-// weather, the water and the peers ask of a caster, so they never name the wizard. SpellCaster is the one caster;
-// it joins the face's registry beside its own, in the same Awake and OnDestroy, so Caster.All and InPlay hand out
-// the same wizards in the same order as SpellCaster's. A meteor from the sky (the weather's, a falling star) takes
-// its look from a caster's Meteor; the show itself is MeteorFall's, which fills in MeteorShow as the game loads.
+// weather, the water, the peers and the row houses (MoveTo, out of a house's way) ask of a caster, so they never name
+// the wizard. SpellCaster is the one caster; it joins the face's registry beside its own, in the same Awake and
+// OnDestroy, so Caster.All and InPlay hand out the same wizards in the same order as SpellCaster's. A meteor from the
+// sky (the weather's, a falling star) takes its look from a caster's Meteor; the show itself is MeteorFall's, which
+// fills in MeteorShow as the game loads.
 public abstract class Caster : MonoBehaviour
 {
     public const string SoloPlayer = "solo";
@@ -30,6 +31,8 @@ public abstract class Caster : MonoBehaviour
     public abstract string StandPlayer { get; }
 
     public abstract void PlayTriggered(TriggeredCast cast, float seconds);
+
+    public abstract void MoveTo(Vector3 to);
 
     public abstract Color? LookGlow(string spellId);
 

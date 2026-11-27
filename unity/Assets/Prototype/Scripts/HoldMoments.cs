@@ -50,7 +50,7 @@ public class HoldMoments : MonoBehaviour
 
     public bool Enter(string id)
     {
-        var caster = EventLog.TrackedCaster;
+        var caster = WizardHud.TrackedCaster;
         return caster != null && caster.Moment(id);
     }
 
@@ -73,7 +73,7 @@ public class HoldMoments : MonoBehaviour
         var hold = world.Hold;
         if (hold?.Moment == null || hold.MomentTick == seen) return;
         seen = hold.MomentTick;
-        var caster = EventLog.TrackedCaster;
+        var caster = WizardHud.TrackedCaster;
         if (caster != null && caster.TryGetComponent<WizardDown>(out var down)) down.ToTheCastle();
     }
 

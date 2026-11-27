@@ -121,7 +121,7 @@ public class ComboProbe : ProbeScenario
         bool shot = false, onlyUp = true;
         while (World.CastOf(me).Casting)
         {
-            float share = EventLog.CastBarShare;
+            float share = WizardHud.CastBarShare;
             if (!Mathf.Approximately(share, last)) steps++;
             onlyUp &= share >= last;
             lowest = Mathf.Min(lowest, share);
@@ -164,7 +164,7 @@ public class ComboProbe : ProbeScenario
                     InputSystem.QueueStateEvent(pad, new GamepadState());
                 }
                 yield return end;
-                float share = EventLog.CastBarShare, seconds = World.CastOf(me).Total / (float)perSecond;
+                float share = WizardHud.CastBarShare, seconds = World.CastOf(me).Total / (float)perSecond;
                 worst = Mathf.Max(worst, share - last - (Time.time - lastAt) / seconds);
                 (last, lastAt) = (share, Time.time);
             }

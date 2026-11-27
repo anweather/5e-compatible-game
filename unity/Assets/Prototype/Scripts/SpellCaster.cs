@@ -65,7 +65,7 @@ public partial class SpellCaster : Caster
         TryGetComponent(out shape);
     }
 
-    void OnEnable() => EventLog.Track(this);
+    void OnEnable() => WizardHud.Track(this);
 
     void OnDestroy()
     {
@@ -330,6 +330,12 @@ public partial class SpellCaster : Caster
     }
 
     public override Color? LookGlow(string spellId) => LookOf(spellId)?.glow;
+
+    public override void MoveTo(Vector3 to)
+    {
+        if (TryGetComponent<NetWizard>(out var net) && net.IsSpawned) net.Teleport(to);
+        else transform.position = to;
+    }
 
     public override int Slot => TryGetComponent<NetWizard>(out var net) ? (int)net.OwnerClientId : 0;
 

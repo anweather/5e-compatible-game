@@ -39,7 +39,7 @@ public partial class ProgressKeeper
     public string PageText()
     {
         var world = grid != null ? grid.World : null;
-        var caster = EventLog.TrackedCaster;
+        var caster = WizardHud.TrackedCaster;
         if (world?.HoldSite == null || caster == null) return "";
         string me = caster.CastPlayer;
         var lines = new System.Text.StringBuilder();

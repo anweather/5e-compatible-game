@@ -150,7 +150,7 @@ public class SpellListProbe : ProbeScenario
         yield return Press(Key.E);
         bool sameElement = layout.GroupOfSpell(caster.SelectedId) == next;
         Check("e_changes_spell_in_the_element", sameElement && (caster.SelectedId != first || layout.Groups[next].SpellIds.Count == 1), $"{first} -> {caster.SelectedId}");
-        Check("hud_says_q_and_e", EventLog.KeyHints.Contains("Q element") && EventLog.KeyHints.Contains("E spell"), EventLog.KeyHints);
+        Check("hud_says_q_and_e", WizardHud.KeyHints.Contains("Q element") && WizardHud.KeyHints.Contains("E spell"), WizardHud.KeyHints);
     }
 
     IEnumerator EveryOffWheelSpellCasts(SpellTab offWheel)

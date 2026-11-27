@@ -98,7 +98,7 @@ public class DragonProbe : ProbeScenario
     {
         float sunBefore = sky.sun.intensity, ambientBefore = RenderSettings.ambientIntensity;
         int mark = ConsoleMark;
-        EventLog.ResetYard();
+        WizardHud.ResetYard();
         Check("r_summons_it", World.Dragon?.Phase == DragonPhase.Warning, $"phase {World.Dragon?.Phase}, flights {World.DragonFlights}");
         float started = Time.time;
         yield return ThroughTheWarning(started);

@@ -275,7 +275,7 @@ public class GameChat : MonoBehaviour
         if (open == Open) return;
         Open = open;
         Talking = false;
-        var caster = EventLog.TrackedCaster;
+        var caster = WizardHud.TrackedCaster;
         if (open)
         {
             PauseMenu.KeysTaken = true;

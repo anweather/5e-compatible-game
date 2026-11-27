@@ -72,7 +72,7 @@ public class BigSpellsProbe : AimedProbe
         Check($"{spell}_is_{left}_{right}", pair == spell, pair);
         LookAt(at, 0f);
         Both(gesture, true);
-        var hud = EventLog.CastShown;
+        var hud = WizardHud.CastShown;
         string merged = null;
         for (float t = 0f; t < 1.2f && !(hud != null && hud.MergeShown && merged != null); t += Time.deltaTime)
         {

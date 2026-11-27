@@ -75,14 +75,14 @@ public static class CastImpact
 
     public static void Landed(SpellDef def, Vector3 at, int charge)
     {
-        var local = EventLog.TrackedCaster;
+        var local = WizardHud.TrackedCaster;
         if (def == null || local == null || !Forceful(def) || !local.TryGetComponent<CastBeats>(out var beats)) return;
         Felt(at, SizeOf(def, charge, beats.feel));
     }
 
     public static void Felt(Vector3 at, float size)
     {
-        var local = EventLog.TrackedCaster;
+        var local = WizardHud.TrackedCaster;
         float amount = GameFeel.Shake;
         if (local == null || amount <= 0f || !local.TryGetComponent<CastBeats>(out var beats)) return;
         var feel = beats.feel;
