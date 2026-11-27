@@ -157,7 +157,7 @@ public sealed class MapTerrains : MonoBehaviour
 
     void HintDrawn(bool now = false)
     {
-        var world = ChemGrid.Current?.Grid?.World;
+        var world = ChemGrid.Current?.World;
         if (world == null || (!now && world == hintedWorld && hinted.SetEquals(drawn))) return;
         hintedWorld = world;
         hinted.Clear();

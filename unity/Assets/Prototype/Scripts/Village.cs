@@ -57,12 +57,12 @@ public class Village : MonoBehaviour
         {
             // A search, not SkyLight.InPlay: this runs in the Editor too (ExecuteAlways), where no SkyLight woke.
             sky = FindAnyObjectByType<SkyLight>();
-            grid = ChemGrid.Current?.Grid;
+            grid = ChemGrid.Current;
             nextSkyLookup = Time.unscaledTime + 2f;
         }
         // Playing, the windows and door lamps light as the rules' daylight drops from bright
         // (Nightfall); in the Editor, from the sky as it stands.
-        var world = grid != null ? grid.World : null;
+        var world = grid?.World;
         float lit;
         if (world != null) lit = Nightfall.Lamps(world);
         else if (sky != null) lit = Mathf.SmoothStep(0f, 1f, 1f - sky.Daylight);
@@ -81,7 +81,7 @@ public class Village : MonoBehaviour
     // Each lamp with its building's roof: a building that burnt down or caved in has its roof hidden
     // (ValleyChemistry), and its lamp stays out (Andrew's playtest #10c). The well's lamp has none.
     readonly System.Collections.Generic.List<(Light lamp, float full, Renderer roof)> lamps = new();
-    ChemGrid grid;
+    ChemGrid.CurrentGrid grid;
     bool lampsFound;
 
     void LightLamps(float lit)

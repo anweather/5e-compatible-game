@@ -33,7 +33,7 @@ public class SkyLight : MonoBehaviour
     /// <summary>How far the sun's path leans from overhead: noon stands this many degrees short of straight up.</summary>
     public float tilt = 35f;
 
-    ChemGrid grid;
+    ChemGrid.CurrentGrid grid;
     Material sky;
     float baseExposure = 1.15f, baseThickness = 0.9f;
     Color baseTint = new Color(0.45f, 0.55f, 0.75f);
@@ -62,7 +62,7 @@ public class SkyLight : MonoBehaviour
 
     void Start()
     {
-        grid = ChemGrid.Current?.Grid;
+        grid = ChemGrid.Current;
         if (sun == null) sun = RenderSettings.sun;
         // A copy, so the time of day never writes to the sky material asset.
         if (RenderSettings.skybox != null)
@@ -115,7 +115,7 @@ public class SkyLight : MonoBehaviour
 
     void Update()
     {
-        var world = grid != null ? grid.World : null;
+        var world = grid?.World;
         if (world == null || sun == null || Held) return;
         if (!ambientBaked) BakeDaylight();
         var now = world.Weather;
@@ -219,7 +219,7 @@ public class SkyLight : MonoBehaviour
     // Day, time and weather at the top right, under the online status line.
     void OnGUI()
     {
-        var world = grid != null ? grid.World : null;
+        var world = grid?.World;
         if (!EventLog.HudVisible || world == null) return;
         style ??= new GUIStyle(GUI.skin.label) { fontSize = 18, richText = true, alignment = TextAnchor.UpperRight };
         GUI.Label(new Rect(Screen.width - 436, 40, 420, 30), ClockLine(world), style);

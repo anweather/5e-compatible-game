@@ -82,7 +82,7 @@ public class CloudSky : MonoBehaviour
     static readonly int LightningId = Shader.PropertyToID("_PunchyLightning");
     static readonly int LightningPosId = Shader.PropertyToID("_PunchyLightningPos");
 
-    ChemGrid grid;
+    ChemGrid.CurrentGrid grid;
     SkyLight skyLight;
     Texture3D madeNoise;
     Texture2D weatherMap, wetnessMap, cloudMap;
@@ -103,7 +103,7 @@ public class CloudSky : MonoBehaviour
 
     void Start()
     {
-        grid = ChemGrid.Current?.Grid;
+        grid = ChemGrid.Current;
         skyLight = GetComponent<SkyLight>();
         if (cloudNoise == null) cloudNoise = madeNoise = Punchy.Weather.CloudNoise.Create();
         weatherMap = Texel("Weather map");
@@ -128,7 +128,7 @@ public class CloudSky : MonoBehaviour
     // After SkyLight has turned the sun and moon and set the haze for this frame.
     void LateUpdate()
     {
-        var world = grid != null ? grid.World : null;
+        var world = grid?.World;
         var cam = Camera.main;
         if (world == null || cam == null || skyLight.sun == null) return;
         var now = world.Weather;

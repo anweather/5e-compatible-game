@@ -91,7 +91,7 @@ public class MapSwitchProbe : ProbeScenario
 
     void OnLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
     {
-        var world = ChemGrid.Current?.Grid.World;
+        var world = ChemGrid.Current?.World;
         if (world != null) loaded = (CellPrint(world, true), world.Tick);
     }
 
