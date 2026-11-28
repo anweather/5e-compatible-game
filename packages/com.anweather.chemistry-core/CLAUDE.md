@@ -10,7 +10,7 @@ The engine-free rules engine: cells in 64×64 chunks, one deterministic tick
 at a time, with behaviour read from `rules/*.json`. `docs/ARCHITECTURE.md`
 section 2 walks through the files; `docs/WORLD_STREAMING.md` covers chunks.
 
-## Two assemblies
+## Three assemblies
 
 - **`Runtime/Land/` is `Chem.Land`** (its own asmdef; `core/Chem.Land` in dotnet): hills, ChunkGen, world
   plans, themes, biomes, noise, the map files, `GeneratedMap`, `Places` (reading). It never uses `World`,
@@ -19,11 +19,19 @@ section 2 walks through the files; `docs/WORLD_STREAMING.md` covers chunks.
   internals. The land's adapters onto a world stay here: `World.Land`, `GeneratedSource`, `BakedSource`,
   `MapBake` (a generated map's bake: it writes Play's rows), `GeneratedPlaces`, `MapCheck`,
   `MapStampsLaying`, `CellHeightfield`, `OpenWorld*`. `docs/design/chem-land-split.md` says why.
+- **`Runtime/Play/` is `Chem.Play`** (its own asmdef; `core/Chem.Play` in dotnet), above `Chemistry`, which never
+  references it: the defense field's, the Hold's and the course's systems (`DefenseSystem`, `HoldSystem`,
+  `CourseSystem`, `WayField`), `PlayModes` (what installs them on a world) and `WorldPlay` (`world.Play()` and the
+  mode-only reads). Their state stays the world's, with its text, hash and save (`World.Play.cs`), so a save or a
+  checksum doesn't depend on them; the world calls them through `IWorldModes`. A world that plays a mode is made
+  with `PlayModes.Install(world)` (a joiner's takes the modes of the world it replaces, `InstallModesOf`); one
+  without them throws where a mode would have run. Raiders, golf and the dragon stay in `Chemistry` (spells, acts and
+  the change audit reach them). A test that plays one of the three goes in `Chem.Play.Tests` and installs them.
 
 ## Hard constraints
 
-- **No Unity.** `Runtime/Chemistry.asmdef` and `Runtime/Land/Chem.Land.asmdef` set `noEngineReferences`; only .NET and
-  Newtonsoft.Json. `core/Game.Core` and `core/Chem.Land` compile these same files as
+- **No Unity.** `Runtime/Chemistry.asmdef`, `Runtime/Land/Chem.Land.asmdef` and `Runtime/Play/Chem.Play.asmdef` set
+  `noEngineReferences`; only .NET and Newtonsoft.Json. `core/Game.Core`, `core/Chem.Land` and `core/Chem.Play` compile these same files as
   netstandard2.1 with **C# 9** (Unity's limit), so no newer syntax.
 - **Deterministic everywhere** (lockstep, D3/D4): integer state, all
   randomness from the world's seeded generator, no mutable statics, no

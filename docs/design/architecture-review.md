@@ -262,11 +262,48 @@ must compile it (one compile can serve a batch of steps, as the boat's PC did fo
    systems over `World` data in `Chem.Play` (D9), one mode per step, each with its goldens unchanged and the Mono
    pass in that night's sweep. Largest step; do it as each mode is next worked on. **Cloud.**
    *Done 2026-11-27 (cloud), one commit a mode on `cloud/play-modes-9`; awaits a Unity compile and that night's Mono
-   pass. Chem.Play is a folder, `Runtime/Play/`, in the Chemistry assembly, not its own asmdef yet: World owns and ticks
+   pass. Chem.Play was a folder, `Runtime/Play/`, in the Chemistry assembly, not its own asmdef (it is now: the next note): World owned and ticked
    the systems, so a Play assembly over Sim would be a cycle until the tick calls them through a seam. Each system is
    made in both World constructors (World.cs, OpenWorld.cs) and runs at its old place in TickStage.Rest or the dragon
    stage; World keeps thin forwarders (`World.Play.cs`) only for what Scripts, the probes, Mcp and Hold.Runner call.
    The 2241 dotnet results (Sweep included) unchanged, every golden unchanged, no file under Scripts/ touched.*
+   *Chem.Play an assembly (2026-11-27, the Mac, branch `play-assembly`): `Runtime/Play/` is `Chem.Play` (its asmdef;
+   `core/Chem.Play`), above `Chemistry`, which doesn't reference it. The seam is `IWorldModes` (Sim): the tick's Rest
+   stage after the raiders (`TickAfterRaiders`: the defense field, then the Hold, as before), a combo's Moment
+   (`StartMoment`), `Apply(DefenseCommand)` and `Apply(CourseCommand)` (what `World.ApplyDefense`/`ApplyCourse` and the
+   tick batch call), and `MadeFor(world)`, the same modes for another world. It holds behaviour only: the modes'
+   state is the world's data (D9) and stays in Sim with its text, hash and save (`World.Play.cs`: the Hold's site,
+   field and road, run, plate and battered walls; the defense state and its hash, the join snapshot's "defense" part;
+   the spell zones with `ZoneAgainst`, the course and its runs; `WaveRoll`, `Flying`), so a save and every checksum
+   are the same code as before, with or without the modes. A world gets them once with `PlayModes.Install(world)`
+   (Chem.Play; the view's `ChemGrid.SourceWorld`/`MapWorld`, `Hold.Runner`, `Playtest.Text`, the Play tests), and a
+   joiner's world takes them from the one it replaces (`World.InstallModesOf`, in `LockstepWorld.Load` and
+   `ChemGrid.LoadSnapshot`), so every peer runs the same systems in the same order; no statics, no registration
+   order. A world without them is the chemistry alone, and throws where a mode would have changed something (a
+   running defense field or Hold, a stand on the Hold's plate, a Moment with a site, a start command): proved by
+   `HoldTests.AWorldWithoutItsModesWontQuietlySkipTheHold`, `AWorldMadeToPlayTicksTheHold`,
+   `AJoinersWorldGetsTheModesOfTheOneItReplaces`, and `PlayModesTests` (EditMode) for the game's start world.
+   Stayed in Sim, and why: `RaiderSystem` (spells, strikes, reactions, flashes, waves, boulders, buildings and the
+   save all reach raiders), `DragonSystem` (the world's reset, run by the change audit in the dragon stage, its state
+   in the save and every join and lockstep hash), `GolfSystem` (a ball is an act anyone places, spells move it, the
+   dragon puts it back, holing it is a trigger, and the MCP's rooms, compiled into Game.Core, place it), the modes'
+   data files (`Golf.cs`, `Course.cs`, `HoldRun.cs`, moved up from Play/ with their GUIDs) and `SetHold` (a map's
+   site, laid by `GeneratedSource.MapWorld` like its buildings). Forwarders moved to Chem.Play: `world.Play()` (the
+   `PlayModes`: `.Hold`, `.Defense`, `.Course`, which were `world.HoldSystem` and so on) and, as extension methods,
+   `HoldWarning()`, `HoldRespawn()`, `HoldNextWaveIn()` (properties before), `HoldNext`, `PathCostAt`,
+   `CourseRespawn`; `World.HoldWaveSize`/`BarricadesOf` are `HoldSystem.WaveSize`/`BarricadesOf`. The data reads
+   (`world.Hold`, `HoldSite`, `HoldRunning`, `HoldLeft`, `Defense`, `DefenseLeft`, the dragon's and golf's) stay on
+   the world. `SaveTests` (its played world runs the defense field) moved to `Chem.Play.Tests`, names unchanged.
+   Proof: the sweep (`-s core/sweep.runsettings`) has dev's 2333 results by name and outcome (2298 passed, 35 not
+   run), plus the three new HoldTests; `SaveTests`' 33 count in Play now. Every golden unchanged, and the same samples on dev and the branch (`HoldRun` bots, CellHash,
+   CastHash, RngState and the dragon's hash): 24 seeded Hold runs (four hand sets, one and two peers, three seeds)
+   every 20 s up to wave 10, 580 lines, and four dragon runs (seeds 3 and 8, summoned and by a budget of 400, up to
+   two flights each over a running Hold, raiders downed) every 2 s for 240 s, 480 lines. Gates (the Mac, warm): a Play file (`Runtime/Play/CourseSystem.cs`) 177 s -> 52 s
+   (Chem.Play.Tests and Hold.Runner.Tests, the rest the smoke), a Sim file (`Runtime/World.cs`) 160 s -> 169 s
+   (everything, as before; noise). Unity (the Mac): no compile errors and no warnings in the changed files, EditMode
+   573 (571 passed, 2 skipped; the new one is `PlayModesTests`), the player scripts compile for StandaloneWindows64
+   and StandaloneLinux64 with `Chem.Play.dll` in them. Not run: the probes, and `tools/editmode.sh chem` (the
+   Chemistry tests under Mono).*
    *Course: `CourseSystem`; data in `Play/Course.cs`. Forwarder: CourseRespawn (WizardDown).*
    *Defense: `DefenseSystem`; the path scratch it shared with the Hold is `WayField` (World.Ways), so PathCostAt still
    reads what either last worked out. Forwarders: Defense, DefenseLeft, ApplyDefense (DefenseField), PathCostAt.*
