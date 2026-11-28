@@ -3,10 +3,13 @@
 // NetChem does (stamped before the tick runs, Ran after it). A joiner arriving at a tick gets that history, keeps
 // every command after it as the live batches bring them, and replays all of it on a fresh world. Both are compared
 // at every tick, part by part of the checksum (NetChem.Checksum), with the stands apart from the rest of the casts
-// part: the stands may differ only at a tick no rule and no checksum reads them, and everything else never.
+// part: the stands may differ only at a tick no rule and no checksum reads them, and everything else never. The joiners
+// and snapshots of one host run replay side by side, each on its own world (the host's run is only read), and their
+// differences are asserted in order afterwards, so a test takes about its host's run and its longest replay.
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 
 namespace Chem.Tests
@@ -108,7 +111,14 @@ namespace Chem.Tests
 
         static void AssertJoinersMatch(HostRun host, Func<World> build, IEnumerable<int> joinAts)
         {
-            foreach (int at in joinAts) Assert.That(FirstDifference(host, build, at), Is.Null);
+            foreach (var found in Replayed(joinAts.ToArray(), at => FirstDifference(host, build, at))) Assert.That(found, Is.Null);
+        }
+
+        static string[] Replayed<T>(T[] each, Func<T, string> difference)
+        {
+            var found = new string[each.Length];
+            Parallel.For(0, each.Length, i => found[i] = difference(each[i]));
+            return found;
         }
 
         [Test]
@@ -388,9 +398,12 @@ namespace Chem.Tests
             }, at);
             Assert.That(dragonCame, Is.True, "the dragon came");
             Assert.That(host.World.TriggeredCasts, Is.GreaterThan(10), "the walks fire triggers");
-            foreach (int t in at)
-                Assert.That(SnapshotDifference(host, host.Snapshots[t], new FillSource("grass")), Is.Null, $"snapshot at {t}");
-            AssertJoinersMatch(host, build, new[] { 1, 200, ticks });
+            var joinAts = new[] { 1, 200, ticks };
+            var replays = at.Select(t => (Func<string>)(() => SnapshotDifference(host, host.Snapshots[t], new FillSource("grass"))))
+                .Concat(joinAts.Select(j => (Func<string>)(() => FirstDifference(host, build, j)))).ToArray();
+            var found = Replayed(replays, replay => replay());
+            for (int i = 0; i < at.Length; i++) Assert.That(found[i], Is.Null, $"snapshot at {at[i]}");
+            for (int i = at.Length; i < found.Length; i++) Assert.That(found[i], Is.Null);
         }
 
         [Test]

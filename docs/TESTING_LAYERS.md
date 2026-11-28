@@ -106,6 +106,13 @@ of CPU; on a 6-core host that's about half of the 3-5 minutes it was. What made 
   the fixture; a test that changes the world builds its own.
 - **As few ticks as the check needs**: start at the wave that matters, stop at the first sighting.
 - **Prove a shortened test still fails** on the bug it guards, by breaking the code once before landing.
+- **Replay side by side what only meets at the end.** Fixtures run side by side but a fixture's tests run one after
+  another, so a project is never faster than its slowest fixture. `LateJoinTests` replays every joiner and snapshot of
+  one host run at once (`Replayed`), and `OnlineValleyTests` runs its host, client and joiner each on its own thread;
+  the differences are asserted in the old order afterwards, so the assertions are the same. A world packs and unpacks
+  its chunks only on the thread that made it (`World.OnOwnThread`), so **each replay makes its world on the thread that
+  runs it**; peers stepped in turn with an assertion between ticks (`GeneratedSourceTests`' two sources) can't be split
+  this way. This took `Chem.Lockstep.Tests` from 84 s to 28 s alone on the Mac (2026-11-27).
 
 ## The core's test projects, by module
 
@@ -124,7 +131,7 @@ fixtures are split in two since step 5b (`docs/design/chem-land-split.md`): `Hil
 | `Chem.LandWorld.Tests` | the land on a World: each land fixture's `*WorldTests.cs` half (peers on the hills, bakes, `MapCheck`), `GeneratedSource`, stamps laid, terrain, places, the land benches | 209 (208 without Sweep) | 94 s |
 | `Chem.Sim.Tests` | cells, chunks, ticks, spells and combos, things, weather, the `CellHash`/`ChunkHash` goldens | 603 (step 9's Chem.Play: `SaveTests` moved to Play) | 49 s |
 | `Chem.Play.Tests` | the Hold (with `HoldLockstepTests`), the hands, golf, the Gauntlet, puzzles, defense, the dragon, saves (`SaveTests`: a saved world plays the defense field); on `Chem.Play` and `Chem.Shared.Tests` | 281 (278 without Sweep) | 47 s |
-| `Chem.Lockstep.Tests` | the lockstep session and wire, late joins, rooms, resets, the open world over the loopback | 80 | 110 s |
+| `Chem.Lockstep.Tests` | the lockstep session and wire, late joins, rooms, resets, the open world over the loopback | 80 | 110 s (28 s on the Mac since its replays run side by side, 2026-11-27) |
 | `Chem.Playtest.Tests` | the playtest bot (`Scripts/Shell/Playtest/Editor/*Tests.cs`) | 41 | 2 s |
 | `Prototype.Plans.Tests` | the view's plans (`Scripts/Plans/Tests/*.cs`, on `Prototype.Plans` and the `core/UnityMath` shim; step 6): the tree budget, the menu navigator, pinned ground, tag rules, build versions, the far ring's meshes | 57 | 1 s (the Mac) |
 
