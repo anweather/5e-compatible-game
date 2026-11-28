@@ -109,7 +109,7 @@ public class HandsProbe : ProbeScenario
     {
         if (Core.HandsOf(Me).Holds[hand] != element)
         {
-            var ground = Core.TowerGround(Core.HoldSite.Towers.First(t => t.Element == element))[0];
+            var ground = Core.TowerGround(Core.HoldSite().Towers.First(t => t.Element == element))[0];
             Stand(new Vector2Int(ground.x, ground.y));
             yield return Wait(0.3f);
             Check($"at_the_{element}_tower", Core.TowerOf(Me)?.Element == element, grid.CellAt(wizard.transform.position).ToString());
@@ -294,7 +294,7 @@ public class HandsProbe : ProbeScenario
     protected override IEnumerator Run()
     {
         var world = Core;
-        var site = world.HoldSite;
+        var site = world.HoldSite();
         Check("the_map_has_a_hold", site != null);
         if (site == null) yield break;
         row = world.BuildingRowOf(site.Castle);
@@ -330,10 +330,10 @@ public class HandsProbe : ProbeScenario
         holder.PunchLanded -= landed;
 
         Stand(new Vector2Int(site.Plate.x, site.Plate.y));
-        for (float t = 0f; t < MostWait && !world.HoldRunning; t += Time.deltaTime) yield return null;
-        Check("a_run_starts", world.HoldRunning);
-        if (!world.HoldRunning) yield break;
-        world.Hold.Health = int.MaxValue / 2;
+        for (float t = 0f; t < MostWait && !world.HoldRunning(); t += Time.deltaTime) yield return null;
+        Check("a_run_starts", world.HoldRunning());
+        if (!world.HoldRunning()) yield break;
+        world.Hold().Health = int.MaxValue / 2;
 
         var hud = grid.GetComponent<HoldShow>();
         yield return Attune("air", "fire");

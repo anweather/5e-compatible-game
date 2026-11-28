@@ -11,7 +11,7 @@ namespace Chem.Tests
     {
         static List<List<(int x, int y)>> Gates(World w)
         {
-            var row = BuildingRow.Read(w.HoldSite.Castle, w.HoldSite.Row, R.Buildings);
+            var row = BuildingRow.Read(w.HoldSite().Castle, w.HoldSite().Row, R.Buildings);
             var open = BuildingRaster.Cells(row, R.Buildings).Where(c => c.Terrain == "timber-gate-open").Select(c => (c.X, c.Y)).ToList();
             var gates = new List<List<(int x, int y)>>();
             foreach (var c in open)
@@ -25,16 +25,16 @@ namespace Chem.Tests
 
         static List<(int x, int y)> Walk(World w, (int x, int y) from, string kind = "bone-hound")
         {
-            int full = w.Hold.Health;
+            int full = w.Hold().Health;
             var r = w.SpawnRaider(kind, from.x, from.y, 100000);
             Assert.That(r, Is.Not.Null, $"a {kind} at {from}");
             var way = new List<(int x, int y)> { from };
-            for (int i = 0; i < MostTicks && w.Hold.Health == full; i++)
+            for (int i = 0; i < MostTicks && w.Hold().Health == full; i++)
             {
                 w.Step();
                 if (way[way.Count - 1] != (r.X, r.Y)) way.Add((r.X, r.Y));
             }
-            Assert.That(w.Hold.Health, Is.LessThan(full), $"the {kind} from {from} strikes the keep");
+            Assert.That(w.Hold().Health, Is.LessThan(full), $"the {kind} from {from} strikes the keep");
             return way;
         }
 
@@ -56,7 +56,7 @@ namespace Chem.Tests
         {
             var w = Running();
             Away(w);
-            w.Hold.ToSpawn = 0;
+            w.Hold().ToSpawn = 0;
             var south = Gates(w)[1];
             var way = Walk(w, Site.Spawners[1].Cells[Site.Spawners[1].Cells.Count / 2]);
             Assert.That(way.Any(south.Contains), $"through the south gate: {string.Join(" ", way.Where((_, i) => i % 10 == 0))}");
@@ -67,7 +67,7 @@ namespace Chem.Tests
         {
             var w = Running();
             Away(w);
-            w.Hold.ToSpawn = 0;
+            w.Hold().ToSpawn = 0;
             var east = Gates(w)[0];
             var way = Walk(w, Site.Spawners[0].Cells[Site.Spawners[0].Cells.Count / 2]);
             Assert.That(way.Any(east.Contains), "through the east gate");
@@ -78,13 +78,13 @@ namespace Chem.Tests
         {
             var w = Running();
             Away(w);
-            w.Hold.Health = int.MaxValue / 2;
-            w.Hold.Wave = 2;
-            w.Hold.InWave = 0;
-            w.Hold.ToSpawn = HoldSystem.WaveSize(R.Sim.Hold, 2);
+            w.Hold().Health = int.MaxValue / 2;
+            w.Hold().Wave = 2;
+            w.Hold().InWave = 0;
+            w.Hold().ToSpawn = HoldSystem.WaveSize(R.Sim.Hold, 2);
             var seen = new HashSet<int>();
             var from = new List<(int x, int y)>();
-            for (int i = 0; i < MostTicks && w.Hold.ToSpawn > 0; i++)
+            for (int i = 0; i < MostTicks && w.Hold().ToSpawn > 0; i++)
             {
                 w.Step();
                 foreach (var r in w.Raiders)

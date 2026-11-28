@@ -41,7 +41,7 @@ public class HoldClipProbe : ProbeScenario
             Check("needs_shots", false, "holdclip films into --shots <folder>");
             yield break;
         }
-        var site = Core.HoldSite;
+        var site = Core.HoldSite();
         if (site == null) yield break;
         var controls = caster.controls;
         controls.enabled = true;
@@ -52,10 +52,10 @@ public class HoldClipProbe : ProbeScenario
         try
         {
             StandOn(site.Plate);
-            for (float t = 0f; t < MostWait && !Core.HoldRunning; t += Time.deltaTime) yield return null;
-            Check("a_run_starts", Core.HoldRunning);
-            if (!Core.HoldRunning) yield break;
-            Core.Hold.ToSpawn = 0;
+            for (float t = 0f; t < MostWait && !Core.HoldRunning(); t += Time.deltaTime) yield return null;
+            Check("a_run_starts", Core.HoldRunning());
+            if (!Core.HoldRunning()) yield break;
+            Core.Hold().ToSpawn = 0;
             film = new ClipFilm(this, ScreenshotDir, withHud: true) { Keeping = false };
             film.Roll();
             yield return AtTheTower(site);
@@ -121,19 +121,19 @@ public class HoldClipProbe : ProbeScenario
                 r.Wait = put * 2;
                 put++;
             }
-        int full = Core.Hold.Health;
+        int full = Core.Hold().Health;
         yield return Wait(0.5f);
         film.Keeping = true;
         Note("the crystal, struck");
         yield return Wait(3f);
         for (int stage = 1; stage <= HoldCrystal.Stages; stage++)
         {
-            Core.Hold.Health = full * (HoldCrystal.Stages + 1 - stage) / (HoldCrystal.Stages + 1) - 1;
+            Core.Hold().Health = full * (HoldCrystal.Stages + 1 - stage) / (HoldCrystal.Stages + 1) - 1;
             Note($"crack {stage}");
             yield return Wait(2.6f);
         }
-        Core.Hold.Health = 2;
-        for (float t = 0f; t < MostWait && Core.HoldRunning; t += Time.deltaTime) yield return null;
+        Core.Hold().Health = 2;
+        for (float t = 0f; t < MostWait && Core.HoldRunning(); t += Time.deltaTime) yield return null;
         Note("shattered");
         yield return Wait(2.5f);
         Check("it_cracked_and_shattered", crystal.Shattered && crystal.Blows > 0, $"blows {crystal.Blows}, shattered {crystal.Shattered}");

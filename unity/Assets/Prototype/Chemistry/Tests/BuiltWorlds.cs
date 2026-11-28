@@ -1,6 +1,7 @@
 // A map folder made into a World as the game makes one, for the tests above the land that play on a map (saves,
 // weather, heightfield threads, the benches). Was SparseWorldBench.Build, in the land's tests, until those built on
-// the land alone (docs/design/chem-land-split.md, 5b). Its modes are the caller's (golf lays its hole as the map is laid).
+// the land alone (docs/design/chem-land-split.md, 5b). Its modes are the caller's (golf lays its hole and the Hold its site as
+// the map is laid).
 using System.IO;
 
 namespace Chem.Tests
@@ -20,7 +21,6 @@ namespace Chem.Tests
             MapStamps.Load(dir).LayInto(w);
             WorldBuildings.Load(dir).LayInto(w);
             w.MapLaid(dir);
-            if (WorldHold.Load(dir) is { } hold && w.InBounds(hold.Heart.x, hold.Heart.y)) w.SetHold(hold);
             w.KeepStart();
             return w;
         }

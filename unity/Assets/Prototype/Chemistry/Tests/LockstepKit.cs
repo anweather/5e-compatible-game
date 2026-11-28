@@ -57,7 +57,7 @@ namespace Chem.Tests
             var set = RuleSet.Plain(w.Rules);
             var history = new List<StampedStrike>();
             Stamp now = null;
-            var keeper = new StandKeeper<StampedStrike>(() => w.TriggersReadStands || now?.Mods != null, w.InBounds, w.HoldReadsStand, w.DeltaX);
+            var keeper = new StandKeeper<StampedStrike>(() => w.TriggersReadStands || now?.Mods != null, w.InBounds, w.ReadsStand, w.DeltaX);
             for (int t = 1; t <= ticks; t++)
             {
                 now = new Stamp();

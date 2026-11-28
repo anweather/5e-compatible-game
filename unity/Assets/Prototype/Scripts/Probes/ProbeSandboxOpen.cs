@@ -15,7 +15,7 @@ public class SandboxOpenProbe : ProbeScenario
         var world = grid.World;
         var keeper = grid.GetComponent<ProgressKeeper>();
         string me = caster.CastPlayer;
-        Check("not_in_a_run", !world.HoldRunning, $"map {ChemGrid.MapId}");
+        Check("not_in_a_run", !world.HoldRunning(), $"map {ChemGrid.MapId}");
         if (keeper == null)
         {
             Check("has_a_progress_keeper", false);

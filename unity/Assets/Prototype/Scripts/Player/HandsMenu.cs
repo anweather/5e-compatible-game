@@ -134,7 +134,7 @@ public class HandsMenu : MonoBehaviour
     {
         if (!world.HandOpen(player, hand) || !world.ElementOpen(player, element)) return false;
         if (world.TowerOf(player) is { } tower) return tower.Element == element;
-        return !world.HoldRunning || world.HandsOf(player).Holds[hand] == element;
+        return !world.HoldRunning() || world.HandsOf(player).Holds[hand] == element;
     }
 
     void Pause()

@@ -343,6 +343,33 @@ must compile it (one compile can serve a batch of steps, as the boat's PC did fo
    World.Dragon.cs (buildings, saves and the view use them with no flight, and they reach into the chunk store).
    Proved on two seeds, summoned and by budget (6 flights, raiders downed): 480 sampled lines the same. Forwarders:
    Dragon, DragonFlights, ApplyDragon, PassLine, BreathBox, CaughtByBreath, ShelteredFromBreath.*
+   *Modes out (2026-11-28, the Mac, branch `modes-out`; D22, `docs/design/minigames.md` "The Hold on it"): the Hold's,
+   its progress', the defense field's and the course's state left Sim for `PlayModes`, as golf's left for `GolfMode`.
+   The state is the systems' own fields (`HoldSystem`: site, field, road, run with its wizards' offers and picks,
+   plate, battered walls; `ProgressSystem`, new: the points; `DefenseSystem`; `CourseSystem`: zones, layout, runs), and
+   its save, text and hash are the mode's, written at the places the world wrote them (`WorldMode.SaveAt`/`TextAt`:
+   the save's head, after the open fills, after the dragon; after the slots, after the stands, before the hands, the
+   defense field's own hash). `IWorldModes` is gone: its four calls and the hands' and spells' reads of the Hold
+   (`KitFor`, `AttuneBarred`, `HoldsBack`, `Opens`, `Bring`, `Pick`, `UpgradesOf`, `ZoneAgainst`, `ReadsStand`) are
+   `WorldMode` virtuals. Data types moved up to Play/ (`HoldRun.cs` with its GUID; `DefenseState.cs`, `CourseRun.cs`,
+   `RunWizard`); the rows Sim's bake, map check and rules read stay (`Hold.cs`, `Defense.cs`, `Course.cs`). Reads are
+   `WorldPlay` extensions (`world.Hold()`, `HoldSite()`, `HoldRunning()`, `Defense()`, `PointsOf`...: about 400 call sites
+   in about 50 files, by a script). The dragon and the raiders stay, for the reasons in minigames.md. Two tests changed
+   their bodies, names and outcomes kept: `HoldTests.AWorldWithoutItsModesWontQuietlySkipTheHold` (a world without the
+   modes can't take a site at all now) and `SaveTests.ASaveOfALoadIsTheSaveAgain` (the loaded world installs its modes
+   before it saves again: its save's golden is unchanged). Proof: the sweep has dev's 2337 results by name and outcome
+   after each step (one timing budget, `DragonTests.AFullSweepStaysWithinTheTickBudget`, failed on both under load);
+   every golden unchanged; 2607 sampled lines identical on dev and the branch after each step (golf as before; the
+   defense field under bolts and frost with a save mid-wave; the course with and without golf, so the zones' text and
+   golf's slot keep their order; 8 Hold runs with two dragons, points brought and an upgrade picked, a save and a
+   snapshot joiner mid-run each run on 120 ticks; a world with no modes: every join checksum part, RngState, golf's
+   state, the Hold's, the defense's and the course's, the points and the save's FNV). Gates (the Mac, warm, idle): a
+   file of that state 88 s (`World.Play.cs` on dev) or 76 s (`World.Progress.cs`) before, 55-64 s after (`Play/`);
+   `Runtime/World.cs` 76 s before, 74 s after. Unity (the Mac): no compile errors, no new warnings in the changed
+   files; EditMode 573 (571 passed, 2 skipped); the Chemistry tests under Mono 1734 (1731 passed, 3 skipped); the
+   player scripts compile for StandaloneWindows64 and StandaloneLinux64; the probes smoke, golf, court, hold, defense,
+   dragon, moments, progress, meteor, fauna (its known flake, #82, once; then twice clean), online, roomopen,
+   roomruin, roomprogress and peervanish pass.*
 
 10. **Prototype.Game into feature assemblies (2026-11-27, the Mac with the Editor).** After steps 4-9 the game itself is
    the monolith: 367 files, 61k lines, and one type-level cycle of 185 files (38k lines) through `ChemGrid`, so a

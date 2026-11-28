@@ -17,7 +17,7 @@ public partial class ProgressKeeper
 
     void Picks(SpellCaster caster, RunWizard run, World world)
     {
-        bool open = run != null && run.Offer.Count > 0 && world.HoldRunning;
+        bool open = run != null && run.Offer.Count > 0 && world.HoldRunning();
         if (caster.controls != null) caster.controls.OfferPad = open;
         if (!open) return;
         string key = string.Join(",", run.Offer);
@@ -64,7 +64,7 @@ public partial class ProgressKeeper
     static string OfferTitle(World world)
     {
         string left = world.HoldWarning() is { } warning ? $", picked for you in {(warning.ticks + world.Rules.Sim.TicksPerSecond - 1) / world.Rules.Sim.TicksPerSecond} s" : "";
-        return $"Wave {world.Hold.Wave - 1} beaten. Pick an upgrade{left}";
+        return $"Wave {world.Hold().Wave - 1} beaten. Pick an upgrade{left}";
     }
 
     static string CardText(World world, string id, int i)
@@ -97,11 +97,11 @@ public partial class ProgressKeeper
     {
         var world = grid.World;
         var caster = WizardHud.TrackedCaster;
-        if (world?.HoldSite == null || caster == null || !EventLog.HudVisible) return;
+        if (world?.HoldSite() == null || caster == null || !EventLog.HudVisible) return;
         HudScale.Apply();
         Styles();
         DrawSummary(world);
-        if (!world.HoldRunning) return;
+        if (!world.HoldRunning()) return;
         string me = caster.CastPlayer;
         var run = world.RunOf(me);
         DrawPicks(world, me);

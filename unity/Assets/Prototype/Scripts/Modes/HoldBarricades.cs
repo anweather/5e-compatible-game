@@ -49,7 +49,7 @@ public class HoldBarricades : MonoBehaviour
     void Update()
     {
         var world = grid.World;
-        if (world?.HoldSite == null) return;
+        if (world?.HoldSite() == null) return;
         if (world != shownFor)
         {
             shownFor = world;
@@ -68,7 +68,7 @@ public class HoldBarricades : MonoBehaviour
         sound.stakes.Clear();
         burning.stakes.Clear();
         if (stake == null) Make();
-        foreach (var (px, py) in world.HoldSite.Barricades)
+        foreach (var (px, py) in world.HoldSite().Barricades)
             for (int y = py - rows.BarricadeRadius; y <= py + rows.BarricadeRadius; y++)
                 for (int x = px - rows.BarricadeRadius; x <= px + rows.BarricadeRadius; x++)
                     if (world.InBounds(x, y) && world.At(x, y).T == rows.BarricadeTerrain && now.Add(world.Idx(x, y))) Stakes(x, y, world.At(x, y).Fire > 0 ? burning : sound);

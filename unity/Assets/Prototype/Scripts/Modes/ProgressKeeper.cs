@@ -21,7 +21,7 @@ public partial class ProgressKeeper : MonoBehaviour
     float askedAt = float.NegativeInfinity;
     int extraHealth;
 
-    public int Points => asIf ?? (HoldMoments.Offered && !fromTheSave ? World.AllPoints : file.Points);
+    public int Points => asIf ?? (HoldMoments.Offered && !fromTheSave ? ProgressSystem.AllPoints : file.Points);
 
     public bool FromTheSave => fromTheSave || !HoldMoments.Offered;
 
@@ -66,7 +66,7 @@ public partial class ProgressKeeper : MonoBehaviour
     {
         var world = grid.World;
         var caster = WizardHud.TrackedCaster;
-        if (world?.HoldSite == null || caster == null || caster.Replaying) return;
+        if (world?.HoldSite() == null || caster == null || caster.Replaying) return;
         string me = caster.CastPlayer;
         if (HoldMoments.Offered && Keyboard.current != null && Keyboard.current.f7Key.wasPressedThisFrame) PlayFromTheSave(!fromTheSave);
         int? have = world.PointsOf(me);

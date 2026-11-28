@@ -84,9 +84,7 @@ namespace Chem.Tests
             WorldBuildings.Load(dir).LayInto(w);
             at.Mark("rows (buildings)");
             w.MapLaid(dir);
-            at.Mark("golf");
-            if (WorldHold.Load(dir) is { } hold && w.InBounds(hold.Heart.x, hold.Heart.y)) w.SetHold(hold);
-            at.Mark("the Hold (places.json)");
+            at.Mark("the modes (golf, the Hold)");
             w.KeepStart();
             at.Mark("KeepStart");
             SetViewsLand(w, dir, map, at);

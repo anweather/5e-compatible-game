@@ -179,7 +179,6 @@ namespace Chem.Tests
             MapStamps.Load(dir).LayInto(w);
             WorldBuildings.Load(dir).LayInto(w);
             w.MapLaid(dir);
-            if (WorldHold.Load(dir) is { } hold && w.InBounds(hold.Heart.x, hold.Heart.y)) w.SetHold(hold);
             long laidBytes = Step();
             w.KeepStart();
             long startBytes = Step();

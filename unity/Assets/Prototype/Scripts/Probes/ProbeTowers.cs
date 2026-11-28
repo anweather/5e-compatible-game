@@ -28,7 +28,7 @@ public class TowersProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        var site = Core.HoldSite;
+        var site = Core.HoldSite();
         Check("four_towers", site != null && site.Towers.Count == 4 && site.Towers.Select(t => t.Element).Distinct().Count() == 4, site == null ? "no hold" : string.Join(",", site.Towers.Select(t => t.Element)));
         if (site == null) yield break;
         var show = grid.GetComponent<HoldShow>();
@@ -43,11 +43,11 @@ public class TowersProbe : ProbeScenario
         try
         {
             StandOn(site.Plate);
-            for (float t = 0f; t < MostWait && !Core.HoldRunning; t += Time.deltaTime) yield return null;
-            Check("a_run_starts", Core.HoldRunning);
-            if (!Core.HoldRunning) yield break;
-            Core.Hold.Health = int.MaxValue / 2;
-            Core.Hold.ToSpawn = 0;
+            for (float t = 0f; t < MostWait && !Core.HoldRunning(); t += Time.deltaTime) yield return null;
+            Check("a_run_starts", Core.HoldRunning());
+            if (!Core.HoldRunning()) yield break;
+            Core.Hold().Health = int.MaxValue / 2;
+            Core.Hold().ToSpawn = 0;
 
             StandOn(site.Rise);
             yield return Wait(0.5f);

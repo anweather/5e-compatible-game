@@ -108,7 +108,7 @@ public partial class SpellCaster
         if (!world.HandOpen(player, hand)) why = Locked($"Your {Side(hand)} hand", world, player, u => u.Hand == Side(hand));
         else if (!world.ElementOpen(player, element)) why = Locked(element, world, player, u => u.Element == element);
         else if (world.TowerOf(player) is { } tower && tower.Element != element) why = $"Only {tower.Element} here";
-        else if (world.HoldRunning && world.TowerOf(player) == null) why = "Attune at a tower";
+        else if (world.HoldRunning() && world.TowerOf(player) == null) why = "Attune at a tower";
         else if (world.HandsOf(player).AttuneLeft > 0) why = "One hand at a time";
         else if (world.CastOf(player)?.Casting == true) why = "Not mid-cast";
         else if (world.HandsOf(player).Holds[hand] == element) return null;

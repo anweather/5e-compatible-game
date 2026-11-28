@@ -42,7 +42,7 @@ public class ProgressProbe : ProbeScenario
     protected override IEnumerator Run()
     {
         var world = Core;
-        var site = world.HoldSite;
+        var site = world.HoldSite();
         var keeper = grid.GetComponent<ProgressKeeper>();
         Check("the_map_has_a_hold", site != null && keeper != null);
         if (site == null || keeper == null) yield break;
@@ -55,8 +55,8 @@ public class ProgressProbe : ProbeScenario
         Metric("saved_at_start", saved);
         saveAsFound = SaveFiles().ToDictionary(f => f, f => File.Exists(f) ? File.ReadAllBytes(f) : null);
 
-        for (float t = 0f; t < MostWait && world.PointsOf(Me) != World.AllPoints; t += Time.deltaTime) yield return null;
-        Check("a_dev_build_has_everything", world.PointsOf(Me) == World.AllPoints, $"{world.PointsOf(Me)}");
+        for (float t = 0f; t < MostWait && world.PointsOf(Me) != ProgressSystem.AllPoints; t += Time.deltaTime) yield return null;
+        Check("a_dev_build_has_everything", world.PointsOf(Me) == ProgressSystem.AllPoints, $"{world.PointsOf(Me)}");
         keeper.PlayFromTheSave(true);
         for (float t = 0f; t < MostWait && world.PointsOf(Me) != saved; t += Time.deltaTime) yield return null;
         yield return Wait(1.5f);
@@ -67,9 +67,9 @@ public class ProgressProbe : ProbeScenario
         bool fresh = saved < first.Cost;
 
         Stand(site.Plate);
-        for (float t = 0f; t < MostWait && !world.HoldRunning; t += Time.deltaTime) yield return null;
-        Check("a_run_starts", world.HoldRunning);
-        if (!world.HoldRunning) yield break;
+        for (float t = 0f; t < MostWait && !world.HoldRunning(); t += Time.deltaTime) yield return null;
+        Check("a_run_starts", world.HoldRunning());
+        if (!world.HoldRunning()) yield break;
 
         yield return AtALockedTower(world, site, fresh);
         yield return Wait(0.3f);
@@ -84,7 +84,7 @@ public class ProgressProbe : ProbeScenario
             Check("and_nothing_is_cast", world.CastOf(Me)?.Casting != true);
         }
 
-        for (float t = 0f; t < MarchWait && world.Hold.Wave == 1; t += Time.deltaTime)
+        for (float t = 0f; t < MarchWait && world.Hold().Wave == 1; t += Time.deltaTime)
         {
             foreach (var r in world.Raiders)
             {
@@ -93,7 +93,7 @@ public class ProgressProbe : ProbeScenario
             }
             yield return null;
         }
-        Check("wave_1_is_beaten", world.Hold.Wave == 2, $"wave {world.Hold.Wave}");
+        Check("wave_1_is_beaten", world.Hold().Wave == 2, $"wave {world.Hold().Wave}");
         var run = world.RunOf(Me);
         yield return null;
         string offer = keeper.OfferText();
@@ -118,11 +118,11 @@ public class ProgressProbe : ProbeScenario
         Check("the_picks_are_listed", keeper.PicksText(world, Me).Contains("Tough: " + tough + " more health"), keeper.PicksText(world, Me));
         Shot("picks");
 
-        world.Hold.Health = 1;
-        for (float t = 0f; t < MarchWait && world.HoldRunning; t += Time.deltaTime) yield return null;
-        Check("the_keep_falls", !world.HoldRunning, $"wave {world.Hold.Wave}");
+        world.Hold().Health = 1;
+        for (float t = 0f; t < MarchWait && world.HoldRunning(); t += Time.deltaTime) yield return null;
+        Check("the_keep_falls", !world.HoldRunning(), $"wave {world.Hold().Wave}");
         yield return null;
-        int earned = (world.Hold.Wave - 1) * world.Rules.Sim.Hold.PointsPerWave;
+        int earned = (world.Hold().Wave - 1) * world.Rules.Sim.Hold.PointsPerWave;
         Check("the_end_says_what_was_earned", keeper.Summary.Contains($"+{earned} point") && keeper.Summary.Contains("Next:"), keeper.Summary);
         Check("health_goes_with_the_run", Mathf.Approximately(vitals.HealthMax, before), $"{vitals.HealthMax}");
         yield return Wait(1.5f);
@@ -134,8 +134,8 @@ public class ProgressProbe : ProbeScenario
         Check("a_reset_keeps_the_points", grid.World?.PointsOf(Me) == saved + earned, $"{grid.World?.PointsOf(Me)}");
 
         keeper.PlayFromTheSave(false);
-        for (float t = 0f; t < MostWait && grid.World?.PointsOf(Me) != World.AllPoints; t += Time.deltaTime) yield return null;
-        Check("f7_again_is_everything", grid.World?.PointsOf(Me) == World.AllPoints);
+        for (float t = 0f; t < MostWait && grid.World?.PointsOf(Me) != ProgressSystem.AllPoints; t += Time.deltaTime) yield return null;
+        Check("f7_again_is_everything", grid.World?.PointsOf(Me) == ProgressSystem.AllPoints);
         PutTheSaveBack();
         Check("the_save_is_put_back", keeper.Saved == saved, $"{keeper.Saved}, was {saved}");
         InputSystem.RemoveDevice(pad);

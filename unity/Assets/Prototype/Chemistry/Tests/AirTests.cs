@@ -111,7 +111,7 @@ namespace Chem.Tests
         public void ALineReachesAFlyerOverWhatStopsIt()
         {
             var w = HoldTests.Field();
-            var at = (x: w.HoldSite.Heart.x - 30, y: w.HoldSite.Heart.y - 30);
+            var at = (x: w.HoldSite().Heart.x - 30, y: w.HoldSite().Heart.y - 30);
             w.Paint(at.x + 4, at.y, "tree");
             Assert.That(w.IsBlocking(w.At(at.x + 4, at.y)));
             var flyer = w.SpawnRaider("ash-wing", at.x + 8, at.y, 200);

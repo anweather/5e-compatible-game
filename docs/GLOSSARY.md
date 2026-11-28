@@ -419,11 +419,14 @@ touch them.
   `Runtime/Play/` named for the mode (`CourseSystem`, ...), owned by the world (`World.CourseSystem`) and run where
   the mode always ran (`docs/design/architecture-review.md` step 9). *Not* a machine, an act or a Unity system.
 
-**World mode / mode slot**
+**World mode / mode slot / mode place**
 : A **world mode** is a class deriving from the core's `WorldMode`, installed on a world (`world.Install`) and called by
   it at fixed places in install order: the Hold's `PlayModes`, golf's `GolfMode` (D22, `docs/design/minigames.md`).
   Its **slot** is its part of the world save, the casts checksum text and the dragon's start, written where the world
-  calls it. *Not* a **game mode** (a snapshot of mods, below).
+  calls it. A **mode place** is one of the older places in the save and the casts checksum text where the Hold's,
+  its progress', the defense field's and the course's state sat when the world kept it (`SavePlace`, `TextPlace`):
+  `PlayModes` writes there so the bytes stay put; a new mode writes in its slot. *Not* a **game mode** (a snapshot of
+  mods, below).
 
 **Mini-game**
 : A world mode that is an add-on: its own core assembly (`Chem.Play.Golf`), tests and view folder, touching nothing in

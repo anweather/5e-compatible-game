@@ -121,7 +121,7 @@ public partial class ValleyFauna
     FolkJobs.Now Now(int i, double seconds)
     {
         var worker = jobs.Workers[i];
-        bool run = world.HoldRunning;
+        bool run = world.HoldRunning();
         if (worker.HasHome && run && !keptHome[i])
         {
             var c = working[i];

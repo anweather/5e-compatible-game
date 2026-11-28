@@ -4,7 +4,7 @@
 // Raiders are the defense field's, so spells reach them as they do there; their way is worked out here, not in
 // Play/DefenseSystem.cs, since a castle's walls can be battered and a field's can't. A wizard on a blocking cell is on the walls:
 // no raider reaches it. All whole numbers and the seeded generator, and "" in the checksum until there's been a run.
-// This file is a run's data, which the world keeps (World.Hold); Play/HoldSystem.cs is the Hold's system (Chem.Play).
+// This file is a run's data, with each wizard's offers and picks in it; HoldSystem.cs is the Hold's system, which owns it.
 using System;
 using System.Collections.Generic;
 
@@ -27,5 +27,12 @@ namespace Chem
         public string Moment;
         public SortedDictionary<string, RunWizard> Wizards { get; } = new SortedDictionary<string, RunWizard>(StringComparer.Ordinal);
         public int MomentTick;
+    }
+
+    public sealed class RunWizard
+    {
+        public string Player;
+        public List<string> Offer { get; } = new List<string>();
+        public List<string> Picks { get; } = new List<string>();
     }
 }

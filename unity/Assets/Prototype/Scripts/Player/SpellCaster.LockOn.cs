@@ -105,12 +105,12 @@ public partial class SpellCaster
         var world = grid.World;
         var at = new Vector2Int(r.X, r.Y);
         var def = world.Rules.Entity(r.Kind);
-        if (!world.HoldRunning || world.HoldSite == null || def?.Raider == null) return at;
+        if (!world.HoldRunning() || world.HoldSite() == null || def?.Raider == null) return at;
         if (r.StatusOf(World.ThrownStatus) > 0 || r.StatusOf("frozen") > 0 || r.StatusOf("snagged") > 0) return at;
         int ticks = Mathf.CeilToInt(seconds * world.Rules.Sim.TicksPerSecond), first = r.Wait + 1, pace = Mathf.Max(1, def.Raider.TicksPerSquare);
         int steps = ticks < first ? 0 : Mathf.Min(MostLead, 1 + (ticks - first) / pace);
         bool flies = world.Flying(r), road = def.Raider.Route != World.ClimbRoute && def.Raider.Route != World.FlyRoute;
-        var heart = world.HoldSite.Heart;
+        var heart = world.HoldSite().Heart;
         for (int i = 0; i < steps; i++)
         {
             if (flies) at += new Vector2Int(System.Math.Sign(heart.x - at.x), System.Math.Sign(heart.y - at.y));

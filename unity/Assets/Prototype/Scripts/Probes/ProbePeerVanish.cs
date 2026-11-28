@@ -103,7 +103,7 @@ public class PeerVanishProbe : RoomProbe
         {
             if (t != tick) return;
             var world = ChemGrid.Current?.World;
-            if (world?.Hold != null) world.Hold.Health = 1;
+            if (world?.Hold() != null) world.Hold().Health = 1;
             put = true;
         }
         net.TickApplied += On;
@@ -148,8 +148,8 @@ public class PeerVanishProbe : RoomProbe
 
         var me = Local.GetComponent<SpellCaster>();
         Check("run_started", me.Moment(Moment), "the core refused the moment");
-        for (float t = 0f; t < 10f && !World.HoldRunning; t += Time.unscaledDeltaTime) yield return null;
-        Check("run_running", World.HoldRunning, World.Hold?.Phase.ToString() ?? "no hold");
+        for (float t = 0f; t < 10f && !World.HoldRunning(); t += Time.unscaledDeltaTime) yield return null;
+        Check("run_running", World.HoldRunning(), World.Hold()?.Phase.ToString() ?? "no hold");
         yield return Wait(3f);
         yield return Look("in_the_run");
 
@@ -159,8 +159,8 @@ public class PeerVanishProbe : RoomProbe
         yield return Ask("lastpoint", tick.ToString(CultureInfo.InvariantCulture), 20f);
         if (Theirs == null) yield break;
         for (float t = 0f; t < 20f && !putHere; t += Time.unscaledDeltaTime) yield return null;
-        for (float t = 0f; t < MostToLose && World.Hold.Phase == HoldPhase.Running; t += Time.unscaledDeltaTime) yield return null;
-        Check("run_lost", World.Hold.Phase == HoldPhase.Lost, World.Hold.Phase.ToString());
+        for (float t = 0f; t < MostToLose && World.Hold().Phase == HoldPhase.Running; t += Time.unscaledDeltaTime) yield return null;
+        Check("run_lost", World.Hold().Phase == HoldPhase.Lost, World.Hold().Phase.ToString());
         var seen = Behind(-InFront);
         yield return Ask("stand", $"{seen.x},{seen.y}");
         if (Theirs == null) yield break;

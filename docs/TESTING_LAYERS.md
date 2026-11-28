@@ -190,8 +190,12 @@ each would narrow to as an assembly of its own.
 **The game modes are their own assembly too** (step 9's leftover, 2026-11-27): `Runtime/Play/` is `Chem.Play`, above
 `Game.Core`, and only `Chem.Play.Tests`, `Hold.Runner` (with `Hold.Runner.Tests`) and `Playtest.Text` reference it. So
 `runtime-play` is `"projects": ["Chem.Play"]` with no `stop`: a Play change runs `Chem.Play.Tests` and
-`Hold.Runner.Tests` and gives the rest the smoke, because nothing below `Chem.Play` can reach it. The modes' state, its
-save and the seam (`World.Play.cs`, `IWorldModes.cs`) are Sim's and run everything. On the Mac (warm build, `gates.sh`
+`Hold.Runner.Tests` and gives the rest the smoke, because nothing below `Chem.Play` can reach it. Since modes-out
+(2026-11-28) the modes' state, its save and its text are Chem.Play's too (`PlayModes`' slots), so a change there is a
+Play change; the seam (`World.Play.cs`) and the rows the modes read (`Hold.cs`, `Defense.cs`, `Course.cs`) are Sim's
+(`runtime-sim-modes`); on the Mac (warm, idle, `gates.sh` wall) a file of that state went from 88 s (`World.Play.cs`
+on dev, where it lived) or 76 s (`World.Progress.cs`) to 55-64 s (`Play/HoldRun.cs`, `Play/ProgressSystem.cs`,
+`Play/PlayModes.cs`), and `Runtime/World.cs` was 76 s on dev and 74 s after. On the Mac (warm build, `gates.sh`
 wall): a Play file (`Runtime/Play/CourseSystem.cs`) 177 s before, 52 s after; a Sim file (`Runtime/World.cs`) 160 s
 before, 169 s after (the same set; noise).
 
@@ -221,8 +225,7 @@ that links `Game.Core` gets the `Unit` smoke. The module's `"runs"` names the pr
 everything that references its projects. Sim's adapters keep their users' tests: the land onto a world
 (`runtime-sim-land`: `World.Land`, `GeneratedSource`, `BakedSource`, `MapBake`, `MapCheck`, `GeneratedPlaces`,
 `CellHeightfield`, `OpenWorld*`) adds `Chem.LandWorld.Tests`, and the modes' seam and the state Sim keeps for them
-(`runtime-sim-modes`: `World.Play`, `IWorldModes`, `WorldMode`, `Body`, `World.Bodies`, `Hold`, `Defense`, `Course`,
-`HoldRun`, `RuleModes`) adds `Chem.Play.Tests`, `Chem.Play.Golf.Tests` and `Hold.Runner.Tests`. Like the stop, it's a
+(`runtime-sim-modes`: `World.Play`, `WorldMode`, `Body`, `World.Bodies`, `Hold`, `Defense`, `Course`, `RuleModes`) adds `Chem.Play.Tests`, `Chem.Play.Golf.Tests` and `Hold.Runner.Tests`. Like the stop, it's a
 judgment: the full suite still runs in CI after every push to dev. The Lockstep area (`runtime-lockstep`), the rules
 (`runtime-rules`), `Chemistry/Mcp` and core/ files in no module still run everything.
 

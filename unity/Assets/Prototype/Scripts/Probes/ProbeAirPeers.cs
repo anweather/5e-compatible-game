@@ -69,7 +69,7 @@ public class AirPeersProbe : RoomProbe
     {
         yield return Ask("defense");
         if (Theirs == null) yield break;
-        Check("waves_run", World.Defense != null, World.Defense == null ? "no defense" : World.Defense.Phase.ToString());
+        Check("waves_run", World.Defense() != null, World.Defense() == null ? "no defense" : World.Defense().Phase.ToString());
         StandAt(grid, HoundX, Row);
         yield return Ask("stand", $"{HoundX + 2},{Row}");
         if (Theirs == null) yield break;

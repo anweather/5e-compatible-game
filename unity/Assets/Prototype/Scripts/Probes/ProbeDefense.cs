@@ -125,15 +125,15 @@ public class DefenseProbe : ProbeScenario
     {
         int lives = World.Rules.Sim.Defense.Lives;
         float waited = 0f;
-        while (World.Defense.Lives == lives && waited < 60f)
+        while (World.Defense().Lives == lives && waited < 60f)
         {
             waited += Time.deltaTime;
             yield return null;
         }
-        Metric("lives_left", World.Defense.Lives);
-        Check("flag_costs_a_life", World.Defense.Lives < lives, $"lives {World.Defense.Lives}/{lives} after {waited:0.0} s more");
+        Metric("lives_left", World.Defense().Lives);
+        Check("flag_costs_a_life", World.Defense().Lives < lives, $"lives {World.Defense().Lives}/{lives} after {waited:0.0} s more");
         yield return Wait(0.2f);
-        Check("banner_shows_lives", defense.banner.text.Contains($"LIVES {World.Defense.Lives}"), $"the banner reads \"{defense.banner.text.Replace('\n', ' ')}\"");
+        Check("banner_shows_lives", defense.banner.text.Contains($"LIVES {World.Defense().Lives}"), $"the banner reads \"{defense.banner.text.Replace('\n', ' ')}\"");
         Check("hud_line", defense.HudLine().StartsWith("Wave ", System.StringComparison.Ordinal), defense.HudLine());
         Overview();
         yield return Wait(0.5f);

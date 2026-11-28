@@ -77,7 +77,7 @@ namespace Chem.HoldCurve
                 {
                     var run = new HoldRun(rules, worldDir, (uint)seed, p, (set[0], set[1]), null, points) { Idle = idle };
                     run.Play(minutes * 60);
-                    if (run.World.HoldRunning) Console.Error.WriteLine($"still going: {set[0]}+{set[1]} seed {seed} wave {run.LastWave}, by the heart {string.Join(" ", Around(run.World))}; {string.Join(" ", run.World.Raiders.Take(6).Select(r => $"{r.Kind}@{r.X},{r.Y} hp {r.Hp}"))}");
+                    if (run.World.HoldRunning()) Console.Error.WriteLine($"still going: {set[0]}+{set[1]} seed {seed} wave {run.LastWave}, by the heart {string.Join(" ", Around(run.World))}; {string.Join(" ", run.World.Raiders.Take(6).Select(r => $"{r.Kind}@{r.X},{r.Y} hp {r.Hp}"))}");
                     return run;
                 }).ToList();
                 double tps = rules.Sim.TicksPerSecond * 60.0;
@@ -89,7 +89,7 @@ namespace Chem.HoldCurve
 
         static IEnumerable<string> Around(World w)
         {
-            var (x, y) = w.HoldSite.Heart;
+            var (x, y) = w.HoldSite().Heart;
             for (int dy = -2; dy <= 2; dy++) yield return string.Join(",", Enumerable.Range(-2, 5).Select(dx => w.At(x + dx, y + dy).T));
         }
 
@@ -112,7 +112,7 @@ namespace Chem.HoldCurve
                 }).ToList();
                 int start = m.Health > 0 ? m.Health : rules.Sim.Hold.Health;
                 int tps = rules.Sim.TicksPerSecond;
-                Console.WriteLine($"{name,-21} {string.Join(" ", runs.Select(r => start - Math.Max(0, r.World.Hold.Health))),-22} {string.Join(" ", runs.Select(r => r.Ticks / tps)),-20} {runs.Count(r => r.LastWave > m.Wave)}/{seeds}");
+                Console.WriteLine($"{name,-21} {string.Join(" ", runs.Select(r => start - Math.Max(0, r.World.Hold().Health))),-22} {string.Join(" ", runs.Select(r => r.Ticks / tps)),-20} {runs.Count(r => r.LastWave > m.Wave)}/{seeds}");
             }
             return 0;
         }

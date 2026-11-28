@@ -2,8 +2,8 @@
 // entities with a "raider" row in rules/entities.json) walk from a spawn gate
 // to a flag in waves, and players stop them with spells. This file holds the
 // rule rows (raider stats, sim.json's "defense", reactions.json's "entity"
-// rules), the command that starts the waves and the state the world keeps;
-// RaiderSystem.cs and Play/DefenseSystem.cs (Chem.Play) are the systems, mirroring
+// rules) and the command that starts the waves; the field's state is
+// Play/DefenseState.cs. RaiderSystem.cs and Play/DefenseSystem.cs (Chem.Play) are the systems, mirroring
 // sandbox/src/entities.ts and sandbox/src/defense.ts. Everything here is
 // whole numbers and ordered lists, so every machine in lockstep agrees.
 using System;
@@ -154,22 +154,6 @@ namespace Chem
         public int GateY { get; }
         public int FlagX { get; }
         public int FlagY { get; }
-    }
-
-    public enum DefensePhase
-    {
-        Idle,
-        Running,
-        Won,
-        Lost,
-    }
-
-    public sealed class DefenseState
-    {
-        public DefensePhase Phase;
-        public int Wave, Lives, ToSpawn, NextSpawn, Spawned;
-        public int GateX, GateY, FlagX, FlagY;
-        public int X0, Y0, X1, Y1;
     }
 
     public sealed class Raider

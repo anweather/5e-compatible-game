@@ -13,7 +13,7 @@ namespace Chem.Tests
         static Rules R => ChemistryTests.R;
         static HandsDef Table => R.Sim.Hold.Hands;
 
-        static (int x, int y) TowerOf(World w, string element) => w.TowerGround(w.HoldSite.Towers.First(t => t.Element == element))[0];
+        static (int x, int y) TowerOf(World w, string element) => w.TowerGround(w.HoldSite().Towers.First(t => t.Element == element))[0];
 
         static void AttuneAway(World w, int hand, string element)
         {
@@ -33,7 +33,7 @@ namespace Chem.Tests
             Away(w);
             AttuneAway(w, Left, left);
             AttuneAway(w, Right, right);
-            Stand(w, Me, w.HoldSite.Plate);
+            Stand(w, Me, w.HoldSite().Plate);
             Ticks(w, R.Sim.Hold.PlateTicks + 1);
             Away(w);
             return w;
@@ -453,7 +453,7 @@ namespace Chem.Tests
         public void EachTowerHasGroundToStandOn()
         {
             var w = Field();
-            foreach (var t in w.HoldSite.Towers)
+            foreach (var t in w.HoldSite().Towers)
             {
                 var ground = w.TowerGround(t);
                 Assert.That(ground, Is.Not.Empty, t.Element);
@@ -504,7 +504,7 @@ namespace Chem.Tests
             Assert.That(w.ApplyCombo(ComboCommand.Hand(Me, Right)));
             Assert.That(Fired(w), Is.EqualTo("burning-hands"));
             Assert.That(w.ApplyCombo(ComboCommand.Attune(Me, Right, "air")));
-            Assert.That(w.HoldReadsStand(1, 1), Is.False);
+            Assert.That(w.ReadsStand(1, 1), Is.False);
         }
 
         [Test]
@@ -522,9 +522,9 @@ namespace Chem.Tests
         {
             var w = Field();
             var tower = TowerOf(w, "fire");
-            Assert.That(w.HoldReadsStand(tower.x, tower.y));
-            Assert.That(w.HoldReadsStand(w.HoldSite.Plate.x, w.HoldSite.Plate.y));
-            Assert.That(w.HoldReadsStand(w.HoldSite.Rise.x, w.HoldSite.Rise.y), Is.False);
+            Assert.That(w.ReadsStand(tower.x, tower.y));
+            Assert.That(w.ReadsStand(w.HoldSite().Plate.x, w.HoldSite().Plate.y));
+            Assert.That(w.ReadsStand(w.HoldSite().Rise.x, w.HoldSite().Rise.y), Is.False);
         }
 
         [TestCase(0, 1)]
@@ -766,13 +766,13 @@ namespace Chem.Tests
             w.SetHold(WorldHold.Load(ChemistryTests.WorldDir()));
             Away(w);
             AttuneAway(w, Left, "air");
-            Stand(w, Me, w.HoldSite.Plate);
+            Stand(w, Me, w.HoldSite().Plate);
             Ticks(w, R.Sim.Hold.PlateTicks + 1);
             Away(w);
             Bumper(w, Right);
             Ticks(w, T.TapTicks - 1);
             var loaded = PlayModes.Install(World.Load(w.Save(source), R, source));
-            loaded.SetHold(w.HoldSite);
+            loaded.SetHold(w.HoldSite());
             Assert.That(loaded.HandsOf(Me).Tap[Right], "a tap under way stays one");
             Assert.That(loaded.HandsText(), Is.EqualTo(w.HandsText()));
             Assert.That(loaded.CastState(), Is.EqualTo(w.CastState()));

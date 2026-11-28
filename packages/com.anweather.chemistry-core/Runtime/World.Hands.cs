@@ -27,29 +27,11 @@ namespace Chem
             return h;
         }
 
-        public List<(int x, int y)> TowerGround(HoldTower tower)
-        {
-            int reach = Rules.Sim.Hold.TowerReach;
-            var cells = new List<(int x, int y)>();
-            for (int y = tower.Y - reach; y <= tower.Y + reach; y++)
-                for (int x = tower.X - reach; x <= tower.X + reach; x++)
-                    if (At(x, y) is { } c && !IsBlocking(c)) cells.Add((x, y));
-            var (hx, hy) = HoldSite.Heart;
-            return cells.Select(c => (x: FoldX(c.x), y: FoldY(c.y))).OrderBy(c => System.Math.Abs(DeltaX(hx, c.x)) + System.Math.Abs(DeltaY(hy, c.y))).ThenBy(c => c.y).ThenBy(c => c.x).ToList();
-        }
-
-        public HoldTower TowerOf(string player) =>
-            HoldSite != null && stands.TryGetValue(player, out var s) && !s.Down ? HoldSite.TowerAt(s.X, s.Y, Rules.Sim.Hold.TowerReach) : null;
-
         public bool HandsOn(string player) => HandRules.Any;
-
-        bool InHold(string player) => HoldRunning || TowerOf(player) != null;
-
-        public bool HoldReadsStand(int x, int y) => HoldSite != null && (HoldRunning || HoldSite.Plate == (x, y) || HoldSite.TowerAt(x, y, Rules.Sim.Hold.TowerReach) != null);
 
         public IReadOnlyList<DpadSpellDef> DpadOf(string player)
         {
-            if (!InHold(player) || HandRules.Kit.Count == 0) return Rules.Combos.Dpad;
+            if (!KitFor(player) || HandRules.Kit.Count == 0) return Rules.Combos.Dpad;
             return AllOpen(player) ? HandRules.Kit : HandRules.Kit.Where(k => KitOpen(player, k.Spell)).ToList();
         }
 
@@ -99,8 +81,7 @@ namespace Chem
             if (hand < 0 || hand >= HandsDef.Count || (element != null && !Rules.Combos.Elements.Contains(element)) || !HandOpen(player, hand) || !ElementOpen(player, element)) return false;
             if (HandsOf(player).Busy || c.Casting) return false;
             ReadStands();
-            var tower = TowerOf(player);
-            if (tower != null ? element != tower.Element : HoldRunning) return false;
+            if (AttuneBarred(player, element)) return false;
             if (stands.TryGetValue(player, out var s) && s.Down) return false;
             var h = OwnHands(player);
             h.AttuneHand = hand;
@@ -264,7 +245,7 @@ namespace Chem
             if (!h.Busy) c.Total = 0;
         }
 
-        public string HandsText() => ProgressText() + RunText(Hold) + string.Concat(hands.Values.Select(h => $"|P{h.Player}:{h.Holds[0]}:{h.Holds[1]}:{Whole(h.Ready[0])}:{Whole(h.Ready[1])}:{Whole(h.Gesture[0])}:{Whole(h.Gesture[1])}" + MeterText(h)));
+        public string HandsText() => ModesTextAt(TextPlace.BeforeHands) + string.Concat(hands.Values.Select(h => $"|P{h.Player}:{h.Holds[0]}:{h.Holds[1]}:{Whole(h.Ready[0])}:{Whole(h.Ready[1])}:{Whole(h.Gesture[0])}:{Whole(h.Gesture[1])}" + MeterText(h)));
 
         static string MeterText(PlayerHands h) => !h.Busy ? "" : string.Concat(Enumerable.Range(0, HandsDef.Count).Select(i =>
             $":{Whole(h.Meter[i])}/{Whole(h.Total[i])}/{Whole(h.Extra[i])}/{(h.Down[i] ? 1 : 0)}/{Whole(h.Charge[i])}/{Whole(h.Since[i])}" + (h.Tap[i] ? "/t" : ""))) + $":a{Whole(h.AttuneHand)}/{h.AttuneTo}/{Whole(h.AttuneLeft)}";

@@ -22,8 +22,8 @@ name, no statics: the installed list is the world's own field.
 - **Installing.** `world.Install(mode)` once per mode, before the world ticks; a mode of the same type twice throws.
   `world.InstallModesOf(other)` gives a joiner's world the modes of the world it replaces, each by `MadeFor(world)`,
   in the same order; a snapshot join does it before it checks the joined world against the host's checksum
-  (`JoinSnapshot.Join(..., modesOf)`), since a mode's slot is in the checksum. `world.Mode<T>()` finds an installed one. `PlayModes` (the Hold, defense, course) is a
-  `WorldMode` too, and still the world's one `IWorldModes`, so the Hold's seam is unchanged.
+  (`JoinSnapshot.Join(..., modesOf)`), since a mode's slot is in the checksum. `world.Mode<T>()` finds an installed one. `PlayModes` (the Hold, its progress, the defense
+  field, the course) is a `WorldMode` too, the only seam the Hold has (`IWorldModes` is gone: "The Hold on it", below).
 - **The slot (save, hash, text).** `SaveSlot(save)` writes the mode's keys into the world save, `SlotText()` its part
   of the casts checksum text (`CastText`), `SaveStart(start)` its part of the dragon's start, `KeepStart()` copies its
   start. The world calls each installed mode at one place: where golf's own calls were (the save between the
@@ -103,6 +103,54 @@ The view's half (`Scripts/Modes/GolfCourse.cs`, the probes) reads it through `wo
 
 Who installs it: the game's world makers (`ChemGrid.WithModes`), the playtest desk (`Playtest.Text`), the rules MCP
 server's rooms, and golf's own tests. A world without it has no golf: no ball, no act, nothing in its save.
+
+## The Hold on it (modes-out, 2026-11-28)
+
+`PlayModes` (Chem.Play) owns the Hold's, its progress', the defense field's and the course's state, as `GolfMode` owns
+golf's: `HoldSystem` (the site, its field and road, the run with each wizard's offers and picks, the plate, the
+battered walls), `ProgressSystem` (each wizard's points between runs), `DefenseSystem` (the defense state) and
+`CourseSystem` (the zones, the layout, the runs). Their save, text and hash are written by the mode, so a change to
+them is a Play change and never touches `World.Save.cs`. Nothing moved in the bytes:
+
+- **Places** (`SaveAt(place, save)`, `TextAt(place)`): this state was the world's before it was a mode's, and its keys
+  sat at several places in the save and the text, not where a mode's slot is. So the world calls its modes at each of
+  those places too: the save's head ("defense", which the world writes as null for a mode to fill), after the open
+  world's fills ("hold", then "progress"), after the dragon ("course"); in the casts checksum text after the slots
+  (the zones, the runs), after the stands (the Hold), before the hands (the points, the run's wizards); and the
+  defense field's own hash (`World.DefenseHash`, "-" when no mode writes). A new mode writes in its slot, never at a
+  place: the places exist so the Hold's bytes stay where they were.
+- **What the world asks as it runs** (each a virtual, answered by the first mode that takes it, or by any): `Tick()`
+  (the Rest stage after the raiders), `StartMoment`, `Apply(DefenseCommand)`, `Apply(CourseCommand)`, `ZoneAgainst`
+  (a spell zone against a cast), `ReadsStand` (the stand keeper's), and the hands': `HoldsBack` and `Opens` (what a
+  wizard's points lock in a run), `Bring` and `Pick` (the commands), `KitFor` (the kit's d-pad), `AttuneBarred`,
+  `UpgradesOf` (the picks, which change cooldowns, range, power and health). `MapLaid` lays the map's `hold.json`.
+- **Reads** from outside the core are `WorldPlay` extensions: `world.Hold()`, `HoldSite()`, `HoldRunning()`,
+  `HoldLeft()`, `Defense()`, `DefenseLeft()`, `TowerOf`, `TowerGround`, `RunOf`, `SetHold`, `PointsOf`, `UnlocksOf`,
+  `PointsAway`, `NextUnlock` (properties on the world before; a world without the modes reads null, false, 0 or
+  everything unlocked, as it did). `World.AllPoints` is `ProgressSystem.AllPoints`, `HoldReadsStand` is `ReadsStand`.
+- **A world without `PlayModes`** has none of it: `SetHold` throws (it's the mode's state), a defense start throws,
+  a save's "hold", "defense", "course" and "progress" wait for the mode until the first tick and are dropped if none
+  takes them (as golf's are). `HoldTests.AWorldWithoutItsModesWontQuietlySkipTheHold` proves the first two, and
+  `SaveTests.ASaveOfALoadIsTheSaveAgain` installs the modes on the loaded world before it saves again.
+
+What stayed in Sim, and why:
+
+- **The dragon** (`DragonSystem`, `World.Dragon.cs`). Its save is one key with the change audit (`"audit"`:
+  `[flights, auditAt]`, then `"dragon"`), its tick is the resumable dragon stage (`RunDragon`: a few chunk resets a
+  tick, so `StepSome` can stop between them; no mode hook reaches inside a stage), its hash is a named part of every
+  join snapshot and lockstep checksum (`JoinSnapshot.PartNames` "dragon"), its summons come from the Sim audit (the
+  rules' `dragon.budget`), and every world has it, the rules MCP's rooms and any `new World` included: as a mode,
+  each of those would need it installed or would behave differently. Moving it means a stage hook, a hash place and a
+  split of the audit key, each its own change.
+- **The raiders** (`RaiderSystem`). About forty calls in twelve Sim files reach them: spells (`RaiderAt`,
+  `DamageRaider`, `LandOnRaider`, `ApplyRaiderElement`, `Force`, `Hurl`, `ShoveRaider`, `BlastRaiders`), strikes,
+  reactions, flashes, waves, boulders, machines, buildings, the dragon's breath and the Rest stage itself (a cell a
+  raider stands on); they're saved in the save's head ("nextEntityId", "raiders") and the rules' entity rows are read
+  by the rules engine. The bodies' events cover a point strike and a landing, not damage, statuses, elements, blasts
+  or blocking, so raiders as bodies would need a dozen new events: not a pure refactor.
+- **Weather and buildings.** The weather is the world's physics (rain, wind, haste reach every cell), in the save's
+  head and its own checksum part (sky). Buildings are laid from the map's rows and woven into the load's order and
+  the dragon's start (`NoteBaseBuildings`, `BuildingsIntoStart`); the Hold's castle reads them. Neither is a mode.
 
 ## Adding a mini-game: bowling
 

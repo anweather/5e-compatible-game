@@ -338,7 +338,6 @@ namespace Chem
             MapStamps.Load(rowsDir).LayInto(world);
             WorldBuildings.Load(rowsDir).LayInto(world);
             world.MapLaid(rowsDir);
-            if (WorldHold.Load(rowsDir) is { } hold && world.InBounds(hold.Heart.x, hold.Heart.y)) world.SetHold(hold);
             return world;
         }
     }
