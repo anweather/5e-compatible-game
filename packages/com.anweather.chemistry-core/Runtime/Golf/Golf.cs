@@ -14,38 +14,15 @@
 // for a held charge, less the cells it landed off the ball, so a blast beside it is a tap. It only rolls the four ways, so
 // a placed cup takes a ball that stops or passes within cupReach. Players at the course take turns: who just hit it waits for someone else's shot, or for turnTicks,
 // so one who walks off stalls nobody. A cast's player comes from the batch; a delayed one (a star, a wave) has none, and
-// takes no turn. The ball going in raises the holed event (World.Triggers.cs). This file is the hole's data; GolfSystem.cs
-// is its system, which the world owns.
+// takes no turn. The ball going in raises the holed event (World.Triggers.cs). This file is the hole's data, the ball a
+// Body the core steps (D22); GolfMode.cs is golf's mode, installed on a world that plays it; its numbers are sim.json's
+// "golf" (GolfParams, RuleModes.cs).
 using System;
 using System.IO;
 using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    public sealed class GolfParams
-    {
-        public int Every = 1;
-        public int PushRoll = 5, ThrowCarry = 3;
-        public int Margin = 16;
-        public int LevelRoll = 2;
-        public int TurnTicks = 90;
-        public int CupReach = 1;
-
-        internal static GolfParams Parse(JToken t)
-        {
-            var g = new GolfParams();
-            if (!(t is JObject o)) return g;
-            g.Every = Math.Max(1, (int?)o["every"] ?? g.Every);
-            g.PushRoll = (int?)o["pushRoll"] ?? g.PushRoll;
-            g.ThrowCarry = (int?)o["throwCarry"] ?? g.ThrowCarry;
-            g.Margin = (int?)o["margin"] ?? g.Margin;
-            g.LevelRoll = (int?)o["levelRoll"] ?? g.LevelRoll;
-            g.TurnTicks = (int?)o["turnTicks"] ?? g.TurnTicks;
-            g.CupReach = (int?)o["cupReach"] ?? g.CupReach;
-            return g;
-        }
-    }
-
     public readonly struct GolfCommand
     {
         public GolfCommand(int teeX, int teeY, int holeX, int holeY)
@@ -76,14 +53,30 @@ namespace Chem
 
     public sealed class GolfState
     {
-        public int TeeX, TeeY, HoleX, HoleY, X, Y, Strokes, Dir, Roll, Carry, Age;
+        public int TeeX, TeeY, HoleX, HoleY, Strokes;
         public bool Holed;
         public string LastBy;
         public int TurnEnds;
         public bool Placed, NoBall, NoCup;
-        public bool Moving => !Holed && (Roll > 0 || Carry > 0);
+
+        public Body Ball { get; private set; } = new Body();
+
+        public int X { get => Ball.X; set => Ball.X = value; }
+        public int Y { get => Ball.Y; set => Ball.Y = value; }
+        public int Dir { get => Ball.Dir; set => Ball.Dir = value; }
+        public int Roll { get => Ball.Roll; set => Ball.Roll = value; }
+        public int Carry { get => Ball.Carry; set => Ball.Carry = value; }
+        public int Age { get => Ball.Age; set => Ball.Age = value; }
+
+        public bool Moving => !Holed && Ball.Moving;
         public bool InPlay => !Holed && !NoBall;
         internal bool Plain => LastBy == null && !Placed;
-        internal GolfState Copy() => (GolfState)MemberwiseClone();
+
+        internal GolfState Copy()
+        {
+            var copy = (GolfState)MemberwiseClone();
+            copy.Ball = Ball.Copy();
+            return copy;
+        }
     }
 }

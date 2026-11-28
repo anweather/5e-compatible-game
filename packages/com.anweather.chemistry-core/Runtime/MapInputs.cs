@@ -11,7 +11,7 @@ namespace Chem
     {
         public static readonly string[] Files =
         {
-            MapFile.FileName, MapStamps.FileName, VillageLayout.FileName, WorldBuildings.FileName, WorldPuzzles.FileName, GolfCommand.FileName,
+            MapFile.FileName, MapStamps.FileName, VillageLayout.FileName, WorldBuildings.FileName, WorldPuzzles.FileName, "golf.json",
         };
 
         public const string ThemesFolder = "themes";

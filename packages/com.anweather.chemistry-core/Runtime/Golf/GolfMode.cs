@@ -1,7 +1,11 @@
-// Spell golf's system (docs/BACKLOG.md 24, docs/design/architecture-review.md step 9, D9): the hole played, over the
-// world's cells, tick, rules and log. Port of sandbox/src/golf.ts, line for line; the data is Golf.cs, which says how the
-// ball goes. The world owns one (World.GolfSystem) and ticks it after the boulders. It reads the cells (and the land's
-// hills under them), the wizards' stands and the cast's player; it writes its GolfState, the log and the holed event.
+// Spell golf's mode (docs/BACKLOG.md 24, D22, docs/design/minigames.md): the hole played, over the world's cells, tick,
+// rules and log. Port of sandbox/src/golf.ts, line for line; the data is Golf.cs, which says how the ball goes. A world
+// that plays golf installs one (GolfMode.Install), and a joiner's world takes it from the one it replaces. The ball is
+// a Body: the world steps it after the boulders, and this answers its events (out of the course, a bounce, where it
+// comes to). Spells strike it or land on it through the world's events. It reads the cells (and the land's hills under
+// them), the wizards' stands and the cast's player; it writes its GolfState, the log and the holed event. Its slot is
+// what the world wrote for golf before it was a mode: "golf" in the save, after the machines, "|g..." in the casts
+// checksum text after the boulders, and "golf" first in the dragon's start. A map's golf.json lays its hole.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -10,55 +14,86 @@ using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
-    public sealed class GolfSystem
+    public sealed class GolfMode : WorldMode
     {
-        readonly World world;
+        public const string ActKind = "golf", Ball = "golf-ball", Cup = "cup";
 
-        internal GolfSystem(World world)
+        GolfState state, start;
+        Body[] bodies = Array.Empty<Body>();
+
+        GolfMode(World world)
+            : base(world)
         {
-            this.world = world;
         }
 
-        public GolfState State { get; internal set; }
+        public static World Install(World world)
+        {
+            if (world == null) throw new ArgumentNullException(nameof(world));
+            world.Install(new GolfMode(world));
+            return world;
+        }
+
+        public static GolfMode Of(World world) => world?.Mode<GolfMode>();
+
+        public override WorldMode MadeFor(World world) => new GolfMode(world);
+
+        public GolfState State
+        {
+            get => state;
+            internal set
+            {
+                state = value;
+                bodies = value == null ? Array.Empty<Body>() : new[] { value.Ball };
+            }
+        }
+
+        public override IReadOnlyList<Body> Bodies => bodies;
+
+        GolfParams P => World.Rules.Sim.Golf;
 
         public void Apply(GolfCommand command)
         {
+            var world = World;
             world.FinishTick();
             if (!world.InBounds(command.TeeX, command.TeeY) || !world.InBounds(command.HoleX, command.HoleY)) return;
             State = new GolfState { TeeX = command.TeeX, TeeY = command.TeeY, HoleX = command.HoleX, HoleY = command.HoleY, X = command.TeeX, Y = command.TeeY, Dir = -1 };
             world.AddLog("The ball is on the tee: hole it in as few strokes as you can", LogKind.Notable);
         }
 
-        internal void HitBall(SpellDef s, int x, int y, int dir)
+        public override void MapLaid(string dir)
         {
-            var p = world.Rules.Sim.Golf;
-            StrokeBall(s, x, y, dir, s.ForcePush * p.PushRoll + s.ForceThrow, s.ForceThrow * p.ThrowCarry);
+            if (GolfCommand.Load(dir) is { } hole) Apply(hole);
         }
 
-        internal void SpellOnBall(SpellDef s, List<(int x, int y)> cells, (int x, int y) landed, int dir, int charge)
+        public override void SpellStruck(Body body, SpellDef spell, int dir)
+        {
+            if (spell.ForcePush <= 0 && spell.ForceThrow <= 0) return;
+            StrokeBall(spell, body.X, body.Y, dir, spell.ForcePush * P.PushRoll + spell.ForceThrow, spell.ForceThrow * P.ThrowCarry);
+        }
+
+        public override void SpellLanded(Body body, SpellDef spell, List<(int x, int y)> cells, (int x, int y) landed, int dir, int charge)
         {
             var g = State;
-            if (g == null || s.ForcePush > 0 || s.ForceThrow > 0 || !cells.Contains((g.X, g.Y))) return;
-            var p = world.Rules.Sim.Golf;
+            if (g == null || spell.ForcePush > 0 || spell.ForceThrow > 0) return;
+            var world = World;
             int off = Math.Max(Math.Abs(world.DeltaX(landed.x, g.X)), Math.Abs(world.DeltaY(landed.y, g.Y)));
-            StrokeBall(s, g.X, g.Y, World.DirOf(world.DeltaX(landed.x, g.X), world.DeltaY(landed.y, g.Y), dir), Math.Max(1, (p.PushRoll + s.Level * p.LevelRoll) * charge - off), 0);
+            StrokeBall(spell, g.X, g.Y, World.DirOf(world.DeltaX(landed.x, g.X), world.DeltaY(landed.y, g.Y), dir), Math.Max(1, (P.PushRoll + spell.Level * P.LevelRoll) * charge - off), 0);
         }
 
         void StrokeBall(SpellDef s, int x, int y, int dir, int roll, int carry)
         {
             var g = State;
             if (g == null || !g.InPlay || g.X != x || g.Y != y || dir < 0 || (roll <= 0 && carry <= 0) || !TurnOpen(g)) return;
-            if (world.CastBy != null) (g.LastBy, g.TurnEnds) = (world.CastBy, world.Tick + world.Rules.Sim.Golf.TurnTicks);
-            g.Dir = dir;
-            g.Roll = roll;
-            g.Carry = carry;
-            g.Age = 0;
+            var world = World;
+            if (world.CastBy != null) (g.LastBy, g.TurnEnds) = (world.CastBy, world.Tick + P.TurnTicks);
+            g.Ball.Launch(dir, roll, carry);
             g.Strokes++;
             world.AddLog($"Stroke {g.Strokes.ToString(CultureInfo.InvariantCulture)}: the {s.Name.ToLowerInvariant()} sends the ball {DirName(dir)}");
         }
 
         bool TurnOpen(GolfState g)
         {
+            var world = World;
             if (world.CastBy == null || world.CastBy != g.LastBy) return true;
             world.ReadStands();
             if (!Waiting(g)) return true;
@@ -67,15 +102,20 @@ namespace Chem
         }
 
         public bool Waiting(GolfState g) =>
-            g.LastBy != null && world.Tick < g.TurnEnds && world.Stands.Values.Any(w => w.Player != g.LastBy && !w.Down && InCourse(g, w.X, w.Y));
+            g.LastBy != null && World.Tick < g.TurnEnds && World.Stands.Values.Any(w => w.Player != g.LastBy && !w.Down && InCourse(g, w.X, w.Y));
 
-        internal int Place(string what, List<(int x, int y)> cells)
+        public override bool KnowsAct(string kind, string what) => kind == ActKind && (what == Ball || what == Cup);
+
+        public override string ActStays(string kind) => kind == ActKind ? "a ball or cup can't be taken back: place it again somewhere else" : null;
+
+        public override int Act(string kind, string what, List<(int x, int y)> cells)
         {
             if (cells.Count == 0) return 0;
+            var world = World;
             var (x, y) = cells[0];
             if (!world.InBounds(x, y) || !world.IsActiveAt(x, y) || world.IsBlocking(world.At(x, y)) || World.InWater(world.At(x, y))) return 0;
             var g = State ?? new GolfState { TeeX = x, TeeY = y, HoleX = x, HoleY = y, NoBall = true, NoCup = true };
-            bool ball = what == World.GolfBall;
+            bool ball = what == Ball;
             if (ball ? !g.NoCup && g.HoleX == x && g.HoleY == y : !g.NoBall && g.TeeX == x && g.TeeY == y) return 0;
             if (ball) (g.TeeX, g.TeeY, g.NoBall) = (x, y, false);
             else (g.HoleX, g.HoleY, g.NoCup) = (x, y, false);
@@ -89,94 +129,34 @@ namespace Chem
             return 1;
         }
 
-        internal void Tick()
+        public override bool BodyMoves(Body body) => State != null && !State.Holed;
+
+        public override int BodyEvery(Body body) => P.Every;
+
+        public override bool BodyMayEnter(Body body, int x, int y) => State != null && InCourse(State, x, y);
+
+        public override void BodyLeft(Body body) => LoseBall(State, "out of bounds");
+
+        public override void BodyBounced(Body body, int x, int y) =>
+            World.LogOnce($"bounce#{World.Whole(x)}:{World.Whole(y)}", "The ball bounces back off the rock");
+
+        public override bool BodyArrived(Body body)
         {
             var g = State;
-            if (g == null || !g.Moving || ++g.Age % world.Rules.Sim.Golf.Every != 0) return;
-            if (g.Carry > 0) Fly(g);
-            else RollBall(g);
-        }
-
-        void Fly(GolfState g)
-        {
-            int nx = g.X + World.DirX(g.Dir), ny = g.Y + World.DirY(g.Dir);
-            if (!OnCourse(g, nx, ny))
-            {
-                LoseBall(g, "out of bounds");
-                return;
-            }
-            if (world.IsBlocking(world.At(nx, ny))) g.Dir = (g.Dir + 2) % 4;
-            else
-            {
-                g.X = world.FoldX(nx);
-                g.Y = world.FoldY(ny);
-            }
-            if (--g.Carry == 0) Arrive(g);
-        }
-
-        void RollBall(GolfState g)
-        {
-            int nx = g.X + World.DirX(g.Dir), ny = g.Y + World.DirY(g.Dir);
-            if (!OnCourse(g, nx, ny))
-            {
-                LoseBall(g, "out of bounds");
-                return;
-            }
-            if (world.IsBlocking(world.At(nx, ny)))
-            {
-                g.Dir = (g.Dir + 2) % 4;
-                g.Roll--;
-                world.LogOnce($"bounce#{World.Whole(nx)}:{World.Whole(ny)}", "The ball bounces back off the rock");
-            }
-            else
-            {
-                int step = world.Rules.Sim.WaterUnitsPerStep, rise = world.GroundUnits(nx, ny) - world.GroundUnits(g.X, g.Y);
-                int cost = rise > 0 ? 1 + (rise + step - 1) / step : 1;
-                if (cost > g.Roll) g.Roll = 0;
-                else
-                {
-                    g.X = world.FoldX(nx);
-                    g.Y = world.FoldY(ny);
-                    g.Roll += -cost + (rise < 0 ? -rise / step : 0);
-                    if (Arrive(g)) return;
-                }
-            }
-            if (g.Roll <= 0) Downhill(g);
-        }
-
-        bool Arrive(GolfState g)
-        {
+            var world = World;
             if (World.InWater(world.At(g.X, g.Y)))
             {
                 LoseBall(g, "in the water");
                 return true;
             }
-            int reach = g.Placed ? world.Rules.Sim.Golf.CupReach : 0;
+            int reach = g.Placed ? P.CupReach : 0;
             if (g.NoCup || Math.Abs(world.DeltaX(g.HoleX, g.X)) > reach || Math.Abs(world.DeltaY(g.HoleY, g.Y)) > reach) return false;
             (g.X, g.Y) = (g.HoleX, g.HoleY);
             g.Holed = true;
             g.Roll = g.Carry = 0;
             world.AddLog(g.Strokes == 1 ? "Holed in one!" : $"Holed in {g.Strokes.ToString(CultureInfo.InvariantCulture)}!", LogKind.Notable);
-            world.BallHoled(g);
+            world.RaiseHoled(g.LastBy, g.HoleX, g.HoleY);
             return true;
-        }
-
-        void Downhill(GolfState g)
-        {
-            g.Roll = 0;
-            int best = -1, bestLevel = world.GroundUnits(g.X, g.Y);
-            for (int dir = 0; dir < 4; dir++)
-            {
-                int nx = g.X + World.DirX(dir), ny = g.Y + World.DirY(dir);
-                if (!OnCourse(g, nx, ny) || world.IsBlocking(world.At(nx, ny))) continue;
-                int level = world.GroundUnits(nx, ny);
-                if (level >= bestLevel) continue;
-                best = dir;
-                bestLevel = level;
-            }
-            if (best < 0) return;
-            g.Dir = best;
-            g.Roll = 1;
         }
 
         void LoseBall(GolfState g, string where)
@@ -185,19 +165,27 @@ namespace Chem
             g.Y = g.TeeY;
             g.Roll = g.Carry = 0;
             g.Strokes++;
-            world.AddLog($"The ball is {where}: back on the tee, a stroke's penalty", LogKind.Notable);
+            World.AddLog($"The ball is {where}: back on the tee, a stroke's penalty", LogKind.Notable);
         }
-
-        bool OnCourse(GolfState g, int x, int y) => world.InBounds(x, y) && world.IsActiveAt(x, y) && InCourse(g, x, y);
 
         bool InCourse(GolfState g, int x, int y)
         {
-            int m = world.Rules.Sim.Golf.Margin;
+            int m = P.Margin;
             return x >= Math.Min(g.TeeX, g.HoleX) - m && x <= Math.Max(g.TeeX, g.HoleX) + m
                 && y >= Math.Min(g.TeeY, g.HoleY) - m && y <= Math.Max(g.TeeY, g.HoleY) + m;
         }
 
         static string DirName(int dir) => dir switch { 0 => "north", 1 => "east", 2 => "south", _ => "west" };
+
+        public override void KeepStart() => start = State?.Copy();
+
+        public override void ChunkReset(int cx, int cy)
+        {
+            var tee = State ?? start;
+            if (tee != null && Chunks.ChunkOf(tee.TeeX) == cx && Chunks.ChunkOf(tee.TeeY) == cy) State = start?.Copy();
+        }
+
+        public override string SlotText() => Text();
 
         public string Text()
         {
@@ -211,12 +199,24 @@ namespace Chem
 
         public string Hash() => Fnv1a.Hash(Text());
 
-        internal void Save(JObject save)
+        public override void SaveSlot(JObject save)
         {
             if (State != null) save["golf"] = Row(State);
         }
 
-        internal static JArray Row(GolfState g)
+        public override void SaveStart(JObject start)
+        {
+            if (this.start != null) start["golf"] = Row(this.start);
+        }
+
+        public override void LoadSlot(JObject save)
+        {
+            if (save == null) return;
+            if (save["golf"] is JArray g) State = Read(g);
+            if (save["start"] is JObject saved) start = saved["golf"] is JArray s ? Read(s) : null;
+        }
+
+        static JArray Row(GolfState g)
         {
             var row = new JArray(g.TeeX, g.TeeY, g.HoleX, g.HoleY, g.X, g.Y, g.Strokes, g.Holed ? 1 : 0, g.Dir, g.Roll, g.Carry, g.Age);
             if (g.Plain) return row;
@@ -226,12 +226,7 @@ namespace Chem
             return row;
         }
 
-        internal void Load(JObject s)
-        {
-            if (s["golf"] is JArray g) State = Read(g);
-        }
-
-        internal static GolfState Read(JArray g) =>
+        static GolfState Read(JArray g) =>
             new GolfState
             {
                 TeeX = (int)g[0],

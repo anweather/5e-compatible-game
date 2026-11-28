@@ -1,4 +1,4 @@
-// Spell golf (docs/BACKLOG.md 24; GolfSystem.cs): the ball, the strokes and the course in world/golf.json.
+// Spell golf (docs/BACKLOG.md 24; GolfMode.cs, D22): the ball, the strokes and the course in world/golf.json.
 using System;
 using System.Linq;
 using NUnit.Framework;
@@ -13,7 +13,7 @@ namespace Chem.Tests
 
         static World Strip()
         {
-            var w = new World(R, 40, 12, 3, "dirt");
+            var w = GolfMode.Install(new World(R, 40, 12, 3, "dirt"));
             for (int y = 3; y <= 7; y++)
             {
                 w.At(11, y).Height = 1;
@@ -33,7 +33,7 @@ namespace Chem.Tests
         {
             w.Cast(spell, x, y, 1);
             Run(w, 24);
-            return (w.Golf.X, w.Golf.Y);
+            return (w.Golf().X, w.Golf().Y);
         }
 
         [Test]
@@ -42,12 +42,12 @@ namespace Chem.Tests
             var w = Strip();
             Assert.That(Stroke(w, "gust-of-wind", 2, 5), Is.EqualTo((14, 5)), "the tee shot rolls over the rise");
             Assert.That(Stroke(w, "gust-of-wind", 12, 5), Is.EqualTo((4, 5)), "into the pond: back on the tee");
-            Assert.That(w.Golf.Strokes, Is.EqualTo(3), "a stroke's penalty");
+            Assert.That(w.Golf().Strokes, Is.EqualTo(3), "a stroke's penalty");
             Assert.That(Stroke(w, "gust-of-wind", 2, 5), Is.EqualTo((14, 5)));
             Assert.That(Stroke(w, "mold-earth-heap", 14, 5), Is.EqualTo((22, 5)), "Raise Earth throws it over the pond");
             Assert.That(Stroke(w, "gust-of-wind", 20, 5), Is.EqualTo((30, 5)));
-            Assert.That(w.Golf.Holed && w.Log.Any(l => l.Text == "Holed in 6!"));
-            Assert.That($"{w.GolfSystem.Text()} {w.GolfSystem.Hash()} {w.CellHash()} {w.RngState}", Is.EqualTo("|g30:5:6:1:1:0:0:8 afbde760 4fbe03ad 3"), "the golden");
+            Assert.That(w.Golf().Holed && w.Log.Any(l => l.Text == "Holed in 6!"));
+            Assert.That($"{GolfMode.Of(w).Text()} {GolfMode.Of(w).Hash()} {w.CellHash()} {w.RngState}", Is.EqualTo("|g30:5:6:1:1:0:0:8 afbde760 4fbe03ad 3"), "the golden");
         }
 
         [Test]
@@ -57,36 +57,36 @@ namespace Chem.Tests
             string before = w.CastHash();
             w.Cast("gust-of-wind", 2, 5, 1);
             Run(w, 3);
-            Assert.That(w.Golf.Moving, "still rolling");
+            Assert.That(w.Golf().Moving, "still rolling");
             Assert.That(w.CastHash(), Is.Not.EqualTo(before), "the ball is hashed");
-            var back = World.Load(w.Save(new Blank()), R, new Blank());
-            Assert.That(back.GolfSystem.Text(), Is.EqualTo(w.GolfSystem.Text()));
+            var back = GolfMode.Install(World.Load(w.Save(new Blank()), R, new Blank()));
+            Assert.That(GolfMode.Of(back).Text(), Is.EqualTo(GolfMode.Of(w).Text()));
             Run(w, 20);
             Run(back, 20);
-            Assert.That(back.GolfSystem.Text(), Is.EqualTo(w.GolfSystem.Text()), "and rolls on the same");
-            Assert.That(new World(R, 8, 8, 1, "dirt").GolfSystem.Text(), Is.Empty, "a world without golf hashes as it did");
+            Assert.That(GolfMode.Of(back).Text(), Is.EqualTo(GolfMode.Of(w).Text()), "and rolls on the same");
+            Assert.That(GolfMode.Of(GolfMode.Install(new World(R, 8, 8, 1, "dirt"))).Text(), Is.Empty, "a world without golf hashes as it did");
         }
 
         [Test]
         public void ItBouncesOffRockRollsDownhillAndOutOfBoundsCostsAStroke()
         {
-            var w = new World(R, 40, 12, 3, "dirt");
+            var w = GolfMode.Install(new World(R, 40, 12, 3, "dirt"));
             w.At(6, 5).T = "stone";
             w.ApplyGolf(new GolfCommand(4, 5, 30, 5));
             w.Cast("gust-of-wind", 2, 5, 1);
             Run(w, 24);
             Assert.That(w.Log.Any(l => l.Text == "The ball bounces back off the rock"));
-            Assert.That(w.Golf.X, Is.LessThan(6), "back the way it came");
+            Assert.That(w.Golf().X, Is.LessThan(6), "back the way it came");
             Assert.That(w.Log.Any(l => l.Text.StartsWith("The ball is out of bounds", StringComparison.Ordinal)));
-            Assert.That((w.Golf.X, w.Golf.Y, w.Golf.Strokes), Is.EqualTo((4, 5, 2)));
+            Assert.That((w.Golf().X, w.Golf().Y, w.Golf().Strokes), Is.EqualTo((4, 5, 2)));
 
-            var hill = new World(R, 30, 10, 3, "dirt");
+            var hill = GolfMode.Install(new World(R, 30, 10, 3, "dirt"));
             for (int x = 13; x < 30; x++) hill.At(x, 5).Height = x == 13 ? -1 : -2;
             hill.ApplyGolf(new GolfCommand(2, 5, 25, 2));
             hill.Cast("gust-of-wind", 0, 5, 1);
             Run(hill, 24);
-            Assert.That(hill.Golf.Moving, Is.False);
-            Assert.That((hill.Golf.X, hill.Golf.Y), Is.EqualTo((15, 5)), "it ran on down the slope and a cell on at its foot");
+            Assert.That(hill.Golf().Moving, Is.False);
+            Assert.That((hill.Golf().X, hill.Golf().Y), Is.EqualTo((15, 5)), "it ran on down the slope and a cell on at its foot");
         }
 
         [Test]

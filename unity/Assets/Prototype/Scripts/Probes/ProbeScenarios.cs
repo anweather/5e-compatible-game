@@ -86,7 +86,7 @@ public static class ProbeScenarios
             "What fog weather costs: frame times over the same view in clear weather and under the weather's fog, with the cells of gas and " +
             "of FogBank drawn. Shots clear, foggy and low in it with --shots. Checks: the fog lies, its thin veil isn't drawn cell by cell, no console errors."),
         new Entry("golf", typeof(GolfProbe), 150f,
-            "Spell golf's hole played through the caster (GolfCourse, World.Golf): the tee, flag, hole and ball drawn, the HUD's stroke line, Gust of Wind " +
+            "Spell golf's hole played through the caster (GolfCourse, world.Golf()): the tee, flag, hole and ball drawn, the HUD's stroke line, Gust of Wind " +
             "to the hole; then the meadow coil beside it: its cells laid, no tree on its pond, a bolt into the pond opens the gate. Shots with --shots."),
         new Entry("cup", typeof(CupProbe), 90f,
             "A ball and a cup placed through the real MCP server (act) by the wizard: the course moves to them, Fire Bolt moves the ball, and it goes in with fireworks over the cup. Shots with --shots."),

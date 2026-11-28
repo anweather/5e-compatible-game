@@ -324,11 +324,12 @@ namespace Chem
             }
         }
 
-        public static World MapWorld(GeneratedSource source, string rowsDir, Rules rules, uint seed, out (int x, int y) start)
+        public static World MapWorld(GeneratedSource source, string rowsDir, Rules rules, uint seed, out (int x, int y) start, Func<World, World> modes = null)
         {
             if (source == null) throw new ArgumentNullException(nameof(source));
             var map = MapFile.Load(rowsDir);
             var world = new World(rules, source.W, source.H, seed, wrapX: map.WrapX, wrapY: map.WrapY);
+            if (modes != null) world = modes(world);
             world.SetLandRange(map.LandRange);
             world.MakeFrom(source);
             world.LandFromSource();
@@ -336,7 +337,7 @@ namespace Chem
             WorldPuzzles.Load(rowsDir).LayInto(world);
             MapStamps.Load(rowsDir).LayInto(world);
             WorldBuildings.Load(rowsDir).LayInto(world);
-            if (GolfCommand.Load(rowsDir) is { } hole) world.ApplyGolf(hole);
+            world.MapLaid(rowsDir);
             if (WorldHold.Load(rowsDir) is { } hold && world.InBounds(hold.Heart.x, hold.Heart.y)) world.SetHold(hold);
             return world;
         }

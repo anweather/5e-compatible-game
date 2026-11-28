@@ -16,6 +16,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../Game.Core/Game.Core.csproj" />
+    <!-- The rooms this server makes play golf (Workbench.Modes, D22), as they did when golf was in the core; not the Hold. -->
+    <ProjectReference Include="../Chem.Play.Golf/Chem.Play.Golf.csproj" />
   </ItemGroup>
 
   <ItemGroup>

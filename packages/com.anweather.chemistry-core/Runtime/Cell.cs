@@ -271,7 +271,7 @@ namespace Chem
         public int Count;
     }
 
-    internal static class Fnv1a
+    public static class Fnv1a
     {
         public static string Hash(string s)
         {

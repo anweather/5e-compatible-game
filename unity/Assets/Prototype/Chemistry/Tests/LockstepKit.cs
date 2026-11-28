@@ -126,10 +126,9 @@ namespace Chem.Tests
 
         internal static ActiveMod[] Mod(string id, string json) => new[] { new ActiveMod(id, json.Replace('\'', '"')) };
 
-        internal static string SnapshotDifference(HostRun host, JoinSnapshot snapshot, IChunkSource source, int[] land = null, Func<World, World> modes = null)
+        internal static string SnapshotDifference(HostRun host, JoinSnapshot snapshot, IChunkSource source, int[] land = null, World modesOf = null)
         {
-            var (w, set) = snapshot.Join(ChemistryTests.R, source, land);
-            if (modes != null) w = modes(w);
+            var (w, set) = snapshot.Join(ChemistryTests.R, source, land, null, modesOf);
             var strikes = host.AllStrikes.Where(s => s.Tick > snapshot.Tick).ToLookup(s => s.Tick, s => s.Command);
             for (int t = snapshot.Tick + 1; t <= host.Ticks; t++)
             {

@@ -11,7 +11,7 @@
 // - a checksum (World.StrikeText, in CastHash): every window's end (RollingHash) and every Every'th tick;
 // - a strike, aimed and knocked back by where everyone stands, and a leaving: these keep every stand up
 //   to them, as they always did;
-// - the rules that read them as they run: the golf turn (World.GolfWaiting), a run of the Hold starting
+// - the rules that read them as they run: the golf turn (GolfMode.Waiting), a run of the Hold starting
 //   (how many stand), a hand attuning (not while down), and any trigger firing. The world counts each such
 //   read (World.StandReads), and the host tells this which ticks had one (Ran);
 // - the Hold through a run and at its plate and towers (World.HoldReadsStand): every stand on them and the

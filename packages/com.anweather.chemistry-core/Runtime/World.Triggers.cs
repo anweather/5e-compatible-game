@@ -85,11 +85,11 @@ namespace Chem
                     if (t.IsFor(me.Player, TriggerDef.PeerOf(me.Player)) && Due(t, me.Player)) Fire(t, me, 0, 1);
         }
 
-        internal void BallHoled(GolfState g)
+        public void RaiseHoled(string by, int x, int y)
         {
             var list = Rules.TriggersOn(TriggerEvent.Holed);
             if (list.Count == 0) return;
-            var cup = new WizardStand { Player = g.LastBy ?? TriggerDef.SoloPlayer, X = g.HoleX, Y = g.HoleY };
+            var cup = new WizardStand { Player = by ?? TriggerDef.SoloPlayer, X = x, Y = y };
             string peer = TriggerDef.PeerOf(cup.Player);
             foreach (var t in list)
                 if (t.IsFor(cup.Player, peer) && Due(t, cup.Player)) Fire(t, cup, 0, 1);

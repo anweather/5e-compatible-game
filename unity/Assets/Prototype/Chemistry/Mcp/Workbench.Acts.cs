@@ -242,9 +242,11 @@ namespace Chem.Mcp
             return null;
         }
 
+        const string GolfAct = "golf", GolfBall = "golf-ball", GolfCup = "cup";
+
         static string AfterAct(string kind)
         {
-            if (kind == World.ActGolf) return " Any spell that lands on the ball moves it, and players at the course take turns.";
+            if (kind == GolfAct) return " Any spell that lands on the ball moves it, and players at the course take turns.";
             if (kind == World.ActLand) return " undo_act takes it back. Land stops nothing yet: raiders, sight and spells pass over it.";
             return kind == World.ActThing || kind == World.ActTerrain || kind == World.ActCover ? " undo_act takes it back." : "";
         }
@@ -254,7 +256,7 @@ namespace Chem.Mcp
 
         string ActKind(string what)
         {
-            if (what == World.GolfBall || what == World.GolfCup) return World.ActGolf;
+            if (what == GolfBall || what == GolfCup) return GolfAct;
             if (InForce.Terrain.ContainsKey(what)) return World.ActTerrain;
             if (InForce.Covers.ContainsKey(what)) return World.ActCover;
             if (InForce.Entities.ContainsKey(what) || InForce.Items.ContainsKey(what)) return World.ActThing;
@@ -266,7 +268,7 @@ namespace Chem.Mcp
         {
             switch (kind)
             {
-                case World.ActGolf: return 1;
+                case GolfAct: return 1;
                 case World.ActCast: return Budgets.Number("triggers.maxPerTick", 4);
                 case World.ActAnimal: return Budgets.Number("place.maxSummoned", 24);
                 case World.ActThing: return Budgets.Number("place.maxLive", 64);

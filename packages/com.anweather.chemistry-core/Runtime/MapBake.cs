@@ -6,7 +6,7 @@
 // (EnsureRows), for a map too big to bake whole.
 //
 // It was GeneratedMap's until the land became its own assembly (docs/design/chem-land-split.md, way 1): a bake writes
-// places.json from Play's files (CourseLayout, GolfCommand, WorldPuzzles: GeneratedPlaces), so it lives above the land.
+// places.json from Play's files (CourseLayout, golf.json, WorldPuzzles: GeneratedPlaces), so it lives above the land.
 // Bake, WriteRowsOnly and SpawnPlaces are extensions, so map.Bake(dir) reads as it did.
 using System;
 using System.Collections.Generic;

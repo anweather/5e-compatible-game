@@ -131,8 +131,7 @@ public partial class ChemGrid : MonoBehaviour
 
     public void LoadSnapshot(JoinSnapshot snapshot)
     {
-        var (world, rules) = snapshot.Join(CurrentRules.Base, World.Source, MapLandUnits(), Budgets);
-        world.InstallModesOf(World);
+        var (world, rules) = snapshot.Join(CurrentRules.Base, World.Source, MapLandUnits(), Budgets, World);
         world.SetLandRange(MapFile.Load(Folders.World).LandRange);
         SetHold(world);
         DropWorldView();
@@ -288,7 +287,7 @@ public partial class ChemGrid : MonoBehaviour
     {
         var source = PlayedSource;
         var map = MapFile.Load(Folders.World);
-        var world = PlayModes.Install(new World(rules, source.W, source.H, seed, wrapX: map.WrapX, wrapY: map.WrapY));
+        var world = WithModes(new World(rules, source.W, source.H, seed, wrapX: map.WrapX, wrapY: map.WrapY));
         world.SetLandRange(map.LandRange);
         world.MakeFrom(source);
         world.LandFromSource();
@@ -319,7 +318,7 @@ public partial class ChemGrid : MonoBehaviour
     public static World MapWorld(Rules rules, string map, uint seed, out Vector2Int start)
     {
         var source = BakedSource.FromText(map, rules);
-        var world = PlayModes.Install(new World(rules, source.W, source.H, seed));
+        var world = WithModes(new World(rules, source.W, source.H, seed));
         world.SetLandRange(MapFile.Load(Folders.World).LandRange);
         world.MakeFrom(source);
         start = new Vector2Int(source.Start.x, source.Start.y);
@@ -331,11 +330,13 @@ public partial class ChemGrid : MonoBehaviour
         return world;
     }
 
+    public static World WithModes(World world) => GolfMode.Install(PlayModes.Install(world));
+
     static void LayGolf(World world)
     {
         try
         {
-            if (GolfCommand.Load(Folders.World) is { } hole) world.ApplyGolf(hole);
+            world.MapLaid(Folders.World);
         }
         catch (System.Exception e) when (e is System.FormatException || e is IOException)
         {

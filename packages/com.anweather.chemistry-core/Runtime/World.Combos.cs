@@ -204,7 +204,7 @@ namespace Chem
         public string CastHash() => Fnv1a.Hash(CastText(StrikeText()));
 
         public string CastText(string stands) =>
-            CastState() + WhirlState() + WaveState() + BoulderState() + GolfSystem.Text() + ZoneText() + CourseText() + RoomText() + stands + HoldText() + HandsText() + PlacedText() + ActText() + LaidText() + TriggerText();
+            CastState() + WhirlState() + WaveState() + BoulderState() + ModesText() + ZoneText() + CourseText() + RoomText() + stands + HoldText() + HandsText() + PlacedText() + ActText() + LaidText() + TriggerText();
 
         public string WhirlState() => string.Concat(whirls.Select(ww => $"|{Whole(ww.X)}:{Whole(ww.Y)}:{Whole(ww.Age)}:{ww.Carrying ?? "-"}"));
 
@@ -213,6 +213,6 @@ namespace Chem
 
         static string ChargeState(PlayerCast c) => (c.Holding ? ":hold" : "") + (c.Holding || c.Charge > 1 ? ":c" + Whole(c.Charge) : "");
 
-        internal static string Whole(int n) => n.ToString(CultureInfo.InvariantCulture);
+        public static string Whole(int n) => n.ToString(CultureInfo.InvariantCulture);
     }
 }

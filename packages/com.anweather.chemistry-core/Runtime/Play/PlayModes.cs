@@ -4,17 +4,15 @@
 // had them. Install puts them on a world once, before it ticks or loads what a mode does: every place that makes a
 // world to play (the view, the runners, the tools, a peer) installs them, and a joiner's world takes them from the one
 // it replaces (World.InstallModesOf). World.Play() is how code outside the core reaches them.
-using System;
-
 namespace Chem
 {
-    public sealed class PlayModes : IWorldModes
+    public sealed class PlayModes : WorldMode, IWorldModes
     {
         readonly WayField ways = new WayField();
 
         PlayModes(World world)
+            : base(world)
         {
-            World = world ?? throw new ArgumentNullException(nameof(world));
             Course = new CourseSystem(world);
             Defense = new DefenseSystem(world, ways);
             Hold = new HoldSystem(world, ways, Defense);
@@ -26,15 +24,13 @@ namespace Chem
             return world;
         }
 
-        public World World { get; }
-
         public CourseSystem Course { get; }
 
         public DefenseSystem Defense { get; }
 
         public HoldSystem Hold { get; }
 
-        IWorldModes IWorldModes.MadeFor(World world) => new PlayModes(world);
+        public override WorldMode MadeFor(World world) => new PlayModes(world);
 
         void IWorldModes.TickAfterRaiders()
         {

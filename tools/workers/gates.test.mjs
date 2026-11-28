@@ -71,7 +71,7 @@ const projectsIn = (ran, filter) => {
   const hit = runs.find(r => r[2] === filter);
   return hit ? JSON.parse(hit[3]).solution.projects.map(p => p.split("/")[0]).sort() : null;
 };
-const ALL = ["Chat.Bench.Tests", "Chem.Land.Tests", "Chem.LandWorld.Tests", "Chem.Lockstep.Tests", "Chem.Play.Tests", "Chem.Playtest.Tests", "Chem.Rules.Tests", "Chem.Shared.Tests", "Chem.Sim.Tests", "Hold.Runner.Tests", "Playtest.Runner.Tests", "Prototype.Plans.Tests", "Rules.Mcp.Tests"];
+const ALL = ["Chat.Bench.Tests", "Chem.Land.Tests", "Chem.LandWorld.Tests", "Chem.Lockstep.Tests", "Chem.Play.Golf.Tests", "Chem.Play.Tests", "Chem.Playtest.Tests", "Chem.Rules.Tests", "Chem.Shared.Tests", "Chem.Sim.Tests", "Hold.Runner.Tests", "Playtest.Runner.Tests", "Prototype.Plans.Tests", "Rules.Mcp.Tests"];
 
 test("the map agrees with core/'s csproj files and Chem.Tests.props", () => {
   const r = spawnSync(process.execPath, [join(dirname(script), "modules.mjs"), "check"], { encoding: "utf8" });
@@ -120,6 +120,20 @@ test("a Land runtime change runs the land's tests, not past Game.Core (the stop 
   assert.deepEqual(tested, ["Chem.Land.Tests", "Chem.LandWorld.Tests"], "they reference Chem.Land; the rest reach it only through Game.Core");
   assert.deepEqual(projectsIn(ran, "TestCategory=Unit"), ALL.filter(p => !tested.includes(p)), "the smoke is every other project's Unit fixtures");
   assert.match(out, /runtime-land \[.*HillsRoads\.cs\]: .*not past Game\.Core/, "it says why");
+});
+
+test("a golf change runs golf's own tests, not past Rules.Mcp; the rest get the smoke (D22)", () => {
+  const { code, out, ran } = run(NOTHING, "0", ["packages/com.anweather.chemistry-core/Runtime/Golf/GolfMode.cs", "unity/Assets/Prototype/Chemistry/Tests/GolfTests.cs"]);
+  assert.equal(code, 0, out);
+  const tested = projectsIn(ran, "TestCategory!=Sweep");
+  assert.deepEqual(tested, ["Chem.Play.Golf.Tests"], "the MCP server's rooms install golf; its tests reach golf only through it");
+  assert.deepEqual(projectsIn(ran, "TestCategory=Unit"), ALL.filter(p => !tested.includes(p)), "the smoke is every other project's Unit fixtures");
+  assert.match(out, /runtime-golf \[.*GolfMode\.cs\]: .*not past Rules\.Mcp/, "it says why");
+});
+
+test("a Hold change doesn't run golf's tests, nor golf the Hold's", () => {
+  const tested = projectsIn(run(NOTHING, "0", ["packages/com.anweather.chemistry-core/Runtime/Play/HoldSystem.cs"]).ran, "TestCategory!=Sweep");
+  assert.ok(tested.includes("Chem.Play.Tests") && !tested.includes("Chem.Play.Golf.Tests"), tested.join(" "));
 });
 
 test("the stop cuts only its own module's changes: a Land file with a Sim file runs everything", () => {

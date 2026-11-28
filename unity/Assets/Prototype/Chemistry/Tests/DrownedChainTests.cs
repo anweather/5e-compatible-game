@@ -53,7 +53,7 @@ namespace Chem.Tests
             WorldPuzzles.Load(Dir).LayInto(w);
             Assert.That(MapStamps.Load(Dir).LayInto(w), Is.Empty);
             WorldBuildings.Load(Dir).LayInto(w);
-            if (GolfCommand.Load(Dir) is { } hole) w.ApplyGolf(hole);
+            w.MapLaid(Dir);
             if (WorldHold.Load(Dir) is { } hold) w.SetHold(hold);
             w.KeepStart();
             w.SetAllActive(false);
@@ -111,7 +111,6 @@ namespace Chem.Tests
             Assert.That(GroundPack.In(Dir), Is.False, "no ground/");
             foreach (string file in new[] { "golf.json", CourseLayout.FileName, WorldPuzzles.FileName, WorldHold.FileName, MapStamps.FileName, WorldBuildings.FileName })
                 Assert.That(File.Exists(Path.Combine(Dir, file)), Is.False, file);
-            Assert.That(GolfCommand.Load(Dir), Is.Null);
             Assert.That(WorldHold.Load(Dir), Is.Null);
             Assert.That(WorldPuzzles.Load(Dir).All, Is.Empty);
             Assert.That(WorldBuildings.Load(Dir).FileRows, Is.Empty);

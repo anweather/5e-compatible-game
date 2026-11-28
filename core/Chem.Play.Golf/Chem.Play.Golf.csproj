@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Spell golf, a mini-game (D22, docs/design/minigames.md): golf's world mode over the core's contract and bodies.
+       Compiles Runtime/Golf, which Unity builds as the Chem.Play.Golf assembly. Game.Core doesn't reference it, nor
+       does Chem.Play: a world that plays golf installs it (GolfMode.Install). -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Chem.Play.Golf</AssemblyName>
+    <RootNamespace>Chem</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../../packages/com.anweather.chemistry-core/Runtime/Golf/*.cs" Link="Golf/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Game.Core/Game.Core.csproj" />
+  </ItemGroup>
+</Project>

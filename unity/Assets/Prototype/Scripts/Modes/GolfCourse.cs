@@ -1,11 +1,11 @@
 using Chem;
 using UnityEngine;
 
-// Spell golf's hole in the valley (docs/BACKLOG.md 24; World.Golf): the tee, the
+// Spell golf's hole in the valley (docs/BACKLOG.md 24; world.Golf(), GolfMode): the tee, the
 // flag and its hole, the big ball and the HUD's stroke line, all drawn from what
 // the core says. The world starts with the ball on the tee (ChemGrid.MapWorld), on
 // every machine alike, so there's no command to send. An act can place a ball and a
-// cup anywhere (World.PlaceGolf): the parts follow, and the ball going in sets off
+// cup anywhere (a golf act): the parts follow, and the ball going in sets off
 // fireworks over the cup on every machine. Presentation only; made by ChemGrid with
 // the first frame of a world that has a hole (ChemGrid.GolfShow), on a child of the grid.
 public class GolfCourse : MonoBehaviour
@@ -45,7 +45,7 @@ public class GolfCourse : MonoBehaviour
     void Lay(ChemGrid on)
     {
         grid = on;
-        var g = World.Golf;
+        var g = World.Golf();
         var turf = UrpMaterials.NewLit("Golf tee", new Color(0.42f, 0.68f, 0.3f), 0.15f);
         var dark = UrpMaterials.NewLit("Golf hole", new Color(0.015f, 0.015f, 0.02f), 0f);
         var white = UrpMaterials.NewLit("Golf ball", new Color(0.93f, 0.93f, 0.9f), 0.55f);
@@ -101,7 +101,7 @@ public class GolfCourse : MonoBehaviour
 
     void Update()
     {
-        var g = World?.Golf;
+        var g = World?.Golf();
         if (g == null) return;
         if (laidAt != (g.TeeX, g.TeeY, g.HoleX, g.HoleY)) Stand(g);
         float speed = grid.cellSize * World.Rules.Sim.TicksPerSecond / World.Rules.Sim.Golf.Every * 1.25f;
@@ -117,7 +117,7 @@ public class GolfCourse : MonoBehaviour
 
     public string HudLine()
     {
-        var g = World?.Golf;
+        var g = World?.Golf();
         if (g == null) return "";
         if (g.Holed) return $"Spell golf: in the hole in {g.Strokes}!";
         if (g.NoCup) return "Spell golf: the ball wants a cup";
@@ -129,7 +129,7 @@ public class GolfCourse : MonoBehaviour
 
     bool Near()
     {
-        var g = World?.Golf;
+        var g = World?.Golf();
         var wizard = WizardRig.FindLocal();
         if (g == null || wizard == null) return false;
         var at = grid.CellAt(wizard.transform.position);

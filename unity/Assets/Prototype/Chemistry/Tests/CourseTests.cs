@@ -136,9 +136,9 @@ namespace Chem.Tests
                     Assert.That(land[y * valley.GridW + x], Is.InRange(-2, 12), $"({x}, {y}) is dry, flat shore");
             Assert.That(Enumerable.Range(course.Area.X, course.Area.W).Any(x => land[(course.Area.Y - 10) * valley.GridW + x] < -4), "the lake is just north");
 
-            var golf = GolfCommand.Load(ChemistryTests.WorldDir()).Value;
+            var golf = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(Path.Combine(ChemistryTests.WorldDir(), "golf.json")));
             int m = R.Sim.Golf.Margin;
-            Assert.That(course.Area.Y, Is.GreaterThan(Math.Max(golf.TeeY, golf.HoleY) + m + 40), "far from spell golf");
+            Assert.That(course.Area.Y, Is.GreaterThan(Math.Max((int)golf["tee"][1], (int)golf["hole"][1]) + m + 40), "far from spell golf");
             var coil = WorldPuzzles.Load(ChemistryTests.WorldDir()).All.Single(p => p.Name == "The meadow coil");
             Assert.That(course.Area.Y - coil.Y, Is.GreaterThan(100), "far from the meadow coil's gate");
             foreach (var v in VillageLayout.Load(ChemistryTests.WorldDir()))

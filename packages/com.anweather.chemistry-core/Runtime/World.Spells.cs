@@ -220,7 +220,7 @@ namespace Chem
 
         string castBy;
 
-        internal string CastBy => castBy;
+        public string CastBy => castBy;
 
         int castPower = 100;
         internal int CastPower => castPower;
@@ -509,7 +509,7 @@ namespace Chem
             if (s.Crater != null) Blast(cells);
             Crater(x, y, s.Crater);
             RaiderSystem.BlastRaiders(s, cells, x, y);
-            GolfSystem.SpellOnBall(s, cells, (x, y), dir, charge);
+            BodiesLanded(s, cells, (x, y), dir, charge);
             var forced = new HashSet<int>();
             if (s.Element == null)
             {

@@ -61,6 +61,7 @@ namespace Chem
 
         void BeginTick()
         {
+            ModesStepping();
             Tick++;
             logged.Clear();
             strikes.Clear();
@@ -99,7 +100,7 @@ namespace Chem
                     TickWhirlwinds();
                     TickWaves();
                     TickBoulders();
-                    GolfSystem.Tick();
+                    TickBodies();
                     TickPlaced();
                     TickMachines(tickRows);
                     NextStage(TickStage.Timers);

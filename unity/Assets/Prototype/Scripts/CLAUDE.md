@@ -74,6 +74,9 @@ things go" table is the recipe for adding a spell, material, prop or item.
   the game through those seams, never by editing `ChemGrid`, `PauseMenu` or another hub; its plain logic goes in
   `Plans/` or the core with dotnet tests, its probe in `Probes/`. A new game assembly joins
   `PeersTests.GameAssemblies`, and the Editor tools, tests and probes that use it reference it.
+  A mini-game's core half is a world mode in its own core assembly (D22, `docs/design/minigames.md`); the game
+  installs it in `ChemGrid.WithModes`, the one list of the world modes the game's worlds play (a joiner's world copies
+  them), and its view half draws `world.<Game>()` from `Modes/` or its own folder, joined by a hook (`ChemGrid.GolfShow`).
   The rest: `Net/` is `Prototype.Net` (it references the layers; no layer references it); `Editor/`,
   `Shell/Perf/Editor/` and `Punchy/Terrain/Editor/` are the Editor-only `Prototype.Game.Editor` (`Editor/AssetPacks/`
   keeps `Prototype.AssetPacks.Editor`; `Editor/Playtest/` holds `PlaytestBuild`); `Editor/Tests/` and

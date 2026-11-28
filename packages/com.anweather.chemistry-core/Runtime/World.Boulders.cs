@@ -53,7 +53,7 @@ namespace Chem
             return !InWater(At(b.X, b.Y));
         }
 
-        internal static bool InWater(Cell c) => c.Water > 0 && !c.Frozen;
+        public static bool InWater(Cell c) => c.Water > 0 && !c.Frozen;
 
         const int RollAhead = 4, NoRoll = -1;
 

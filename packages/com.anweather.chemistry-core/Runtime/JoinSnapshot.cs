@@ -3,7 +3,8 @@
 // snapshot is the host's world save (World.Save, its land's marks included), the mods in force outside a room (a room's
 // are in its save), and the host's checksum at that tick, the same parts peers compare (NetChem.Checksum). A joiner
 // loads it over its own map, rules and land, and is refused, saying why, unless they're the host's and the load comes
-// back to that checksum: a part of the world the save misses shows there, not ticks later as a desync.
+// back to that checksum: a part of the world the save misses shows there, not ticks later as a desync. The joiner's
+// world takes the modes of the one it replaces (modesOf) before that check: a mode's slot is in the checksum (D22).
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -77,7 +78,7 @@ namespace Chem
             return new JoinSnapshot((int)o["tick"], (string)world, mods, sum.Select(p => (string)p).ToArray());
         }
 
-        public (World world, RuleSet rules) Join(Rules baseRules, IChunkSource source, int[] land = null, ModBudgets budgets = null)
+        public (World world, RuleSet rules) Join(Rules baseRules, IChunkSource source, int[] land = null, ModBudgets budgets = null, World modesOf = null)
         {
             if (baseRules == null) throw new ArgumentNullException(nameof(baseRules));
             RuleSet rules;
@@ -90,6 +91,7 @@ namespace Chem
                 throw new SaveException($"This snapshot doesn't fit: its mods don't go on these rules ({e.Message})");
             }
             var world = World.Load(Save, IsRoom ? baseRules : rules.Effective, source, budgets, land);
+            if (modesOf != null) world.InstallModesOf(modesOf);
             var now = ChecksumOf(world);
             for (int p = 0; p < now.Length; p++)
                 if (now[p] != Checksum[p])

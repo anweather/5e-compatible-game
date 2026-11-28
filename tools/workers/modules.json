@@ -30,9 +30,12 @@
       "packages/com.anweather.chemistry-core/Runtime/Fauna*",
       "packages/com.anweather.chemistry-core/Runtime/Downed*"
     ] },
+    { "name": "runtime-golf", "projects": ["Chem.Play.Golf"], "stop": ["Rules.Mcp"], "paths": [
+      "packages/com.anweather.chemistry-core/Runtime/Golf/**"
+    ], "_": "Spell golf, a mini-game on its own assembly (D22, docs/design/minigames.md): a golf change runs Chem.Play.Golf.Tests, and Playtest.Text and Rules.Mcp build on it. It stops at Rules.Mcp (the MCP server's rooms install golf): Rules.Mcp.Tests and Chat.Bench reach golf only through it, so they get the Unit smoke, and CI's full run after every push to dev catches the rest (as runtime-land's stop at Game.Core, 2026-11-26)." },
     { "name": "runtime-play", "projects": ["Chem.Play"], "paths": [
       "packages/com.anweather.chemistry-core/Runtime/Play/**"
-    ], "_": "Chem.Play's own assembly (architecture-review.md step 9): the Hold's, the defense field's and the course's systems, above Game.Core. A Play change runs what references Chem.Play: Chem.Play.Tests, Hold.Runner (and its tests) and Playtest.Text, and the rest get the Unit smoke. No stop is needed: nothing heavy reaches Chem.Play, and nothing below it (Game.Core and what's on it) can, so the cut is the references themselves. The modes' state, its save and the seam (World.Play.cs, IWorldModes.cs, Hold.cs, Defense.cs, Course.cs, HoldRun.cs) and the raiders, the dragon and golf are Sim's: runtime-sim, everything." },
+    ], "_": "Chem.Play's own assembly (architecture-review.md step 9): the Hold's, the defense field's and the course's systems, above Game.Core. A Play change runs what references Chem.Play: Chem.Play.Tests, Hold.Runner (and its tests) and Playtest.Text, and the rest get the Unit smoke. No stop is needed: nothing heavy reaches Chem.Play, and nothing below it (Game.Core and what's on it) can, so the cut is the references themselves. The modes' state, its save and the seam (World.Play.cs, IWorldModes.cs, Hold.cs, Defense.cs, Course.cs, HoldRun.cs) and the raiders and the dragon are Sim's, as are the modes' contract and bodies (WorldMode.cs, Body.cs, World.Bodies.cs): runtime-sim, everything." },
     { "name": "runtime-lockstep", "after": ["Chem.Lockstep.Tests"], "projects": ["Game.Core"], "paths": [
       "packages/com.anweather.chemistry-core/Runtime/Lockstep*",
       "packages/com.anweather.chemistry-core/Runtime/JoinSnapshot*",
@@ -52,6 +55,7 @@
     { "name": "tests-land-world", "props": "ChemTestsLandWorld", "projects": ["Chem.LandWorld.Tests"] },
     { "name": "tests-play", "props": "ChemTestsPlay", "projects": ["Chem.Play.Tests"] },
     { "name": "tests-lockstep", "props": "ChemTestsLockstep", "projects": ["Chem.Lockstep.Tests"] },
+    { "name": "tests-golf", "props": "ChemTestsGolf", "projects": ["Chem.Play.Golf.Tests"] },
     { "name": "tests-lockstep-kit", "props": "ChemTestsLockstepKit", "projects": ["Chem.Lockstep.Kit"],
       "_": "The late-join harness (LockstepKit.cs, D22): a library; the lockstep tests and the modes' tests that reference it run." },
     { "name": "tests-sim", "props": "ChemTestsSim", "projects": ["Chem.Sim.Tests"] },
@@ -72,6 +76,7 @@
 
     { "name": "core-land", "projects": ["Chem.Land"], "paths": ["core/Chem.Land/**"] },
     { "name": "core-play", "projects": ["Chem.Play"], "paths": ["core/Chem.Play/**"] },
+    { "name": "core-golf", "projects": ["Chem.Play.Golf"], "stop": ["Rules.Mcp"], "paths": ["core/Chem.Play.Golf/**"] },
     { "name": "core-game", "projects": ["Game.Core"], "paths": ["core/Game.Core/**"] },
     { "name": "core-plans", "projects": ["Prototype.Plans"], "paths": ["core/Prototype.Plans/**", "core/UnityMath/**"],
       "_": "The plans' project and the shim it links in place of UnityEngine." },
@@ -90,6 +95,7 @@
     { "name": "core-rules-tests", "projects": ["Chem.Rules.Tests"], "paths": ["core/Chem.Rules.Tests/**"] },
     { "name": "core-land-tests", "projects": ["Chem.Land.Tests"], "paths": ["core/Chem.Land.Tests/**"] },
     { "name": "core-land-world-tests", "projects": ["Chem.LandWorld.Tests"], "paths": ["core/Chem.LandWorld.Tests/**"] },
+    { "name": "core-golf-tests", "projects": ["Chem.Play.Golf.Tests"], "paths": ["core/Chem.Play.Golf.Tests/**"] },
     { "name": "core-play-tests", "projects": ["Chem.Play.Tests"], "paths": ["core/Chem.Play.Tests/**"] },
     { "name": "core-lockstep-kit", "projects": ["Chem.Lockstep.Kit"], "paths": ["core/Chem.Lockstep.Kit/**"] },
     { "name": "core-lockstep-tests", "projects": ["Chem.Lockstep.Tests"], "paths": ["core/Chem.Lockstep.Tests/**"] },
@@ -98,10 +104,10 @@
     { "name": "core-plans-tests", "projects": ["Prototype.Plans.Tests"], "paths": ["core/Prototype.Plans.Tests/**"] },
 
     { "name": "rules", "paths": ["rules/**"],
-      "reads": ["Chem.Shared.Tests", "Chem.Rules.Tests", "Chem.Land.Tests", "Chem.LandWorld.Tests", "Chem.Sim.Tests", "Chem.Play.Tests", "Chem.Lockstep.Tests", "Chem.Playtest.Tests", "Rules.Mcp.Tests", "Hold.Runner.Tests", "Chat.Bench.Tests"],
+      "reads": ["Chem.Shared.Tests", "Chem.Rules.Tests", "Chem.Land.Tests", "Chem.LandWorld.Tests", "Chem.Sim.Tests", "Chem.Play.Tests", "Chem.Play.Golf.Tests", "Chem.Lockstep.Tests", "Chem.Playtest.Tests", "Rules.Mcp.Tests", "Hold.Runner.Tests", "Chat.Bench.Tests"],
       "_": "Every test that loads ChemistryTests.R, Rules.Mcp's tools, the Hold curve; not Playtest.Runner.Tests or Prototype.Plans.Tests (no rules)." },
     { "name": "world", "paths": ["world/**"],
-      "reads": ["Chem.Shared.Tests", "Chem.Rules.Tests", "Chem.Land.Tests", "Chem.LandWorld.Tests", "Chem.Sim.Tests", "Chem.Play.Tests", "Chem.Lockstep.Tests", "Chem.Playtest.Tests", "Rules.Mcp.Tests", "Hold.Runner.Tests", "Chat.Bench.Tests", "Prototype.Plans.Tests"],
+      "reads": ["Chem.Shared.Tests", "Chem.Rules.Tests", "Chem.Land.Tests", "Chem.LandWorld.Tests", "Chem.Sim.Tests", "Chem.Play.Tests", "Chem.Play.Golf.Tests", "Chem.Lockstep.Tests", "Chem.Playtest.Tests", "Rules.Mcp.Tests", "Hold.Runner.Tests", "Chat.Bench.Tests", "Prototype.Plans.Tests"],
       "_": "The maps, biomes, golf, landmarks: the same readers as rules/ (the valley is every test world's default), and the plans' FarMeshesTests (world/horizon.json)." },
 
     { "name": "docs-read-by-tests", "paths": ["docs/GLOSSARY.md", "docs/MODDING.md"], "reads": ["Chem.Rules.Tests", "Chem.Sim.Tests"],
