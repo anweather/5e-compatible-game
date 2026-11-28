@@ -166,13 +166,12 @@ object woken after the reload):
 
 **Cut** (no change in what the game does or builds; EditMode and the probes as before):
 
-- `GeneratedProp` and `VillageHouse` keep their meshes through an edit-mode reload (`Kit/ReloadKeep.cs`) when every
-  serialized field and the code that made them (their assembly and ours it uses, by module version id) are unchanged;
-  an edit to `Kit` or below makes them again. Their wake-up went from ~145 ms to ~8 ms.
 - `YardAutoBuild` skips its scene check after a reload when the scene, the network prefab list, the ground template
   and its own code are as they were when it last passed this session.
 
-**Result:** the domain reload is ~150 ms shorter (2.95-3.15 s → 2.80-2.97 s, mean of 8 per file). Save to ready
+**Result** (measured with a second cut, since dropped: `GeneratedProp` and `VillageHouse` kept their meshes through an
+edit-mode reload, ~140 ms of the gain, but it was ~200 lines of stashing for a gain the loop can't see, so it was
+reverted; the yard check skip alone is 65-120 ms): the domain reload was ~150 ms shorter (2.95-3.15 s → 2.80-2.97 s, mean of 8 per file). Save to ready
 Editor, same Editor, same load, ROUNDS=2 (`unity-loop.sh` reports in 0.1 s but polls every 0.5-1 s, so the gain is
 under its resolution):
 
