@@ -245,7 +245,7 @@ namespace Chem
             if (!h.Busy) c.Total = 0;
         }
 
-        public string HandsText() => ProgressText() + ModesTextAt(TextPlace.AfterPoints) + string.Concat(hands.Values.Select(h => $"|P{h.Player}:{h.Holds[0]}:{h.Holds[1]}:{Whole(h.Ready[0])}:{Whole(h.Ready[1])}:{Whole(h.Gesture[0])}:{Whole(h.Gesture[1])}" + MeterText(h)));
+        public string HandsText() => ModesTextAt(TextPlace.BeforeHands) + string.Concat(hands.Values.Select(h => $"|P{h.Player}:{h.Holds[0]}:{h.Holds[1]}:{Whole(h.Ready[0])}:{Whole(h.Ready[1])}:{Whole(h.Gesture[0])}:{Whole(h.Gesture[1])}" + MeterText(h)));
 
         static string MeterText(PlayerHands h) => !h.Busy ? "" : string.Concat(Enumerable.Range(0, HandsDef.Count).Select(i =>
             $":{Whole(h.Meter[i])}/{Whole(h.Total[i])}/{Whole(h.Extra[i])}/{(h.Down[i] ? 1 : 0)}/{Whole(h.Charge[i])}/{Whole(h.Since[i])}" + (h.Tap[i] ? "/t" : ""))) + $":a{Whole(h.AttuneHand)}/{h.AttuneTo}/{Whole(h.AttuneLeft)}";

@@ -401,7 +401,7 @@ namespace Chem.Tests
         [Test]
         public void AllPointsIsEverything()
         {
-            var w = Attuned(World.AllPoints).w;
+            var w = Attuned(ProgressSystem.AllPoints).w;
             Assert.That(w.UnlocksOf(Me).Count(), Is.EqualTo(P.Unlocks.Count));
         }
 

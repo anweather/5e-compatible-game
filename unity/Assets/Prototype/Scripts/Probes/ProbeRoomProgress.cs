@@ -33,7 +33,7 @@ public class RoomProgressProbe : RoomProbe
         yield return Ask("attune", "water,air");
         if (Theirs == null) yield break;
         string joiner = world.Stands.Keys.FirstOrDefault(p => p != host);
-        Check("the_joiner_has_everything", joiner != null && world.PointsOf(joiner) == World.AllPoints, $"{joiner}: {(joiner != null ? world.PointsOf(joiner) : null)}");
+        Check("the_joiner_has_everything", joiner != null && world.PointsOf(joiner) == ProgressSystem.AllPoints, $"{joiner}: {(joiner != null ? world.PointsOf(joiner) : null)}");
 
         var plate = world.HoldSite().Plate;
         var at = grid.CellCenter(plate.x, plate.y);

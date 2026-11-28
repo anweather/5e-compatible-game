@@ -1,7 +1,8 @@
 // The game modes from outside the core (docs/design/architecture-review.md step 9): world.Play() is a world's
 // PlayModes, and these are what the view, the probes, the tools and the runners ask of a mode, as they asked the world
 // before the modes had their own assembly and their own state (world.Hold(), world.Defense(), ...). A world without
-// the modes has no Hold, defense field or run: those reads say so (null, false, 0), as they did when the world kept them.
+// the modes has no Hold, defense field, run or points: those reads say so (null, false, 0, everything unlocked), as they
+// did when the world kept them.
 using System;
 using System.Collections.Generic;
 
@@ -32,6 +33,15 @@ namespace Chem
         public static List<(int x, int y)> TowerGround(this World world, HoldTower tower) => world.Play().Hold.TowerGround(tower);
 
         public static RunWizard RunOf(this World world, string player) => Modes(world)?.Hold.RunOf(player);
+
+        public static int? PointsOf(this World world, string player) => Modes(world)?.Progress.PointsOf(player);
+
+        public static IEnumerable<UnlockDef> UnlocksOf(this World world, string player) =>
+            Modes(world)?.Progress.UnlocksOf(player) ?? ProgressSystem.Through(world.Rules.Sim.Hold.Unlocks, ProgressSystem.AllPoints);
+
+        public static int PointsAway(this World world, string player, UnlockDef row) => Modes(world)?.Progress.PointsAway(player, row) ?? 0;
+
+        public static UnlockDef NextUnlock(this World world, string player) => Modes(world)?.Progress.NextUnlock(player);
 
         public static DefenseState Defense(this World world) => Modes(world)?.Defense.State;
 

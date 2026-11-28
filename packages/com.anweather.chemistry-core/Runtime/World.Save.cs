@@ -74,7 +74,6 @@ namespace Chem
             if (WrapX) save["wrap"] = WrapY ? "torus" : "ew";
             if (IsOpen) save["open"] = SaveFills();
             SaveModesAt(SavePlace.AfterOpen, save);
-            if (progress.Count > 0) save["progress"] = SaveProgress();
             if (hands.Count > 0) save["hands"] = new JArray(hands.Values.Select(SaveHands));
             if (casts.Count > 0) save["casts"] = new JArray(casts.Values.Select(SaveCast));
             if (crackedThings.Count > 0) save["crackedThings"] = new JArray(crackedThings.Select(t => t.ToString(System.Globalization.CultureInfo.InvariantCulture)));
@@ -254,7 +253,6 @@ namespace Chem
             LoadStands(s);
             RaiderSystem.NextEntityId = (int)s["nextEntityId"];
             LoadHands(s["hands"]);
-            LoadProgress(s["progress"]);
             foreach (var a in s["casts"] ?? new JArray()) LoadCast(a);
             foreach (var o in s["raiders"] ?? new JArray())
             {

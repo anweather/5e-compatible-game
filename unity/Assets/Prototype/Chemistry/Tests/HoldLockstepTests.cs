@@ -170,7 +170,7 @@ namespace Chem.Tests
             var room = new Room();
             var fresh = PeerOf(Me, 0, 0, wave => 0);
             room.Peers.Add(fresh);
-            room.Peers.Add(PeerOf(Bo, World.AllPoints, 1, wave => 1));
+            room.Peers.Add(PeerOf(Bo, ProgressSystem.AllPoints, 1, wave => 1));
             var w = fresh.W;
             room.Tick();
             var plate = StrikeCommand.Stand(Me, w.HoldSite().Plate.x, w.HoldSite().Plate.y, 1000000);
@@ -191,7 +191,7 @@ namespace Chem.Tests
         {
             var room = new Room();
             var fresh = PeerOf(Me, 0, 0, wave => 0);
-            var all = PeerOf(Bo, World.AllPoints, 1, wave => wave % 2 == 0 ? 2 : -1);
+            var all = PeerOf(Bo, ProgressSystem.AllPoints, 1, wave => wave % 2 == 0 ? 2 : -1);
             room.Peers.Add(fresh);
             room.Peers.Add(all);
             room.Tick();
@@ -199,7 +199,7 @@ namespace Chem.Tests
 
             var w = fresh.W;
             Assert.That(w.PointsOf(Me), Is.Zero);
-            Assert.That(w.PointsOf(Bo), Is.EqualTo(World.AllPoints));
+            Assert.That(w.PointsOf(Bo), Is.EqualTo(ProgressSystem.AllPoints));
             Assert.That(w.HandOpen(Me, Left), "outside a run nothing is locked");
             Assert.That(all.W.HandsOf(Me).Holds[Left], Is.EqualTo("water"), "so a fresh wizard attunes, on every peer");
             Assert.That(all.W.HandsOf(Bo).Holds[Left], Is.EqualTo("water"));

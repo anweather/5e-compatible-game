@@ -40,6 +40,8 @@ namespace Chem
         DefenseState field;
         int plate;
 
+        internal ProgressSystem Progress { get; set; }
+
         public WorldHold Site { get; private set; }
 
         public HoldState State { get; private set; }
@@ -141,7 +143,7 @@ namespace Chem
 
         void EarnPoints(HoldParams p, int survived)
         {
-            if (State.Moment == null) world.EarnPoints(p, survived);
+            if (State.Moment == null) Progress.Earn(p, survived);
         }
 
         public static int WaveSize(HoldParams p, int wave, int peers = 1) =>
@@ -193,7 +195,7 @@ namespace Chem
             int peers = world.Stands.Values.Count(s => !s.Down);
             State = new HoldState { Phase = HoldPhase.Running, Wave = 1, Health = p.Health, Peers = peers, ToSpawn = WaveSize(p, 1, peers), NextSpawn = world.Tick + p.Warmup, Theme = ThemeOfWave(1) };
             State.NextWave = p.WaveTicks > 0 ? State.NextSpawn + p.WaveTicks : 0;
-            world.LetGoLockedAll();
+            Progress.LetGoLockedAll();
             world.AddLog("Wave 1 is coming! Hold the keep", LogKind.Notable);
         }
 

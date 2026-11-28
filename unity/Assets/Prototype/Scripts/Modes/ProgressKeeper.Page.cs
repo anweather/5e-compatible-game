@@ -73,7 +73,7 @@ public partial class ProgressKeeper
         if (world.HoldRunning() && !sawRun)
         {
             sawRun = true;
-            pointsBefore = world.PointsOf(me) ?? World.AllPoints;
+            pointsBefore = world.PointsOf(me) ?? ProgressSystem.AllPoints;
             unlocksBefore = world.UnlocksOf(me).Count();
             summary = "";
         }
@@ -90,7 +90,7 @@ public partial class ProgressKeeper
         var h = world.Hold();
         if (h == null) return "";
         var lines = new System.Text.StringBuilder($"The keep fell in wave {h.Wave}: you held {h.Wave - 1} {(h.Wave - 1 == 1 ? "wave" : "waves")}");
-        int earned = (world.PointsOf(me) ?? World.AllPoints) - pointsBefore;
+        int earned = (world.PointsOf(me) ?? ProgressSystem.AllPoints) - pointsBefore;
         if (h.Moment != null) lines.Append("\nA moment earns no points");
         else if (!FromTheSave) lines.Append("\nA dev build has everything: F7 plays your save and earns into it");
         else lines.Append($"\n+{Away(earned)}: {world.PointsOf(me)} in all");

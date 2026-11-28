@@ -21,7 +21,7 @@ public partial class ProgressKeeper : MonoBehaviour
     float askedAt = float.NegativeInfinity;
     int extraHealth;
 
-    public int Points => asIf ?? (HoldMoments.Offered && !fromTheSave ? World.AllPoints : file.Points);
+    public int Points => asIf ?? (HoldMoments.Offered && !fromTheSave ? ProgressSystem.AllPoints : file.Points);
 
     public bool FromTheSave => fromTheSave || !HoldMoments.Offered;
 

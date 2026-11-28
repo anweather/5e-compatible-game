@@ -55,8 +55,8 @@ public class ProgressProbe : ProbeScenario
         Metric("saved_at_start", saved);
         saveAsFound = SaveFiles().ToDictionary(f => f, f => File.Exists(f) ? File.ReadAllBytes(f) : null);
 
-        for (float t = 0f; t < MostWait && world.PointsOf(Me) != World.AllPoints; t += Time.deltaTime) yield return null;
-        Check("a_dev_build_has_everything", world.PointsOf(Me) == World.AllPoints, $"{world.PointsOf(Me)}");
+        for (float t = 0f; t < MostWait && world.PointsOf(Me) != ProgressSystem.AllPoints; t += Time.deltaTime) yield return null;
+        Check("a_dev_build_has_everything", world.PointsOf(Me) == ProgressSystem.AllPoints, $"{world.PointsOf(Me)}");
         keeper.PlayFromTheSave(true);
         for (float t = 0f; t < MostWait && world.PointsOf(Me) != saved; t += Time.deltaTime) yield return null;
         yield return Wait(1.5f);
@@ -134,8 +134,8 @@ public class ProgressProbe : ProbeScenario
         Check("a_reset_keeps_the_points", grid.World?.PointsOf(Me) == saved + earned, $"{grid.World?.PointsOf(Me)}");
 
         keeper.PlayFromTheSave(false);
-        for (float t = 0f; t < MostWait && grid.World?.PointsOf(Me) != World.AllPoints; t += Time.deltaTime) yield return null;
-        Check("f7_again_is_everything", grid.World?.PointsOf(Me) == World.AllPoints);
+        for (float t = 0f; t < MostWait && grid.World?.PointsOf(Me) != ProgressSystem.AllPoints; t += Time.deltaTime) yield return null;
+        Check("f7_again_is_everything", grid.World?.PointsOf(Me) == ProgressSystem.AllPoints);
         PutTheSaveBack();
         Check("the_save_is_put_back", keeper.Saved == saved, $"{keeper.Saved}, was {saved}");
         InputSystem.RemoveDevice(pad);
