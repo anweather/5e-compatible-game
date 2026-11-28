@@ -328,7 +328,7 @@ must compile it (one compile can serve a batch of steps, as the boat's PC did fo
    `BallInCupTests` (Rules.Mcp.Tests to Golf), `LateJoinTests.AGolfTurnReplaysTheSame` and
    `.JoinersAtAnyTickReplayTheHostsPast` to `GolfJoinTests`, `DragonTests.PlayAreasComeBackAsBuilt` and
    `.ASaveMidFlightLoadsAndGoesOnTheSame` to `GolfDragonTests`; new:
-   `GolfJoinTests.AJoinerFromASnapshotOfARoundTakesItsModesBeforeTheCheck`. Proof: the sweep's 2336 results the same by name and outcome (one timing budget,
+   `GolfJoinTests.AJoinerFromASnapshotOfARoundTakesItsModesBeforeTheCheck`. Proof: the sweep's 2336 results the same by name and outcome, plus the new one (2337; one timing budget,
    `DragonTests.AFullSweepStaysWithinTheTickBudget`, failed on both under load), every golden unchanged; 2021 sampled
    lines identical on dev and the branch (golf on a strip, in rooms by acts, under the dragon and in the valley, and 8
    Hold runs with two dragons each: CellHash, CastHash, RngState, the dragon's hash, golf's state, the log and the save's
