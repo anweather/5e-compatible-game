@@ -130,8 +130,9 @@ fixtures are split in two since step 5b (`docs/design/chem-land-split.md`): `Hil
 | `Chem.Land.Tests` | the land alone, on `Chem.Land` (no `Game.Core`): `Hills*`, `ChunkGen`, `WorldPlan*`, biomes, landmarks, themes, map files, the land goldens (`NineGolden`, the hills', `WorldTwelve`'s) | 290 | 76 s |
 | `Chem.LandWorld.Tests` | the land on a World: each land fixture's `*WorldTests.cs` half (peers on the hills, bakes, `MapCheck`), `GeneratedSource`, stamps laid, terrain, places, the land benches | 209 (208 without Sweep) | 94 s |
 | `Chem.Sim.Tests` | cells, chunks, ticks, spells and combos, things, weather, the `CellHash`/`ChunkHash` goldens | 603 (step 9's Chem.Play: `SaveTests` moved to Play) | 49 s |
-| `Chem.Play.Tests` | the Hold (with `HoldLockstepTests`), the hands, golf, the Gauntlet, puzzles, defense, the dragon, saves (`SaveTests`: a saved world plays the defense field); on `Chem.Play` and `Chem.Shared.Tests` | 281 (278 without Sweep) | 47 s |
-| `Chem.Lockstep.Tests` | the lockstep session and wire, late joins, rooms, resets, the open world over the loopback | 80 | 110 s (28 s on the Mac since its replays run side by side, 2026-11-27) |
+| `Chem.Play.Tests` | the Hold (with `HoldLockstepTests`), the hands, the Gauntlet, puzzles, defense, the dragon, saves (`SaveTests`: a saved world plays the defense field); on `Chem.Play` and `Chem.Shared.Tests` | 274 (271 without Sweep; golf's moved out, D22) | 47 s |
+| `Chem.Play.Golf.Tests` | spell golf, a mini-game (D22): `Golf*.cs` (the hole, its joins on the lockstep kit, the dragon's reset of it) and `BallInCupTests` (its rooms); on `Chem.Play.Golf`, `Chem.Lockstep.Kit` and `Chem.Shared.Tests` | 23 | 6 s (the Mac) |
+| `Chem.Lockstep.Tests` | the lockstep session and wire, late joins (on `Chem.Lockstep.Kit`, the harness a mode's tests use too), rooms, resets, the open world over the loopback | 78 (golf's two joins moved to golf) | 110 s (28 s on the Mac since its replays run side by side, 2026-11-27) |
 | `Chem.Playtest.Tests` | the playtest bot (`Scripts/Shell/Playtest/Editor/*Tests.cs`) | 41 | 2 s |
 | `Prototype.Plans.Tests` | the view's plans (`Scripts/Plans/Tests/*.cs`, on `Prototype.Plans` and the `core/UnityMath` shim; step 6): the tree budget, the menu navigator, pinned ground, tag rules, build versions, the far ring's meshes | 57 | 1 s (the Mac) |
 
@@ -193,6 +194,16 @@ each would narrow to as an assembly of its own.
 save and the seam (`World.Play.cs`, `IWorldModes.cs`) are Sim's and run everything. On the Mac (warm build, `gates.sh`
 wall): a Play file (`Runtime/Play/CourseSystem.cs`) 177 s before, 52 s after; a Sim file (`Runtime/World.cs`) 160 s
 before, 169 s after (the same set; noise).
+
+**Mini-games are their own assemblies (D22, 2026-11-27).** `Runtime/Golf/` is `Chem.Play.Golf` on `Game.Core` alone,
+and `runtime-golf` is `"projects": ["Chem.Play.Golf"], "stop": ["Rules.Mcp"]`: a golf change runs `Chem.Play.Golf.Tests`
+(and builds `Playtest.Text` and `Rules.Mcp`, whose worlds install golf), and the rest get the smoke. The stop is there
+because the MCP server's rooms install golf, so `Rules.Mcp.Tests` and `Chat.Bench` reach it only through `Rules.Mcp`;
+CI's full run catches what's past it, as for the land. A Hold change doesn't run golf's tests and a golf change doesn't
+run the Hold's. The modes' contract and bodies (`WorldMode.cs`, `Body.cs`, `World.Bodies.cs`) are Sim's and run
+everything. On the Mac (warm, `gates.sh` wall): a golf file (`Runtime/Golf/GolfMode.cs`) 38-49 s (it was a Sim file,
+~150 s), a Hold file (`Runtime/Play/HoldSystem.cs`) 57 s, `Runtime/World.cs` 142 s. A new mini-game copies golf's
+modules (`docs/design/minigames.md`, step 8).
 
 **The `stop` rule (Andrew, 2026-11-26).** A Land change (`runtime-land`: `Runtime/Land/**`) runs `Chem.Land.Tests` and
 `Chem.LandWorld.Tests` (the land on a World), and everything above `Game.Core` gets only the `Unit` smoke: the module's

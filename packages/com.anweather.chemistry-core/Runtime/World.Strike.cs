@@ -105,7 +105,7 @@ namespace Chem
 
         public bool TriggersReadStands => Rules.TriggersOn(TriggerEvent.Step).Count > 0 || Rules.TriggersOn(TriggerEvent.Tick).Count > 0;
 
-        internal void ReadStands() => standReads++;
+        public void ReadStands() => standReads++;
 
         public IReadOnlyList<StrikeHit> TakeStrikeHits()
         {

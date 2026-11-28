@@ -585,7 +585,7 @@ namespace Chem
 
         public int ElevationUnits(Cell c) => (TerrainOf(c).Elevation + HeightOf(c)) * Rules.Sim.WaterUnitsPerStep;
 
-        internal int GroundUnits(int x, int y)
+        public int GroundUnits(int x, int y)
         {
             int units = ElevationUnits(At(x, y));
             int land = LandAtCell(x, y);

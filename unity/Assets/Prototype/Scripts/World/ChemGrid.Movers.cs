@@ -69,7 +69,7 @@ public partial class ChemGrid
 
     void RenderMovers()
     {
-        if (golf == null && World.Golf != null && GolfShow != null) golf = GolfShow(this);
+        if (golf == null && World.Golf() != null && GolfShow != null) golf = GolfShow(this);
         RenderWaves();
         RenderPackIce();
         RenderBoulders();

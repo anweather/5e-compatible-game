@@ -43,7 +43,7 @@ public class DragonViewTests
 
         Assert.That(world.At(LavaX, LavaY).T, Is.EqualTo(TerrainIds.Lava), "the Gauntlet's lava comes back, not the map's meadow");
         Assert.That(world.AllCells().Count(c => c.T == TerrainIds.Coil), Is.EqualTo(puzzleCoils), "the puzzles come back");
-        Assert.That(world.Golf, Is.Not.Null, "the ball is on its tee");
+        Assert.That(world.Golf(), Is.Not.Null, "the ball is on its tee");
     }
 
     [Test]

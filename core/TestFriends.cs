@@ -9,6 +9,8 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Chem.Sim.Tests")]
 [assembly: InternalsVisibleTo("Chem.Play.Tests")]
 [assembly: InternalsVisibleTo("Chem.Lockstep.Tests")]
+[assembly: InternalsVisibleTo("Chem.Lockstep.Kit")]
+[assembly: InternalsVisibleTo("Chem.Play.Golf.Tests")]
 [assembly: InternalsVisibleTo("Chem.Playtest.Tests")]
 [assembly: InternalsVisibleTo("Rules.Mcp.Tests")]
 [assembly: InternalsVisibleTo("Playtest.Runner.Tests")]

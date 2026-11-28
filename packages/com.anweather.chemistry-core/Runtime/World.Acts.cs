@@ -5,7 +5,7 @@
 // the same cells that aren't open. A room's change mode decides an act as it does a mod, and what each did is kept, so
 // RoomChange.Undo can take back the last ones: ground it laid goes back to what stood under, unless something has
 // changed it since, and things it placed go. Animals live in each peer's view (J-056) and casts are over, so those stay.
-// A golf ball or a cup is an act too (GolfSystem.cs), and starts a round. ActText joins CastHash and the save, "" until an act,
+// An act of a kind a world mode knows goes to it (D22): golf's ball or cup (GolfMode) starts a round. ActText joins CastHash and the save, "" until an act,
 // so worlds without hash as they did.
 using System.Collections.Generic;
 using System.Globalization;
@@ -18,7 +18,7 @@ namespace Chem
 {
     public sealed partial class World
     {
-        public const string ActTerrain = "terrain", ActCover = "cover", ActThing = "thing", ActAnimal = "animal", ActCast = "cast", ActGolf = "golf", ActCalled = "called";
+        public const string ActTerrain = "terrain", ActCover = "cover", ActThing = "thing", ActAnimal = "animal", ActCast = "cast", ActCalled = "called";
 
         public const int MostActsKept = 32;
 
@@ -128,7 +128,7 @@ namespace Chem
         int DoneOf(ActDone act, List<(int x, int y)> cells, JObject ask)
         {
             if (act.Kind == ActCast) return CastAct(act, cells);
-            return act.Kind == ActGolf ? GolfSystem.Place(act.What, cells) : PlaceAct(act, cells, ask);
+            return ModeOfAct(act.Kind, act.What) is WorldMode mode ? mode.Act(act.Kind, act.What, cells) : PlaceAct(act, cells, ask);
         }
 
         static JObject ReadAct(string json)
@@ -153,10 +153,9 @@ namespace Chem
                 case ActThing: return Rules.Entities.ContainsKey(what) || Rules.Items.ContainsKey(what);
                 case ActAnimal: return Rules.Fauna.Species(what) != null;
                 case ActCast: return Rules.Spell(what) != null;
-                case ActGolf: return what == GolfBall || what == GolfCup;
                 case ActLand: return what == ActLand;
                 case ActCalled: return Rules.TriggersOn(TriggerEvent.Called).Any(t => t.Id == what);
-                default: return false;
+                default: return ModeOfAct(kind, what) != null;
             }
         }
 
@@ -248,14 +247,13 @@ namespace Chem
             return new RoomVerdict(true, null, $"{c.Peer} took back {firing.What} (act {Whole(firing.N)}){stays}");
         }
 
-        static string ActStays(string kind)
+        string ActStays(string kind)
         {
             switch (kind)
             {
                 case ActCast: return "a cast can't be taken back";
                 case ActAnimal: return "animals can't be taken back once they're out";
-                case ActGolf: return "a ball or cup can't be taken back: place it again somewhere else";
-                default: return null;
+                default: return ModesActStays(kind);
             }
         }
 

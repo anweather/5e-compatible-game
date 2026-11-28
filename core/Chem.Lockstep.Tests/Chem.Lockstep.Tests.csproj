@@ -9,5 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Chem.Sim.Tests/Chem.Sim.Tests.csproj" />
+    <!-- The late-join harness (LockstepKit), which a mode's tests use too. -->
+    <ProjectReference Include="../Chem.Lockstep.Kit/Chem.Lockstep.Kit.csproj" />
   </ItemGroup>
 </Project>

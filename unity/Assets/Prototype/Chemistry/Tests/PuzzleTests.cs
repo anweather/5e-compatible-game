@@ -30,13 +30,14 @@ namespace Chem.Tests
             var p = MeadowCoil;
             var valley = TerrainGrid.Valley();
             Assert.That(valley.InGrid(p.X, p.Y) && valley.InGrid(p.X + p.Width - 1, p.Y + p.Height - 1));
-            var course = GolfCommand.Load(ChemistryTests.WorldDir()).Value;
+            var course = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(Path.Combine(ChemistryTests.WorldDir(), "golf.json")));
+            int teeX = (int)course["tee"][0], teeY = (int)course["tee"][1], holeX = (int)course["hole"][0], holeY = (int)course["hole"][1];
             int m = R.Sim.Golf.Margin;
-            int x0 = Math.Min(course.TeeX, course.HoleX) - m, x1 = Math.Max(course.TeeX, course.HoleX) + m;
-            int y0 = Math.Min(course.TeeY, course.HoleY) - m, y1 = Math.Max(course.TeeY, course.HoleY) + m;
+            int x0 = Math.Min(teeX, holeX) - m, x1 = Math.Max(teeX, holeX) + m;
+            int y0 = Math.Min(teeY, holeY) - m, y1 = Math.Max(teeY, holeY) + m;
             foreach (var (x, y, _, _) in p.Cells())
                 Assert.That(x < x0 || x > x1 || y < y0 || y > y1, $"({x}, {y}) is on the course");
-            int near = p.Cells().Min(c => Math.Max(Math.Abs(c.x - course.HoleX), Math.Abs(c.y - course.HoleY)));
+            int near = p.Cells().Min(c => Math.Max(Math.Abs(c.x - holeX), Math.Abs(c.y - holeY)));
             Assert.That(near, Is.LessThan(40), "within sight of the hole");
             foreach (var v in VillageLayout.Load(ChemistryTests.WorldDir()))
                 Assert.That(Math.Max(Math.Abs(p.X - v.X), Math.Abs(p.Y - v.Y)), Is.GreaterThan(40), v.Name);

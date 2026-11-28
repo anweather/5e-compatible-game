@@ -16,7 +16,7 @@ public class GolfProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        var g = World.Golf;
+        var g = World.Golf();
         course = grid.GetComponentInChildren<GolfCourse>();
         Check("ball_on_the_tee", g != null && g.X == g.TeeX && g.Y == g.TeeY, g != null ? $"at {g.X}, {g.Y}" : "no hole");
         Check("course_drawn", course != null, "GolfCourse");

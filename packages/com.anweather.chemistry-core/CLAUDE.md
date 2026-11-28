@@ -10,7 +10,7 @@ The engine-free rules engine: cells in 64×64 chunks, one deterministic tick
 at a time, with behaviour read from `rules/*.json`. `docs/ARCHITECTURE.md`
 section 2 walks through the files; `docs/WORLD_STREAMING.md` covers chunks.
 
-## Three assemblies
+## Four assemblies
 
 - **`Runtime/Land/` is `Chem.Land`** (its own asmdef; `core/Chem.Land` in dotnet): hills, ChunkGen, world
   plans, themes, biomes, noise, the map files, `GeneratedMap`, `Places` (reading). It never uses `World`,
@@ -25,13 +25,29 @@ section 2 walks through the files; `docs/WORLD_STREAMING.md` covers chunks.
   mode-only reads). Their state stays the world's, with its text, hash and save (`World.Play.cs`), so a save or a
   checksum doesn't depend on them; the world calls them through `IWorldModes`. A world that plays a mode is made
   with `PlayModes.Install(world)` (a joiner's takes the modes of the world it replaces, `InstallModesOf`); one
-  without them throws where a mode would have run. Raiders, golf and the dragon stay in `Chemistry` (spells, acts and
-  the change audit reach them). A test that plays one of the three goes in `Chem.Play.Tests` and installs them.
+  without them throws where a mode would have run. Raiders and the dragon stay in `Chemistry` (spells, acts and the
+  change audit reach them). A test that plays one of the three goes in `Chem.Play.Tests` and installs them.
+- **`Runtime/Golf/` is `Chem.Play.Golf`** (its asmdef; `core/Chem.Play.Golf`), a mini-game on `Chemistry` alone (D22,
+  `docs/design/minigames.md`): `GolfMode`, a `WorldMode` installed with `GolfMode.Install(world)`, its state in its
+  own slot, its ball a `Body`; `world.Golf()` and `ApplyGolf` are its extensions. Its tests are the Chemistry tests'
+  `Golf*.cs` (`core/Chem.Play.Golf.Tests`). A new mini-game is another folder like it, by the recipe in
+  `docs/design/minigames.md`, and changes nothing in `Runtime/*.cs`.
+
+## World modes (D22)
+
+`WorldMode.cs` is the contract every mode derives from (`PlayModes` and `GolfMode` do): the world calls installed
+modes in install order for their slots (save, casts checksum text, the dragon's start, each at the one place the
+world calls them), the events (a map laid, a chunk the dragon reset, a spell striking or landing on a body, a body's
+steps) and acts of a kind the world doesn't know. `Body.cs` and `World.Bodies.cs` are the thrown or rolled bodies the
+world steps after the boulders. A save loads before its modes are installed: the world keeps it until the first
+tick and hands each mode its part as it's installed, so install modes before a world ticks. A mode uses only the
+core's public members (no `InternalsVisibleTo` for it).
 
 ## Hard constraints
 
-- **No Unity.** `Runtime/Chemistry.asmdef`, `Runtime/Land/Chem.Land.asmdef` and `Runtime/Play/Chem.Play.asmdef` set
-  `noEngineReferences`; only .NET and Newtonsoft.Json. `core/Game.Core`, `core/Chem.Land` and `core/Chem.Play` compile these same files as
+- **No Unity.** `Runtime/Chemistry.asmdef`, `Runtime/Land/Chem.Land.asmdef`, `Runtime/Play/Chem.Play.asmdef` and
+  `Runtime/Golf/Chem.Play.Golf.asmdef` set `noEngineReferences`; only .NET and Newtonsoft.Json. `core/Game.Core`,
+  `core/Chem.Land`, `core/Chem.Play` and `core/Chem.Play.Golf` compile these same files as
   netstandard2.1 with **C# 9** (Unity's limit), so no newer syntax.
 - **Deterministic everywhere** (lockstep, D3/D4): integer state, all
   randomness from the world's seeded generator, no mutable statics, no

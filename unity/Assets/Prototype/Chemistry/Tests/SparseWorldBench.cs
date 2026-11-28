@@ -178,7 +178,7 @@ namespace Chem.Tests
             WorldPuzzles.Load(dir).LayInto(w);
             MapStamps.Load(dir).LayInto(w);
             WorldBuildings.Load(dir).LayInto(w);
-            if (GolfCommand.Load(dir) is { } hole) w.ApplyGolf(hole);
+            w.MapLaid(dir);
             if (WorldHold.Load(dir) is { } hold && w.InBounds(hold.Heart.x, hold.Heart.y)) w.SetHold(hold);
             long laidBytes = Step();
             w.KeepStart();

@@ -419,6 +419,21 @@ touch them.
   `Runtime/Play/` named for the mode (`CourseSystem`, ...), owned by the world (`World.CourseSystem`) and run where
   the mode always ran (`docs/design/architecture-review.md` step 9). *Not* a machine, an act or a Unity system.
 
+**World mode / mode slot**
+: A **world mode** is a class deriving from the core's `WorldMode`, installed on a world (`world.Install`) and called by
+  it at fixed places in install order: the Hold's `PlayModes`, golf's `GolfMode` (D22, `docs/design/minigames.md`).
+  Its **slot** is its part of the world save, the casts checksum text and the dragon's start, written where the world
+  calls it. *Not* a **game mode** (a snapshot of mods, below).
+
+**Mini-game**
+: A world mode that is an add-on: its own core assembly (`Chem.Play.Golf`), tests and view folder, touching nothing in
+  Sim. Golf now; frisbee and bowling next.
+
+**Body** (in the core)
+: A thrown or rolled thing the core steps a cell at a time (`Body`, `World.Bodies.cs`): in the air over water and hills,
+  rolling on the ground with the slope, turning back off rock. A mode owns it and saves it; golf's ball is one. *Not* a
+  prop (Unity physics, pushed) or a creature's body.
+
 **Carrying**
 : What a whirlwind has taken on and sheds as it travels (`carries` in
   `spells.json`): a fire tornado, a waterspout, a sandstorm, a smoke column

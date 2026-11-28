@@ -33,15 +33,26 @@ namespace Chem
             }
             if (CourseLayout.Load(worldDir) is CourseLayout course)
                 Add(FromRect(WorldPlaces.Slug(course.Name), course.Name, "course", CourseLayout.FileName, course.Area));
-            if (GolfCommand.Load(worldDir) is GolfCommand golf)
-                Add(Shaped(Path.GetFileNameWithoutExtension(GolfCommand.FileName), "course", GolfCommand.FileName,
-                    new JObject { ["line"] = new JArray(new JArray(golf.TeeX, golf.TeeY), new JArray(golf.HoleX, golf.HoleY)), ["width"] = 3 }));
+            if (GolfLine(worldDir) is JArray golf && golf.Count > 0)
+                Add(Shaped(Path.GetFileNameWithoutExtension(GolfFile), "course", GolfFile, new JObject { ["line"] = golf, ["width"] = 3 }));
             foreach (var puzzle in WorldPuzzles.Load(worldDir).All)
                 Add(FromRect(WorldPlaces.Slug(puzzle.Name), puzzle.Name, "puzzle", WorldPuzzles.FileName, new CellRect(puzzle.X, puzzle.Y, puzzle.Width, puzzle.Height)));
             water ??= WaterRuns.Read(worldDir, current.Doc);
             if (water != null) foreach (var body in water.Bodies()) Add(body);
             foreach (var hand in current.All.Where(p => !p.Generated)) Add(hand);
             return WorldPlaces.Write(current.Doc, made);
+        }
+
+        const string GolfFile = "golf.json";
+
+        static JArray GolfLine(string worldDir)
+        {
+            string path = Path.Combine(worldDir, GolfFile);
+            if (!File.Exists(path)) return new JArray();
+            var o = JObject.Parse(File.ReadAllText(path));
+            if (!(o["tee"] is JArray tee) || tee.Count != 2 || !(o["hole"] is JArray hole) || hole.Count != 2)
+                throw new FormatException($"{GolfFile}: the course needs \"tee\": [x, y] and \"hole\": [x, y]");
+            return new JArray(new JArray((int)tee[0], (int)tee[1]), new JArray((int)hole[0], (int)hole[1]));
         }
 
         static Place FromRect(string id, string name, string kind, string from, CellRect r) =>

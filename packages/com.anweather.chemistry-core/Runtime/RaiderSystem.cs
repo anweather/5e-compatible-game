@@ -214,7 +214,7 @@ namespace Chem
         internal void Force(SpellDef s, int x, int y, int dir, HashSet<int> once = null, int charge = 0)
         {
             if (s.ForcePush <= 0 && s.ForceThrow <= 0) return;
-            world.GolfSystem.HitBall(s, x, y, dir);
+            world.BodiesStruck(s, x, y, dir);
             var r = RaiderAt(x, y);
             if (r == null || !r.Alive || (once != null && !once.Add(r.Id))) return;
             var def = world.Rules.Entity(r.Kind);

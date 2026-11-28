@@ -28,6 +28,7 @@ it. Other docs refer to them by number ("D4"); the numbers don't change.
 | D19 | [Lockstep in the core, behind a transport port](adr/0019-lockstep-in-the-core-behind-a-transport-port.md) | Accepted (2026-11-12) |
 | D20 | [The open world: chunks keyed by layer and place, made as players reach them](adr/0020-the-open-world.md) | Proposed (2026-11-13) |
 | D21 | [The repo follows Andrew's kit, with exceptions](adr/0021-the-repo-follows-andrews-kit-with-exceptions.md) | Accepted (2026-11-24) |
+| D22 | [Mini-games are world modes, each its own assembly](adr/0022-mini-games-are-world-modes.md) | Proposed (2026-11-27) |
 
 How to add one: see [`adr/README.md`](adr/README.md).
 

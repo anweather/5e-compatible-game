@@ -30,7 +30,7 @@ public class CupProbe : ProbeScenario
         var me = grid.CellAt(WizardRig.FindLocal().transform.position);
         yield return Say("act", $"{{\"what\":\"cup\",\"near\":\"[{me.x}, {me.y}]\",\"within\":10}}");
         yield return Wait(Settle);
-        var g = World.Golf;
+        var g = World.Golf();
         for (int i = 0; i < Tries && g != null && !said.Contains("golf-ball (act"); i++)
         {
             yield return Say("act", $"{{\"what\":\"golf-ball\",\"near\":\"[{g.HoleX - Apart - i}, {g.HoleY}]\",\"within\":0}}");

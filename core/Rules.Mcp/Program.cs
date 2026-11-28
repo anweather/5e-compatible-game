@@ -29,7 +29,7 @@ namespace Chem.Mcp
 
             var builder = Host.CreateApplicationBuilder(Array.Empty<string>());
             builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
-            var bench = new Workbench(folders);
+            var bench = new Workbench(folders) { Modes = GolfMode.Install };
             int here = Array.IndexOf(args, "--here");
             if (here >= 0 && here + 1 < args.Length && args[here + 1].Split(',') is { Length: 2 } xy
                 && int.TryParse(xy[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) && int.TryParse(xy[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))

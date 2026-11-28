@@ -91,7 +91,6 @@ namespace Chem
         public const string DownedStatus = "downed";
 
         IChunkSource startSource;
-        GolfState startGolf;
         readonly Cell startScratch = new Cell(), startPeek = new Cell();
         Chunk[] auditChunks;
         int auditAt;
@@ -114,7 +113,7 @@ namespace Chem
             startSource = source ?? Source;
             foreach (var ch in ChunksInOrder)
                 ch.Start = source != null ? PackedChunk.Empty(ch.X, ch.Y) : ch.Packed ?? Changes(ch, ch.Held);
-            startGolf = Golf?.Copy();
+            KeepModesStart();
             auditChunks = SortedChunks(false).ToArray();
             auditAt = 0;
             ChangedCount = 0;
@@ -200,8 +199,7 @@ namespace Chem
             ch.Changed = 0;
             FreshenMachines(ch);
             crackedThings.RemoveWhere(t => new ThingId(t).ChunkX == ch.X && new ThingId(t).ChunkY == ch.Y);
-            var tee = Golf ?? startGolf;
-            if (tee != null && Chunks.ChunkOf(tee.TeeX) == ch.X && Chunks.ChunkOf(tee.TeeY) == ch.Y) GolfSystem.State = startGolf?.Copy();
+            ResetModesChunk(ch);
             ChunkFreshened?.Invoke(new ChunkFresh(ch.X, ch.Y));
         }
 
@@ -256,7 +254,7 @@ namespace Chem
         {
             if (startSource == null) return;
             var start = new JObject();
-            if (startGolf != null) start["golf"] = GolfSystem.Row(startGolf);
+            SaveModesStart(start);
             save["start"] = start;
             SaveStarts(start);
             save["audit"] = new JArray(DragonSystem.Flights, auditAt);
@@ -327,9 +325,8 @@ namespace Chem
 
         void LoadStart(JObject s)
         {
-            if (!(s["start"] is JObject start)) return;
+            if (!(s["start"] is JObject)) return;
             KeepStart();
-            startGolf = start["golf"] is JArray g ? GolfSystem.Read(g) : null;
             DragonSystem.Flights = (int)s["audit"][0];
             auditAt = (int)s["audit"][1];
             if (!(s["dragon"] is JArray a)) return;

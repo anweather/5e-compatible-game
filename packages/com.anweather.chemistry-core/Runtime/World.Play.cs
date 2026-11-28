@@ -1,4 +1,4 @@
-// The game modes and the world (docs/design/architecture-review.md step 9, D9). The raiders, the dragon and golf are
+// The game modes and the world (docs/design/architecture-review.md step 9, D9). The raiders and the dragon are
 // systems the world owns and runs itself: spells, strikes, reactions, acts, the change audit and the save all reach
 // them. The Hold, the defense field and the Gauntlet's course are systems in their own assembly, Chem.Play, which this
 // one doesn't reference: the world keeps their state (its data, saved, hashed and in the checksum here, whether the
@@ -21,10 +21,6 @@ namespace Chem
 
         public DragonSystem DragonSystem { get; private set; }
 
-        public GolfSystem GolfSystem { get; private set; }
-
-        public const string GolfBall = "golf-ball", GolfCup = "cup";
-
         public const string ClimbRoute = "climb", FlyRoute = "fly";
 
         internal const string LandedStatus = "landed";
@@ -32,7 +28,6 @@ namespace Chem
         void MakeSystems()
         {
             RaiderSystem = new RaiderSystem(this);
-            GolfSystem = new GolfSystem(this);
             DragonSystem = new DragonSystem(this);
         }
 
@@ -41,20 +36,6 @@ namespace Chem
         internal IWorldModes Modes => modes;
 
         public bool HasModes => modes != null;
-
-        internal void Install(IWorldModes these)
-        {
-            if (these == null) throw new ArgumentNullException(nameof(these));
-            if (these.World != this) throw new ArgumentException("Those modes were made for another world", nameof(these));
-            if (modes != null) throw new InvalidOperationException("This world already has its game modes");
-            modes = these;
-        }
-
-        public void InstallModesOf(World other)
-        {
-            if (other == null) throw new ArgumentNullException(nameof(other));
-            if (other.modes != null) Install(other.modes.MadeFor(this));
-        }
 
         static InvalidOperationException NoModes(string what) =>
             new InvalidOperationException($"This world has no game modes, so it can't {what}: make it through Chem.Play (PlayModes.Install)");
@@ -107,12 +88,6 @@ namespace Chem
         public bool Flying(Raider r) => Flies(r, Rules.Entity(r.Kind));
 
         internal static bool Flies(Raider r, EntityDef def) => def.Raider?.Route == FlyRoute && r.StatusOf(LandedStatus) == 0;
-
-        public GolfState Golf => GolfSystem.State;
-
-        public void ApplyGolf(GolfCommand command) => GolfSystem.Apply(command);
-
-        public bool GolfWaiting(GolfState g) => GolfSystem.Waiting(g);
 
         public DragonState Dragon => DragonSystem.State;
 

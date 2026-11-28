@@ -17,6 +17,8 @@
     <ProjectReference Include="../Game.Core/Game.Core.csproj" />
     <!-- The game modes (Chem.Play): its world plays them. -->
     <ProjectReference Include="../Chem.Play/Chem.Play.csproj" />
+    <!-- Golf (Chem.Play.Golf, D22): its room places a ball and a cup. -->
+    <ProjectReference Include="../Chem.Play.Golf/Chem.Play.Golf.csproj" />
   </ItemGroup>
 
   <ItemGroup>

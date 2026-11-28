@@ -83,7 +83,7 @@ namespace Chem.Tests
             at.Mark("puzzles and stamps");
             WorldBuildings.Load(dir).LayInto(w);
             at.Mark("rows (buildings)");
-            if (GolfCommand.Load(dir) is { } hole) w.ApplyGolf(hole);
+            w.MapLaid(dir);
             at.Mark("golf");
             if (WorldHold.Load(dir) is { } hold && w.InBounds(hold.Heart.x, hold.Heart.y)) w.SetHold(hold);
             at.Mark("the Hold (places.json)");

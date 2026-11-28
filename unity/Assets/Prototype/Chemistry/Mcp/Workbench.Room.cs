@@ -2,7 +2,8 @@
 // they go to its own world through an IRoomDesk (GameRoomDesk): there a change goes
 // out as a room command in a tick batch and every peer decides it (World.Room.cs).
 // With no desk they run against a world in memory with a room open on it: the command
-// goes straight in and the world steps one tick, which is what a solo game does.
+// goes straight in and the world steps one tick, which is what a solo game does. That world's modes are whoever made
+// the workbench's to give (Modes, D22): the rules MCP server installs golf; none, and it has none.
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -29,14 +30,16 @@ namespace Chem.Mcp
         World live;
         World Live => live ??= NewRoom(ChangeMode.Open);
 
+        public System.Func<World, World> Modes { get; set; }
+
         World NewRoom(ChangeMode mode)
         {
             standIn ??= StandInValley.Load(Folders, Budgets) ?? StandInValley.None;
             World w;
-            if (standIn == StandInValley.None) w = new World(Base, 64, 64, 1);
+            if (standIn == StandInValley.None) w = WithModes(new World(Base, 64, 64, 1));
             else
             {
-                w = new World(Base, standIn.W, standIn.H, 1);
+                w = WithModes(new World(Base, standIn.W, standIn.H, 1));
                 w.SetLandRange(MapFile.Load(Folders.World).LandRange);
                 w.MakeFrom(standIn);
                 w.KeepStart();
@@ -44,6 +47,8 @@ namespace Chem.Mcp
             w.OpenRoom(mode, HostName, Base, Budgets);
             return w;
         }
+
+        World WithModes(World w) => Modes == null ? w : Modes(w);
 
         public string Room(string mode = null)
         {
