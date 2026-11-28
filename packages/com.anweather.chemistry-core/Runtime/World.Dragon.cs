@@ -20,7 +20,7 @@
 // counted. A chunk that isn't active can't change, so its count stands.
 //
 // The flight itself (the summons, the passes and their breath, who it knocks down, its text) is DragonSystem
-// (Play/DragonSystem.cs, architecture-review.md step 9); this file keeps what the world is put back to and how: the
+// (DragonSystem.cs, architecture-review.md step 9); this file keeps what the world is put back to and how: the
 // starting state, the audit, a chunk's reset (Freshen), the tick's dragon stage that runs them, and the save.
 using System;
 using System.Collections.Generic;

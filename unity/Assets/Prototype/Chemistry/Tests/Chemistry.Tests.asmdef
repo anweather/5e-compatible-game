@@ -4,6 +4,7 @@
     "references": [
         "Chemistry",
         "Chem.Land",
+        "Chem.Play",
         "Chemistry.Mcp",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",

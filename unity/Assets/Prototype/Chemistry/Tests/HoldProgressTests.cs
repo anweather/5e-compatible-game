@@ -459,7 +459,7 @@ namespace Chem.Tests
         public void AWorldSaveKeepsPointsAndPicks()
         {
             var source = new Grass();
-            var w = new World(R, 576, 576, 7);
+            var w = PlayModes.Install(new World(R, 576, 576, 7));
             w.MakeFrom(source);
             WorldBuildings.Load(ChemistryTests.WorldDir()).LayInto(w);
             w.SetHold(WorldHold.Load(ChemistryTests.WorldDir()));
@@ -469,7 +469,7 @@ namespace Chem.Tests
             Ticks(w, P.PlateTicks + 1);
             w.Hold.Wizards[Me] = new RunWizard { Player = Me };
             w.Hold.Wizards[Me].Picks.Add("tough");
-            var back = World.Load(w.Save(source), R, source);
+            var back = PlayModes.Install(World.Load(w.Save(source), R, source));
             back.SetHold(w.HoldSite);
             Assert.That(back.PointsOf(Me), Is.EqualTo(12));
             Assert.That(back.RunOf(Me).Picks, Is.EqualTo(new[] { "tough" }));

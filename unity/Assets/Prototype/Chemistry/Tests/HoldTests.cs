@@ -2,6 +2,7 @@
 // but those rows and hold.json, so the site can move.
 using System;
 using System.Linq;
+using Chem.Lockstep;
 using NUnit.Framework;
 
 namespace Chem.Tests
@@ -21,7 +22,7 @@ namespace Chem.Tests
         internal static World Field(int seed = 7, Rules rules = null)
         {
             var s = Site;
-            var w = new World(rules ?? R, 576, 576, (uint)seed);
+            var w = PlayModes.Install(new World(rules ?? R, 576, 576, (uint)seed));
             var cells = s.Spawners.SelectMany(p => p.Cells).Concat(new[] { s.Heart }).ToList();
             for (int y = cells.Min(c => c.y) - Around; y < cells.Max(c => c.y) + Around; y++)
                 for (int x = cells.Min(c => c.x) - Around; x < cells.Max(c => c.x) + Around; x++) w.Paint(x, y, "grass");
@@ -122,14 +123,50 @@ namespace Chem.Tests
         [Test]
         public void AWorldWithNoHoldHashesAsItDid()
         {
-            var w = new World(R, 64, 64, 7);
+            var w = PlayModes.Install(new World(R, 64, 64, 7));
             string hash = w.CastHash();
             Ticks(w, 30);
-            Assert.That(w.HoldSystem.Text(), Is.Empty);
+            Assert.That(w.Play().Hold.Text(), Is.Empty);
             Assert.That(w.CastHash(), Is.EqualTo(hash));
             var f = Field();
             Ticks(f, 30);
-            Assert.That(f.HoldSystem.Text(), Is.Empty, "a Hold no one has started says nothing");
+            Assert.That(f.Play().Hold.Text(), Is.Empty, "a Hold no one has started says nothing");
+        }
+
+        [Test]
+        public void AWorldMadeToPlayTicksTheHold()
+        {
+            var w = Running();
+            Assert.That(w.HasModes && w.Play().World == w, "the modes are the world's own");
+            Assert.That(w.HoldRunning, "the plate started a run");
+        }
+
+        [Test]
+        public void AWorldWithoutItsModesWontQuietlySkipTheHold()
+        {
+            var w = new World(R, 576, 576, 7);
+            w.SetHold(Site);
+            OnlyTheHold(w);
+            Ticks(w, 5);
+            Assert.That(w.HasModes, Is.False);
+            Assert.Throws<InvalidOperationException>(() => w.Play());
+            Stand(w, Me, w.HoldSite.Plate);
+            Assert.Throws<InvalidOperationException>(() => w.Step(), "a stand on the plate would start a run");
+        }
+
+        [Test]
+        public void AJoinersWorldGetsTheModesOfTheOneItReplaces()
+        {
+            var host = new LockstepWorld(R, () => Running());
+            var joiner = new LockstepWorld(R, () => Field());
+            var before = joiner.World.Play();
+            joiner.Load(JoinSnapshot.Parse(host.Snapshot().Text()));
+            Assert.That(joiner.World.HasModes && joiner.World.Play() != before && joiner.World.Play().World == joiner.World);
+            Assert.That(joiner.World.HoldRunning);
+            Ticks(host.World, 40);
+            Ticks(joiner.World, 40);
+            Assert.That(joiner.World.CastHash(), Is.EqualTo(host.World.CastHash()));
+            Assert.That(joiner.World.CellHash(), Is.EqualTo(host.World.CellHash()));
         }
 
         [Test]
@@ -194,9 +231,9 @@ namespace Chem.Tests
             w.Hold.Health = int.MaxValue / 2;
             Until(w, () => w.Hold.InWave > 0, "wave 1 starts");
             int first = w.Tick;
-            Assert.That(w.HoldNextWaveIn, Is.EqualTo(p.WaveTicks - 1).Or.EqualTo(p.WaveTicks), "the countdown");
+            Assert.That(w.HoldNextWaveIn(), Is.EqualTo(p.WaveTicks - 1).Or.EqualTo(p.WaveTicks), "the countdown");
             Until(w, () => w.Hold.Wave == 2, "wave 2 is announced");
-            Assert.That(w.HoldWarning?.ticks, Is.EqualTo(p.BetweenWaves), "its warning");
+            Assert.That(w.HoldWarning()?.ticks, Is.EqualTo(p.BetweenWaves), "its warning");
             Assert.That(w.Raiders, Is.Not.Empty, "wave 1 still stands");
             Until(w, () => w.Hold.InWave > 0, "wave 2 starts");
             Assert.That(w.Tick - first, Is.EqualTo(p.WaveTicks));
@@ -220,7 +257,7 @@ namespace Chem.Tests
             }, "the last wave is beaten");
             Assert.That(w.Hold.Phase, Is.EqualTo(HoldPhase.Won));
             Assert.That(w.Hold.Wave, Is.EqualTo(p.Waves));
-            Assert.That(w.HoldNextWaveIn, Is.Null);
+            Assert.That(w.HoldNextWaveIn(), Is.Null);
         }
 
         [Test]
@@ -233,13 +270,13 @@ namespace Chem.Tests
             var south = gate.First(c => Math.Abs(c.X - gate[0].X) + Math.Abs(c.Y - gate[0].Y) > 4);
             w.ApplyEffect(new EffectCommand(EffectKind.Swing, gate[0].X, gate[0].Y, null));
             w.ApplyEffect(new EffectCommand(EffectKind.Swing, south.X, south.Y, null));
-            Until(w, () => gate.Any(c => w.HoldSystem.BlowsOn(c.X, c.Y) > 0), "they batter it");
+            Until(w, () => gate.Any(c => w.Play().Hold.BlowsOn(c.X, c.Y) > 0), "they batter it");
             Assert.That(gate.All(c => w.At(c.X, c.Y).T == "timber-gate"));
             Until(w, () => gate.Any(c => w.At(c.X, c.Y).T == "rubble"), "it gives way");
             w.Hold.Health = ShortKeep;
             Until(w, () => !w.HoldRunning, "the keep falls");
             Assert.That(gate.All(c => w.At(c.X, c.Y).T == "timber-gate-open"), "mended, as the map has it");
-            Assert.That(gate.All(c => w.HoldSystem.BlowsOn(c.X, c.Y) == 0));
+            Assert.That(gate.All(c => w.Play().Hold.BlowsOn(c.X, c.Y) == 0));
         }
 
         [Test]
@@ -458,7 +495,7 @@ namespace Chem.Tests
             }
             while (joined.Tick < w.Tick) joined.Step();
             Assert.That(joined.HoldRunning);
-            Assert.That(joined.HoldSystem.Text(), Is.EqualTo(w.HoldSystem.Text()));
+            Assert.That(joined.Play().Hold.Text(), Is.EqualTo(w.Play().Hold.Text()));
             Assert.That(joined.CastHash(), Is.EqualTo(w.CastHash()));
         }
 
@@ -486,14 +523,14 @@ namespace Chem.Tests
         {
             var source = new Grass();
             var budgets = ModBudgets.Load(ChemistryTests.RulesDir());
-            var w = new World(R, 576, 576, 7);
+            var w = PlayModes.Install(new World(R, 576, 576, 7));
             w.MakeFrom(source);
             WorldBuildings.Load(ChemistryTests.WorldDir()).LayInto(w);
             w.KeepStart();
             w.OpenRoom(ChangeMode.Open, "host", R, budgets);
             var rows = w.RowsDrawn().Select(r => r.Id).ToList();
             Assert.That(rows, Does.Contain("hold#1"));
-            var back = World.Load(w.Save(source), R, source, budgets);
+            var back = PlayModes.Install(World.Load(w.Save(source), R, source, budgets));
             Assert.That(back.RowsDrawn().Select(r => r.Id), Is.EqualTo(rows));
         }
 
@@ -501,7 +538,7 @@ namespace Chem.Tests
         public void ASaveKeepsTheRun()
         {
             var source = new Grass();
-            var w = new World(R, 576, 576, 7);
+            var w = PlayModes.Install(new World(R, 576, 576, 7));
             w.MakeFrom(source);
             WorldBuildings.Load(ChemistryTests.WorldDir()).LayInto(w);
             w.SetHold(Site);
@@ -510,13 +547,13 @@ namespace Chem.Tests
             Ticks(w, R.Sim.Hold.PlateTicks + 1);
             Away(w);
             Until(w, () => w.Raiders.Count >= 2, "raiders come");
-            var back = World.Load(w.Save(source), R, source);
+            var back = PlayModes.Install(World.Load(w.Save(source), R, source));
             Assert.That(back.ActiveChunks, Is.EqualTo(w.ActiveChunks), "the save keeps which chunks are active");
             back.SetHold(Site);
-            Assert.That(back.HoldSystem.Text(), Is.EqualTo(w.HoldSystem.Text()));
+            Assert.That(back.Play().Hold.Text(), Is.EqualTo(w.Play().Hold.Text()));
             Ticks(w, 100);
             Ticks(back, 100);
-            Assert.That(back.HoldSystem.Text(), Is.EqualTo(w.HoldSystem.Text()));
+            Assert.That(back.Play().Hold.Text(), Is.EqualTo(w.Play().Hold.Text()));
         }
     }
 }

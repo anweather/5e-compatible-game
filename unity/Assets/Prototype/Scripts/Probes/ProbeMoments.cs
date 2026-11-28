@@ -35,7 +35,7 @@ public class MomentsProbe : ProbeScenario
             yield return Wait(0.5f);
             var drawn = DefenseField.InPlay;
             Check(m.Id + "_raiders_drawn", drawn.DrawnRaiders > 0, $"{drawn.DrawnRaiders} of {world.Raiders.Count}");
-            int barricades = World.BarricadesOf(world.Rules.Sim.Hold, m.Wave);
+            int barricades = HoldSystem.BarricadesOf(world.Rules.Sim.Hold, m.Wave);
             var stakes = grid.GetComponent<HoldBarricades>();
             Check(m.Id + "_barricades_drawn", (stakes.Drawn > 0) == (barricades > 0), $"{stakes.Drawn} cells for {barricades}");
         }

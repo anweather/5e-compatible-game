@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The game modes (docs/design/architecture-review.md step 9): the Hold, the defense field and the Gauntlet's course,
+       systems over the world's state, above the core. Compiles Runtime/Play, which Unity builds as the Chem.Play
+       assembly. Game.Core doesn't reference it: the world calls the modes through IWorldModes. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Chem.Play</AssemblyName>
+    <RootNamespace>Chem</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../../packages/com.anweather.chemistry-core/Runtime/Play/*.cs" Link="Play/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Game.Core/Game.Core.csproj" />
+  </ItemGroup>
+</Project>

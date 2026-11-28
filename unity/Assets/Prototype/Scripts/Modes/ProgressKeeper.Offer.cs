@@ -63,7 +63,7 @@ public partial class ProgressKeeper
 
     static string OfferTitle(World world)
     {
-        string left = world.HoldWarning is { } warning ? $", picked for you in {(warning.ticks + world.Rules.Sim.TicksPerSecond - 1) / world.Rules.Sim.TicksPerSecond} s" : "";
+        string left = world.HoldWarning() is { } warning ? $", picked for you in {(warning.ticks + world.Rules.Sim.TicksPerSecond - 1) / world.Rules.Sim.TicksPerSecond} s" : "";
         return $"Wave {world.Hold.Wave - 1} beaten. Pick an upgrade{left}";
     }
 

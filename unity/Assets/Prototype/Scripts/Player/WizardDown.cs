@@ -1,4 +1,5 @@
 using System.Reflection;
+using Chem;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -6,7 +7,7 @@ using UnityEngine.InputSystem;
 // falls where it stands, losing its cast, its animal shape and what it carries, and
 // lies there with no controls. A few seconds later (sim.json downed) it's back at
 // the yard with full health, or on its last checkpoint if it fell on a run of the
-// Gauntlet (World.CourseRespawn). This isn't the world reset: the world carries on.
+// Gauntlet (world.CourseRespawn, Chem.Play). This isn't the world reset: the world carries on.
 // Online each wizard's health is its owner's, so this runs on the owner's machine,
 // which alone asks the core whether the breath caught it, and NetWizard lays the
 // wizard down on the others (DownedPose). The breath is checked once a tick: the

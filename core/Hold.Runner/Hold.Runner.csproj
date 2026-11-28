@@ -16,5 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Game.Core/Game.Core.csproj" />
+    <!-- The game modes (Chem.Play): its world plays them. -->
+    <ProjectReference Include="../Chem.Play/Chem.Play.csproj" />
   </ItemGroup>
 </Project>

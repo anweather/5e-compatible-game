@@ -9,5 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Chem.Shared.Tests/Chem.Shared.Tests.csproj" />
+    <!-- The modes themselves, above the core (Runtime/Play, architecture-review.md step 9). -->
+    <ProjectReference Include="../Chem.Play/Chem.Play.csproj" />
   </ItemGroup>
 </Project>

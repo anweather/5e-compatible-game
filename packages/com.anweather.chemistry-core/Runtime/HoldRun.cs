@@ -4,7 +4,7 @@
 // Raiders are the defense field's, so spells reach them as they do there; their way is worked out here, not in
 // Play/DefenseSystem.cs, since a castle's walls can be battered and a field's can't. A wizard on a blocking cell is on the walls:
 // no raider reaches it. All whole numbers and the seeded generator, and "" in the checksum until there's been a run.
-// This file is a run's data; HoldSystem.cs is the Hold's system, which the world owns.
+// This file is a run's data, which the world keeps (World.Hold); Play/HoldSystem.cs is the Hold's system (Chem.Play).
 using System;
 using System.Collections.Generic;
 

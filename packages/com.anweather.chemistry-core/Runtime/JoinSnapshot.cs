@@ -36,7 +36,7 @@ namespace Chem
             if (world == null) throw new ArgumentNullException(nameof(world));
             return new[]
             {
-                world.CellHash(), world.Rules.Fingerprint, world.ThingsNow.Fingerprint, world.SkyHash(), world.DefenseSystem.Hash(),
+                world.CellHash(), world.Rules.Fingerprint, world.ThingsNow.Fingerprint, world.SkyHash(), world.DefenseHash(),
                 world.CastHash(), world.DragonSystem.Hash(), world.LandHash(),
             };
         }

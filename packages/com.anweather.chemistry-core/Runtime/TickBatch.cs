@@ -2,7 +2,7 @@
 // casts stamped for that tick, and the effects physics props had on cells
 // (Effects.cs: a barrel's blast, a lantern's spill), which the host saw and
 // stamped like casts, defense commands (the defense field's start,
-// Defense.cs), players' combo input (Combos.cs), the dragon's summons (Play/DragonSystem.cs), room commands (World.Room.cs) and unarmed strikes (World.Strike.cs). Solo play runs one per tick; online the host
+// Defense.cs), players' combo input (Combos.cs), the dragon's summons (DragonSystem.cs), room commands (World.Room.cs) and unarmed strikes (World.Strike.cs). Solo play runs one per tick; online the host
 // stamps them and every machine runs the same batches in the same order
 // (NetChem), and a late joiner rebuilds them from the host's history
 // (Timeline) and replays from tick 0. Running a batch is the same code in all
@@ -108,10 +108,10 @@ namespace Chem
             if (Room.Count > 0) rules = world.RoomRules;
             foreach (var c in Casts) world.Cast(c);
             foreach (var e in Effects) world.ApplyEffect(e);
-            foreach (var d in Defense) world.DefenseSystem.Apply(d);
+            foreach (var d in Defense) world.ApplyDefense(d);
             foreach (var c in Combos) world.ApplyCombo(c);
             foreach (var d in Dragon) world.DragonSystem.Apply(d);
-            foreach (var c in Course) world.CourseSystem.Apply(c);
+            foreach (var c in Course) world.ApplyCourse(c);
             foreach (var s in Strikes) world.ApplyStrike(s);
             return rules;
         }

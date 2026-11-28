@@ -72,7 +72,7 @@ namespace Chem
                 case ComboCommandKind.Hand: return PressHand(c, command.Step, command.Hold ? HandsDef.Throw : HandsDef.Thrust, false);
                 case ComboCommandKind.HandDown: return PressHand(c, command.Step, command.Hold ? HandsDef.Throw : HandsDef.Thrust, true);
                 case ComboCommandKind.HandUp: return ReleaseHand(c, command.Step);
-                case ComboCommandKind.Moment: return HoldSystem.StartMoment(command.Element);
+                case ComboCommandKind.Moment: return StartMoment(command.Element);
                 case ComboCommandKind.Pick: return PickUpgrade(command.Player, command.Element);
                 case ComboCommandKind.Bring: return BringPoints(command.Player, command.Step);
                 case ComboCommandKind.Attune: return Attune(c, command.Step, command.Element);
@@ -204,7 +204,7 @@ namespace Chem
         public string CastHash() => Fnv1a.Hash(CastText(StrikeText()));
 
         public string CastText(string stands) =>
-            CastState() + WhirlState() + WaveState() + BoulderState() + GolfSystem.Text() + CourseSystem.ZoneText() + CourseSystem.Text() + RoomText() + stands + HoldSystem.Text() + HandsText() + PlacedText() + ActText() + LaidText() + TriggerText();
+            CastState() + WhirlState() + WaveState() + BoulderState() + GolfSystem.Text() + ZoneText() + CourseText() + RoomText() + stands + HoldText() + HandsText() + PlacedText() + ActText() + LaidText() + TriggerText();
 
         public string WhirlState() => string.Concat(whirls.Select(ww => $"|{Whole(ww.X)}:{Whole(ww.Y)}:{Whole(ww.Age)}:{ww.Carrying ?? "-"}"));
 

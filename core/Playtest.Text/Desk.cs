@@ -103,7 +103,7 @@ namespace Chem.PlaytestText
 
         string Fresh()
         {
-            world = new World(rules, valley.W, valley.H, seed);
+            world = PlayModes.Install(new World(rules, valley.W, valley.H, seed));
             world.SetLandRange(landRange);
             world.MakeFrom(valley);
             world.KeepStart();

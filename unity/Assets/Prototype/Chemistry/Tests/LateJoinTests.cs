@@ -30,7 +30,7 @@ namespace Chem.Tests
 
         static string[] Parts(World w) => new[]
         {
-            w.CellHash(), w.Rules.Fingerprint, w.ThingsNow.Fingerprint, w.SkyHash(), w.DefenseSystem.Hash(), w.CastText(""), w.DragonSystem.Hash(), w.LandHash(),
+            w.CellHash(), w.Rules.Fingerprint, w.ThingsNow.Fingerprint, w.SkyHash(), w.DefenseHash(), w.CastText(""), w.DragonSystem.Hash(), w.LandHash(),
             w.StrikeText(),
         };
 

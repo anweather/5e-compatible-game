@@ -83,15 +83,23 @@ keeps what stays in the game: `Mcp/` (the Chemistry.Mcp assembly) and `Tests/`.
   explode or spill, a cell and an entity or item id), applied by
   `world.ApplyEffect`: what a physics prop hands the chemistry, solo at once
   and online stamped into a tick batch like a cast.
-- **The game modes are systems** in `Runtime/Play/` (D9, `docs/design/architecture-review.md` step 9), each a class
-  over the world's data that the world owns (`World.Play.cs`) and ticks where its mode always ran: `RaiderSystem`
-  (the raiders, their elements, hurts, shoves and upkeep), `DefenseSystem` (the defense field's waves, on the cost
-  field in `WayField`, which the Hold's ways share), `HoldSystem` (the Hold's runs; a run's data in `HoldRun.cs`),
-  `GolfSystem` (spell golf; `Golf.cs`), `CourseSystem` (the Gauntlet's zones and runs; `Course.cs`) and
-  `DragonSystem` (the dragon's flight). What a dragon's pass puts back, the starting state, the audit and a chunk's
-  reset, stays in `World.Dragon.cs`. The members code outside the core calls on the world (`world.Hold`,
-  `world.ApplyDefense`, `world.CaughtByBreath`...) are thin forwarders in `World.Play.cs`; core code and the tests
-  call the system (`world.HoldSystem.Text()`).
+- **The game modes are systems** (D9, `docs/design/architecture-review.md` step 9), each a class over the world's
+  data. Three the world owns and runs itself, since the chemistry reaches them: `RaiderSystem` (the raiders, their
+  elements, hurts, shoves and upkeep), `GolfSystem` (spell golf, an act anyone places; `Golf.cs`) and `DragonSystem`
+  (the dragon's flight; what a pass puts back, the starting state, the audit and a chunk's reset stay in
+  `World.Dragon.cs`). Three are **`Chem.Play`**, their own assembly above the core (`Runtime/Play/`, its asmdef;
+  `core/Chem.Play`), which the core doesn't reference: `DefenseSystem` (the defense field's waves, on the cost field in
+  `WayField`, which the Hold's ways share), `HoldSystem` (the Hold's runs) and `CourseSystem` (the Gauntlet's runs).
+  The world keeps their state, its text, hash and save (`World.Play.cs`: `world.Hold`, `HoldSite`, `Defense`, the
+  spell zones and `ZoneAgainst`, the course and its runs; the data types in `Hold.cs`, `HoldRun.cs`, `Defense.cs`,
+  `Course.cs`), and calls the systems through `IWorldModes` where they always ran: the tick after the raiders (the
+  defense field, then the Hold), a combo's Moment, `world.ApplyDefense` and `world.ApplyCourse`. A world gets them
+  once from `PlayModes.Install(world)` (the view's `ChemGrid`, `Hold.Runner`, `Playtest.Text`, the tests that play a
+  mode), and a joiner's world takes them from the one it replaces (`world.InstallModesOf`, in `LockstepWorld.Load`
+  and `ChemGrid.LoadSnapshot`). A world without them is the chemistry alone, and throws where one would have run.
+  Outside the core, `world.Play()` is a world's `PlayModes` (`.Hold`, `.Defense`, `.Course`), and the mode-only reads
+  are extension methods there (`WorldPlay`: `HoldWarning()`, `HoldRespawn()`, `HoldNextWaveIn()`, `HoldNext`,
+  `PathCostAt`, `CourseRespawn`); the rest (`world.Hold`, `world.Raiders`, `world.CaughtByBreath`...) are the world's.
 - `Items.cs` reads `rules/items.json`, things to carry (glowing balls, a
   bullseye lantern, a spyglass, sending stones, a Dancing Lights mote): their
   light in SRD feet, their use, and when one breaks (`ItemDef.BreaksAt`).
@@ -323,7 +331,8 @@ why in an ADR first. A table lags the code, so the `.asmdef` and `.csproj` files
 | Project or folder | May reference | Never |
 |---|---|---|
 | `Chem.Land` (the package's `Runtime/Land/`, asmdef `Chem.Land`, `noEngineReferences`; hills, ChunkGen, world plans, themes, biomes, map files, `GeneratedMap`; `docs/design/chem-land-split.md`) | .NET, Newtonsoft.Json, `Prototype.Analyzers` | `Chemistry/` (no `World`, `Cell` or `Rules`), `UnityEngine`, `Scripts/`, anything under `core/` |
-| `Chemistry/` (the package's `Runtime/` but `Land/`, asmdef `Chemistry`, `noEngineReferences`; sees `Chem.Land`'s internals) | `Chem.Land`, .NET, Newtonsoft.Json, `Prototype.Analyzers` | `UnityEngine`, `Scripts/`, `Chemistry/Mcp/`, anything under `core/` |
+| `Chemistry/` (the package's `Runtime/` but `Land/` and `Play/`, asmdef `Chemistry`, `noEngineReferences`; sees `Chem.Land`'s internals) | `Chem.Land`, .NET, Newtonsoft.Json, `Prototype.Analyzers` | `Chem.Play` (it calls the modes through `IWorldModes`), `UnityEngine`, `Scripts/`, `Chemistry/Mcp/`, anything under `core/` |
+| `Chem.Play` (the package's `Runtime/Play/`, asmdef `Chem.Play`, `noEngineReferences`; the defense field, the Hold, the course; sees the core's and the land's internals) | `Chemistry/`, `Chem.Land`, .NET, Newtonsoft.Json, `Prototype.Analyzers` | `UnityEngine`, `Scripts/`, `Chemistry/Mcp/`, anything under `core/` |
 | `Chemistry/Mcp/` (`unity/Assets/Prototype/Chemistry/Mcp/`, asmdef `Chemistry.Mcp`, `noEngineReferences`; sees the core's and the land's internals) | `Chemistry/`, `Chem.Land`, .NET, Newtonsoft.Json | `UnityEngine`, `Scripts/`, anything under `core/` |
 | `Scripts/Shell/Playtest/Logic/` (compiled into `Game.Core` too) | `Chemistry/`, .NET | `UnityEngine`, the rest of `Scripts/` |
 | `Scripts/Plans/` (the view's plans: budgets, tables, menu logic, mesh arrays with no `Mesh`; asmdef `Prototype.Plans`, in player builds; `docs/design/architecture-review.md` step 6) | `Chemistry/`, `Chem.Land`, `UnityEngine`'s maths only (`Vector2`/`3`, `Mathf`, `Color`, `Debug.Log`: what `core/UnityMath` stands in for) | `Scripts/` (no game type), MonoBehaviours, scenes and assets |
@@ -335,10 +344,11 @@ why in an ADR first. A table lags the code, so the `.asmdef` and `.csproj` files
 | `Scripts/Editor/Tests/`, `Scripts/Shell/Playtest/Editor/` (asmdef `Prototype.Game.Tests`, Editor only; sees `Prototype.Game.Editor`'s internals) | everything but the probes, NUnit | nothing references it |
 | `Scripts/Probes/` (the Play-mode probe scenarios: asmdef `Prototype.Probes`, in player builds too) | the game's layers, `Scripts/Net/`, `Chemistry/`, Unity | the game never references it back |
 | `Scripts/Probes/Editor/` (the probe CLI: asmdef `Prototype.Probes.Editor`, Editor only; sees `Prototype.Game.Editor`'s internals) and `Probes/Editor/Tests/` (`Prototype.Probes.Tests`) | everything | nothing references them |
-| `Chemistry/Tests/` (`unity/Assets/Prototype/Chemistry/Tests/`, asmdef `Chemistry.Tests`, Editor only) | `Chemistry/`, `Chem.Land`, `Chemistry/Mcp/`, NUnit | `Scripts/`, anything under `core/` (Unity compiles it too) |
+| `Chemistry/Tests/` (`unity/Assets/Prototype/Chemistry/Tests/`, asmdef `Chemistry.Tests`, Editor only) | `Chemistry/`, `Chem.Land`, `Chem.Play`, `Chemistry/Mcp/`, NUnit | `Scripts/`, anything under `core/` (Unity compiles it too) |
 | `core/Chem.Land` | links `Runtime/Land/*.cs` (netstandard2.1) | any other `core/` project |
-| `core/Game.Core` | links `Chemistry/*.cs` (not `Land/`), `Chemistry/Mcp/`, `Scripts/Shell/Playtest/Logic/`; references `Chem.Land` | any other `core/` project |
-| `core/Rules.Mcp`, `Playtest.Runner`, `Playtest.Text`, `Hold.Runner` | `Game.Core` | each other, any test project |
+| `core/Game.Core` | links `Chemistry/*.cs` (not `Land/` or `Play/`), `Chemistry/Mcp/`, `Scripts/Shell/Playtest/Logic/`; references `Chem.Land` | any other `core/` project |
+| `core/Chem.Play` | links `Runtime/Play/*.cs` (the game modes, step 9); references `Game.Core` | any other `core/` project |
+| `core/Rules.Mcp`, `Playtest.Runner`, `Playtest.Text`, `Hold.Runner` | `Game.Core` (`Playtest.Text` and `Hold.Runner` also `Chem.Play`: their worlds play the modes) | each other, any test project |
 | `core/Chat.Bench` | `Game.Core`, `Rules.Mcp` (it drives the server) | the other tools, any test project |
 | `core/Chem.<Module>.Tests` (each links its module's files of `Chemistry/Tests/`, listed in `core/Chem.Tests.props`; `Chem.Playtest.Tests` links `Scripts/Shell/Playtest/Editor/*Tests.cs`) | `Game.Core` (through `Chem.Shared.Tests`), the module test projects below it for helpers (`docs/TESTING_LAYERS.md`) | the tools |
 | `core/Chem.Land.Tests` (the land's own tests) | `Chem.Land` alone | `Game.Core`, `Chem.Shared.Tests`, any other test project |
@@ -374,7 +384,7 @@ why in an ADR first. A table lags the code, so the `.asmdef` and `.csproj` files
 | A **chemistry behaviour** that data can't express | Change `Chemistry/`, with a C# golden test (the TS sandbox is frozen: don't port it) |
 | A **physics prop** | Its numbers in `rules/entities.json`, a shape in `PropBuilder` (Editor), which builds its prefab and makes it networked (`NetProp`), and where it stands in `world/things.json` (append to a chunk's list so ids don't shift). Anything it does to cells goes through `ChemEffects.Request` as an `EffectCommand`, never straight to the world: solo it applies at once; online the host stamps it into the next `NetChem` tick batch (D4 in `DECISIONS.md`) and every machine applies it at that tick. A new kind of effect goes in `Chem.EffectKind` and `World.ApplyEffect`. Then rebuild the yard (Prototype > Build Chemistry Yard) so its prefab is built and registered |
 | A **thing to carry** | Its row in `rules/items.json` (light, use, breaks; checked in both `Rules.CheckItems.cs` and `validateRules`). Its id in `ItemIds`, a shape in `ItemBuilder` (Editor), and a spot in `world/things.json` (a pair shares a `link`). A new `use` needs an `ItemUse` behaviour, added in `Carryable.AddBehaviours`, and the use name in both checkers. If what it does should show on other screens, give `NetItem` the state or message (as for the light, the mote and sending stones); a use only its holder sees (the spyglass) needs nothing |
-| A **defense-field raider** | Its row in `rules/entities.json` with a `raider` object (pace, `weak`, `resist`; checked in `Rules.Check.cs`) and its id in `sim.json`'s `defense.kinds`. Raiders are core entities (`Play/RaiderSystem.cs`, `Play/DefenseSystem.cs`), so nothing about them is networked but the start command. Its id in `RaiderIds`, and the Punchy species it's drawn as in `DefenseFieldBuilder` (`kinds`, `species`, `sizes`) |
+| A **defense-field raider** | Its row in `rules/entities.json` with a `raider` object (pace, `weak`, `resist`; checked in `Rules.Check.cs`) and its id in `sim.json`'s `defense.kinds`. Raiders are core entities (`RaiderSystem.cs`; the defense field's waves are `Play/DefenseSystem.cs`, Chem.Play), so nothing about them is networked but the start command. Its id in `RaiderIds`, and the Punchy species it's drawn as in `DefenseFieldBuilder` (`kinds`, `species`, `sizes`) |
 | **Scenery** | In a builder (`ValleyBuilder`), never placed by hand |
 
 ## Known debt

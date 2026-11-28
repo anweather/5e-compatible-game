@@ -122,8 +122,8 @@ fixtures are split in two since step 5b (`docs/design/chem-land-split.md`): `Hil
 | `Chem.Rules.Tests` | rule tables, mods' fields, components, items, looks, fauna, the spell list and radial, player mods and stats | 191 | 8 s |
 | `Chem.Land.Tests` | the land alone, on `Chem.Land` (no `Game.Core`): `Hills*`, `ChunkGen`, `WorldPlan*`, biomes, landmarks, themes, map files, the land goldens (`NineGolden`, the hills', `WorldTwelve`'s) | 290 | 76 s |
 | `Chem.LandWorld.Tests` | the land on a World: each land fixture's `*WorldTests.cs` half (peers on the hills, bakes, `MapCheck`), `GeneratedSource`, stamps laid, terrain, places, the land benches | 209 (208 without Sweep) | 94 s |
-| `Chem.Sim.Tests` | cells, chunks, ticks, spells and combos, things, saves, weather, the `CellHash`/`ChunkHash` goldens | 626 | 49 s |
-| `Chem.Play.Tests` | the Hold (with `HoldLockstepTests`), the hands, golf, the Gauntlet, puzzles, defense, the dragon | 245 (243 without Sweep) | 47 s |
+| `Chem.Sim.Tests` | cells, chunks, ticks, spells and combos, things, weather, the `CellHash`/`ChunkHash` goldens | 603 (step 9's Chem.Play: `SaveTests` moved to Play) | 49 s |
+| `Chem.Play.Tests` | the Hold (with `HoldLockstepTests`), the hands, golf, the Gauntlet, puzzles, defense, the dragon, saves (`SaveTests`: a saved world plays the defense field); on `Chem.Play` and `Chem.Shared.Tests` | 281 (278 without Sweep) | 47 s |
 | `Chem.Lockstep.Tests` | the lockstep session and wire, late joins, rooms, resets, the open world over the loopback | 80 | 110 s |
 | `Chem.Playtest.Tests` | the playtest bot (`Scripts/Shell/Playtest/Editor/*Tests.cs`) | 41 | 2 s |
 | `Prototype.Plans.Tests` | the view's plans (`Scripts/Plans/Tests/*.cs`, on `Prototype.Plans` and the `core/UnityMath` shim; step 6): the tree budget, the menu navigator, pinned ground, tag rules, build versions, the far ring's meshes | 57 | 1 s (the Mac) |
@@ -178,6 +178,14 @@ is `tools/workers/modules.json`; `tools/workers/modules.mjs` reads it with `core
 references `Chem.Land`. So a Runtime change above the land runs every project but `Chem.Land.Tests` (which builds on
 `Chem.Land` alone); the map's other Runtime areas (`runtime-rules`, `runtime-play`...) say in `after` which project
 each would narrow to as an assembly of its own.
+
+**The game modes are their own assembly too** (step 9's leftover, 2026-11-27): `Runtime/Play/` is `Chem.Play`, above
+`Game.Core`, and only `Chem.Play.Tests`, `Hold.Runner` (with `Hold.Runner.Tests`) and `Playtest.Text` reference it. So
+`runtime-play` is `"projects": ["Chem.Play"]` with no `stop`: a Play change runs `Chem.Play.Tests` and
+`Hold.Runner.Tests` and gives the rest the smoke, because nothing below `Chem.Play` can reach it. The modes' state, its
+save and the seam (`World.Play.cs`, `IWorldModes.cs`) are Sim's and run everything. On the Mac (warm build, `gates.sh`
+wall): a Play file (`Runtime/Play/CourseSystem.cs`) 177 s before, 52 s after; a Sim file (`Runtime/World.cs`) 160 s
+before, 169 s after (the same set; noise).
 
 **The `stop` rule (Andrew, 2026-11-26).** A Land change (`runtime-land`: `Runtime/Land/**`) runs `Chem.Land.Tests` and
 `Chem.LandWorld.Tests` (the land on a World), and everything above `Game.Core` gets only the `Unit` smoke: the module's
