@@ -97,7 +97,7 @@ export function load(root = join(here, "..", "..")) {
   const modules = map.modules.map(m => ({ ...m, res: (m.paths ?? []).map(globRe) }));
   const problems = [];
   for (const m of modules) {
-    for (const p of [...(m.projects ?? []), ...(m.reads ?? []), ...(m.after ?? [])]) if (!projects[p]) problems.push(`module ${m.name} names ${p}, which isn't a core project`);
+    for (const p of [...(m.projects ?? []), ...(m.reads ?? []), ...(m.after ?? []), ...(m.runs ?? [])]) if (!projects[p]) problems.push(`module ${m.name} names ${p}, which isn't a core project`);
     if (m.props && !items[m.props]) problems.push(`module ${m.name} reads ${m.props}, which ${propsPath} doesn't have`);
   }
   for (const name of Object.keys(items)) if (!modules.some(m => m.props === name)) problems.push(`${propsPath}'s ${name} has no module`);
@@ -131,8 +131,8 @@ export function choose(m, files, { derive = true } = {}) {
     const mod = moduleOf(m, file);
     if (!mod) return everything(`everything: ${file} is in no module (the fail-safe)`);
     const stop = mod.stop ?? [];
-    const code = withDependents(m, mod.projects ?? [], stop);
-    const compiled = derive ? m.compiledBy(file) : [];
+    const code = mod.runs ? new Set(mod.runs) : withDependents(m, mod.projects ?? [], stop);
+    const compiled = derive && !mod.runs ? m.compiledBy(file) : [];
     for (const p of withDependents(m, compiled, stop)) code.add(p);
     const picks = [...code, ...(mod.reads ?? [])].filter(p => m.projects[p]?.test);
     for (const p of picks) run.add(p);
@@ -142,7 +142,8 @@ export function choose(m, files, { derive = true } = {}) {
   }
   for (const [name, s] of seen) {
     const what = s.picks.size === tests.length ? "every test project" : s.picks.size ? [...s.picks].sort().join(", ") : "no dotnet tests";
-    const via = s.lib.length ? ` (through ${s.lib.join(", ")} and what references it${s.stop.length ? `, not past ${s.stop.join(", ")}: what's beyond gets the smoke` : ""})` : "";
+    const runs = m.modules.find(x => x.name === name)?.runs;
+    const via = runs ? ` (only these in full: what else references ${s.lib.join(", ")} gets the smoke)` : s.lib.length ? ` (through ${s.lib.join(", ")} and what references it${s.stop.length ? `, not past ${s.stop.join(", ")}: what's beyond gets the smoke` : ""})` : "";
     const eg = s.files.slice(0, 2).join(", ") + (s.files.length > 2 ? `, +${s.files.length - 2}` : "");
     why.push(`${name} [${eg}]: ${what}${via}`);
   }
@@ -169,11 +170,11 @@ export function check(m) {
   if (problems.length) return problems;
   const tests = Object.keys(m.projects).filter(p => m.projects[p].test);
   for (const [name, p] of Object.entries(m.projects)) {
-    const needFor = stop => p.test ? [name] : [...withDependents(m, [name], stop)].filter(x => m.projects[x].test);
+    const needFor = mod => p.test ? [name] : mod?.runs ? mod.runs.filter(x => m.projects[x]?.test) : [...withDependents(m, [name], mod?.stop ?? [])].filter(x => m.projects[x].test);
     for (const c of p.compiles) {
       const files = c.startsWith("@(") ? filesFor(m.root, "unity/Assets/Prototype/Chemistry/Tests/*.cs").filter(f => m.inItem(c.slice(2, -1), f)) : filesFor(m.root, c);
       for (const f of files) {
-        const need = needFor(moduleOf(m, f)?.stop ?? []);
+        const need = needFor(moduleOf(m, f));
         const sel = choose(m, [f], { derive: false });
         const missing = need.filter(t => !sel.run.includes(t));
         if (missing.length) problems.push(`${f}: ${name} compiles it, but the map runs ${sel.run.join(", ") || "nothing"}, not ${missing.join(", ")}`);

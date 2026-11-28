@@ -7,6 +7,7 @@
     "A module with neither runs no dotnet tests (docs, tools). A path in no module runs everything: the fail-safe.",
     "Every Chem.* project but Chem.Land.Tests links the Runtime through Game.Core, so each Runtime area in Game.Core runs everything but the land's own tests; 'after' says which project it narrows to once it's an assembly of its own. Chemistry/Mcp and Playtest/Logic compile into Game.Core too, so they run the same. The land (Chem.Land, below Game.Core) and the modes (Chem.Play, above it) are assemblies of their own.",
     "'stop' (step 5c): projects whose dependents aren't followed for that module's changes; what's past them gets the smoke. runtime-land stops at Game.Core (Andrew, 2026-11-26). check takes the same cut.",
+    "'runs' (2026-11-28): the test projects a module runs in full in place of everything that references its projects; the rest get the smoke. runtime-sim runs Chem.Sim.Tests and Chem.Lockstep.Tests (Andrew). check takes the same cut.",
     "core/ files in no module (Chem.Tests.props, Directory.Build.props, the solution, the runsettings, TestParallel.cs, TestFriends.cs) run everything, as any unmapped path does.",
     "modules.mjs check (run by gates.test.mjs) proves the map agrees with the csproj files: every file a project compiles must select that project."
   ],
@@ -14,7 +15,7 @@
   "modules": [
     { "name": "runtime-land", "projects": ["Chem.Land"], "stop": ["Game.Core"], "paths": [
       "packages/com.anweather.chemistry-core/Runtime/Land/**"
-    ], "_": "Chem.Land's own assembly (step 5a). Andrew's ruling (2026-11-26, step 5c): a Land change runs Chem.Land.Tests and Chem.LandWorld.Tests (they reference Chem.Land), and not what reaches it only through Game.Core: those get the Unit smoke, and CI's full run after every push to dev catches the rest. Its adapters onto a world (World.Land, GeneratedSource, BakedSource, MapBake, MapCheck, GeneratedPlaces, CellHeightfield, OpenWorld*) are Sim's: runtime-sim, everything." },
+    ], "_": "Chem.Land's own assembly (step 5a). Andrew's ruling (2026-11-26, step 5c): a Land change runs Chem.Land.Tests and Chem.LandWorld.Tests (they reference Chem.Land), and not what reaches it only through Game.Core: those get the Unit smoke, and CI's full run after every push to dev catches the rest. Its adapters onto a world (World.Land, GeneratedSource, BakedSource, MapBake, MapCheck, GeneratedPlaces, CellHeightfield, OpenWorld*) are Sim's: runtime-sim-land (Sim's cut plus LandWorld)." },
     { "name": "runtime-rules", "after": ["Chem.Rules.Tests"], "projects": ["Game.Core"], "paths": [
       "packages/com.anweather.chemistry-core/Runtime/Rule*",
       "packages/com.anweather.chemistry-core/Runtime/Mod*",
@@ -35,7 +36,7 @@
     ], "_": "Spell golf, a mini-game on its own assembly (D22, docs/design/minigames.md): a golf change runs Chem.Play.Golf.Tests, and Playtest.Text and Rules.Mcp build on it. It stops at Rules.Mcp (the MCP server's rooms install golf): Rules.Mcp.Tests and Chat.Bench reach golf only through it, so they get the Unit smoke, and CI's full run after every push to dev catches the rest (as runtime-land's stop at Game.Core, 2026-11-26)." },
     { "name": "runtime-play", "projects": ["Chem.Play"], "paths": [
       "packages/com.anweather.chemistry-core/Runtime/Play/**"
-    ], "_": "Chem.Play's own assembly (architecture-review.md step 9): the Hold's, the defense field's and the course's systems, above Game.Core. A Play change runs what references Chem.Play: Chem.Play.Tests, Hold.Runner (and its tests) and Playtest.Text, and the rest get the Unit smoke. No stop is needed: nothing heavy reaches Chem.Play, and nothing below it (Game.Core and what's on it) can, so the cut is the references themselves. The modes' state, its save and the seam (World.Play.cs, IWorldModes.cs, Hold.cs, Defense.cs, Course.cs, HoldRun.cs) and the raiders and the dragon are Sim's, as are the modes' contract and bodies (WorldMode.cs, Body.cs, World.Bodies.cs): runtime-sim, everything." },
+    ], "_": "Chem.Play's own assembly (architecture-review.md step 9): the Hold's, the defense field's and the course's systems, above Game.Core. A Play change runs what references Chem.Play: Chem.Play.Tests, Hold.Runner (and its tests) and Playtest.Text, and the rest get the Unit smoke. No stop is needed: nothing heavy reaches Chem.Play, and nothing below it (Game.Core and what's on it) can, so the cut is the references themselves. The modes' state, its save and the seam (World.Play.cs, IWorldModes.cs, Hold.cs, Defense.cs, Course.cs, HoldRun.cs) and the raiders and the dragon are Sim's, as are the modes' contract and bodies (WorldMode.cs, Body.cs, World.Bodies.cs): runtime-sim-modes (Sim's cut plus the modes' tests)." },
     { "name": "runtime-lockstep", "after": ["Chem.Lockstep.Tests"], "projects": ["Game.Core"], "paths": [
       "packages/com.anweather.chemistry-core/Runtime/Lockstep*",
       "packages/com.anweather.chemistry-core/Runtime/JoinSnapshot*",
@@ -44,9 +45,31 @@
       "packages/com.anweather.chemistry-core/Runtime/StandKeeper*",
       "packages/com.anweather.chemistry-core/Runtime/PlayerId*"
     ] },
-    { "name": "runtime-sim", "after": ["Chem.Sim.Tests"], "projects": ["Game.Core"], "paths": [
+    { "name": "runtime-sim-land", "projects": ["Game.Core"], "runs": ["Chem.Sim.Tests", "Chem.Lockstep.Tests", "Chem.LandWorld.Tests"], "paths": [
+      "packages/com.anweather.chemistry-core/Runtime/World.Land*",
+      "packages/com.anweather.chemistry-core/Runtime/GeneratedSource*",
+      "packages/com.anweather.chemistry-core/Runtime/BakedSource*",
+      "packages/com.anweather.chemistry-core/Runtime/MapBake*",
+      "packages/com.anweather.chemistry-core/Runtime/MapCheck*",
+      "packages/com.anweather.chemistry-core/Runtime/GeneratedPlaces*",
+      "packages/com.anweather.chemistry-core/Runtime/CellHeightfield*",
+      "packages/com.anweather.chemistry-core/Runtime/OpenWorld*"
+    ], "_": "Sim's adapters of the land onto a world: runtime-sim's cut (Andrew, 2026-11-28) plus the land-on-a-world tests." },
+    { "name": "runtime-sim-modes", "projects": ["Game.Core"], "runs": ["Chem.Sim.Tests", "Chem.Lockstep.Tests", "Chem.Play.Tests", "Chem.Play.Golf.Tests", "Hold.Runner.Tests"], "paths": [
+      "packages/com.anweather.chemistry-core/Runtime/World.Play*",
+      "packages/com.anweather.chemistry-core/Runtime/IWorldModes*",
+      "packages/com.anweather.chemistry-core/Runtime/Hold.cs*",
+      "packages/com.anweather.chemistry-core/Runtime/Defense.cs*",
+      "packages/com.anweather.chemistry-core/Runtime/Course.cs*",
+      "packages/com.anweather.chemistry-core/Runtime/HoldRun.cs*",
+      "packages/com.anweather.chemistry-core/Runtime/WorldMode*",
+      "packages/com.anweather.chemistry-core/Runtime/Body.cs*",
+      "packages/com.anweather.chemistry-core/Runtime/World.Bodies*",
+      "packages/com.anweather.chemistry-core/Runtime/RuleModes*"
+    ], "_": "The modes' seam and the state Sim keeps for them (D22): runtime-sim's cut (Andrew, 2026-11-28) plus the modes' own tests." },
+    { "name": "runtime-sim", "after": ["Chem.Sim.Tests"], "projects": ["Game.Core"], "runs": ["Chem.Sim.Tests", "Chem.Lockstep.Tests"], "paths": [
       "packages/com.anweather.chemistry-core/Runtime/**"
-    ] },
+    ], "_": "Andrew's ruling (2026-11-28): a Sim change runs Chem.Sim.Tests and Chem.Lockstep.Tests (the world and its determinism: every hash, join and replay) in full, and every other project that links Game.Core gets the Unit smoke; CI's full run after every push to dev catches the rest, as runtime-land's stop does. The Lockstep and rules areas above still run everything." },
     { "name": "package-docs", "paths": ["packages/com.anweather.chemistry-core/*.md", "packages/com.anweather.chemistry-core/*.md.meta"] },
 
     { "name": "tests-shared", "props": "ChemTestsShared", "projects": ["Chem.Shared.Tests"] },

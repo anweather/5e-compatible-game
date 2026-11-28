@@ -213,7 +213,18 @@ land's own tests, `TerraformTests`' `CellHash` goldens are `Unit` (in the smoke)
 CI after every push to dev**, which catches what the cut lets by. `modules.mjs check` takes the same cut (a project
 past a stop isn't required of a file in that module, but a test project that compiles the file always is), and
 `gates.test.mjs` tests it. A Land test file runs Land and LandWorld (LandWorld references Land), not Sim. The adapters
-onto a world (`World.Land`, `GeneratedSource`, `MapBake`, `MapCheck`...) are Sim's and run everything.
+onto a world (`World.Land`, `GeneratedSource`, `MapBake`, `MapCheck`...) are Sim's: `runtime-sim-land`, below.
+
+**The Sim cut (Andrew, 2026-11-28).** A Sim change (`runtime-sim`: the rest of `Runtime/**`) runs `Chem.Sim.Tests` and
+`Chem.Lockstep.Tests` in full (the world, and its determinism: every hash, join and replay), and every other project
+that links `Game.Core` gets the `Unit` smoke. The module's `"runs"` names the projects it runs in full in place of
+everything that references its projects. Sim's adapters keep their users' tests: the land onto a world
+(`runtime-sim-land`: `World.Land`, `GeneratedSource`, `BakedSource`, `MapBake`, `MapCheck`, `GeneratedPlaces`,
+`CellHeightfield`, `OpenWorld*`) adds `Chem.LandWorld.Tests`, and the modes' seam and the state Sim keeps for them
+(`runtime-sim-modes`: `World.Play`, `IWorldModes`, `WorldMode`, `Body`, `World.Bodies`, `Hold`, `Defense`, `Course`,
+`HoldRun`, `RuleModes`) adds `Chem.Play.Tests`, `Chem.Play.Golf.Tests` and `Hold.Runner.Tests`. Like the stop, it's a
+judgment: the full suite still runs in CI after every push to dev. The Lockstep area (`runtime-lockstep`), the rules
+(`runtime-rules`), `Chemistry/Mcp` and core/ files in no module still run everything.
 
 When dev moves during the gates, `land.sh` merges again and reruns the gates only if dev's new commits reach what this
 landing tested (`modules.mjs overlap`: a test project both run, a tested module both touch, or either running

@@ -136,8 +136,22 @@ test("a Hold change doesn't run golf's tests, nor golf the Hold's", () => {
   assert.ok(tested.includes("Chem.Play.Tests") && !tested.includes("Chem.Play.Golf.Tests"), tested.join(" "));
 });
 
-test("the stop cuts only its own module's changes: a Land file with a Sim file runs everything", () => {
-  assert.match(run(NOTHING, "0", ["packages/com.anweather.chemistry-core/Runtime/Land/HillsRoads.cs", "packages/com.anweather.chemistry-core/Runtime/World.Sim.cs"]).ran, /dotnet test core -c Release/);
+test("the stop cuts only its own module's changes: a Land file with a Lockstep file runs everything", () => {
+  assert.match(run(NOTHING, "0", ["packages/com.anweather.chemistry-core/Runtime/Land/HillsRoads.cs", "packages/com.anweather.chemistry-core/Runtime/LockstepSession.cs"]).ran, /dotnet test core -c Release/);
+});
+
+test("a Sim change runs Sim's and Lockstep's tests in full and the rest's smoke (Andrew, 2026-11-28)", () => {
+  const { code, out, ran } = run(NOTHING, "0", ["packages/com.anweather.chemistry-core/Runtime/World.Sim.cs"]);
+  assert.equal(code, 0, out);
+  const tested = projectsIn(ran, "TestCategory!=Sweep");
+  assert.deepEqual(tested, ["Chem.Lockstep.Tests", "Chem.Sim.Tests"], "the world and its determinism");
+  assert.deepEqual(projectsIn(ran, "TestCategory=Unit"), ALL.filter(p => !tested.includes(p)), "the smoke is every other project's Unit fixtures");
+  assert.match(out, /runtime-sim \[.*World\.Sim\.cs\]: .*only these in full/, "it says why");
+});
+
+test("a Land file with a Sim file runs both modules' own tests, not everything", () => {
+  const tested = projectsIn(run(NOTHING, "0", ["packages/com.anweather.chemistry-core/Runtime/Land/HillsRoads.cs", "packages/com.anweather.chemistry-core/Runtime/World.Sim.cs"]).ran, "TestCategory!=Sweep");
+  assert.deepEqual(tested, ["Chem.Land.Tests", "Chem.LandWorld.Tests", "Chem.Lockstep.Tests", "Chem.Sim.Tests"]);
 });
 
 function madeUp(stop, alsoCompiledBy = []) {
@@ -170,8 +184,8 @@ test("check takes the module's cut, and never excuses a test project that compil
   for (const m of [cut, own]) rmSync(m.root, { recursive: true, force: true });
 });
 
-test("a Runtime change above the land runs every project but the land's own tests, which build on Chem.Land alone", () => {
-  const tested = projectsIn(run(NOTHING, "0", ["packages/com.anweather.chemistry-core/Runtime/World.Sim.cs"]).ran, "TestCategory!=Sweep");
+test("an uncut Runtime change above the land (Lockstep) runs every project but the land's own tests, which build on Chem.Land alone", () => {
+  const tested = projectsIn(run(NOTHING, "0", ["packages/com.anweather.chemistry-core/Runtime/LockstepSession.cs"]).ran, "TestCategory!=Sweep");
   assert.deepEqual(tested, ALL.filter(p => p !== "Chem.Land.Tests"));
 });
 
