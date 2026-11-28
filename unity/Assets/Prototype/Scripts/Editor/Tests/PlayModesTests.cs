@@ -12,6 +12,6 @@ public class PlayModesTests
         var world = ChemGrid.StartWorld(Rules.Load(ChemGrid.Folders.Rules), 7, out _);
         Assert.That(world.HasModes, "ChemGrid makes its world through PlayModes.Install");
         Assert.That(world.Play().World, Is.SameAs(world));
-        Assert.That(world.Play().Hold.Site, Is.SameAs(world.HoldSite));
+        Assert.That(world.Play().Hold.Site, Is.SameAs(world.HoldSite()));
     }
 }

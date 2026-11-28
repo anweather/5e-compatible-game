@@ -35,16 +35,16 @@ public class RoomProgressProbe : RoomProbe
         string joiner = world.Stands.Keys.FirstOrDefault(p => p != host);
         Check("the_joiner_has_everything", joiner != null && world.PointsOf(joiner) == World.AllPoints, $"{joiner}: {(joiner != null ? world.PointsOf(joiner) : null)}");
 
-        var plate = world.HoldSite.Plate;
+        var plate = world.HoldSite().Plate;
         var at = grid.CellCenter(plate.x, plate.y);
         at.y = grid.GroundAt(at) + 0.05f;
         var body = me.GetComponent<CharacterController>();
         body.enabled = false;
         me.transform.position = at;
         body.enabled = true;
-        for (float t = 0f; t < MostWait && !world.HoldRunning; t += Time.unscaledDeltaTime) yield return null;
-        Check("a_run_starts", world.HoldRunning);
-        if (!world.HoldRunning) yield break;
+        for (float t = 0f; t < MostWait && !world.HoldRunning(); t += Time.unscaledDeltaTime) yield return null;
+        Check("a_run_starts", world.HoldRunning());
+        if (!world.HoldRunning()) yield break;
         Check("the_hosts_left_hand_is_locked", !world.HandOpen(host, HandsDef.Left) && world.HandOpen(joiner ?? "", HandsDef.Left),
             $"host left {world.HandOpen(host, HandsDef.Left)}, joiner left {world.HandOpen(joiner ?? "", HandsDef.Left)}");
         HashesFrom = Net.NetTick;
@@ -55,7 +55,7 @@ public class RoomProgressProbe : RoomProbe
         Check("hands_on_the_joiner", Theirs.hands == Mine.hands, $"{Theirs.hands}, here {Mine.hands}");
 
         float cast = 0f;
-        for (float t = 0f; t < WaveWait && world.Hold.Wave == 1; t += Time.unscaledDeltaTime)
+        for (float t = 0f; t < WaveWait && world.Hold().Wave == 1; t += Time.unscaledDeltaTime)
         {
             cast += Time.unscaledDeltaTime;
             if (cast >= CastEvery && world.Raiders.FirstOrDefault(r => r.Alive) is { } raider)
@@ -65,8 +65,8 @@ public class RoomProgressProbe : RoomProbe
             }
             yield return null;
         }
-        Check("wave_1_is_beaten", world.Hold.Wave == 2, $"wave {world.Hold.Wave}, {world.Raiders.Count} raiders");
-        if (world.Hold.Wave != 2) yield break;
+        Check("wave_1_is_beaten", world.Hold().Wave == 2, $"wave {world.Hold().Wave}, {world.Raiders.Count} raiders");
+        if (world.Hold().Wave != 2) yield break;
         var run = world.RunOf(host);
         yield return null;
         Check("the_host_is_offered", run?.Offer.Count == world.Rules.Sim.Hold.Offer && keeper.OfferText().Length > 0, keeper.OfferText());
@@ -75,7 +75,7 @@ public class RoomProgressProbe : RoomProbe
         for (float t = 0f; t < MostWait && run.Picks.Count == 0; t += Time.unscaledDeltaTime) yield return null;
         Check("the_pick_is_in", run.Picks.SequenceEqual(new[] { picked }), string.Join(",", run.Picks));
 
-        for (float t = 0f; t < WaveWait && world.Hold.InWave == 0; t += Time.unscaledDeltaTime) yield return null;
+        for (float t = 0f; t < WaveWait && world.Hold().InWave == 0; t += Time.unscaledDeltaTime) yield return null;
         var theirs = world.RunOf(joiner ?? "");
         Check("the_joiner_is_picked_for", theirs != null && theirs.Picks.Count == 1, theirs != null ? string.Join(",", theirs.Picks) : "no run");
         yield return Wait(Settle);

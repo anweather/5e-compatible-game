@@ -73,7 +73,7 @@ namespace Chem
                 case ComboCommandKind.HandDown: return PressHand(c, command.Step, command.Hold ? HandsDef.Throw : HandsDef.Thrust, true);
                 case ComboCommandKind.HandUp: return ReleaseHand(c, command.Step);
                 case ComboCommandKind.Moment: return StartMoment(command.Element);
-                case ComboCommandKind.Pick: return PickUpgrade(command.Player, command.Element);
+                case ComboCommandKind.Pick: return Pick(command.Player, command.Element);
                 case ComboCommandKind.Bring: return BringPoints(command.Player, command.Step);
                 case ComboCommandKind.Attune: return Attune(c, command.Step, command.Element);
                 default: return false;
@@ -204,7 +204,7 @@ namespace Chem
         public string CastHash() => Fnv1a.Hash(CastText(StrikeText()));
 
         public string CastText(string stands) =>
-            CastState() + WhirlState() + WaveState() + BoulderState() + ModesText() + ZoneText() + CourseText() + RoomText() + stands + HoldText() + HandsText() + PlacedText() + ActText() + LaidText() + TriggerText();
+            CastState() + WhirlState() + WaveState() + BoulderState() + ModesText() + ModesTextAt(TextPlace.AfterSlots) + RoomText() + stands + ModesTextAt(TextPlace.AfterStands) + HandsText() + PlacedText() + ActText() + LaidText() + TriggerText();
 
         public string WhirlState() => string.Concat(whirls.Select(ww => $"|{Whole(ww.X)}:{Whole(ww.Y)}:{Whole(ww.Age)}:{ww.Carrying ?? "-"}"));
 

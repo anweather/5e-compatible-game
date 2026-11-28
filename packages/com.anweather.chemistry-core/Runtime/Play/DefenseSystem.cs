@@ -6,11 +6,13 @@
 // afresh each tick, so a wall or a trench reroutes them at once): open ground costs 1, rough going (deep water, a
 // climb or drop of more than a step) more and slower, a raised wall a lot (they batter it down a step at a time if
 // there is no better way), and blocking terrain can't be crossed. Ties go N, E, S, W. All whole numbers, so every
-// machine agrees. Chem.Play's (PlayModes owns one and ticks it after the raiders); the world keeps the DefenseState
-// (World.Defense, with its text, hash and save). It reads the cells and the rules; it writes the DefenseState, the
-// world's raiders (spawned, stepped, cleared), a raised wall it batters, and the log.
+// machine agrees. Chem.Play's (PlayModes owns one and ticks it after the raiders), with its DefenseState, the state's
+// text (the defense field's own hash, World.DefenseHash) and its save ("defense", in the save's head). It reads the
+// cells and the rules; it writes the DefenseState, the world's raiders (spawned, stepped, cleared), a raised wall it
+// batters, and the log.
 using System;
 using System.Globalization;
+using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
@@ -27,13 +29,9 @@ namespace Chem
             this.ways = ways;
         }
 
-        public DefenseState State
-        {
-            get => world.Defense;
-            private set => world.Defense = value;
-        }
+        public DefenseState State { get; private set; }
 
-        public int Left => world.DefenseLeft;
+        public int Left => State == null ? 0 : world.RaiderSystem.List.Count + State.ToSpawn;
 
         public static int WaveSize(DefenseParams p, int wave) => p.First + p.Growth * (wave - 1);
 
@@ -242,8 +240,68 @@ namespace Chem
             return c == Unreached ? -1 : c;
         }
 
-        public string Hash() => world.DefenseHash();
+        public string Hash() => Fnv1a.Hash(Text());
 
-        public string Text() => world.DefenseText();
+        public string Text()
+        {
+            var d = State;
+            if (d == null) return "-";
+            var inv = CultureInfo.InvariantCulture;
+            var sb = new System.Text.StringBuilder();
+            sb.Append(((int)d.Phase).ToString(inv)).Append('/').Append(d.Wave.ToString(inv)).Append('/').Append(d.Lives.ToString(inv)).Append('/')
+              .Append(d.ToSpawn.ToString(inv)).Append('/').Append(d.NextSpawn.ToString(inv)).Append('/').Append(d.Spawned.ToString(inv)).Append('|');
+            foreach (var r in world.RaiderSystem.List)
+            {
+                sb.Append(r.Id.ToString(inv)).Append(',').Append(r.Kind).Append(',').Append(r.X.ToString(inv)).Append(',').Append(r.Y.ToString(inv)).Append(',')
+                  .Append(r.Hp.ToString(inv)).Append(',').Append(r.Wait.ToString(inv));
+                foreach (var s in HashedStatuses) sb.Append(',').Append(r.StatusOf(s).ToString(inv));
+                if (r.StatusOf(World.ThrownStatus) > 0) sb.Append(",t").Append(r.StatusOf(World.ThrownStatus).ToString(inv));
+                if (r.StatusOf(World.DownedStatus) > 0) sb.Append(",d").Append(r.StatusOf(World.DownedStatus).ToString(inv));
+                if (r.StatusOf(World.ShovedStatus) > 0) sb.Append(",s").Append(r.StatusOf(World.ShovedStatus).ToString(inv));
+                sb.Append(';');
+            }
+            return sb.ToString();
+        }
+
+        internal string FieldText() => State == null ? "" : Text();
+
+        static readonly string[] HashedStatuses = { "burning", "wet", "frozen", "snagged" };
+
+        internal void Save(JObject save)
+        {
+            if (State == null) return;
+            save["defense"] = new JObject
+            {
+                ["phase"] = (int)State.Phase,
+                ["at"] = new JArray(State.Wave, State.Lives, State.ToSpawn, State.NextSpawn, State.Spawned),
+                ["gate"] = new JArray(State.GateX, State.GateY, State.FlagX, State.FlagY),
+                ["field"] = new JArray(State.X0, State.Y0, State.X1, State.Y1),
+            };
+        }
+
+        internal void Load(JObject s)
+        {
+            if (!(s["defense"] is JObject d)) return;
+            var at = d["at"];
+            var gate = d["gate"];
+            var field = d["field"];
+            State = new DefenseState
+            {
+                Phase = (DefensePhase)(int)d["phase"],
+                Wave = (int)at[0],
+                Lives = (int)at[1],
+                ToSpawn = (int)at[2],
+                NextSpawn = (int)at[3],
+                Spawned = (int)at[4],
+                GateX = (int)gate[0],
+                GateY = (int)gate[1],
+                FlagX = (int)gate[2],
+                FlagY = (int)gate[3],
+                X0 = (int)field[0],
+                Y0 = (int)field[1],
+                X1 = (int)field[2],
+                Y1 = (int)field[3],
+            };
+        }
     }
 }

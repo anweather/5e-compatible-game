@@ -16,17 +16,17 @@ public class MomentsProbe : ProbeScenario
         var world = grid.World;
         var moments = grid.GetComponent<HoldMoments>();
         Check("offered_here", moments != null && HoldMoments.Offered);
-        if (moments == null || world.HoldSite == null) yield break;
+        if (moments == null || world.HoldSite() == null) yield break;
         caster.enabled = true;
         string only = Environment.GetEnvironmentVariable("MOMENT");
-        var site = world.HoldSite;
+        var site = world.HoldSite();
         foreach (var m in world.Rules.Sim.Hold.Moments.Where(m => only == null || m.Id == only))
         {
             Check(m.Id, moments.Enter(m.Id));
-            for (float t = 0f; t < MostWait && world.Hold?.Moment != m.Id; t += Time.deltaTime) yield return null;
+            for (float t = 0f; t < MostWait && world.Hold()?.Moment != m.Id; t += Time.deltaTime) yield return null;
             yield return Wait(0.5f);
             string me = caster.CastPlayer;
-            Check(m.Id + "_wave", world.Hold?.Wave == m.Wave, $"{world.Hold?.Wave}");
+            Check(m.Id + "_wave", world.Hold()?.Wave == m.Wave, $"{world.Hold()?.Wave}");
             Check(m.Id + "_hands", world.HandsOf(me).Holds.SequenceEqual(m.Holds), string.Join("+", world.HandsOf(me).Holds));
             var at = grid.CellAt(wizard.transform.position);
             Check(m.Id + "_at_the_castle", Mathf.Abs(at.x - site.Rise.x) + Mathf.Abs(at.y - site.Rise.y) <= NearRise, at.ToString());

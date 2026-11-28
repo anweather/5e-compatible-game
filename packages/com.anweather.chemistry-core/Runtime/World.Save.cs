@@ -67,12 +67,13 @@ namespace Chem
                 ["wind"] = Wind.HasValue ? new JArray(Wind.Value.dir, Wind.Value.ticks) : null,
                 ["meteors"] = new JArray(falling.Select(m => new JArray(m.x, m.y, m.lands))),
                 ["nextEntityId"] = RaiderSystem.NextEntityId,
-                ["defense"] = SaveDefense(),
+                ["defense"] = JValue.CreateNull(),
                 ["raiders"] = new JArray(RaiderSystem.List.Select(SaveRaider)),
             };
+            SaveModesAt(SavePlace.Head, save);
             if (WrapX) save["wrap"] = WrapY ? "torus" : "ew";
             if (IsOpen) save["open"] = SaveFills();
-            if (Hold != null || HoldPlate != 0) save["hold"] = SaveHold();
+            SaveModesAt(SavePlace.AfterOpen, save);
             if (progress.Count > 0) save["progress"] = SaveProgress();
             if (hands.Count > 0) save["hands"] = new JArray(hands.Values.Select(SaveHands));
             if (casts.Count > 0) save["casts"] = new JArray(casts.Values.Select(SaveCast));
@@ -83,7 +84,7 @@ namespace Chem
             SaveMachines(save);
             SaveModes(save);
             SaveDragon(save);
-            SaveCourse(save);
+            SaveModesAt(SavePlace.AfterDragon, save);
             SaveRoom(save);
             SavePlaced(save);
             SaveActs(save);
@@ -245,7 +246,6 @@ namespace Chem
                 waves.Add(LoadWave((JArray)wv));
             LoadMachinesAndBoulders(s);
             unclaimed = s;
-            LoadCourse(s);
             LoadPlaced(s);
             LoadActs(s);
             LoadLand(s);
@@ -253,10 +253,8 @@ namespace Chem
             LoadTriggers(s);
             LoadStands(s);
             RaiderSystem.NextEntityId = (int)s["nextEntityId"];
-            LoadHold(s["hold"]);
             LoadHands(s["hands"]);
             LoadProgress(s["progress"]);
-            if (s["defense"] is JObject d) LoadDefense(d);
             foreach (var a in s["casts"] ?? new JArray()) LoadCast(a);
             foreach (var o in s["raiders"] ?? new JArray())
             {

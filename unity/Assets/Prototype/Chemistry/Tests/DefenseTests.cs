@@ -72,7 +72,7 @@ namespace Chem.Tests
             Run(w, p.SpawnEvery);
             Assert.That(w.Raiders.Count, Is.EqualTo(2));
             Assert.That(w.Raiders[0].X, Is.GreaterThan(2), "the first is on its way east");
-            Assert.That(w.DefenseLeft, Is.EqualTo(DefenseSystem.WaveSize(p, 1)));
+            Assert.That(w.DefenseLeft(), Is.EqualTo(DefenseSystem.WaveSize(p, 1)));
         }
 
         [Test]
@@ -94,7 +94,7 @@ namespace Chem.Tests
             w.ApplyDefense(Field);
             Run(w, 400);
             Assert.That(Enumerable.Range(1, 13).Any(y => !w.IsRaisedWall(w.At(20, y))), "a raider battered its way through");
-            Assert.That(w.Defense.Lives, Is.LessThan(R.Sim.Defense.Lives));
+            Assert.That(w.Defense().Lives, Is.LessThan(R.Sim.Defense.Lives));
         }
 
         [Test]
@@ -140,10 +140,10 @@ namespace Chem.Tests
             var w = Room(12, 9);
             w.ApplyDefense(Start(3, 4, 6, 4));
             int lives = R.Sim.Defense.Lives;
-            for (int t = 0; t < 60 && w.Defense.Lives == lives; t++) w.Step();
-            Assert.That(w.Defense.Lives, Is.EqualTo(lives - 1));
-            for (int t = 0; t < 2000 && w.Defense.Phase == DefensePhase.Running; t++) w.Step();
-            Assert.That(w.Defense.Phase, Is.EqualTo(DefensePhase.Lost));
+            for (int t = 0; t < 60 && w.Defense().Lives == lives; t++) w.Step();
+            Assert.That(w.Defense().Lives, Is.EqualTo(lives - 1));
+            for (int t = 0; t < 2000 && w.Defense().Phase == DefensePhase.Running; t++) w.Step();
+            Assert.That(w.Defense().Phase, Is.EqualTo(DefensePhase.Lost));
             Assert.That(w.Raiders, Is.Empty);
         }
 
@@ -153,23 +153,23 @@ namespace Chem.Tests
             var w = Room(40, 15);
             w.ApplyDefense(Field);
             var p = R.Sim.Defense;
-            for (int t = 0; t < 3000 && w.Defense.Wave == 1; t++)
+            for (int t = 0; t < 3000 && w.Defense().Wave == 1; t++)
             {
                 w.Step();
                 foreach (var r in w.Raiders.ToList()) w.Cast("fire-bolt", r.X, r.Y, 3);
             }
-            Assert.That(w.Defense.Wave, Is.EqualTo(2));
-            Assert.That(w.Defense.ToSpawn, Is.EqualTo(DefenseSystem.WaveSize(p, 2)));
-            Assert.That(w.Defense.NextSpawn, Is.EqualTo(w.Tick + p.BetweenWaves));
-            for (int t = 0; t < 6000 && w.Defense.Phase == DefensePhase.Running; t++)
+            Assert.That(w.Defense().Wave, Is.EqualTo(2));
+            Assert.That(w.Defense().ToSpawn, Is.EqualTo(DefenseSystem.WaveSize(p, 2)));
+            Assert.That(w.Defense().NextSpawn, Is.EqualTo(w.Tick + p.BetweenWaves));
+            for (int t = 0; t < 6000 && w.Defense().Phase == DefensePhase.Running; t++)
             {
                 w.Step();
                 foreach (var r in w.Raiders.ToList()) w.Cast("fire-bolt", r.X, r.Y, 3);
             }
-            Assert.That(w.Defense.Phase, Is.EqualTo(DefensePhase.Won));
-            Assert.That(w.Defense.Wave, Is.EqualTo(p.Waves));
+            Assert.That(w.Defense().Phase, Is.EqualTo(DefensePhase.Won));
+            Assert.That(w.Defense().Wave, Is.EqualTo(p.Waves));
             w.ApplyDefense(Field);
-            Assert.That(w.Defense.Phase, Is.EqualTo(DefensePhase.Running), "start again after a win");
+            Assert.That(w.Defense().Phase, Is.EqualTo(DefensePhase.Running), "start again after a win");
         }
 
         [Test]
@@ -189,16 +189,16 @@ namespace Chem.Tests
             for (int t = 1; t <= 200; t++) timeline[t].RunOn(replay, rs, out _);
             Assert.That(replay.DefenseHash(), Is.EqualTo(live.DefenseHash()));
             Assert.That(replay.CellHash(), Is.EqualTo(live.CellHash()));
-            Assert.That(live.Defense.Spawned, Is.GreaterThan(0));
+            Assert.That(live.Defense().Spawned, Is.GreaterThan(0));
         }
 
         [Test]
         public void TheDefenseIsDeterministicAndMatchesTheTsGolden()
         {
             World a = GoldenWave(11), b = GoldenWave(11);
-            Assert.That(a.DefenseText(), Is.EqualTo(b.DefenseText()));
+            Assert.That(a.Play().Defense.Text(), Is.EqualTo(b.Play().Defense.Text()));
             Assert.That($"{a.DefenseHash()} {a.CellHash()} {a.RngState}", Is.EqualTo("19e78df2 e6f169fe 3663131637"));
-            Assert.That(a.DefenseText().Split('|')[0], Is.EqualTo("1/2/9/0/346/8"));
+            Assert.That(a.Play().Defense.Text().Split('|')[0], Is.EqualTo("1/2/9/0/346/8"));
             Assert.That(a.Raiders.Any(r => r.X == 21 && r.Y == 10), "one is round the wall's south end");
             Assert.That(a.Raiders.Any(r => a.At(r.X, r.Y).T == "mud" && r.StatusOf("snagged") > 0), "the rest are held in the mud the pool left");
         }

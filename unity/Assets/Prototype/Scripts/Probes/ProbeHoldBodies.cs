@@ -40,7 +40,7 @@ public class HoldBodiesProbe : ProbeScenario
 
     List<(int x, int y)> Road()
     {
-        var site = Core.HoldSite;
+        var site = Core.HoldSite();
         var (hx, hy) = site.Heart;
         return BuildingRaster.Cells(BuildingRow.Read(site.Castle, site.Row, Core.Rules.Buildings), Core.Rules.Buildings)
             .Where(c => c.Part == BuildingPart.Road && c.Terrain == site.RoadTerrain)
@@ -66,16 +66,16 @@ public class HoldBodiesProbe : ProbeScenario
 
     void HoldTheWaves()
     {
-        Core.Hold.ToSpawn = 0;
-        Core.Hold.NextWave = Core.Tick + Core.Rules.Sim.Hold.WaveTicks;
-        Core.Hold.Health = Core.Rules.Sim.Hold.Health;
+        Core.Hold().ToSpawn = 0;
+        Core.Hold().NextWave = Core.Tick + Core.Rules.Sim.Hold.WaveTicks;
+        Core.Hold().Health = Core.Rules.Sim.Hold.Health;
     }
 
     protected override IEnumerator Run()
     {
         var fauna = ValleyFauna.InPlay;
         var field = DefenseField.InPlay;
-        var site = Core.HoldSite;
+        var site = Core.HoldSite();
         Check("found", fauna != null && fauna.Jobs != null && field != null && site != null);
         if (fauna == null || fauna.Jobs == null || field == null || site == null) yield break;
         yield return Switch(At(10f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " + ClearSky + " }");
@@ -85,9 +85,9 @@ public class HoldBodiesProbe : ProbeScenario
         Check("a_road", road.Count > 20, $"{road.Count} cells");
 
         StandOn(site.Plate);
-        for (float t = 0f; t < MostWait && !Core.HoldRunning; t += Time.deltaTime) yield return null;
-        Check("a_run_starts", Core.HoldRunning);
-        if (!Core.HoldRunning) yield break;
+        for (float t = 0f; t < MostWait && !Core.HoldRunning(); t += Time.deltaTime) yield return null;
+        Check("a_run_starts", Core.HoldRunning());
+        if (!Core.HoldRunning()) yield break;
         HoldTheWaves();
         StandOn(site.Rise);
 
@@ -165,16 +165,16 @@ public class HoldBodiesProbe : ProbeScenario
         var heart = Ground((hx, hy));
         var plate = Ground(site.Plate);
         var toward = new Vector3(plate.x - heart.x, 0f, plate.z - heart.z).normalized;
-        int before = Core.Hold.Health;
-        for (float t = 0f; t < 60f && Core.Hold.Health == before; t += Time.deltaTime)
+        int before = Core.Hold().Health;
+        for (float t = 0f; t < 60f && Core.Hold().Health == before; t += Time.deltaTime)
         {
-            Core.Hold.NextWave = Core.Tick + Core.Rules.Sim.Hold.WaveTicks;
+            Core.Hold().NextWave = Core.Tick + Core.Rules.Sim.Hold.WaveTicks;
             yield return null;
         }
-        Check("they_strike_the_crystal", Core.Hold.Health < before, $"keep {Core.Hold.Health}");
+        Check("they_strike_the_crystal", Core.Hold().Health < before, $"keep {Core.Hold().Health}");
         for (float t = 0f; t < 40f && Core.Raiders.Count(r => System.Math.Abs(r.X - hx) + System.Math.Abs(r.Y - hy) <= 3) < 5; t += Time.deltaTime)
         {
-            Core.Hold.NextWave = Core.Tick + Core.Rules.Sim.Hold.WaveTicks;
+            Core.Hold().NextWave = Core.Tick + Core.Rules.Sim.Hold.WaveTicks;
             yield return null;
         }
         Metric("at_the_crystal", Core.Raiders.Count(r => System.Math.Abs(r.X - hx) + System.Math.Abs(r.Y - hy) <= 3));

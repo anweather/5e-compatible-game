@@ -18,7 +18,7 @@ namespace Chem.Tests
         public void TheRunnerPlaysAMoment()
         {
             var run = Short();
-            Assert.That(run.World.Hold.Spawned, Is.GreaterThan(0));
+            Assert.That(run.World.Hold().Spawned, Is.GreaterThan(0));
         }
     }
 }

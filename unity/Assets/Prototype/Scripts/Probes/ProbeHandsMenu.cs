@@ -184,15 +184,15 @@ public class HandsMenuProbe : ProbeScenario
 
     IEnumerator InAHoldRun()
     {
-        var site = Core.HoldSite;
+        var site = Core.HoldSite();
         Check("a_hold", site != null);
         if (site == null) yield break;
         StandOn(site.Plate);
-        for (float s = 0f; s < MostWait && !Core.HoldRunning; s += Time.deltaTime) yield return null;
-        Check("a_run_starts", Core.HoldRunning);
-        if (!Core.HoldRunning) yield break;
-        Core.Hold.Health = int.MaxValue / 2;
-        Core.Hold.ToSpawn = 0;
+        for (float s = 0f; s < MostWait && !Core.HoldRunning(); s += Time.deltaTime) yield return null;
+        Check("a_run_starts", Core.HoldRunning());
+        if (!Core.HoldRunning()) yield break;
+        Core.Hold().Health = int.MaxValue / 2;
+        Core.Hold().ToSpawn = 0;
         StandOn(site.Rise);
         yield return Wait(1f);
         string was = Holds(HandsDef.Left);

@@ -1,7 +1,9 @@
 // The game modes from outside the core (docs/design/architecture-review.md step 9): world.Play() is a world's
 // PlayModes, and these are what the view, the probes, the tools and the runners ask of a mode, as they asked the world
-// before the modes had their own assembly. The modes' state is the world's own (World.Hold, World.Defense, ...).
+// before the modes had their own assembly and their own state (world.Hold(), world.Defense(), ...). A world without
+// the modes has no Hold, defense field or run: those reads say so (null, false, 0), as they did when the world kept them.
 using System;
+using System.Collections.Generic;
 
 namespace Chem
 {
@@ -10,8 +12,30 @@ namespace Chem
         public static PlayModes Play(this World world)
         {
             if (world == null) throw new ArgumentNullException(nameof(world));
-            return world.Modes as PlayModes ?? throw new InvalidOperationException("This world has no game modes: install them with PlayModes.Install");
+            return world.Mode<PlayModes>() ?? throw new InvalidOperationException("This world has no game modes: install them with PlayModes.Install");
         }
+
+        static PlayModes Modes(World world) => (world ?? throw new ArgumentNullException(nameof(world))).Mode<PlayModes>();
+
+        public static HoldState Hold(this World world) => Modes(world)?.Hold.State;
+
+        public static WorldHold HoldSite(this World world) => Modes(world)?.Hold.Site;
+
+        public static bool HoldRunning(this World world) => Modes(world)?.Hold.Running == true;
+
+        public static int HoldLeft(this World world) => Modes(world)?.Hold.Left ?? 0;
+
+        public static void SetHold(this World world, WorldHold site) => world.Play().Hold.Set(site);
+
+        public static HoldTower TowerOf(this World world, string player) => Modes(world)?.Hold.TowerOf(player);
+
+        public static List<(int x, int y)> TowerGround(this World world, HoldTower tower) => world.Play().Hold.TowerGround(tower);
+
+        public static RunWizard RunOf(this World world, string player) => Modes(world)?.Hold.RunOf(player);
+
+        public static DefenseState Defense(this World world) => Modes(world)?.Defense.State;
+
+        public static int DefenseLeft(this World world) => Modes(world)?.Defense.Left ?? 0;
 
         public static (int x, int y)? CourseRespawn(this World world, string player, int x, int y) => world.Play().Course.Respawn(player, x, y);
 

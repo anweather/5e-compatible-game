@@ -57,7 +57,7 @@ public class HoldMoments : MonoBehaviour
     void Update()
     {
         var world = grid.World;
-        if (world?.HoldSite == null) return;
+        if (world?.HoldSite() == null) return;
         if (showPage)
         {
             showPage = false;
@@ -70,7 +70,7 @@ public class HoldMoments : MonoBehaviour
             PauseMenu.Instance.SetOpen(false);
         }
         if (Keyboard.current != null && Keyboard.current.f8Key.wasPressedThisFrame) PauseMenu.Instance.SetOpen(true);
-        var hold = world.Hold;
+        var hold = world.Hold();
         if (hold?.Moment == null || hold.MomentTick == seen) return;
         seen = hold.MomentTick;
         var caster = WizardHud.TrackedCaster;

@@ -16,19 +16,19 @@ namespace Chem.Tests
         {
             var w = Running(seed);
             Away(w);
-            w.Hold.Health = int.MaxValue / 2;
-            w.Hold.Wave = wave;
-            w.Hold.InWave = 0;
-            w.Hold.ToSpawn = HoldSystem.WaveSize(R.Sim.Hold, wave);
+            w.Hold().Health = int.MaxValue / 2;
+            w.Hold().Wave = wave;
+            w.Hold().InWave = 0;
+            w.Hold().ToSpawn = HoldSystem.WaveSize(R.Sim.Hold, wave);
             var seen = new HashSet<int>();
             var kinds = new List<string>();
-            for (int i = 0; i < MostTicks && w.Hold.ToSpawn > 0; i++)
+            for (int i = 0; i < MostTicks && w.Hold().ToSpawn > 0; i++)
             {
                 w.Step();
                 foreach (var r in w.Raiders)
                     if (seen.Add(r.Id)) kinds.Add(Rules.PlainKind(r.Kind));
             }
-            Assert.That(w.Hold.ToSpawn, Is.Zero, $"wave {wave} all out");
+            Assert.That(w.Hold().ToSpawn, Is.Zero, $"wave {wave} all out");
             return kinds;
         }
 
@@ -84,11 +84,11 @@ namespace Chem.Tests
         {
             var w = Running();
             Away(w);
-            w.Hold.ToSpawn = 0;
-            int full = w.Hold.Health;
-            var (hx, hy) = w.HoldSite.Heart;
+            w.Hold().ToSpawn = 0;
+            int full = w.Hold().Health;
+            var (hx, hy) = w.HoldSite().Heart;
             Assert.That(w.SpawnRaider(kind, hx + 1, hy, 4000), Is.Not.Null);
-            Until(w, () => w.Hold.Health < full, $"the {kind} strikes the keep");
+            Until(w, () => w.Hold().Health < full, $"the {kind} strikes the keep");
         }
 
         [Test]
@@ -96,10 +96,10 @@ namespace Chem.Tests
         {
             var w = Running();
             Away(w);
-            w.Hold.Health = int.MaxValue / 2;
-            w.Hold.Wave = 8;
-            w.Hold.InWave = 0;
-            w.Hold.ToSpawn = HoldSystem.WaveSize(R.Sim.Hold, 8);
+            w.Hold().Health = int.MaxValue / 2;
+            w.Hold().Wave = 8;
+            w.Hold().InWave = 0;
+            w.Hold().ToSpawn = HoldSystem.WaveSize(R.Sim.Hold, 8);
             Ticks(w, 600);
             Assert.That(w.Raiders.Select(r => Rules.PlainKind(r.Kind)).Distinct().Count(), Is.GreaterThanOrEqualTo(6), "a mixed wave is out");
             Assert.That(w.CastHash(), Is.EqualTo("36029f4d"));

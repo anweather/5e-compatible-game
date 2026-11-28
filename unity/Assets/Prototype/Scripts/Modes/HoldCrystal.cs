@@ -72,9 +72,9 @@ public class HoldCrystal : MonoBehaviour
     public void Follow(World w)
     {
         world = w;
-        var h = w.Hold;
+        var h = w.Hold();
         int health = h == null ? w.Rules.Sim.Hold.Health : Mathf.Max(0, h.Health);
-        if (h == null || lastHealth < 0 || (w.HoldRunning && health > lastHealth))
+        if (h == null || lastHealth < 0 || (w.HoldRunning() && health > lastHealth))
         {
             maxHealth = Mathf.Max(health, w.Rules.Sim.Hold.Health);
             Mend();

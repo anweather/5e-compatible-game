@@ -97,7 +97,7 @@ public class AimedProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        var site = Core.HoldSite;
+        var site = Core.HoldSite();
         Check("the_map_has_a_hold", site != null);
         if (site == null) yield break;
         if (Filming && string.IsNullOrEmpty(ScreenshotDir))
@@ -115,7 +115,7 @@ public class AimedProbe : ProbeScenario
         try
         {
             yield return Setup(site);
-            if (!Core.HoldRunning) yield break;
+            if (!Core.HoldRunning()) yield break;
             if (Filming)
             {
                 film = new ClipFilm(this, ScreenshotDir, withHud: true);
@@ -145,10 +145,10 @@ public class AimedProbe : ProbeScenario
         yield return AttuneTo("fire", HandsDef.Left);
         yield return AttuneTo("air", HandsDef.Right);
         Stand(new Vector2Int(site.Plate.x, site.Plate.y));
-        for (float t = 0f; t < MostWait && !Core.HoldRunning; t += Time.deltaTime) yield return null;
-        Check("a_run_starts", Core.HoldRunning);
-        if (!Core.HoldRunning) yield break;
-        Core.Hold.Health = int.MaxValue / 2;
+        for (float t = 0f; t < MostWait && !Core.HoldRunning(); t += Time.deltaTime) yield return null;
+        Check("a_run_starts", Core.HoldRunning());
+        if (!Core.HoldRunning()) yield break;
+        Core.Hold().Health = int.MaxValue / 2;
         Stand(new Vector2Int(row.X + WallX, row.Y + WallY));
         yield return Wait(0.5f);
     }

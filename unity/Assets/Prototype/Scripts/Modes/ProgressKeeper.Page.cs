@@ -33,14 +33,14 @@ public partial class ProgressKeeper
 
     void DrawInMenu()
     {
-        if (grid != null && grid.World?.HoldSite != null && PauseMenu.Button("The Hold: your progress")) showPage = true;
+        if (grid != null && grid.World?.HoldSite() != null && PauseMenu.Button("The Hold: your progress")) showPage = true;
     }
 
     public string PageText()
     {
         var world = grid != null ? grid.World : null;
         var caster = WizardHud.TrackedCaster;
-        if (world?.HoldSite == null || caster == null) return "";
+        if (world?.HoldSite() == null || caster == null) return "";
         string me = caster.CastPlayer;
         var lines = new System.Text.StringBuilder();
         lines.Append(FromTheSave ? $"Points: {world.PointsOf(me) ?? file.Points}" : $"A dev build: everything is unlocked. F7 plays your save ({file.Points} points)");
@@ -70,14 +70,14 @@ public partial class ProgressKeeper
             showPage = false;
             PauseMenu.Instance.ShowPage(PageId);
         }
-        if (world.HoldRunning && !sawRun)
+        if (world.HoldRunning() && !sawRun)
         {
             sawRun = true;
             pointsBefore = world.PointsOf(me) ?? World.AllPoints;
             unlocksBefore = world.UnlocksOf(me).Count();
             summary = "";
         }
-        else if (!world.HoldRunning && sawRun)
+        else if (!world.HoldRunning() && sawRun)
         {
             sawRun = false;
             summary = EndText(world, me);
@@ -87,7 +87,7 @@ public partial class ProgressKeeper
 
     string EndText(World world, string me)
     {
-        var h = world.Hold;
+        var h = world.Hold();
         if (h == null) return "";
         var lines = new System.Text.StringBuilder($"The keep fell in wave {h.Wave}: you held {h.Wave - 1} {(h.Wave - 1 == 1 ? "wave" : "waves")}");
         int earned = (world.PointsOf(me) ?? World.AllPoints) - pointsBefore;
@@ -104,7 +104,7 @@ public partial class ProgressKeeper
 
     void DrawSummary(World world)
     {
-        if (summary.Length == 0 || world.HoldRunning || Time.unscaledTime - summaryAt > SummarySeconds) return;
+        if (summary.Length == 0 || world.HoldRunning() || Time.unscaledTime - summaryAt > SummarySeconds) return;
         float x = HudScale.Width / 2f - SummaryWidth / 2f;
         float height = small.CalcHeight(new GUIContent(summary), SummaryWidth - 24f) + 20f;
         var before = GUI.color;

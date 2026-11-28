@@ -33,11 +33,6 @@ namespace Chem
             if (mode.World != this) throw new ArgumentException("Those modes were made for another world", nameof(mode));
             foreach (var m in installed)
                 if (m.GetType() == mode.GetType()) throw new InvalidOperationException($"This world already has its {mode.GetType().Name}");
-            if (mode is IWorldModes play)
-            {
-                if (modes != null) throw new InvalidOperationException("This world already has its game modes");
-                modes = play;
-            }
             installed.Add(mode);
             mode.LoadSlot(unclaimed);
         }

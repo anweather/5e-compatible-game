@@ -25,11 +25,11 @@ namespace Chem.HoldCurve
         readonly int peers;
 
         public List<WaveResult> Waves { get; } = new List<WaveResult>();
-        public int LastWave => world.Hold?.Wave ?? 0;
+        public int LastWave => world.Hold()?.Wave ?? 0;
         public int Ticks { get; private set; }
         public World World => world;
         public bool Idle { get; set; }
-        public string Outcome => LastWave + (world.Hold?.Phase == HoldPhase.Won ? "W" : "");
+        public string Outcome => LastWave + (world.Hold()?.Phase == HoldPhase.Won ? "W" : "");
         public int Points => world.PointsOf(Name(0)) ?? 0;
 
         public HoldRun(Rules rules, string worldDir, uint seed, int peers, (string left, string right) holds, string moment = null, int? points = null)
@@ -80,21 +80,21 @@ namespace Chem.HoldCurve
 
         public void Play(int mostSeconds, int untilWave = int.MaxValue)
         {
-            int tps = world.Rules.Sim.TicksPerSecond, seen = world.Hold.Wave;
-            for (; Ticks < mostSeconds * tps && world.HoldRunning && world.Hold.Wave <= untilWave; Ticks++)
+            int tps = world.Rules.Sim.TicksPerSecond, seen = world.Hold().Wave;
+            for (; Ticks < mostSeconds * tps && world.HoldRunning() && world.Hold().Wave <= untilWave; Ticks++)
             {
                 for (int i = 0; i < peers && !Idle; i++) Think(Name(i), posts[i]);
                 world.Step();
                 foreach (var fired in world.CombosFired) Aim(fired);
-                if (world.Hold.Wave == seen) continue;
-                Waves.Add(new WaveResult { Wave = seen, Seconds = Ticks / tps, Health = world.Hold.Health, Theme = world.Hold.Theme });
-                seen = world.Hold.Wave;
+                if (world.Hold().Wave == seen) continue;
+                Waves.Add(new WaveResult { Wave = seen, Seconds = Ticks / tps, Health = world.Hold().Health, Theme = world.Hold().Theme });
+                seen = world.Hold().Wave;
             }
         }
 
         Raider Target((int x, int y) from, int range) => world.Raiders
             .Where(r => Dist(from, r) <= range)
-            .OrderBy(r => Far(r.X, r.Y, world.HoldSite.Heart)).ThenBy(r => r.Id).FirstOrDefault();
+            .OrderBy(r => Far(r.X, r.Y, world.HoldSite().Heart)).ThenBy(r => r.Id).FirstOrDefault();
 
         static double Dist((int x, int y) a, Raider r) => Math.Sqrt((a.x - r.X) * (double)(a.x - r.X) + (a.y - r.Y) * (double)(a.y - r.Y));
 

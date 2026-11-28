@@ -53,7 +53,7 @@ public partial class DefenseField : MonoBehaviour
         }
     }
 
-    public bool Running => World?.Defense != null && World.Defense.Phase == DefensePhase.Running;
+    public bool Running => World?.Defense() != null && World.Defense().Phase == DefensePhase.Running;
 
     public void RequestStart() => Request(grid, StartCommand);
 
@@ -105,7 +105,7 @@ public partial class DefenseField : MonoBehaviour
     void Banner()
     {
         if (banner == null) return;
-        var d = World.Defense;
+        var d = World.Defense();
         string text = d == null
             ? $"LIVES {World.Rules.Sim.Defense.Lives}"
             : $"LIVES {Mathf.Max(0, d.Lives)}\nWAVE {d.Wave}/{World.Rules.Sim.Defense.Waves}";
@@ -116,13 +116,13 @@ public partial class DefenseField : MonoBehaviour
 
     public string HudLine()
     {
-        var d = World?.Defense;
+        var d = World?.Defense();
         var p = World?.Rules.Sim.Defense;
         if (p == null) return "";
         if (d == null) return "The defense field: stand on the start plate to call the raiders";
         return d.Phase switch
         {
-            DefensePhase.Running => $"Wave {d.Wave}/{p.Waves}: {World.DefenseLeft} left, lives {Mathf.Max(0, d.Lives)}/{p.Lives}",
+            DefensePhase.Running => $"Wave {d.Wave}/{p.Waves}: {World.DefenseLeft()} left, lives {Mathf.Max(0, d.Lives)}/{p.Lives}",
             DefensePhase.Won => $"The flag stands! All {p.Waves} waves beaten with {d.Lives}/{p.Lives} lives. Stand on the plate to play again",
             DefensePhase.Lost => $"The flag fell in wave {d.Wave}/{p.Waves}. Stand on the plate to try again",
             _ => "",
@@ -142,9 +142,9 @@ public partial class DefenseField : MonoBehaviour
     {
         HudScale.Apply();
         if (!EventLog.HudVisible || World == null) return;
-        if (World.HoldRunning) DrawHealthBars();
+        if (World.HoldRunning()) DrawHealthBars();
         if (!Near()) return;
-        if (!World.HoldRunning) DrawHealthBars();
+        if (!World.HoldRunning()) DrawHealthBars();
         hudStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, richText = true };
         GUI.Label(new Rect(HudScale.Width / 2f - 400f, 54f, 800f, 36f), $"<b>{HudLine()}</b>", hudStyle);
     }

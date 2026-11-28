@@ -15,7 +15,7 @@ public class BigSpellsProbe : AimedProbe
 {
     protected override IEnumerator Run()
     {
-        var site = Core.HoldSite;
+        var site = Core.HoldSite();
         Check("the_map_has_a_hold", site != null);
         if (site == null) yield break;
         if (Filming && string.IsNullOrEmpty(ScreenshotDir))
@@ -32,7 +32,7 @@ public class BigSpellsProbe : AimedProbe
         try
         {
             yield return Setup(site);
-            if (!Core.HoldRunning) yield break;
+            if (!Core.HoldRunning()) yield break;
             if (Filming)
             {
                 film = new ClipFilm(this, ScreenshotDir, withHud: true);
@@ -114,7 +114,7 @@ public class BigSpellsProbe : AimedProbe
         foreach (var (hand, element) in new[] { (HandsDef.Left, left), (HandsDef.Right, right) })
         {
             if (Core.HandsOf(Me).Holds[hand] == element) continue;
-            var tower = Core.HoldSite.Towers.FirstOrDefault(t => t.Element == element);
+            var tower = Core.HoldSite().Towers.FirstOrDefault(t => t.Element == element);
             Check($"a_{element}_tower", tower != null);
             if (tower == null) yield break;
             var (x, y) = Core.TowerGround(tower)[0];

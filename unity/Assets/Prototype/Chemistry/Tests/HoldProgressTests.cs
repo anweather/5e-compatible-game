@@ -16,7 +16,7 @@ namespace Chem.Tests
         static Rules R => ChemistryTests.R;
         static HoldParams P => R.Sim.Hold;
 
-        static (int x, int y) Far(World w, int n = 0) => (w.HoldSite.Rise.x - 40 - n, w.HoldSite.Rise.y - 30);
+        static (int x, int y) Far(World w, int n = 0) => (w.HoldSite().Rise.x - 40 - n, w.HoldSite().Rise.y - 30);
 
         static World InRun(int seed)
         {
@@ -24,7 +24,7 @@ namespace Chem.Tests
             Stand(w, Bo, Far(w, 2));
             Stand(w, Me, Far(w));
             w.ApplyCombo(ComboCommand.Moment(Me, "first-wave"));
-            w.Hold.Moment = null;
+            w.Hold().Moment = null;
             return w;
         }
 
@@ -35,18 +35,18 @@ namespace Chem.Tests
 
         static World Beaten(World w)
         {
-            int next = w.Hold.Wave + 1;
-            Until(w, () => w.Hold.ToSpawn == 0, "they come");
+            int next = w.Hold().Wave + 1;
+            Until(w, () => w.Hold().ToSpawn == 0, "they come");
             Until(w, () =>
             {
                 foreach (var r in w.Raiders) r.Hp = 1;
                 foreach (var r in w.Raiders) r.Status["burning"] = 30;
-                return w.Hold.Wave == next;
+                return w.Hold().Wave == next;
             }, "the wave is beaten");
             return w;
         }
 
-        static void ToTheWave(World w) => Until(w, () => w.Hold.InWave > 0, "the wave starts");
+        static void ToTheWave(World w) => Until(w, () => w.Hold().InWave > 0, "the wave starts");
 
         static (World w, string left, string right) Attuned(int? points, int seed = 7)
         {
@@ -59,7 +59,7 @@ namespace Chem.Tests
         static World RunningWith(int points, int seed = 7)
         {
             var w = Attuned(points, seed).w;
-            Stand(w, Me, w.HoldSite.Plate);
+            Stand(w, Me, w.HoldSite().Plate);
             Ticks(w, P.PlateTicks + 1);
             Away(w);
             return w;
@@ -206,7 +206,7 @@ namespace Chem.Tests
         {
             var w = Offered();
             w.RunOf(Me).Picks.Add("quick-hands");
-            w.Hold.NextSpawn = w.Tick + 200;
+            w.Hold().NextSpawn = w.Tick + 200;
             foreach (var who in new[] { Me, Bo }) w.ApplyCombo(ComboCommand.HandDown(who, Right));
             if (charged) Ticks(w, P.Hands.TapTicks);
             foreach (var who in new[] { Me, Bo }) w.ApplyCombo(ComboCommand.HandUp(who, Right));
@@ -220,7 +220,7 @@ namespace Chem.Tests
         {
             var w = Offered();
             w.RunOf(Me).Picks.Add("long-arm");
-            w.Hold.NextSpawn = w.Tick + 200;
+            w.Hold().NextSpawn = w.Tick + 200;
             w.ApplyCombo(ComboCommand.Hand(Me, Right, bumper: true));
             ComboFired? fired = null;
             for (int i = 0; i < 12 && fired == null; i++)
@@ -237,9 +237,9 @@ namespace Chem.Tests
             int Hurt(string by, string pick)
             {
                 var w = InRun(11);
-                w.Hold.NextSpawn = w.Tick + 500;
-                foreach (var who in new[] { Me, Bo }) w.Hold.Wizards[who] = new RunWizard { Player = who };
-                if (pick != null) w.Hold.Wizards[Me].Picks.Add(pick);
+                w.Hold().NextSpawn = w.Tick + 500;
+                foreach (var who in new[] { Me, Bo }) w.Hold().Wizards[who] = new RunWizard { Player = who };
+                if (pick != null) w.Hold().Wizards[Me].Picks.Add(pick);
                 var r = w.SpawnRaider("giant-spider", 300, 300, 100000);
                 w.Cast(new CastCommand("fire-bolt", r.X, r.Y, 0, by: by));
                 return 100000 - r.Hp;
@@ -264,13 +264,13 @@ namespace Chem.Tests
         {
             var w = Offered();
             w.RunOf(Me).Picks.Add("tough");
-            w.Hold.Health = 1;
-            w.Hold.NextSpawn = w.Tick;
-            Until(w, () => !w.HoldRunning, "the keep falls");
+            w.Hold().Health = 1;
+            w.Hold().NextSpawn = w.Tick;
+            Until(w, () => !w.HoldRunning(), "the keep falls");
             Assert.That(w.HealthBonusOf(Me), Is.Zero);
-            Stand(w, Me, w.HoldSite.Plate);
+            Stand(w, Me, w.HoldSite().Plate);
             Ticks(w, P.PlateTicks + 1);
-            Assert.That(w.HoldRunning);
+            Assert.That(w.HoldRunning());
             Assert.That(w.RunOf(Me), Is.Null, "a new run starts clean");
         }
 
@@ -337,7 +337,7 @@ namespace Chem.Tests
 
         static World AtTheWaterTower(World w)
         {
-            var at = w.TowerGround(w.HoldSite.Towers.First(t => t.Element == "water"))[0];
+            var at = w.TowerGround(w.HoldSite().Towers.First(t => t.Element == "water"))[0];
             Stand(w, Me, at);
             return w;
         }
@@ -356,9 +356,9 @@ namespace Chem.Tests
             Assert.That(w.PointsAway(Me, P.Unlocks[0]), Is.EqualTo(P.Unlocks[0].Cost));
 
             Ticks(w, 60);
-            Stand(w, Me, w.HoldSite.Plate);
+            Stand(w, Me, w.HoldSite().Plate);
             Ticks(w, P.PlateTicks + 1);
-            Assert.That(w.HoldRunning);
+            Assert.That(w.HoldRunning());
             Assert.That(w.HandOpen(Me, Left), Is.False, "in a run, the save's locks");
             Assert.That(w.HandsOf(Me).Holds[Left], Is.Null, "the locked hand let go as the run started");
             Assert.That(w.HandsOf(Me).Holds[Right], Is.Not.Null);
@@ -377,11 +377,11 @@ namespace Chem.Tests
         public void AWaveSurvivedEarnsAcrossRuns()
         {
             var w = RunningWith(4);
-            w.Hold.Wave = 3;
-            w.Hold.Health = 1;
-            Until(w, () => !w.HoldRunning, "the keep falls");
-            Assert.That(w.Hold.Wave, Is.GreaterThanOrEqualTo(3));
-            Assert.That(w.PointsOf(Me), Is.EqualTo(4 + (w.Hold.Wave - 1) * P.PointsPerWave));
+            w.Hold().Wave = 3;
+            w.Hold().Health = 1;
+            Until(w, () => !w.HoldRunning(), "the keep falls");
+            Assert.That(w.Hold().Wave, Is.GreaterThanOrEqualTo(3));
+            Assert.That(w.PointsOf(Me), Is.EqualTo(4 + (w.Hold().Wave - 1) * P.PointsPerWave));
         }
 
         [Test]
@@ -392,9 +392,9 @@ namespace Chem.Tests
             w.ApplyCombo(ComboCommand.Moment(Me, "gale-right"));
             Assert.That(w.HandsOf(Me).Holds, Is.EqualTo(new[] { "air", "air" }));
             Assert.That(w.ApplyCombo(ComboCommand.Hand(Me, Left, bumper: true)));
-            w.Hold.Wave = 9;
-            w.Hold.Health = 1;
-            Until(w, () => !w.HoldRunning, "the keep falls");
+            w.Hold().Wave = 9;
+            w.Hold().Health = 1;
+            Until(w, () => !w.HoldRunning(), "the keep falls");
             Assert.That(w.PointsOf(Me), Is.Zero);
         }
 
@@ -465,12 +465,12 @@ namespace Chem.Tests
             w.SetHold(WorldHold.Load(ChemistryTests.WorldDir()));
             OnlyTheHold(w);
             w.ApplyCombo(ComboCommand.Bring(Me, 12));
-            Stand(w, Me, w.HoldSite.Plate);
+            Stand(w, Me, w.HoldSite().Plate);
             Ticks(w, P.PlateTicks + 1);
-            w.Hold.Wizards[Me] = new RunWizard { Player = Me };
-            w.Hold.Wizards[Me].Picks.Add("tough");
+            w.Hold().Wizards[Me] = new RunWizard { Player = Me };
+            w.Hold().Wizards[Me].Picks.Add("tough");
             var back = PlayModes.Install(World.Load(w.Save(source), R, source));
-            back.SetHold(w.HoldSite);
+            back.SetHold(w.HoldSite());
             Assert.That(back.PointsOf(Me), Is.EqualTo(12));
             Assert.That(back.RunOf(Me).Picks, Is.EqualTo(new[] { "tough" }));
         }

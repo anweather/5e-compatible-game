@@ -101,16 +101,16 @@ public class HoldProbe : ProbeScenario
     IEnumerator PlayToALoss(System.Collections.Generic.List<BuildingCell> cells, System.Collections.Generic.List<BuildingCell> gate, RowHouses houses)
     {
         var world = grid.World;
-        var site = world.HoldSite;
+        var site = world.HoldSite();
         var show = grid.GetComponent<HoldShow>();
         var defense = DefenseField.InPlay;
         Check("the_plate_is_there", site != null && show != null && GameObject.Find("Hold plate") != null);
         if (site == null) yield break;
         var plate = grid.CellCenter(site.Plate.x, site.Plate.y);
         Teleport(new Vector3(plate.x, grid.GroundAt(plate) + 0.05f, plate.z));
-        for (float t = 0f; t < 8f && !world.HoldRunning; t += Time.deltaTime) yield return null;
-        Check("standing_on_the_plate_starts_a_run", world.HoldRunning, show.HudLine());
-        if (!world.HoldRunning) yield break;
+        for (float t = 0f; t < 8f && !world.HoldRunning(); t += Time.deltaTime) yield return null;
+        Check("standing_on_the_plate_starts_a_run", world.HoldRunning(), show.HudLine());
+        if (!world.HoldRunning()) yield break;
         for (float t = 0f; t < 40f && world.Raiders.Count == 0; t += Time.deltaTime) yield return null;
         Check("raiders_come", world.Raiders.Count > 0);
         TheRoadIsTheWay(world);
@@ -122,19 +122,19 @@ public class HoldProbe : ProbeScenario
         var marked = world.SpawnRaider(Rules.PlainKind(armoured.Kind) + Rules.AdjectiveMark + "armoured", armoured.X, armoured.Y + 2, 40);
         Check("an_adjective_raider_stands", marked != null && world.Rules.AdjectiveOf(marked.Kind) != null, marked?.Kind);
         yield return Breach(houses, cells);
-        world.Hold.Health = Mathf.Min(world.Hold.Health, HealthToLose);
+        world.Hold().Health = Mathf.Min(world.Hold().Health, HealthToLose);
         int casts = 0;
         float took = 0f, worst = 0f;
         int frames = 0, most = 0, wave = 1, inVillage = 0, backEast = 0, westmost = int.MaxValue;
         var village = WorldPlaces.Load(ChemGrid.Folders.World).Find("hollowmere").Cells().ToHashSet();
         var started = new System.Collections.Generic.Dictionary<int, int>();
-        for (float t = 0f; t < 300f && world.HoldRunning; t += Time.unscaledDeltaTime)
+        for (float t = 0f; t < 300f && world.HoldRunning(); t += Time.unscaledDeltaTime)
         {
             took += Time.unscaledDeltaTime;
             worst = Mathf.Max(worst, Time.unscaledDeltaTime);
             frames++;
             most = Mathf.Max(most, world.Raiders.Count);
-            wave = world.Hold.Wave;
+            wave = world.Hold().Wave;
             foreach (var r in world.Raiders)
             {
                 inVillage += village.Contains((r.X, r.Y)) ? 1 : 0;
@@ -156,10 +156,10 @@ public class HoldProbe : ProbeScenario
         Metric("run_most_raiders", most);
         Metric("run_seconds", took);
         Metric("run_casts", casts);
-        Metric("run_score", world.Hold.Wave);
+        Metric("run_score", world.Hold().Wave);
         Check("raiders_stay_out_of_hollowmere", inVillage == 0, $"{inVillage} sightings");
         Check("raiders_climb_west", backEast <= 2 && westmost <= site.Heart.x + 2, $"at most {backEast} cells back east, west to x {westmost}");
-        Check("played_to_a_loss", world.Hold.Phase == HoldPhase.Lost, show.HudLine());
+        Check("played_to_a_loss", world.Hold().Phase == HoldPhase.Lost, show.HudLine());
         Check("raiders_cleared", world.Raiders.Count == 0);
         yield return Wait(1f);
         Check("the_castle_is_mended", cells.All(c => world.At(c.X, c.Y).T == c.Terrain), $"{cells.Count(c => world.At(c.X, c.Y).T != c.Terrain)} cells off");
@@ -172,7 +172,7 @@ public class HoldProbe : ProbeScenario
     void TheRoadIsTheWay(World world)
     {
         var road = new System.Collections.Generic.HashSet<(int, int)>(world.BuildingCellsOf(row).Where(c => c.Part == BuildingPart.Road && c.Terrain == TerrainIds.Dirt).Select(c => (c.X, c.Y)));
-        var (x, y) = world.HoldSite.Spawners[0].Cells[0];
+        var (x, y) = world.HoldSite().Spawners[0].Cells[0];
         int steps = 0, onIt = 0, offAfter = 0;
         bool joined = false;
         for (var next = world.HoldNext(x, y, true); next != null && steps < 2000; next = world.HoldNext(x, y, true))

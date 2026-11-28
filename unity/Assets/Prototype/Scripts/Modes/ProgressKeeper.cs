@@ -66,7 +66,7 @@ public partial class ProgressKeeper : MonoBehaviour
     {
         var world = grid.World;
         var caster = WizardHud.TrackedCaster;
-        if (world?.HoldSite == null || caster == null || caster.Replaying) return;
+        if (world?.HoldSite() == null || caster == null || caster.Replaying) return;
         string me = caster.CastPlayer;
         if (HoldMoments.Offered && Keyboard.current != null && Keyboard.current.f7Key.wasPressedThisFrame) PlayFromTheSave(!fromTheSave);
         int? have = world.PointsOf(me);

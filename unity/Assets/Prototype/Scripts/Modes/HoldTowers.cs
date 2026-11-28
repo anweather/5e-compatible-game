@@ -18,8 +18,8 @@ public class HoldTowers : MonoBehaviour
     {
         foreach (var (_, at) in shown) Destroy(at.gameObject);
         shown.Clear();
-        if (world.HoldSite == null) return;
-        foreach (var tower in world.HoldSite.Towers)
+        if (world.HoldSite() == null) return;
+        foreach (var tower in world.HoldSite().Towers)
         {
             var cells = world.TowerGround(tower);
             if (cells.Count == 0) continue;

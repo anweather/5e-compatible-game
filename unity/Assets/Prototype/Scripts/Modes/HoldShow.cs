@@ -30,13 +30,13 @@ public class HoldShow : MonoBehaviour
     public string HudLine()
     {
         var world = grid != null ? grid.World : null;
-        var h = world?.Hold;
-        if (world?.HoldSite == null || h == null) return "";
+        var h = world?.Hold();
+        if (world?.HoldSite() == null || h == null) return "";
         int last = world.Rules.Sim.Hold.Waves;
         string of = last > 0 ? $" of {last}" : "";
         return h.Phase switch
         {
-            HoldPhase.Running => $"Wave {h.Wave}{of} · {world.HoldLeft} left · keep {Mathf.Max(0, h.Health)}",
+            HoldPhase.Running => $"Wave {h.Wave}{of} · {world.HoldLeft()} left · keep {Mathf.Max(0, h.Health)}",
             HoldPhase.Won => "The keep held. The plate starts again",
             _ => $"The keep fell in wave {h.Wave}. The plate starts again",
         };
@@ -45,7 +45,7 @@ public class HoldShow : MonoBehaviour
     public string TimerLine()
     {
         var world = grid != null ? grid.World : null;
-        if (world?.HoldSite == null || world.HoldWarning() != null || world.HoldNextWaveIn() is not { } ticks) return "";
+        if (world?.HoldSite() == null || world.HoldWarning() != null || world.HoldNextWaveIn() is not { } ticks) return "";
         return $"Next wave in {Clock(ticks, world)}";
     }
 
@@ -58,7 +58,7 @@ public class HoldShow : MonoBehaviour
     public string WarningLine()
     {
         var world = grid != null ? grid.World : null;
-        if (world?.HoldSite == null || world.HoldWarning() is not { } warning) return "";
+        if (world?.HoldSite() == null || world.HoldWarning() is not { } warning) return "";
         var rows = world.Rules.Sim.Hold;
         string theme = warning.plan.Theme != null ? $": {rows.Theme(warning.plan.Theme)?.Name}" : "";
         string boss = warning.plan.Boss ? ", with a boss" : "";
@@ -75,7 +75,7 @@ public class HoldShow : MonoBehaviour
     public string HandsLine(string player)
     {
         var world = grid != null ? grid.World : null;
-        if (world?.HoldSite == null || !world.HandsOn(player)) return "";
+        if (world?.HoldSite() == null || !world.HandsOn(player)) return "";
         return $"Left: {Holding(world, player, HandsDef.Left)}   Right: {Holding(world, player, HandsDef.Right)}";
     }
 
@@ -108,13 +108,13 @@ public class HoldShow : MonoBehaviour
         var world = grid.World;
         if (world == null) return;
         if (world != shownFor) Show(world);
-        if (world.HoldSite == null) return;
+        if (world.HoldSite() == null) return;
         string warning = WarningLine();
         string timer = TimerLine();
-        string text = world.Hold == null ? "" : BannerText(world.Hold, warning, timer);
+        string text = world.Hold() == null ? "" : BannerText(world.Hold(), warning, timer);
         if (banner != null && text != bannerText) banner.text = bannerText = text;
         if (banner != null && Camera.main != null) banner.transform.rotation = Camera.main.transform.rotation;
-        if (world.HoldRunning) sawRun = true;
+        if (world.HoldRunning()) sawRun = true;
         else if (sawRun)
         {
             sawRun = false;
@@ -136,8 +136,8 @@ public class HoldShow : MonoBehaviour
         if (banner != null) Destroy(banner.gameObject);
         if (crystal != null) Destroy(crystal.gameObject);
         bannerText = null;
-        if (world.HoldSite == null) return;
-        var (px, py) = world.HoldSite.Plate;
+        if (world.HoldSite() == null) return;
+        var (px, py) = world.HoldSite().Plate;
         var at = grid.CellCenter(px, py);
         at.y = grid.GroundAt(at) + PlateHeight / 2f;
         plate = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -148,7 +148,7 @@ public class HoldShow : MonoBehaviour
         plate.transform.localScale = new Vector3(grid.cellSize, PlateHeight / 2f, grid.cellSize);
         var renderer = plate.GetComponent<MeshRenderer>();
         renderer.material = UrpMaterials.NewLit("Hold plate", PlateColor, 0.3f);
-        var (hx, hy) = world.HoldSite.Heart;
+        var (hx, hy) = world.HoldSite().Heart;
         var heart = grid.CellCenter(hx, hy);
         heart.y = grid.GroundAt(heart);
         crystal = HoldCrystal.At(transform, heart);
@@ -199,14 +199,14 @@ public class HoldShow : MonoBehaviour
         HudScale.Apply();
         DrawHurt();
         var world = grid.World;
-        if (!EventLog.HudVisible || world?.HoldSite == null) return;
+        if (!EventLog.HudVisible || world?.HoldSite() == null) return;
         var caster = WizardHud.TrackedCaster;
         style ??= new GUIStyle(GUI.skin.label) { fontSize = 22, alignment = TextAnchor.MiddleCenter, richText = true };
         if (caster != null && world.TowerOf(caster.CastPlayer) != null)
             GUI.Label(new Rect(HudScale.Width / 2f - 450f, HudScale.Height - 280f, 900f, 36f), $"<color=#bfe3ff>{TowerLine(world, caster.CastPlayer)}</color>", style);
-        if (world.Hold == null) return;
-        if (!world.HoldRunning && (lostAt < 0f || Time.time - lostAt > ShowLoss)) return;
-        var (hx, hy) = world.HoldSite.Heart;
+        if (world.Hold() == null) return;
+        if (!world.HoldRunning() && (lostAt < 0f || Time.time - lostAt > ShowLoss)) return;
+        var (hx, hy) = world.HoldSite().Heart;
         if (caster == null || Vector3.Distance(caster.transform.position, grid.CellCenter(hx, hy)) > HudRange) return;
         GUI.Label(new Rect(HudScale.Width / 2f - 400f, 54f, 800f, 36f), $"<b>{HudLine()}</b>", style);
         string warning = WarningLine();

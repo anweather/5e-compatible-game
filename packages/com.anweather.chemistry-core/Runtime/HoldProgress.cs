@@ -48,13 +48,6 @@ namespace Chem
         }
     }
 
-    public sealed class RunWizard
-    {
-        public string Player;
-        public List<string> Offer { get; } = new List<string>();
-        public List<string> Picks { get; } = new List<string>();
-    }
-
     public sealed class ProgressFile
     {
         public const string FileName = PlayerSave.FileName;

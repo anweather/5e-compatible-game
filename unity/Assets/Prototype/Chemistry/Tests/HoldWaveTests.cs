@@ -18,7 +18,7 @@ namespace Chem.Tests
             var w = Field(seed);
             Away(w);
             Moment(w, id);
-            Until(w, () => w.Hold.ToSpawn == 0, "they all come");
+            Until(w, () => w.Hold().ToSpawn == 0, "they all come");
             return w;
         }
 
@@ -41,11 +41,11 @@ namespace Chem.Tests
             Assert.That(two, Is.EqualTo(one * P.PeerPercent[1] / 100));
             Assert.That(lots, Is.EqualTo(one * P.PeerPercent[P.PeerPercent.Count - 1] / 100), "the last row for more");
             var w = Field();
-            Stand(w, Me, w.HoldSite.Plate);
-            Stand(w, "Bo", (w.HoldSite.Rise.x - 40, w.HoldSite.Rise.y - 30));
+            Stand(w, Me, w.HoldSite().Plate);
+            Stand(w, "Bo", (w.HoldSite().Rise.x - 40, w.HoldSite().Rise.y - 30));
             Ticks(w, P.PlateTicks + 1);
-            Assert.That(w.Hold.Peers, Is.EqualTo(2));
-            Assert.That(w.Hold.ToSpawn, Is.EqualTo(HoldSystem.WaveSize(P, 1, 2)));
+            Assert.That(w.Hold().Peers, Is.EqualTo(2));
+            Assert.That(w.Hold().ToSpawn, Is.EqualTo(HoldSystem.WaveSize(P, 1, 2)));
         }
 
         [Test]
@@ -105,7 +105,7 @@ namespace Chem.Tests
             Assert.That(row?.Boss == true, boss.Kind);
             Assert.That(R.Entity(boss.Kind).Name, Does.StartWith(row.Name));
             Assert.That(boss.MaxHp, Is.GreaterThan(R.Entity(Rules.PlainKind(boss.Kind)).Hp * 3));
-            Until(w, () => w.Hold.ToSpawn == 0, "the rest");
+            Until(w, () => w.Hold().ToSpawn == 0, "the rest");
             Assert.That(w.Raiders.Count(r => R.AdjectiveOf(r.Kind)?.Boss == true), Is.EqualTo(1));
         }
 
@@ -115,7 +115,7 @@ namespace Chem.Tests
             (int boss, int plain) Hps(params string[] wizards)
             {
                 var w = Field();
-                for (int i = 0; i < wizards.Length; i++) Stand(w, wizards[i], (w.HoldSite.Rise.x - 40 - i * 2, w.HoldSite.Rise.y - 30));
+                for (int i = 0; i < wizards.Length; i++) Stand(w, wizards[i], (w.HoldSite().Rise.x - 40 - i * 2, w.HoldSite().Rise.y - 30));
                 Moment(w, "first-boss");
                 Until(w, () => w.Raiders.Count >= 2, "they come");
                 return (w.Raiders[0].MaxHp, w.Raiders[1].MaxHp);
@@ -133,7 +133,7 @@ namespace Chem.Tests
             var w = Field();
             Away(w);
             Moment(w, "first-wave");
-            Until(w, () => w.Hold.ToSpawn == 0, "they come");
+            Until(w, () => w.Hold().ToSpawn == 0, "they come");
             Assert.That(w.HoldWarning(), Is.Null, "none with a wave under way");
             foreach (var r in w.Raiders) r.Hp = 1;
             foreach (var r in w.Raiders) r.Status["burning"] = 30;
@@ -141,12 +141,12 @@ namespace Chem.Tests
             var (plan, ticks) = w.HoldWarning().Value;
             Assert.That(plan.Wave, Is.EqualTo(2));
             Assert.That(plan.Count, Is.EqualTo(HoldSystem.WaveSize(P, 2)));
-            Assert.That(plan.Theme, Is.EqualTo(w.Hold.Theme));
+            Assert.That(plan.Theme, Is.EqualTo(w.Hold().Theme));
             Assert.That(ticks, Is.EqualTo(P.BetweenWaves).Within(1));
             Ticks(w, ticks - 1);
-            Assert.That(w.Hold.InWave, Is.Zero, "nothing yet");
+            Assert.That(w.Hold().InWave, Is.Zero, "nothing yet");
             Ticks(w, 2);
-            Assert.That(w.Hold.InWave, Is.EqualTo(1));
+            Assert.That(w.Hold().InWave, Is.EqualTo(1));
         }
 
         [Test]
@@ -157,15 +157,15 @@ namespace Chem.Tests
             Moment(moment, "first-boss");
             var played = Field();
             Away(played);
-            int wave = moment.Hold.Wave;
-            Assert.That(moment.Hold.Theme, Is.EqualTo(played.Play().Hold.ThemeOfWave(wave)));
-            Stand(played, Me, played.HoldSite.Plate);
+            int wave = moment.Hold().Wave;
+            Assert.That(moment.Hold().Theme, Is.EqualTo(played.Play().Hold.ThemeOfWave(wave)));
+            Stand(played, Me, played.HoldSite().Plate);
             Ticks(played, P.PlateTicks + 1);
             Away(played);
             Hurry(played, wave);
-            Assert.That(played.Hold.Wave, Is.EqualTo(wave));
-            Assert.That(played.Hold.Theme, Is.EqualTo(moment.Hold.Theme));
-            Assert.That(played.Hold.ToSpawn, Is.EqualTo(moment.Hold.ToSpawn));
+            Assert.That(played.Hold().Wave, Is.EqualTo(wave));
+            Assert.That(played.Hold().Theme, Is.EqualTo(moment.Hold().Theme));
+            Assert.That(played.Hold().ToSpawn, Is.EqualTo(moment.Hold().ToSpawn));
             var one = KindsOf(moment);
             var two = KindsOf(played);
             Assert.That(two, Is.EqualTo(one));
@@ -173,23 +173,23 @@ namespace Chem.Tests
 
         static void Hurry(World w, int wave)
         {
-            for (int left = 4000; w.Hold.Wave < wave && left > 0; left--)
+            for (int left = 4000; w.Hold().Wave < wave && left > 0; left--)
             {
                 foreach (var r in w.Raiders) r.Hp = 1;
                 foreach (var r in w.Raiders) r.Status["burning"] = 30;
-                w.Hold.Health = P.Health;
-                w.Hold.NextSpawn = System.Math.Min(w.Hold.NextSpawn, w.Tick);
+                w.Hold().Health = P.Health;
+                w.Hold().NextSpawn = System.Math.Min(w.Hold().NextSpawn, w.Tick);
                 w.Step();
             }
-            Assert.That(w.Hold.Wave, Is.EqualTo(wave));
+            Assert.That(w.Hold().Wave, Is.EqualTo(wave));
         }
 
         static string[] KindsOf(World w)
         {
             var kinds = new System.Collections.Generic.Dictionary<int, string>();
-            for (int i = 0; i < 4000 && w.Hold.ToSpawn > 0; i++)
+            for (int i = 0; i < 4000 && w.Hold().ToSpawn > 0; i++)
             {
-                w.Hold.Health = P.Health;
+                w.Hold().Health = P.Health;
                 w.Step();
                 foreach (var r in w.Raiders) kinds[r.Id] = r.Kind;
                 foreach (var r in w.Raiders) r.Wait = 99;
@@ -201,19 +201,19 @@ namespace Chem.Tests
         public void AMomentSetsTheHandsAndTheKeep()
         {
             var w = Field();
-            Stand(w, Me, (w.HoldSite.Rise.x - 40, w.HoldSite.Rise.y - 30));
+            Stand(w, Me, (w.HoldSite().Rise.x - 40, w.HoldSite().Rise.y - 30));
             Moment(w, "late-wave");
-            Assert.That(w.HoldRunning);
+            Assert.That(w.HoldRunning());
             var m = P.Moment("late-wave");
-            Assert.That(w.Hold.Wave, Is.EqualTo(m.Wave));
-            Assert.That(w.Hold.Health, Is.EqualTo(m.Health));
+            Assert.That(w.Hold().Wave, Is.EqualTo(m.Wave));
+            Assert.That(w.Hold().Health, Is.EqualTo(m.Health));
             Assert.That(w.HandsOf(Me).Holds, Is.EqualTo(m.Holds));
             Assert.That(BrokenCells(w), Is.GreaterThan(0), "the castle is hurt");
             Assert.That(w.ApplyCombo(ComboCommand.Moment(Me, "no-such")), Is.False);
         }
 
         static int BrokenCells(World w) =>
-            BuildingRaster.Cells(BuildingRow.Read(w.HoldSite.Castle, w.HoldSite.Row, R.Buildings), R.Buildings).Count(c => w.At(c.X, c.Y).T != c.Terrain);
+            BuildingRaster.Cells(BuildingRow.Read(w.HoldSite().Castle, w.HoldSite().Row, R.Buildings), R.Buildings).Count(c => w.At(c.X, c.Y).T != c.Terrain);
 
         [Test]
         public void OnlyADevBuildTakesAMoment()
@@ -233,8 +233,8 @@ namespace Chem.Tests
                 var w = Field();
                 Away(w);
                 Moment(w, m.Id);
-                Assert.That(w.Hold.Wave, Is.EqualTo(m.Wave), m.Id);
-                if (m.Theme != null) Assert.That(w.Hold.Theme, Is.EqualTo(m.Theme), m.Id);
+                Assert.That(w.Hold().Wave, Is.EqualTo(m.Wave), m.Id);
+                if (m.Theme != null) Assert.That(w.Hold().Theme, Is.EqualTo(m.Theme), m.Id);
             }
         }
 
@@ -254,9 +254,9 @@ namespace Chem.Tests
             var w = Field();
             Away(w);
             Moment(w, "first-wave");
-            w.Hold.ToSpawn = 0;
-            w.Hold.InWave = 1;
-            var (x, y) = w.HoldSite.Spawners[0].Cells[0];
+            w.Hold().ToSpawn = 0;
+            w.Hold().InWave = 1;
+            var (x, y) = w.HoldSite().Spawners[0].Cells[0];
             var r = w.SpawnRaider(kind, x, y, 500);
             Assert.That(r, Is.Not.Null);
             return w;
@@ -264,10 +264,10 @@ namespace Chem.Tests
 
         static (int onRoad, int cells) Walk(World w)
         {
-            var road = BuildingRaster.Cells(BuildingRow.Read(w.HoldSite.Castle, w.HoldSite.Row, R.Buildings), R.Buildings)
-                .Where(c => c.Part == BuildingPart.Road && c.Terrain == w.HoldSite.RoadTerrain).Select(c => (c.X, c.Y)).ToHashSet();
+            var road = BuildingRaster.Cells(BuildingRow.Read(w.HoldSite().Castle, w.HoldSite().Row, R.Buildings), R.Buildings)
+                .Where(c => c.Part == BuildingPart.Road && c.Terrain == w.HoldSite().RoadTerrain).Select(c => (c.X, c.Y)).ToHashSet();
             var seen = new System.Collections.Generic.HashSet<(int, int)>();
-            for (int i = 0; i < 2500 && w.Raiders.Count > 0 && w.Hold.Health == P.Health; i++)
+            for (int i = 0; i < 2500 && w.Raiders.Count > 0 && w.Hold().Health == P.Health; i++)
             {
                 var r = w.Raiders[0];
                 seen.Add((r.X, r.Y));
@@ -300,8 +300,8 @@ namespace Chem.Tests
             Ticks(w, 8);
             hound.Wait = 100000;
             (int x, int y)? meet = null;
-            for (int y = w.HoldSite.Heart.y - 30; y < w.HoldSite.Heart.y + 30 && meet == null; y++)
-                for (int x = w.HoldSite.Heart.x + 12; x < w.HoldSite.Heart.x + 60 && meet == null; x++)
+            for (int y = w.HoldSite().Heart.y - 30; y < w.HoldSite().Heart.y + 30 && meet == null; y++)
+                for (int x = w.HoldSite().Heart.x + 12; x < w.HoldSite().Heart.x + 60 && meet == null; x++)
                     if (w.HoldNext(x, y, true) is { } on && w.HoldNext(on.x, on.y, false) == (x, y)) meet = (x, y);
             Assert.That(meet, Is.Not.Null, "somewhere the road's way and the straight way run opposite");
             var (ax, ay) = meet.Value;
@@ -318,11 +318,11 @@ namespace Chem.Tests
         public void AWizardsWallRoundTheHeartIsBatteredDown(string terrain)
         {
             var w = WithRaider("bone-hound");
-            var heart = w.HoldSite.Heart;
+            var heart = w.HoldSite().Heart;
             for (int y = heart.y - 2; y <= heart.y + 2; y++)
                 for (int x = heart.x - 2; x <= heart.x + 2; x++)
                     if (!(x == heart.x && y == heart.y)) w.Paint(x, y, terrain);
-            Until(w, () => w.Hold.Health < P.Health, "it gets through");
+            Until(w, () => w.Hold().Health < P.Health, "it gets through");
         }
 
         [Test]
@@ -341,8 +341,8 @@ namespace Chem.Tests
             var w = WithRaider("ash-wing");
             var r = w.Raiders[0];
             Assert.That(w.Flying(r));
-            Until(w, () => w.Hold.Health < P.Health, "it reaches the heart");
-            Assert.That(System.Math.Max(System.Math.Abs(r.X - w.HoldSite.Heart.x), System.Math.Abs(r.Y - w.HoldSite.Heart.y)), Is.LessThanOrEqualTo(1));
+            Until(w, () => w.Hold().Health < P.Health, "it reaches the heart");
+            Assert.That(System.Math.Max(System.Math.Abs(r.X - w.HoldSite().Heart.x), System.Math.Abs(r.Y - w.HoldSite().Heart.y)), Is.LessThanOrEqualTo(1));
         }
 
         [Test]
@@ -350,7 +350,7 @@ namespace Chem.Tests
         {
             var w = WithRaider("ash-wing");
             var r = w.Raiders[0];
-            var wall = BuildingRaster.Cells(BuildingRow.Read(w.HoldSite.Castle, w.HoldSite.Row, R.Buildings), R.Buildings).First(c => c.Part == BuildingPart.Wall && w.At(c.X, c.Y).T == "stone");
+            var wall = BuildingRaster.Cells(BuildingRow.Read(w.HoldSite().Castle, w.HoldSite().Row, R.Buildings), R.Buildings).First(c => c.Part == BuildingPart.Wall && w.At(c.X, c.Y).T == "stone");
             Stand(w, Me, (wall.X, wall.Y));
             (r.X, r.Y) = (wall.X + 1, wall.Y);
             r.Wait = 0;
@@ -386,7 +386,7 @@ namespace Chem.Tests
         static System.Collections.Generic.List<(int x, int y)> Barricades(World w)
         {
             var found = new System.Collections.Generic.List<(int, int)>();
-            foreach (var cell in BuildingRaster.Cells(BuildingRow.Read(w.HoldSite.Castle, w.HoldSite.Row, R.Buildings), R.Buildings))
+            foreach (var cell in BuildingRaster.Cells(BuildingRow.Read(w.HoldSite().Castle, w.HoldSite().Row, R.Buildings), R.Buildings))
                 if (w.At(cell.X, cell.Y).T == P.BarricadeTerrain) found.Add((cell.X, cell.Y));
             return found;
         }
@@ -396,7 +396,7 @@ namespace Chem.Tests
             var w = Field();
             Away(w);
             Moment(w, moment);
-            Until(w, () => w.Hold.InWave > 0, "the wave starts");
+            Until(w, () => w.Hold().InWave > 0, "the wave starts");
             return w;
         }
 
@@ -407,11 +407,11 @@ namespace Chem.Tests
             Away(w);
             Moment(w, "late-wave");
             Assert.That(Barricades(w), Is.Empty);
-            Until(w, () => w.Hold.InWave > 0, "the wave starts");
+            Until(w, () => w.Hold().InWave > 0, "the wave starts");
             Assert.That(Barricades(w), Is.Not.Empty);
             Assert.That(HoldSystem.BarricadesOf(P, 1), Is.Zero);
             Assert.That(HoldSystem.BarricadesOf(P, 200), Is.EqualTo(P.BarricadeMost));
-            Assert.That(Field().HoldSite.Barricades, Is.Not.Empty);
+            Assert.That(Field().HoldSite().Barricades, Is.Not.Empty);
         }
 
         [Test]
@@ -436,7 +436,7 @@ namespace Chem.Tests
             for (int i = 0; i < 600 && Barricades(w).Count == was; i++)
             {
                 foreach (var r in w.Raiders) r.Wait = 100000;
-                w.Hold.ToSpawn = 0;
+                w.Hold().ToSpawn = 0;
                 foreach (var (x, y) in beside) w.At(x, y).Fire = 5;
                 w.Step();
             }
@@ -448,8 +448,8 @@ namespace Chem.Tests
         {
             var w = Barricaded();
             Assert.That(Barricades(w), Is.Not.Empty);
-            w.Hold.Health = 1;
-            Until(w, () => !w.HoldRunning, "the keep falls");
+            w.Hold().Health = 1;
+            Until(w, () => !w.HoldRunning(), "the keep falls");
             Assert.That(Barricades(w), Is.Empty);
         }
     }

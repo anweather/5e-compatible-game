@@ -337,7 +337,7 @@ namespace Chem.Tests
         {
             var source = new Meadow(W, H);
             string save = Played(source).Save(source);
-            Assert.That(World.Load(save, R, source).Save(source), Is.EqualTo(save));
+            Assert.That(PlayModes.Install(World.Load(save, R, source)).Save(source), Is.EqualTo(save), "its modes take their parts back");
             // The rules' fingerprint left out: any change to rules/ moves it, not just one to the format.
             string pinned = save.Replace(R.Fingerprint, "rules");
             uint hash = 0x811c9dc5;

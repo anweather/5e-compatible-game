@@ -44,7 +44,7 @@ namespace Chem.Tests
 
         static List<(int x, int y)> Posts(World w)
         {
-            var s = w.HoldSite;
+            var s = w.HoldSite();
             return BuildingRaster.Cells(BuildingRow.Read(s.Castle, s.Row, R.Buildings), R.Buildings)
                 .Where(c => c.Part == BuildingPart.Wall && w.At(c.X, c.Y).T == "stone")
                 .OrderBy(c => Math.Abs(c.X - s.Heart.x) + Math.Abs(c.Y - s.Heart.y)).ThenBy(c => c.X).ThenBy(c => c.Y)
@@ -63,21 +63,21 @@ namespace Chem.Tests
 
             Raider Target(int range) => W.Raiders
                 .Where(r => Math.Abs(r.X - Post.x) <= range && Math.Abs(r.Y - Post.y) <= range)
-                .OrderBy(r => Math.Abs(r.X - W.HoldSite.Heart.x) + Math.Abs(r.Y - W.HoldSite.Heart.y)).ThenBy(r => r.Id).FirstOrDefault();
+                .OrderBy(r => Math.Abs(r.X - W.HoldSite().Heart.x) + Math.Abs(r.Y - W.HoldSite().Heart.y)).ThenBy(r => r.Id).FirstOrDefault();
 
             public IEnumerable<object> Think()
             {
                 if (!brought)
                 {
                     brought = true;
-                    var s = W.HoldSite;
+                    var s = W.HoldSite();
                     var water = s.Towers.First(t => t.Element == "water");
                     var at = W.TowerGround(water)[0];
                     yield return StrikeCommand.Stand(Me, at.x, at.y, 1000000);
                     yield return ComboCommand.Bring(Me, Points);
                     yield return ComboCommand.Attune(Me, Left, "water");
                 }
-                if (!W.HoldRunning) yield break;
+                if (!W.HoldRunning()) yield break;
                 if (!posted)
                 {
                     posted = true;
@@ -96,7 +96,7 @@ namespace Chem.Tests
                 var run = W.RunOf(Me);
                 if (run != null && run.Offer.Count > 0)
                 {
-                    int pick = Choose(W.Hold.Wave);
+                    int pick = Choose(W.Hold().Wave);
                     if (pick >= 0) yield return ComboCommand.Pick(Me, run.Offer[pick % run.Offer.Count]);
                 }
                 if (W.CastOf(Me)?.Casting == true || Target(HandRules.RangeOf(Throw)) == null) yield break;
@@ -173,11 +173,11 @@ namespace Chem.Tests
             room.Peers.Add(PeerOf(Bo, World.AllPoints, 1, wave => 1));
             var w = fresh.W;
             room.Tick();
-            var plate = StrikeCommand.Stand(Me, w.HoldSite.Plate.x, w.HoldSite.Plate.y, 1000000);
+            var plate = StrikeCommand.Stand(Me, w.HoldSite().Plate.x, w.HoldSite().Plate.y, 1000000);
             room.History.Add((w.Tick, plate));
             foreach (var p in room.Peers) Apply(p.W, plate);
-            room.Until(x => x.HoldRunning, "the run starts");
-            room.Until(x => x.Hold.Wave >= 2 && x.RunOf(Me)?.Picks.Count > 0, "a wave beaten and picked from");
+            room.Until(x => x.HoldRunning(), "the run starts");
+            room.Until(x => x.Hold().Wave >= 2 && x.RunOf(Me)?.Picks.Count > 0, "a wave beaten and picked from");
             var late = room.Join(PeerOf(Cy, 9, 2, wave => 0));
             for (int i = 0; i < 30; i++) room.Tick();
             Assert.That(w.HandsOf(Me).Holds[Left], Is.Null, "a fresh wizard's second hand let go as the run started, on every peer");
@@ -204,20 +204,20 @@ namespace Chem.Tests
             Assert.That(all.W.HandsOf(Me).Holds[Left], Is.EqualTo("water"), "so a fresh wizard attunes, on every peer");
             Assert.That(all.W.HandsOf(Bo).Holds[Left], Is.EqualTo("water"));
 
-            var plate = StrikeCommand.Stand(Me, w.HoldSite.Plate.x, w.HoldSite.Plate.y, 1000000);
+            var plate = StrikeCommand.Stand(Me, w.HoldSite().Plate.x, w.HoldSite().Plate.y, 1000000);
             room.History.Add((w.Tick, plate));
             foreach (var p in room.Peers) Apply(p.W, plate);
-            room.Until(x => x.HoldRunning, "the run starts");
+            room.Until(x => x.HoldRunning(), "the run starts");
             foreach (var p in room.Peers)
             {
                 Assert.That(p.W.HandOpen(Me, Left), Is.False, "in a run a fresh wizard has one hand");
                 Assert.That(p.W.HandOpen(Bo, Left));
                 Assert.That(p.W.HandsOf(Me).Holds[Left], Is.Null, "it let go as the run started, on every peer");
             }
-            room.Until(x => x.Hold.Wave >= 3, "two waves beaten");
+            room.Until(x => x.Hold().Wave >= 3, "two waves beaten");
 
             var late = room.Join(PeerOf(Cy, 9, 2, wave => 1));
-            room.Until(x => x.Hold.Wave >= 5, "two more, with three peers");
+            room.Until(x => x.Hold().Wave >= 5, "two more, with three peers");
 
             foreach (var p in room.Peers)
             {
@@ -229,7 +229,7 @@ namespace Chem.Tests
             foreach (var p in room.Peers.Skip(1)) Assert.That(Checksum(p.W), Is.EqualTo(Checksum(w)), p.Me + "'s peer at the end");
             Assert.That(late.W.Play().Hold.Text(), Is.EqualTo(w.Play().Hold.Text()));
             Assert.That(late.W.HandsText(), Is.EqualTo(w.HandsText()));
-            TestContext.WriteLine($"{room.Checked} ticks checked, wave {w.Hold.Wave}, {w.ActiveChunks.Count} chunks active");
+            TestContext.WriteLine($"{room.Checked} ticks checked, wave {w.Hold().Wave}, {w.ActiveChunks.Count} chunks active");
         }
 
         [Test]

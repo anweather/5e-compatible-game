@@ -95,7 +95,7 @@ public sealed class RoomProbeRecord : IDisposable
         seen.rules = grid.World.Rules.Fingerprint;
         seen.fireballRadius = grid.World.Rules.Spell(SpellIds.Fireball).Radius;
         seen.fireTurn = grid.FireElementTint.Turn;
-        var waves = grid.World.Defense;
+        var waves = grid.World.Defense();
         seen.defense = waves == null ? "-" : $"{waves.Phase} wave {waves.Wave}, gate {waves.GateX},{waves.GateY}, flag {waves.FlagX},{waves.FlagY}";
         seen.strikes = string.Join("|", grid.World.Log.Select(l => l.Text).Where(t => t.Contains("punch")).Distinct().OrderBy(t => t, StringComparer.Ordinal));
         seen.ruins = grid.TryGetComponent<RowHouses>(out var houses) ? houses.Ruins : "";

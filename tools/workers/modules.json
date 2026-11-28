@@ -36,7 +36,7 @@
     ], "_": "Spell golf, a mini-game on its own assembly (D22, docs/design/minigames.md): a golf change runs Chem.Play.Golf.Tests, and Playtest.Text and Rules.Mcp build on it. It stops at Rules.Mcp (the MCP server's rooms install golf): Rules.Mcp.Tests and Chat.Bench reach golf only through it, so they get the Unit smoke, and CI's full run after every push to dev catches the rest (as runtime-land's stop at Game.Core, 2026-11-26)." },
     { "name": "runtime-play", "projects": ["Chem.Play"], "paths": [
       "packages/com.anweather.chemistry-core/Runtime/Play/**"
-    ], "_": "Chem.Play's own assembly (architecture-review.md step 9): the Hold's, the defense field's and the course's systems, above Game.Core. A Play change runs what references Chem.Play: Chem.Play.Tests, Hold.Runner (and its tests) and Playtest.Text, and the rest get the Unit smoke. No stop is needed: nothing heavy reaches Chem.Play, and nothing below it (Game.Core and what's on it) can, so the cut is the references themselves. The modes' state, its save and the seam (World.Play.cs, IWorldModes.cs, Hold.cs, Defense.cs, Course.cs, HoldRun.cs) and the raiders and the dragon are Sim's, as are the modes' contract and bodies (WorldMode.cs, Body.cs, World.Bodies.cs): runtime-sim-modes (Sim's cut plus the modes' tests)." },
+    ], "_": "Chem.Play's own assembly (architecture-review.md step 9): the Hold's, the defense field's and the course's systems and, since modes-out (D22), their state, its save and its text (PlayModes' slots), above Game.Core. A Play change runs what references Chem.Play: Chem.Play.Tests, Hold.Runner (and its tests) and Playtest.Text, and the rest get the Unit smoke. No stop is needed: nothing heavy reaches Chem.Play, and nothing below it (Game.Core and what's on it) can, so the cut is the references themselves. The seam the world calls them through (World.Play.cs), the rules' and the map's rows they read (Hold.cs, Defense.cs, Course.cs) and the raiders and the dragon are Sim's, as are the modes' contract and bodies (WorldMode.cs, Body.cs, World.Bodies.cs): runtime-sim-modes (Sim's cut plus the modes' tests)." },
     { "name": "runtime-lockstep", "after": ["Chem.Lockstep.Tests"], "projects": ["Game.Core"], "paths": [
       "packages/com.anweather.chemistry-core/Runtime/Lockstep*",
       "packages/com.anweather.chemistry-core/Runtime/JoinSnapshot*",
@@ -57,16 +57,14 @@
     ], "_": "Sim's adapters of the land onto a world: runtime-sim's cut (Andrew, 2026-11-28) plus the land-on-a-world tests." },
     { "name": "runtime-sim-modes", "projects": ["Game.Core"], "runs": ["Chem.Sim.Tests", "Chem.Lockstep.Tests", "Chem.Play.Tests", "Chem.Play.Golf.Tests", "Hold.Runner.Tests"], "paths": [
       "packages/com.anweather.chemistry-core/Runtime/World.Play*",
-      "packages/com.anweather.chemistry-core/Runtime/IWorldModes*",
       "packages/com.anweather.chemistry-core/Runtime/Hold.cs*",
       "packages/com.anweather.chemistry-core/Runtime/Defense.cs*",
       "packages/com.anweather.chemistry-core/Runtime/Course.cs*",
-      "packages/com.anweather.chemistry-core/Runtime/HoldRun.cs*",
       "packages/com.anweather.chemistry-core/Runtime/WorldMode*",
       "packages/com.anweather.chemistry-core/Runtime/Body.cs*",
       "packages/com.anweather.chemistry-core/Runtime/World.Bodies*",
       "packages/com.anweather.chemistry-core/Runtime/RuleModes*"
-    ], "_": "The modes' seam and the state Sim keeps for them (D22): runtime-sim's cut (Andrew, 2026-11-28) plus the modes' own tests." },
+    ], "_": "The modes' seam and the rows Sim reads for them (D22): runtime-sim's cut (Andrew, 2026-11-28) plus the modes' own tests." },
     { "name": "runtime-sim", "after": ["Chem.Sim.Tests"], "projects": ["Game.Core"], "runs": ["Chem.Sim.Tests", "Chem.Lockstep.Tests"], "paths": [
       "packages/com.anweather.chemistry-core/Runtime/**"
     ], "_": "Andrew's ruling (2026-11-28): a Sim change runs Chem.Sim.Tests and Chem.Lockstep.Tests (the world and its determinism: every hash, join and replay) in full, and every other project that links Game.Core gets the Unit smoke; CI's full run after every push to dev catches the rest, as runtime-land's stop does. The Lockstep and rules areas above still run everything." },

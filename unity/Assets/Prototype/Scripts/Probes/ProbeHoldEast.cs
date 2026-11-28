@@ -32,7 +32,7 @@ public class HoldEastProbe : ProbeScenario
 
     List<List<(int x, int y)>> Gates()
     {
-        var site = Core.HoldSite;
+        var site = Core.HoldSite();
         var open = BuildingRaster.Cells(BuildingRow.Read(site.Castle, site.Row, Core.Rules.Buildings), Core.Rules.Buildings)
             .Where(c => c.Terrain == "timber-gate-open").Select(c => (c.X, c.Y)).ToList();
         var gates = new List<List<(int x, int y)>>();
@@ -51,7 +51,7 @@ public class HoldEastProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        var site = Core.HoldSite;
+        var site = Core.HoldSite();
         Check("a_hold", site != null);
         if (site == null) yield break;
         yield return Switch(At(10f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 } }");
@@ -68,13 +68,13 @@ public class HoldEastProbe : ProbeScenario
         Check("the_castle_stands_whole", ruin != null && ruin.Down == 0, ruin == null ? "no ruin" : $"{ruin.Down} down at {string.Join(" ", ruin.DownPlaces())}, the row at {site.Row?["at"]}");
 
         StandOn(site.Plate);
-        for (float t = 0f; t < MostWait && !Core.HoldRunning; t += Time.deltaTime) yield return null;
-        Check("a_run_starts", Core.HoldRunning);
-        if (!Core.HoldRunning) yield break;
+        for (float t = 0f; t < MostWait && !Core.HoldRunning(); t += Time.deltaTime) yield return null;
+        Check("a_run_starts", Core.HoldRunning());
+        if (!Core.HoldRunning()) yield break;
         StandOn(site.Rise);
-        Core.Hold.Wave = 4;
-        Core.Hold.InWave = 0;
-        Core.Hold.ToSpawn = HoldSystem.WaveSize(Core.Rules.Sim.Hold, 4, Core.Hold.Peers);
+        Core.Hold().Wave = 4;
+        Core.Hold().InWave = 0;
+        Core.Hold().ToSpawn = HoldSystem.WaveSize(Core.Rules.Sim.Hold, 4, Core.Hold().Peers);
         HoldTheRun();
 
         yield return BothRoads(site, gates);
@@ -90,8 +90,8 @@ public class HoldEastProbe : ProbeScenario
 
     void HoldTheRun()
     {
-        Core.Hold.Health = Core.Rules.Sim.Hold.Health;
-        Core.Hold.NextWave = Core.Tick + Core.Rules.Sim.Hold.WaveTicks;
+        Core.Hold().Health = Core.Rules.Sim.Hold.Health;
+        Core.Hold().NextWave = Core.Tick + Core.Rules.Sim.Hold.WaveTicks;
     }
 
     void Through(List<List<(int x, int y)>> gates, ref bool east, ref bool south)
@@ -245,7 +245,7 @@ public class HoldEastProbe : ProbeScenario
 
     void WriteMap(string path, int x0, int y0, int x1, int y1, int scale)
     {
-        var site = Core.HoldSite;
+        var site = Core.HoldSite();
         int w = x1 - x0, h = y1 - y0;
         var tex = new Texture2D(w * scale, h * scale, TextureFormat.RGBA32, false);
         var road = BuildingRaster.Cells(BuildingRow.Read(site.Castle, site.Row, Core.Rules.Buildings), Core.Rules.Buildings)

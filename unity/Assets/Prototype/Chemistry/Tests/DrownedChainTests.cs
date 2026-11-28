@@ -54,7 +54,6 @@ namespace Chem.Tests
             Assert.That(MapStamps.Load(Dir).LayInto(w), Is.Empty);
             WorldBuildings.Load(Dir).LayInto(w);
             w.MapLaid(Dir);
-            if (WorldHold.Load(Dir) is { } hold) w.SetHold(hold);
             w.KeepStart();
             w.SetAllActive(false);
             int cx = map.Spawn.x / Chunks.Size, cy = map.Spawn.y / Chunks.Size;

@@ -2,7 +2,9 @@
 // seed, picks by command, and one that doesn't has one picked for it as the next wave starts. Between runs: a wizard's points say
 // what's unlocked, brought by a command so every peer agrees; a wizard with none brought has everything, as does anyone in a
 // moment, so a test, a bot or a playtest isn't held back. The locks hold only in a run: the valley stays a sandbox, and outside a
-// run every wizard has everything, whatever its points (#152's "the sandbox's controls and spells don't change").
+// run every wizard has everything, whatever its points (#152's "the sandbox's controls and spells don't change"). The run
+// itself, with each wizard's offers and picks, is the Hold's (Play/HoldSystem.cs): the world asks its modes whether a run
+// or a moment is on and what a wizard has picked (World.Play.cs), and keeps the points.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,9 +20,9 @@ namespace Chem
 
         public int? PointsOf(string player) => progress.TryGetValue(player, out int points) ? points : (int?)null;
 
-        bool NothingHeld(string player) => !progress.ContainsKey(player) || Hold?.Moment != null;
+        bool NothingHeld(string player) => !progress.ContainsKey(player) || InMoment;
 
-        bool AllOpen(string player) => NothingHeld(player) || !HoldRunning;
+        bool AllOpen(string player) => NothingHeld(player) || !InRun;
 
         public IEnumerable<UnlockDef> UnlocksOf(string player)
         {
@@ -83,21 +85,8 @@ namespace Chem
 
         internal void EarnPoints(HoldParams p, int survived)
         {
-            if (Hold.Moment != null) return;
             foreach (var player in progress.Keys.ToList())
                 progress[player] = (int)Math.Min(AllPoints, (long)progress[player] + (long)survived * p.PointsPerWave);
-        }
-
-        public RunWizard RunOf(string player) => Hold != null && Hold.Wizards.TryGetValue(player, out var w) ? w : null;
-
-        static uint NameRoll(string player)
-        {
-            uint h = 2166136261u;
-            unchecked
-            {
-                foreach (char c in player) h = (h ^ c) * 16777619u;
-            }
-            return h;
         }
 
         public bool Suits(UpgradeDef u, string player)
@@ -108,40 +97,7 @@ namespace Chem
             return holds && both && (u.Gesture == HandsDef.NoGesture || GestureOpen(player, u.Gesture));
         }
 
-        internal void OfferUpgrades(HoldParams p)
-        {
-            const uint offer = 7;
-            foreach (var player in stands.Keys)
-            {
-                if (!Hold.Wizards.TryGetValue(player, out var w)) Hold.Wizards[player] = w = new RunWizard { Player = player };
-                w.Offer.Clear();
-                var rows = p.Upgrades.Select((u, i) => (u, roll: WaveRoll(Hold.Wave, i, offer) ^ NameRoll(player)))
-                    .Where(x => Suits(x.u, player)).OrderBy(x => x.roll).ThenBy(x => x.u.Id, StringComparer.Ordinal);
-                w.Offer.AddRange(rows.Take(p.Offer).Select(x => x.u.Id));
-            }
-        }
-
-        bool PickUpgrade(string player, string id)
-        {
-            var w = RunOf(player);
-            if (!HoldRunning || w == null || !w.Offer.Contains(id)) return false;
-            w.Picks.Add(id);
-            w.Offer.Clear();
-            return true;
-        }
-
-        internal void PickForTheLate()
-        {
-            const uint late = 8;
-            foreach (var w in Hold.Wizards.Values)
-                if (w.Offer.Count > 0) PickUpgrade(w.Player, w.Offer[(int)((WaveRoll(Hold.Wave, 0, late) ^ NameRoll(w.Player)) % (uint)w.Offer.Count)]);
-        }
-
-        IEnumerable<UpgradeDef> UpgradesOf(string player)
-        {
-            var p = Rules.Sim.Hold;
-            return HoldRunning && player != null && Hold.Wizards.TryGetValue(player, out var w) ? w.Picks.Select(p.Upgrade).Where(u => u != null) : Enumerable.Empty<UpgradeDef>();
-        }
+        IEnumerable<UpgradeDef> UpgradesOf(string player) => player == null ? Enumerable.Empty<UpgradeDef>() : PickedBy(player);
 
         static bool Touches(UpgradeDef u, string slot, int gesture) =>
             (u.Gesture == HandsDef.NoGesture || u.Gesture == gesture) && (u.Holds == null || (slot ?? "").Split('+').Contains(u.Holds));
@@ -169,22 +125,6 @@ namespace Chem
         }
 
         string ProgressText() => string.Concat(progress.Select(kv => $"|G{kv.Key}:{Whole(kv.Value)}"));
-
-        static string RunText(HoldState h) =>
-            h == null ? "" : string.Concat(h.Wizards.Values.Select(w => $"|W{w.Player}:{string.Join(",", w.Offer)}:{string.Join(",", w.Picks)}"));
-
-        internal static JArray SaveWizards(HoldState h) => new JArray(h.Wizards.Values.Select(w => new JArray(w.Player, new JArray(w.Offer), new JArray(w.Picks))));
-
-        internal static void LoadWizards(HoldState h, JToken saved)
-        {
-            foreach (var a in saved ?? new JArray())
-            {
-                var w = new RunWizard { Player = (string)a[0] };
-                w.Offer.AddRange(a[1].Select(id => (string)id));
-                w.Picks.AddRange(a[2].Select(id => (string)id));
-                h.Wizards[w.Player] = w;
-            }
-        }
 
         JObject SaveProgress() => new JObject(progress.Select(kv => new JProperty(kv.Key, kv.Value)));
 

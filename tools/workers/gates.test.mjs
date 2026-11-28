@@ -136,6 +136,14 @@ test("a Hold change doesn't run golf's tests, nor golf the Hold's", () => {
   assert.ok(tested.includes("Chem.Play.Tests") && !tested.includes("Chem.Play.Golf.Tests"), tested.join(" "));
 });
 
+test("the Hold's, the defense field's and the course's state runs Chem.Play's tests, not Sim's (modes-out, D22)", () => {
+  const { code, out, ran } = run(NOTHING, "0", ["packages/com.anweather.chemistry-core/Runtime/Play/HoldRun.cs", "packages/com.anweather.chemistry-core/Runtime/Play/DefenseState.cs", "packages/com.anweather.chemistry-core/Runtime/Play/CourseRun.cs", "packages/com.anweather.chemistry-core/Runtime/Play/PlayModes.cs"]);
+  assert.equal(code, 0, out);
+  const tested = projectsIn(ran, "TestCategory!=Sweep");
+  assert.deepEqual(tested, ["Chem.Play.Tests", "Hold.Runner.Tests"], "their save and text are PlayModes' slots now, so no Sim test runs");
+  assert.deepEqual(projectsIn(ran, "TestCategory=Unit"), ALL.filter(p => !tested.includes(p)), "the smoke is every other project's Unit fixtures");
+});
+
 test("the stop cuts only its own module's changes: a Land file with a Lockstep file runs everything", () => {
   assert.match(run(NOTHING, "0", ["packages/com.anweather.chemistry-core/Runtime/Land/HillsRoads.cs", "packages/com.anweather.chemistry-core/Runtime/LockstepSession.cs"]).ran, /dotnet test core -c Release/);
 });
