@@ -363,7 +363,13 @@ must compile it (one compile can serve a batch of steps, as the boat's PC did fo
    defense field under bolts and frost with a save mid-wave; the course with and without golf, so the zones' text and
    golf's slot keep their order; 8 Hold runs with two dragons, points brought and an upgrade picked, a save and a
    snapshot joiner mid-run each run on 120 ticks; a world with no modes: every join checksum part, RngState, golf's
-   state, the Hold's, the defense's and the course's, the points and the save's FNV).*
+   state, the Hold's, the defense's and the course's, the points and the save's FNV). Gates (the Mac, warm, idle): a
+   file of that state 88 s (`World.Play.cs` on dev) or 76 s (`World.Progress.cs`) before, 55-64 s after (`Play/`);
+   `Runtime/World.cs` 76 s before, 74 s after. Unity (the Mac): no compile errors, no new warnings in the changed
+   files; EditMode 573 (571 passed, 2 skipped); the Chemistry tests under Mono 1734 (1731 passed, 3 skipped); the
+   player scripts compile for StandaloneWindows64 and StandaloneLinux64; the probes smoke, golf, court, hold, defense,
+   dragon, moments, progress, meteor, fauna (its known flake, #82, once; then twice clean), online, roomopen,
+   roomruin, roomprogress and peervanish pass.*
 
 10. **Prototype.Game into feature assemblies (2026-11-27, the Mac with the Editor).** After steps 4-9 the game itself is
    the monolith: 367 files, 61k lines, and one type-level cycle of 185 files (38k lines) through `ChemGrid`, so a
