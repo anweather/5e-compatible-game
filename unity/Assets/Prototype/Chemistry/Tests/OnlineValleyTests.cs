@@ -3,9 +3,11 @@
 // Thunderwave) from two players as tick batches. A client fed the batches live, and a late
 // joiner replaying the history, have the host's checksum at every 30th tick, and the terrain
 // each draws (CellHeightfield) is the host's, whether eased in cell by cell as the cells
-// changed (a player who watched) or computed at once after catching up (a late joiner).
+// changed (a player who watched) or computed at once after catching up (a late joiner). The three machines run side by
+// side, each on its own world, as three peers would.
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
 
 namespace Chem.Tests
@@ -98,19 +100,17 @@ namespace Chem.Tests
             var host = new Machine();
             var client = new Machine();
             var joiner = new Machine();
-            foreach (var b in session)
-            {
-                host.Run(b, watch: true);
-                client.Run(b, watch: true);
-                if (b.Tick == JoinAt)
+            Parallel.Invoke(
+                () => session.ForEach(b => host.Run(b, watch: true)),
+                () => session.ForEach(b => client.Run(b, watch: true)),
+                () =>
                 {
                     var history = session.Take(JoinAt).SelectMany(x => x.Casts.Select(c => (x.Tick, c)));
                     var timeline = TickBatch.Timeline(history, null, JoinAt);
                     for (int t = 1; t <= JoinAt; t++) joiner.Run(timeline[t], watch: false);
                     joiner.CatchUpGround();
-                }
-                else if (b.Tick > JoinAt) joiner.Run(b, watch: true);
-            }
+                    foreach (var b in session.Where(b => b.Tick > JoinAt)) joiner.Run(b, watch: true);
+                });
 
             Assert.That(host.Hashes.Keys, Is.EqualTo(Enumerable.Range(1, Ticks / HashEvery).Select(n => n * HashEvery)));
             Assert.That(client.Hashes, Is.EqualTo(host.Hashes), "the client's checksum at every 30th tick");
