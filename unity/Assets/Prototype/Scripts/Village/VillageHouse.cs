@@ -56,46 +56,9 @@ public class VillageHouse : MonoBehaviour
         doorAt = float.IsNaN(doorAt) ? null : doorAt,
     };
 
-    void OnEnable()
-    {
-        if (ReloadKeep.Take(this, 4) is { } kept && Adopt(kept)) return;
-        Rebuild();
-    }
+    void OnEnable() => Rebuild();
 
-    void OnDisable()
-    {
-        if (ReloadKeep.Keeping && bodyGo != null && roofGo != null && body != null && roofMesh != null)
-        {
-            var made = new Object[4 + solids.Count];
-            made[0] = bodyGo;
-            made[1] = roofGo;
-            made[2] = body;
-            made[3] = roofMesh;
-            for (int i = 0; i < solids.Count; i++) made[4 + i] = solids[i];
-            ReloadKeep.Keep(this, made);
-            solids.Clear();
-            bodyGo = roofGo = null;
-            body = roofMesh = null;
-            roofCollider = null;
-            roofRenderer = null;
-            return;
-        }
-        Clear();
-    }
-
-    bool Adopt(Object[] kept)
-    {
-        bodyGo = (GameObject)kept[0];
-        roofGo = (GameObject)kept[1];
-        body = (Mesh)kept[2];
-        roofMesh = (Mesh)kept[3];
-        for (int i = 4; i < kept.Length; i++) solids.Add((GameObject)kept[i]);
-        roofCollider = roofGo.GetComponent<MeshCollider>();
-        roofRenderer = roofGo.GetComponent<MeshRenderer>();
-        if (roofCollider != null && roofRenderer != null) return true;
-        Clear();
-        return false;
-    }
+    void OnDisable() => Clear();
 
     public void Rebuild()
     {
