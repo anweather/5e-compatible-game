@@ -4,7 +4,7 @@
 // joiner replaying the history, have the host's checksum at every 30th tick, and the terrain
 // each draws (CellHeightfield) is the host's, whether eased in cell by cell as the cells
 // changed (a player who watched) or computed at once after catching up (a late joiner). The three machines run side by
-// side, each on its own world, as three peers would.
+// side, each on a world it makes, as three peers would.
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -97,14 +97,21 @@ namespace Chem.Tests
         public void AClientAndALateJoinerKeepTheHostsChecksumsAndTerrainOnTheChunkedValley()
         {
             var session = HostSession();
-            var host = new Machine();
-            var client = new Machine();
-            var joiner = new Machine();
+            Machine host = null, client = null, joiner = null;
             Parallel.Invoke(
-                () => session.ForEach(b => host.Run(b, watch: true)),
-                () => session.ForEach(b => client.Run(b, watch: true)),
                 () =>
                 {
+                    host = new Machine();
+                    session.ForEach(b => host.Run(b, watch: true));
+                },
+                () =>
+                {
+                    client = new Machine();
+                    session.ForEach(b => client.Run(b, watch: true));
+                },
+                () =>
+                {
+                    joiner = new Machine();
                     var history = session.Take(JoinAt).SelectMany(x => x.Casts.Select(c => (x.Tick, c)));
                     var timeline = TickBatch.Timeline(history, null, JoinAt);
                     for (int t = 1; t <= JoinAt; t++) joiner.Run(timeline[t], watch: false);
