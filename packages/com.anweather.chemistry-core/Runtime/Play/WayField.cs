@@ -1,5 +1,5 @@
 // The cost field's scratch that the raiders' ways are worked out in (docs/design/architecture-review.md step 9): one
-// array of costs over a field's cells and a min-heap, reused from tick to tick. The world owns one (World.Ways), and
+// array of costs over a field's cells and a min-heap, reused from tick to tick. A world's modes own one (PlayModes), and
 // both the defense field's march (DefenseSystem) and the Hold's ways (HoldSystem) work in it, as they always did:
 // PathCostAt reads what was last worked out there, by either. Data and its heap, no rules.
 using System;

@@ -37,7 +37,7 @@ namespace Chem.HoldCurve
             this.peers = peers;
             table = rules.Sim.Hold.Hands;
             var site = WorldHold.Load(worldDir);
-            world = new World(rules, 576, 576, seed);
+            world = PlayModes.Install(new World(rules, 576, 576, seed));
             Lay(worldDir, site);
             world.SetHold(site);
             var wall = BuildingRaster.Cells(BuildingRow.Read(site.Castle, site.Row, rules.Buildings), rules.Buildings)

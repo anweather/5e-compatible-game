@@ -27,7 +27,7 @@ namespace Chem.Tests
             return r;
         }
 
-        static string Others(World w) => w.SkyHash() + "/" + w.DefenseSystem.Hash() + "/" + w.CastHash() + "/" + w.DragonSystem.Hash() + "/" + w.LandHash();
+        static string Others(World w) => w.SkyHash() + "/" + w.DefenseHash() + "/" + w.CastHash() + "/" + w.DragonSystem.Hash() + "/" + w.LandHash();
 
         static string Checksum(World w) => w.CellHash() + "/" + Others(w);
 
@@ -182,7 +182,7 @@ namespace Chem.Tests
             for (int i = 0; i < 30; i++) room.Tick();
             Assert.That(w.HandsOf(Me).Holds[Left], Is.Null, "a fresh wizard's second hand let go as the run started, on every peer");
             foreach (var p in room.Peers.Skip(1)) Assert.That(Checksum(p.W), Is.EqualTo(Checksum(w)), p.Me + "'s peer at the end");
-            Assert.That(late.W.HoldSystem.Text(), Is.EqualTo(w.HoldSystem.Text()));
+            Assert.That(late.W.Play().Hold.Text(), Is.EqualTo(w.Play().Hold.Text()));
             Assert.That(late.W.HandsText(), Is.EqualTo(w.HandsText()));
         }
 
@@ -227,7 +227,7 @@ namespace Chem.Tests
             }
             Assert.That(late.W.RunOf(Cy).Picks, Is.Not.Empty, "the joiner picked too");
             foreach (var p in room.Peers.Skip(1)) Assert.That(Checksum(p.W), Is.EqualTo(Checksum(w)), p.Me + "'s peer at the end");
-            Assert.That(late.W.HoldSystem.Text(), Is.EqualTo(w.HoldSystem.Text()));
+            Assert.That(late.W.Play().Hold.Text(), Is.EqualTo(w.Play().Hold.Text()));
             Assert.That(late.W.HandsText(), Is.EqualTo(w.HandsText()));
             TestContext.WriteLine($"{room.Checked} ticks checked, wave {w.Hold.Wave}, {w.ActiveChunks.Count} chunks active");
         }

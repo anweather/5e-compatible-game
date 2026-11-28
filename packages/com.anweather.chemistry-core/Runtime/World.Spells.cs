@@ -229,7 +229,7 @@ namespace Chem
         {
             var (x, y) = (FoldX(at.x), FoldY(at.y));
             var (aimX, aimY) = aim;
-            var zone = CourseSystem.ZoneAgainst(s, x, y);
+            var zone = ZoneAgainst(s, x, y);
             if (zone != null)
             {
                 AddLog($"The {zone.Name}'s charm smothers your {s.Name}", LogKind.Notable);

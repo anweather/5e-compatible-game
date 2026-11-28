@@ -74,7 +74,7 @@ public class HoldEastProbe : ProbeScenario
         StandOn(site.Rise);
         Core.Hold.Wave = 4;
         Core.Hold.InWave = 0;
-        Core.Hold.ToSpawn = World.HoldWaveSize(Core.Rules.Sim.Hold, 4, Core.Hold.Peers);
+        Core.Hold.ToSpawn = HoldSystem.WaveSize(Core.Rules.Sim.Hold, 4, Core.Hold.Peers);
         HoldTheRun();
 
         yield return BothRoads(site, gates);

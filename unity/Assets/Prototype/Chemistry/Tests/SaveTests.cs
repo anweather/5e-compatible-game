@@ -50,7 +50,7 @@ namespace Chem.Tests
 
         static World Fresh(IChunkSource source)
         {
-            var w = new World(R, W, H, 5);
+            var w = PlayModes.Install(new World(R, W, H, 5));
             w.MakeFrom(source);
             return w;
         }
@@ -100,7 +100,7 @@ namespace Chem.Tests
         {
             var source = new Meadow(W, H);
             var straight = Played(source);
-            var loaded = World.Load(straight.Save(source), R, source);
+            var loaded = PlayModes.Install(World.Load(straight.Save(source), R, source));
             Assert.That(State(loaded), Is.EqualTo(State(straight)), "as saved");
             Assert.That(straight.Raiders.Count, Is.GreaterThan(0), "raiders were marching when it saved");
             for (int t = 0; t < 120; t++)
@@ -164,7 +164,7 @@ namespace Chem.Tests
         public void EveryCellMemberComesThroughASave(string member)
         {
             var w = new World(Magma, 64, 64, 5);
-            var source = new ComboTests.Blank();
+            var source = new Blank();
             w.MakeFrom(source);
             var cell = w.At(20, 20);
             Differs[member].set(cell);
@@ -392,6 +392,12 @@ namespace Chem.Tests
             Assert.That(Assert.Throws<SaveException>(() => World.Load(save, modded, source)).Message, Does.Contain("other rules"));
             Assert.Throws<SaveException>(() => World.Load(save.Replace("\"format\":1", "\"format\":99"), R, source));
             Assert.Throws<SaveException>(() => World.Load("not a save", R, source));
+        }
+
+        sealed class Blank : IChunkSource
+        {
+            public string Version => "blank";
+            public void Make(int x, int y, Cell cell) { }
         }
     }
 }

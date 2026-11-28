@@ -1,4 +1,4 @@
-// The defense field (Play/DefenseSystem.cs, Play/RaiderSystem.cs). Ported from sandbox/test/defense.test.ts;
+// The defense field (Play/DefenseSystem.cs, RaiderSystem.cs). Ported from sandbox/test/defense.test.ts;
 // the golden numbers come from running the same script there.
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +13,7 @@ namespace Chem.Tests
 
         static Rules R => rules ??= Rules.Load(ChemistryTests.RulesDir());
 
-        static World Room(int w, int h, uint seed = 7) => ChemistryTests.Room(w, h, seed, R);
+        static World Room(int w, int h, uint seed = 7) => PlayModes.Install(ChemistryTests.Room(w, h, seed, R));
 
         static void Run(World w, int ticks) { for (int i = 0; i < ticks; i++) w.Step(); }
 
@@ -187,7 +187,7 @@ namespace Chem.Tests
             var replay = Room(40, 15);
             var timeline = TickBatch.Timeline(new[] { (80, new CastCommand("fireball", 12, 7, 1)) }, null, 200, defense: new[] { (5, Field) });
             for (int t = 1; t <= 200; t++) timeline[t].RunOn(replay, rs, out _);
-            Assert.That(replay.DefenseSystem.Hash(), Is.EqualTo(live.DefenseSystem.Hash()));
+            Assert.That(replay.DefenseHash(), Is.EqualTo(live.DefenseHash()));
             Assert.That(replay.CellHash(), Is.EqualTo(live.CellHash()));
             Assert.That(live.Defense.Spawned, Is.GreaterThan(0));
         }
@@ -196,9 +196,9 @@ namespace Chem.Tests
         public void TheDefenseIsDeterministicAndMatchesTheTsGolden()
         {
             World a = GoldenWave(11), b = GoldenWave(11);
-            Assert.That(a.DefenseSystem.Text(), Is.EqualTo(b.DefenseSystem.Text()));
-            Assert.That($"{a.DefenseSystem.Hash()} {a.CellHash()} {a.RngState}", Is.EqualTo("19e78df2 e6f169fe 3663131637"));
-            Assert.That(a.DefenseSystem.Text().Split('|')[0], Is.EqualTo("1/2/9/0/346/8"));
+            Assert.That(a.DefenseText(), Is.EqualTo(b.DefenseText()));
+            Assert.That($"{a.DefenseHash()} {a.CellHash()} {a.RngState}", Is.EqualTo("19e78df2 e6f169fe 3663131637"));
+            Assert.That(a.DefenseText().Split('|')[0], Is.EqualTo("1/2/9/0/346/8"));
             Assert.That(a.Raiders.Any(r => r.X == 21 && r.Y == 10), "one is round the wall's south end");
             Assert.That(a.Raiders.Any(r => a.At(r.X, r.Y).T == "mud" && r.StatusOf("snagged") > 0), "the rest are held in the mud the pool left");
         }

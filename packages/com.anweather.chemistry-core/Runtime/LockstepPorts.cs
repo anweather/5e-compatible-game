@@ -95,6 +95,7 @@ namespace Chem.Lockstep
         {
             if (snapshot == null) throw new ArgumentNullException(nameof(snapshot));
             var (world, rules) = snapshot.Join(baseRules, World.Source, land, budgets);
+            world.InstallModesOf(World);
             World = world;
             Rules = rules;
         }

@@ -1,18 +1,16 @@
 // The defense field's waves (docs/BACKLOG.md 17), the defense field's system (docs/design/architecture-review.md
 // step 9, D9). Port of sandbox/src/defense.ts, line for line. A DefenseCommand starts them; each tick (after the
-// raiders' upkeep, Play/RaiderSystem.cs) the next raider of the wave comes through the gate on its schedule, every raider
+// raiders' upkeep, RaiderSystem.cs) the next raider of the wave comes through the gate on its schedule, every raider
 // takes a step toward the flag along the cheapest way there, and a raider reaching the flag costs a life. The way is
 // a cost field over the squares round the field (a Dijkstra search from the flag in the world's WayField, worked out
 // afresh each tick, so a wall or a trench reroutes them at once): open ground costs 1, rough going (deep water, a
 // climb or drop of more than a step) more and slower, a raised wall a lot (they batter it down a step at a time if
 // there is no better way), and blocking terrain can't be crossed. Ties go N, E, S, W. All whole numbers, so every
-// machine agrees. The world owns one (World.DefenseSystem) and ticks it after the raiders. It reads the cells and the
-// rules; it writes its DefenseState, the world's raiders (spawned, stepped, cleared), a raised wall it batters, and
-// the log.
+// machine agrees. Chem.Play's (PlayModes owns one and ticks it after the raiders); the world keeps the DefenseState
+// (World.Defense, with its text, hash and save). It reads the cells and the rules; it writes the DefenseState, the
+// world's raiders (spawned, stepped, cleared), a raised wall it batters, and the log.
 using System;
 using System.Globalization;
-using System.Text;
-using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
@@ -23,15 +21,19 @@ namespace Chem
         readonly World world;
         readonly WayField ways;
 
-        internal DefenseSystem(World world)
+        internal DefenseSystem(World world, WayField ways)
         {
             this.world = world;
-            ways = world.Ways;
+            this.ways = ways;
         }
 
-        public DefenseState State { get; private set; }
+        public DefenseState State
+        {
+            get => world.Defense;
+            private set => world.Defense = value;
+        }
 
-        public int Left => State == null ? 0 : world.RaiderSystem.List.Count + State.ToSpawn;
+        public int Left => world.DefenseLeft;
 
         public static int WaveSize(DefenseParams p, int wave) => p.First + p.Growth * (wave - 1);
 
@@ -240,61 +242,8 @@ namespace Chem
             return c == Unreached ? -1 : c;
         }
 
-        public string Hash() => Fnv1a.Hash(Text());
+        public string Hash() => world.DefenseHash();
 
-        public string Text()
-        {
-            var d = State;
-            if (d == null) return "-";
-            var inv = CultureInfo.InvariantCulture;
-            var sb = new StringBuilder();
-            sb.Append(((int)d.Phase).ToString(inv)).Append('/').Append(d.Wave.ToString(inv)).Append('/').Append(d.Lives.ToString(inv)).Append('/')
-              .Append(d.ToSpawn.ToString(inv)).Append('/').Append(d.NextSpawn.ToString(inv)).Append('/').Append(d.Spawned.ToString(inv)).Append('|');
-            foreach (var r in world.RaiderSystem.List)
-            {
-                sb.Append(r.Id.ToString(inv)).Append(',').Append(r.Kind).Append(',').Append(r.X.ToString(inv)).Append(',').Append(r.Y.ToString(inv)).Append(',')
-                  .Append(r.Hp.ToString(inv)).Append(',').Append(r.Wait.ToString(inv));
-                foreach (var s in HashedStatuses) sb.Append(',').Append(r.StatusOf(s).ToString(inv));
-                if (r.StatusOf(World.ThrownStatus) > 0) sb.Append(",t").Append(r.StatusOf(World.ThrownStatus).ToString(inv));
-                if (r.StatusOf(World.DownedStatus) > 0) sb.Append(",d").Append(r.StatusOf(World.DownedStatus).ToString(inv));
-                if (r.StatusOf(World.ShovedStatus) > 0) sb.Append(",s").Append(r.StatusOf(World.ShovedStatus).ToString(inv));
-                sb.Append(';');
-            }
-            return sb.ToString();
-        }
-
-        static readonly string[] HashedStatuses = { "burning", "wet", "frozen", "snagged" };
-
-        internal JToken Save() => State == null ? JValue.CreateNull() : new JObject
-        {
-            ["phase"] = (int)State.Phase,
-            ["at"] = new JArray(State.Wave, State.Lives, State.ToSpawn, State.NextSpawn, State.Spawned),
-            ["gate"] = new JArray(State.GateX, State.GateY, State.FlagX, State.FlagY),
-            ["field"] = new JArray(State.X0, State.Y0, State.X1, State.Y1),
-        };
-
-        internal void Load(JObject d)
-        {
-            var at = d["at"];
-            var gate = d["gate"];
-            var field = d["field"];
-            State = new DefenseState
-            {
-                Phase = (DefensePhase)(int)d["phase"],
-                Wave = (int)at[0],
-                Lives = (int)at[1],
-                ToSpawn = (int)at[2],
-                NextSpawn = (int)at[3],
-                Spawned = (int)at[4],
-                GateX = (int)gate[0],
-                GateY = (int)gate[1],
-                FlagX = (int)gate[2],
-                FlagY = (int)gate[3],
-                X0 = (int)field[0],
-                Y0 = (int)field[1],
-                X1 = (int)field[2],
-                Y1 = (int)field[3],
-            };
-        }
+        public string Text() => world.DefenseText();
     }
 }

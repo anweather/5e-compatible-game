@@ -1,4 +1,4 @@
-// Spell golf (docs/BACKLOG.md 24; Play/GolfSystem.cs): the ball, the strokes and the course in world/golf.json.
+// Spell golf (docs/BACKLOG.md 24; GolfSystem.cs): the ball, the strokes and the course in world/golf.json.
 using System;
 using System.Linq;
 using NUnit.Framework;

@@ -8,8 +8,8 @@
 // checkpoint cell) and a bell. A CourseCommand says a player stands on a cell (the view sends one as its wizard steps
 // onto a new cell inside the course): the gate starts the player's clock, each booth further on is the checkpoint
 // reached, and the bell stops the clock and keeps the best time. A wizard downed inside the course gets up at its
-// last checkpoint (CourseRespawn), not the yard. All whole numbers, in ticks. This file is the course's data;
-// CourseSystem.cs is its system, which the world owns.
+// last checkpoint (CourseRespawn), not the yard. All whole numbers, in ticks. This file is the course's data, which
+// the world keeps (World.Play.cs: the zones, the course, the runs); Play/CourseSystem.cs is its system (Chem.Play).
 using System;
 using System.Collections.Generic;
 using System.Globalization;

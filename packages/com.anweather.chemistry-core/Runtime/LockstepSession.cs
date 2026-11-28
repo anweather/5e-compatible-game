@@ -266,7 +266,7 @@ namespace Chem.Lockstep
         static ulong[] WindowParts(World w, string cells) => new[]
         {
             Fnv1a64.Hash(cells), Fnv1a64.Hash(w.Rules.Fingerprint), Fnv1a64.Hash(w.ThingsNow.Fingerprint), Fnv1a64.Hash(w.SkyHash()),
-            Fnv1a64.Hash(w.DefenseSystem.Hash()), Fnv1a64.Hash(w.CastHash()), Fnv1a64.Hash(w.DragonSystem.Hash()), Fnv1a64.Hash(w.LandHash()),
+            Fnv1a64.Hash(w.DefenseHash()), Fnv1a64.Hash(w.CastHash()), Fnv1a64.Hash(w.DragonSystem.Hash()), Fnv1a64.Hash(w.LandHash()),
         };
 
         ChunkHashEntry[] WindowChunks(World w)

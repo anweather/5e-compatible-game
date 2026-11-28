@@ -1,4 +1,4 @@
-// The Dragon's rules (Play/DragonSystem.cs, World.Dragon.cs, docs/BACKLOG.md 26). The golden was first taken from
+// The Dragon's rules (DragonSystem.cs, World.Dragon.cs, docs/BACKLOG.md 26). The golden was first taken from
 // sandbox/test/dragon.test.ts (frozen 2026-10-31); the save, the inactive chunks and the timing are C# only.
 using System;
 using System.Collections.Generic;
@@ -249,7 +249,7 @@ namespace Chem.Tests
         [Test]
         public void ADownedRaiderDoesntMarchAndTheChecksumSeesIt()
         {
-            var w = new World(R, 64, 64, 2);
+            var w = PlayModes.Install(new World(R, 64, 64, 2));
             w.ApplyDefense(new DefenseCommand(DefenseKind.Start, 5, 5, 50, 50));
             w.KeepStart();
             w.ApplyDragon(new DragonCommand());
@@ -258,7 +258,7 @@ namespace Chem.Tests
             for (int i = 0; i < 40 && raider.StatusOf(World.DownedStatus) == 0; i++) w.Step();
             int ticks = (int)Math.Floor(R.Sim.Downed.Seconds * R.Sim.TicksPerSecond);
             Assert.That(raider.StatusOf(World.DownedStatus), Is.EqualTo(ticks));
-            Assert.That(w.DefenseSystem.Text(), Does.Contain($",d{ticks};"));
+            Assert.That(w.DefenseText(), Does.Contain($",d{ticks};"));
             int x = raider.X, y = raider.Y;
             Run(w, ticks - 1);
             Assert.That((raider.X, raider.Y), Is.EqualTo((x, y)), "it stays down");
@@ -574,18 +574,18 @@ namespace Chem.Tests
         [Test]
         public void AFlightPutsTheCourseBackAndKeepsItsZonesAndTimes()
         {
-            var w = new World(R, 60, 12, 3, "dirt");
+            var w = PlayModes.Install(new World(R, 60, 12, 3, "dirt"));
             for (int x = 42; x <= 46; x++) w.At(x, 5).T = "lava";
-            w.CourseSystem.Set(CourseLayout.FromJson(@"{
+            w.Play().Course.Set(CourseLayout.FromJson(@"{
                 ""name"": ""The little gauntlet"", ""area"": [18, 0, 54, 11], ""gate"": [50, 2, 52, 8], ""bell"": [20, 2, 22, 8],
                 ""booths"": [{ ""id"": ""lava-pit"", ""name"": ""lava pit"", ""area"": [40, 0, 49, 11], ""checkpoint"": [48, 5], ""allow"": { ""elements"": [""water"", ""air""] } }] }"));
             w.KeepStart();
-            w.CourseSystem.Apply(new CourseCommand("ann", 51, 5));
+            w.Play().Course.Apply(new CourseCommand("ann", 51, 5));
             Run(w, 30);
-            w.CourseSystem.Apply(new CourseCommand("ann", 21, 5));
-            w.CourseSystem.Apply(new CourseCommand("bob", 51, 5));
-            w.CourseSystem.Apply(new CourseCommand("bob", 45, 5));
-            int best = w.CourseSystem.Runs["ann"].Best;
+            w.Play().Course.Apply(new CourseCommand("ann", 21, 5));
+            w.Play().Course.Apply(new CourseCommand("bob", 51, 5));
+            w.Play().Course.Apply(new CourseCommand("bob", 45, 5));
+            int best = w.Play().Course.Runs["ann"].Best;
             Assert.That(best, Is.GreaterThan(0));
             for (int x = 42; x <= 46; x++) w.At(x, 5).T = "lava-crust";
 
@@ -593,9 +593,9 @@ namespace Chem.Tests
             FlyOut(w);
 
             Assert.That(Enumerable.Range(42, 5).All(x => w.At(x, 5).T == "lava"), "the booth's lava is back");
-            Assert.That(w.CourseSystem.Zones.Select(z => z.Id), Is.EqualTo(new[] { "lava-pit" }), "zones are world data");
-            Assert.That(w.CourseSystem.Runs["ann"].Best, Is.EqualTo(best), "a best time is progress");
-            Assert.That(w.CourseSystem.Runs["bob"].Running && w.CourseSystem.Runs["bob"].Checkpoint == 0, "a run goes on");
+            Assert.That(w.Play().Course.Zones.Select(z => z.Id), Is.EqualTo(new[] { "lava-pit" }), "zones are world data");
+            Assert.That(w.Play().Course.Runs["ann"].Best, Is.EqualTo(best), "a best time is progress");
+            Assert.That(w.Play().Course.Runs["bob"].Running && w.Play().Course.Runs["bob"].Checkpoint == 0, "a run goes on");
             Assert.That(w.CourseRespawn("bob", 45, 5), Is.EqualTo((48, 5)));
         }
     }

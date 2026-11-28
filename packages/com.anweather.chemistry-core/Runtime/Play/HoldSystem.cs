@@ -4,62 +4,46 @@
 // Raiders are the defense field's, so spells reach them as they do there; their way is worked out here, not in
 // Play/DefenseSystem.cs, since a castle's walls can be battered and a field's can't. A wizard on a blocking cell is on the walls:
 // no raider reaches it. All whole numbers and the seeded generator, and "" in the checksum until there's been a run.
-// The world owns one (World.HoldSystem) and ticks it after the defense field. It reads the cells, the wizards' stands and
-// the rules; it writes its run, the world's raiders, the castle's cells, wizards' health and hands, the log, and draws from
-// the world's generator (a raider's spawner cell, a blow's roll) in the order it always did.
+// Chem.Play's (PlayModes owns one and ticks it after the defense field); the world keeps the site, the run, the plate and
+// the battered walls (World.Play.cs, with their text and save). It reads the cells, the wizards' stands and the rules; it
+// writes the run, the world's raiders, the castle's cells, wizards' health and hands, the log, and draws from the world's
+// generator (a raider's spawner cell, a blow's roll) in the order it always did.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
     public sealed class HoldSystem
     {
         readonly World world;
+        readonly WayField ways;
+        readonly DefenseSystem defense;
 
-        internal HoldSystem(World world)
+        internal HoldSystem(World world, WayField ways, DefenseSystem defense)
         {
             this.world = world;
+            this.ways = ways;
+            this.defense = defense;
         }
 
-        DefenseState holdField;
-        readonly SortedDictionary<int, int> battered = new SortedDictionary<int, int>();
-        int holdPlate;
-        internal int Plate => holdPlate;
-        readonly HashSet<int> holdRoad = new HashSet<int>();
         int[] roadWay = Array.Empty<int>(), straightWay = Array.Empty<int>();
-        public const string ClimbRoute = "climb", FlyRoute = "fly";
-        const string LandedStatus = "landed";
+        public const string ClimbRoute = World.ClimbRoute, FlyRoute = World.FlyRoute;
 
-        public WorldHold Site { get; private set; }
+        public WorldHold Site => world.HoldSite;
 
-        public HoldState State { get; private set; }
-
-        public bool Running => State != null && State.Phase == HoldPhase.Running;
-
-        public int Left => State == null ? 0 : world.RaiderSystem.List.Count + State.ToSpawn;
-
-        public void Set(WorldHold site)
+        public HoldState State
         {
-            Site = site;
-            if (site == null) return;
-            var p = world.Rules.Sim.Hold;
-            var cells = site.Spawners.SelectMany(s => s.Cells).Concat(new[] { site.Heart }).ToList();
-            holdField = new DefenseState
-            {
-                FlagX = site.Heart.x,
-                FlagY = site.Heart.y,
-                X0 = Math.Max(0, cells.Min(c => c.x) - p.Margin),
-                X1 = Math.Min(world.W - 1, cells.Max(c => c.x) + p.Margin),
-                Y0 = Math.Max(0, cells.Min(c => c.y) - p.Margin),
-                Y1 = Math.Min(world.H - 1, cells.Max(c => c.y) + p.Margin),
-            };
-            holdRoad.Clear();
-            foreach (var cell in BuildingRaster.Cells(BuildingRow.Read(site.Castle, site.Row, world.Rules.Buildings), world.Rules.Buildings))
-                if (cell.Part == BuildingPart.Road && cell.Terrain == site.RoadTerrain && world.InBounds(cell.X, cell.Y)) holdRoad.Add(world.Idx(cell.X, cell.Y));
+            get => world.Hold;
+            private set => world.Hold = value;
         }
+
+        public bool Running => world.HoldRunning;
+
+        public int Left => world.HoldLeft;
+
+        public void Set(WorldHold site) => world.SetHold(site);
 
         public static int WaveSize(HoldParams p, int wave, int peers = 1) =>
             (p.First + p.Growth * (wave - 1)) * ByPeers(p.PeerPercent, peers) / 100;
@@ -82,7 +66,7 @@ namespace Chem
 
         public (int x, int y)? Respawn() => Running ? Site.Rise : ((int x, int y)?)null;
 
-        public int BlowsOn(int x, int y) => battered.TryGetValue(world.Idx(x, y), out int n) ? n : 0;
+        public int BlowsOn(int x, int y) => world.Battered.TryGetValue(world.Idx(x, y), out int n) ? n : 0;
 
         internal void Tick()
         {
@@ -102,9 +86,9 @@ namespace Chem
         {
             var p = world.Rules.Sim.Hold;
             bool on = world.Stands.Values.Any(s => !s.Down && s.X == Site.Plate.x && s.Y == Site.Plate.y);
-            holdPlate = on ? holdPlate + 1 : 0;
-            if (holdPlate < p.PlateTicks || (world.DefenseSystem.State != null && world.DefenseSystem.State.Phase == DefensePhase.Running)) return;
-            holdPlate = 0;
+            world.HoldPlate = on ? world.HoldPlate + 1 : 0;
+            if (world.HoldPlate < p.PlateTicks || (world.Defense != null && world.Defense.Phase == DefensePhase.Running)) return;
+            world.HoldPlate = 0;
             world.RaiderSystem.ClearRaiders();
             world.ReadStands();
             int peers = world.Stands.Values.Count(s => !s.Down);
@@ -194,16 +178,7 @@ namespace Chem
             h.NextSpawn = world.Tick + p.SpawnEvery;
         }
 
-        internal uint WaveRoll(int wave, int slot, uint salt)
-        {
-            unchecked
-            {
-                uint t = world.Seed + (uint)wave * 0x9e3779b1u + (uint)slot * 0x85ebca77u + salt * 0xc2b2ae3du;
-                t = (t ^ (t >> 15)) * (t | 1u);
-                t ^= t + (t ^ (t >> 7)) * (t | 61u);
-                return t ^ (t >> 14);
-            }
-        }
+        internal uint WaveRoll(int wave, int slot, uint salt) => world.WaveRoll(wave, slot, salt);
 
         static bool BossWave(HoldParams p, int wave) => p.BossEvery > 0 && p.BossAdjective != null && wave % p.BossEvery == 0;
 
@@ -271,7 +246,7 @@ namespace Chem
                 places.RemoveAt(at);
                 for (int y = py - p.BarricadeRadius; y <= py + p.BarricadeRadius; y++)
                     for (int x = px - p.BarricadeRadius; x <= px + p.BarricadeRadius; x++)
-                        if (world.InBounds(x, y) && holdRoad.Contains(world.Idx(x, y)) && !world.HasTag(world.At(x, y), "blocking")) world.SetTerrainTo(x, y, world.At(x, y), p.BarricadeTerrain);
+                        if (world.InBounds(x, y) && world.HoldRoad.Contains(world.Idx(x, y)) && !world.HasTag(world.At(x, y), "blocking")) world.SetTerrainTo(x, y, world.At(x, y), p.BarricadeTerrain);
             }
         }
 
@@ -301,9 +276,9 @@ namespace Chem
             }
         }
 
-        public bool Flying(Raider r) => Flying(r, world.Rules.Entity(r.Kind));
+        public bool Flying(Raider r) => world.Flying(r);
 
-        static bool Flying(Raider r, EntityDef def) => def.Raider?.Route == FlyRoute && r.StatusOf(LandedStatus) == 0;
+        static bool Flying(Raider r, EntityDef def) => World.Flies(r, def);
 
         void Fly(Raider r, EntityDef def)
         {
@@ -314,10 +289,10 @@ namespace Chem
 
         void Upkeep(Raider r)
         {
-            if (r.StatusOf(LandedStatus) > 0) r.Status[LandedStatus] = 2;
+            if (r.StatusOf(World.LandedStatus) > 0) r.Status[World.LandedStatus] = 2;
             if (Flying(r) && world.Rules.Sim.Hold.FlyerLands.Any(s => r.StatusOf(s) > 0))
             {
-                r.Status[LandedStatus] = 2;
+                r.Status[World.LandedStatus] = 2;
                 world.AddLog($"The {world.Rules.Entity(r.Kind).Name.ToLowerInvariant()} comes down", LogKind.Notable);
             }
             var adjective = world.Rules.AdjectiveOf(r.Kind);
@@ -382,7 +357,7 @@ namespace Chem
             }
             var ahead = world.RaiderAt(nx, ny);
             if (ahead != null && !Flying(ahead) && !Swap(p, r, ahead)) return;
-            bool rough = world.DefenseSystem.Rough(world.Rules.Sim.Defense, world.At(r.X, r.Y), to);
+            bool rough = defense.Rough(world.Rules.Sim.Defense, world.At(r.X, r.Y), to);
             r.X = world.FoldX(nx);
             r.Y = world.FoldY(ny);
             r.Wait = DefenseSystem.PaceOf(def) - 1 + (rough ? world.Rules.Sim.Defense.RoughTicks : 0);
@@ -409,10 +384,10 @@ namespace Chem
                 world.Reshape(x, y, -1);
                 return;
             }
-            int i = world.Idx(x, y), blows = (battered.TryGetValue(i, out int n) ? n : 0) + 1;
-            battered[i] = blows;
+            int i = world.Idx(x, y), blows = (world.Battered.TryGetValue(i, out int n) ? n : 0) + 1;
+            world.Battered[i] = blows;
             if (blows < Blows(p, c)) return;
-            battered.Remove(i);
+            world.Battered.Remove(i);
             string was = world.TerrainOf(c).Name.ToLowerInvariant();
             if (world.BreakWall(x, y, c) || world.SetTerrainTo(x, y, c, p.Rubble)) world.AddLog($"The {was} gives way", LogKind.Notable);
         }
@@ -442,7 +417,7 @@ namespace Chem
 
         void MendCastle()
         {
-            battered.Clear();
+            world.Battered.Clear();
             var row = BuildingRow.Read(Site.Castle, Site.Row, world.Rules.Buildings);
             var touched = new SortedSet<(int y, int x)>();
             foreach (var cell in BuildingRaster.Cells(row, world.Rules.Buildings))
@@ -464,8 +439,8 @@ namespace Chem
             if (world.HasTag(to, "blocking")) return -1;
             var d = world.Rules.Sim.Defense;
             if (world.IsRaisedWall(to)) return d.WallCost;
-            int cost = world.DefenseSystem.Rough(d, from, to) ? d.RoughCost : 1;
-            return road && !holdRoad.Contains(toIdx) ? cost * p.OffRoadCost : cost;
+            int cost = defense.Rough(d, from, to) ? d.RoughCost : 1;
+            return road && !world.HoldRoad.Contains(toIdx) ? cost * p.OffRoadCost : cost;
         }
 
         public (int x, int y)? Next(int x, int y, bool road)
@@ -477,26 +452,26 @@ namespace Chem
         void WorkOutWays(HoldParams p)
         {
             HoldCostField(p, true);
-            roadWay = (int[])world.Ways.Cost.Clone();
+            roadWay = (int[])ways.Cost.Clone();
             HoldCostField(p, false);
-            straightWay = (int[])world.Ways.Cost.Clone();
+            straightWay = (int[])ways.Cost.Clone();
         }
 
         void HoldCostField(HoldParams p, bool road)
         {
-            var d = holdField;
+            var d = world.HoldField;
             int w = d.X1 - d.X0 + 1, n = w * (d.Y1 - d.Y0 + 1);
-            if (world.Ways.Cost.Length != n) world.Ways.Cost = new int[n];
-            for (int i = 0; i < n; i++) world.Ways.Cost[i] = WayField.Unreached;
-            world.Ways.Heap.Clear();
+            if (ways.Cost.Length != n) ways.Cost = new int[n];
+            for (int i = 0; i < n; i++) ways.Cost[i] = WayField.Unreached;
+            ways.Heap.Clear();
             int start = WayField.Index(d, d.FlagX, d.FlagY);
-            world.Ways.Cost[start] = 0;
-            world.Ways.Push(start, n);
-            while (world.Ways.Heap.Count > 0)
+            ways.Cost[start] = 0;
+            ways.Push(start, n);
+            while (ways.Heap.Count > 0)
             {
-                long top = world.Ways.Pop();
+                long top = ways.Pop();
                 int i = (int)(top % n), cost = (int)(top / n);
-                if (cost > world.Ways.Cost[i]) continue;
+                if (cost > ways.Cost[i]) continue;
                 int x = d.X0 + i % w, y = d.Y0 + i / w;
                 var here = world.At(x, y);
                 for (int dir = 0; dir < 4; dir++)
@@ -506,16 +481,16 @@ namespace Chem
                     int step = HoldStepCost(p, world.At(nx, ny), here, world.Idx(x, y), road);
                     if (step < 0) continue;
                     int ni = WayField.Index(d, nx, ny), total = cost + step;
-                    if (total >= world.Ways.Cost[ni]) continue;
-                    world.Ways.Cost[ni] = total;
-                    world.Ways.Push(ni, n);
+                    if (total >= ways.Cost[ni]) continue;
+                    ways.Cost[ni] = total;
+                    ways.Push(ni, n);
                 }
             }
         }
 
         int HoldStep(HoldParams p, int x, int y, bool road)
         {
-            var d = holdField;
+            var d = world.HoldField;
             if (!WayField.InField(d, x, y)) return -1;
             var here = world.At(x, y);
             int best = -1;
@@ -534,33 +509,6 @@ namespace Chem
             return best;
         }
 
-        public string Text()
-        {
-            if (State == null && holdPlate == 0) return "";
-            var inv = CultureInfo.InvariantCulture;
-            var sb = new System.Text.StringBuilder("|H").Append(holdPlate.ToString(inv));
-            if (State != null) sb.Append(':').Append((int)State.Phase).Append(':').Append(State.Wave).Append(':').Append(State.Health).Append(':').Append(State.ToSpawn).Append(':').Append(State.NextSpawn).Append(':').Append(State.Spawned).Append(':').Append(State.Peers).Append(':').Append(State.InWave).Append(':').Append(State.Theme).Append(':').Append(State.Moment);
-            if (State != null && State.NextWave != 0) sb.Append(":n").Append(State.NextWave);
-            foreach (var b in battered) sb.Append("|b").Append(b.Key).Append(':').Append(b.Value);
-            foreach (var r in world.RaiderSystem.List) sb.Append("|r").Append(r.Id).Append(':').Append(r.Kind).Append(':').Append(r.X).Append(':').Append(r.Y).Append(':').Append(r.Hp).Append(':').Append(r.Wait).Append(':').Append(r.StatusOf(LandedStatus));
-            return sb.ToString();
-        }
-
-        internal JObject Save()
-        {
-            var save = new JObject { ["plate"] = holdPlate, ["battered"] = new JArray(battered.Select(b => new JArray(b.Key, b.Value))) };
-            if (State != null) save["at"] = new JArray((int)State.Phase, State.Wave, State.Health, State.ToSpawn, State.NextSpawn, State.Spawned, State.Peers, State.InWave, State.Theme, State.Moment, State.MomentTick, State.NextWave);
-            if (State != null && State.Wizards.Count > 0) save["wizards"] = World.SaveWizards(State);
-            return save;
-        }
-
-        internal void Load(JToken s)
-        {
-            if (!(s is JObject o)) return;
-            holdPlate = (int)o["plate"];
-            if (o["at"] is JArray at) State = new HoldState { Phase = (HoldPhase)(int)at[0], Wave = (int)at[1], Health = (int)at[2], ToSpawn = (int)at[3], NextSpawn = (int)at[4], Spawned = (int)at[5], Peers = (int)at[6], InWave = (int)at[7], Theme = (string)at[8], Moment = (string)at[9], MomentTick = (int)at[10], NextWave = at.Count > 11 ? (int)at[11] : 0 };
-            if (State != null) World.LoadWizards(State, o["wizards"]);
-            foreach (var b in o["battered"] ?? new JArray()) battered[(int)b[0]] = (int)b[1];
-        }
+        public string Text() => world.HoldText();
     }
 }

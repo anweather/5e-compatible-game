@@ -45,7 +45,7 @@ public class HoldShow : MonoBehaviour
     public string TimerLine()
     {
         var world = grid != null ? grid.World : null;
-        if (world?.HoldSite == null || world.HoldWarning != null || world.HoldNextWaveIn is not { } ticks) return "";
+        if (world?.HoldSite == null || world.HoldWarning() != null || world.HoldNextWaveIn() is not { } ticks) return "";
         return $"Next wave in {Clock(ticks, world)}";
     }
 
@@ -58,7 +58,7 @@ public class HoldShow : MonoBehaviour
     public string WarningLine()
     {
         var world = grid != null ? grid.World : null;
-        if (world?.HoldSite == null || world.HoldWarning is not { } warning) return "";
+        if (world?.HoldSite == null || world.HoldWarning() is not { } warning) return "";
         var rows = world.Rules.Sim.Hold;
         string theme = warning.plan.Theme != null ? $": {rows.Theme(warning.plan.Theme)?.Name}" : "";
         string boss = warning.plan.Boss ? ", with a boss" : "";

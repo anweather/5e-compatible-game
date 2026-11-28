@@ -115,7 +115,7 @@ namespace Chem
             {
                 if (!Hold.Wizards.TryGetValue(player, out var w)) Hold.Wizards[player] = w = new RunWizard { Player = player };
                 w.Offer.Clear();
-                var rows = p.Upgrades.Select((u, i) => (u, roll: HoldSystem.WaveRoll(Hold.Wave, i, offer) ^ NameRoll(player)))
+                var rows = p.Upgrades.Select((u, i) => (u, roll: WaveRoll(Hold.Wave, i, offer) ^ NameRoll(player)))
                     .Where(x => Suits(x.u, player)).OrderBy(x => x.roll).ThenBy(x => x.u.Id, StringComparer.Ordinal);
                 w.Offer.AddRange(rows.Take(p.Offer).Select(x => x.u.Id));
             }
@@ -134,7 +134,7 @@ namespace Chem
         {
             const uint late = 8;
             foreach (var w in Hold.Wizards.Values)
-                if (w.Offer.Count > 0) PickUpgrade(w.Player, w.Offer[(int)((HoldSystem.WaveRoll(Hold.Wave, 0, late) ^ NameRoll(w.Player)) % (uint)w.Offer.Count)]);
+                if (w.Offer.Count > 0) PickUpgrade(w.Player, w.Offer[(int)((WaveRoll(Hold.Wave, 0, late) ^ NameRoll(w.Player)) % (uint)w.Offer.Count)]);
         }
 
         IEnumerable<UpgradeDef> UpgradesOf(string player)

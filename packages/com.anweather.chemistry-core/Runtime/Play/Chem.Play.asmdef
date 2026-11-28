@@ -1,0 +1,20 @@
+{
+    "name": "Chem.Play",
+    "rootNamespace": "Chem",
+    "references": [
+        "Chemistry",
+        "Chem.Land",
+        "Prototype.Analyzers"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Newtonsoft.Json.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

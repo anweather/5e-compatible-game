@@ -41,7 +41,7 @@
     <ChemTestsLand Remove="@(ChemTestsLandWorld)" />
 
     <!-- The game modes on World: the Hold (its partial classes stay together), golf, the Gauntlet, puzzles, defense, the dragon. -->
-    <ChemTestsPlay Include="$(ChemTests)Hold*.cs;$(ChemTests)AirTests.cs;$(ChemTests)CourseTests.cs;$(ChemTests)DefenseTests.cs;$(ChemTests)DragonTests.cs;$(ChemTests)GolfTests.cs;$(ChemTests)HandsTests.cs;$(ChemTests)PuzzleTests.cs" />
+    <ChemTestsPlay Include="$(ChemTests)Hold*.cs;$(ChemTests)AirTests.cs;$(ChemTests)CourseTests.cs;$(ChemTests)DefenseTests.cs;$(ChemTests)DragonTests.cs;$(ChemTests)GolfTests.cs;$(ChemTests)HandsTests.cs;$(ChemTests)PuzzleTests.cs;$(ChemTests)SaveTests.cs" />
 
     <!-- Peers: the lockstep session and wire, late joins, rooms, resets, the open world over the loopback. -->
     <ChemTestsLockstep Include="$(ChemTests)LateJoinTests.cs;$(ChemTests)LockstepTests.cs;$(ChemTests)LockstepWireTests.cs;$(ChemTests)OnlineValleyTests.cs;$(ChemTests)OpenWorldTests.cs;$(ChemTests)ResetTests.cs;$(ChemTests)RoomSkyTests.cs;$(ChemTests)RoomTests.cs;$(ChemTests)StandKeeperTests.cs" />

@@ -760,7 +760,7 @@ namespace Chem.Tests
         public void ASaveKeepsTheHands()
         {
             var source = new Grass();
-            var w = new World(R, 576, 576, 7);
+            var w = PlayModes.Install(new World(R, 576, 576, 7));
             w.MakeFrom(source);
             WorldBuildings.Load(ChemistryTests.WorldDir()).LayInto(w);
             w.SetHold(WorldHold.Load(ChemistryTests.WorldDir()));
@@ -771,7 +771,7 @@ namespace Chem.Tests
             Away(w);
             Bumper(w, Right);
             Ticks(w, T.TapTicks - 1);
-            var loaded = World.Load(w.Save(source), R, source);
+            var loaded = PlayModes.Install(World.Load(w.Save(source), R, source));
             loaded.SetHold(w.HoldSite);
             Assert.That(loaded.HandsOf(Me).Tap[Right], "a tap under way stays one");
             Assert.That(loaded.HandsText(), Is.EqualTo(w.HandsText()));
