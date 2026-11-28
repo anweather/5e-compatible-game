@@ -142,3 +142,30 @@ The game modes' systems (Hold, defense, course, `WayField`) are their own assemb
 A game-mode change in the core now lands at about the docs floor plus its own tests. A Sim change still runs everything,
 since everything is above Sim; raiders, golf and the dragon stayed in Sim (they're the reset, the save and what spells
 act on), so their changes are Sim changes.
+
+## After the long pole (2026-11-27)
+
+A Sim change runs every test project side by side, so it lands at the pace of the slowest. That was
+`Chem.Lockstep.Tests`, about a minute behind the rest, and inside it one fixture: `LateJoinTests` (83 s of its 84 s
+alone), whose tests replay a host's run for each joiner and snapshot one after another (the slowest, the snapshot
+joiner, was 110 s under the full suite). Its replays, and `OnlineValleyTests`' three machines, now run side by side,
+each on a world made on its own thread; the assertions are the same, asserted in the same order afterwards
+(`docs/TESTING_LAYERS.md`, "Keeping the core suite fast"). Nothing moved to `Sweep`, no test or assertion changed.
+
+On the Mac (12 cores; an Editor running its own tests in the main checkout, so the load was 6 to 50 throughout):
+
+| | Before | After |
+|---|---|---|
+| `Chem.Lockstep.Tests` alone | 84 s | **28 s** |
+| A Sim file (`World.cs`), `gates.sh`, back to back (load ~40) | 220 s | **151 s** |
+| ... its projects: Lockstep, LandWorld, Rules.Mcp, Sim, Play | 180, 124, 113, 112, 93 s | 97, 113, 106, 103, 86 s |
+| A Sim file, single runs | 189 s (load ~8) | 148 s (load ~15), 149 s, 184 s (load ~50) |
+| A Play file (`Runtime/Play/CourseSystem.cs`) | 62 s (above) | 68 s (Lockstep runs only its Unit smoke there: unchanged) |
+| The whole suite, Sweep too | 180 s, 2336 tests | 143 s, the same 2336 names and outcomes |
+
+The pole is gone: every project now finishes within about 15 s of the others, and what's left is the machine's CPU
+shared by twelve test hosts, not one serial chain. The next projects alone are 20-43 s (Land 29, LandWorld 43,
+Rules.Mcp 38, Sim 31, Play 20), so the ~100 s each under the gates is contention; a quieter Mac should land a Sim file
+in the 110-120 s the goal named, but this machine was never quiet enough to show it. A `GeneratedSourceTests` peer pair
+was tried and left: its two worlds step in turn with a checksum between, and a world packs only on the thread that
+made it.
