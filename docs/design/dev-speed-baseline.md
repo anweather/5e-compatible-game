@@ -128,3 +128,17 @@ there.
 refuses), so a new feature is a new folder and asmdef on top that touches no hub (`Scripts/CLAUDE.md`, "Assemblies").
 The per-feature agent cost (`feature-costs.mjs`, the first section) is the measure of that, once a week or two of feature
 work has landed on this layout.
+
+## After Chem.Play (2026-11-27)
+
+The game modes' systems (Hold, defense, course, `WayField`) are their own assembly, `Chem.Play`, over Sim behind the
+`IWorldModes` seam (`docs/design/architecture-review.md` step 9; merged at `cd990cc1`). Gates on the Mac, warm build:
+
+| Change | Before the plan | After step 10 (`5aa3d7e0`) | After Chem.Play (`cd990cc1`) |
+|---|---|---|---|
+| A Play (game mode) file in the core (`Runtime/Play/CourseSystem.cs`) | 206 s | 162 s | **62 s** (Chem.Play.Tests, Hold.Runner.Tests, the rest's Unit smoke) |
+| A Sim file (`World.cs`) | 206 s | 161 s | 185 s (every test project, as before; noise) |
+
+A game-mode change in the core now lands at about the docs floor plus its own tests. A Sim change still runs everything,
+since everything is above Sim; raiders, golf and the dragon stayed in Sim (they're the reset, the save and what spells
+act on), so their changes are Sim changes.
