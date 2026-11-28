@@ -1,6 +1,6 @@
 # D22. Mini-games are world modes, each its own assembly (2026-11-27)
 
-**Status:** Proposed
+**Status:** Accepted (Andrew, 2026-11-28: "Accept it")
 
 - **Context:** Andrew wants mini-games (golf now; frisbee, bowling next) to be add-ons: a new one is its own project
   and view folder, touches nothing in Sim, and lands in about a minute running only its own tests. Golf was woven
