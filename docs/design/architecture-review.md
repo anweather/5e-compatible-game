@@ -309,6 +309,30 @@ must compile it (one compile can serve a batch of steps, as the boat's PC did fo
    reads what either last worked out. Forwarders: Defense, DefenseLeft, ApplyDefense (DefenseField), PathCostAt.*
    *Golf: `GolfSystem`; data in `Play/Golf.cs`; GroundUnits stays on World (raiders and weather use it). Forwarders:
    Golf, ApplyGolf, GolfWaiting (GolfCourse, ChemGrid), the GolfBall/GolfCup consts (Mcp).*
+   *Golf out of Sim (2026-11-27, the Mac, branch `minigame-seams`; D22, `docs/design/minigames.md`). Why it stayed in
+   Sim before: the ball was named by spells, strikes, the dragon, acts, the save and the hash; the lockstep tests played
+   golf with helpers only `Chem.Lockstep.Tests` had; the MCP's rooms, compiled into Game.Core, placed it; and only Sim
+   saves and hashes, so its state had nowhere else to live. A first move into `Chem.Play` kept every hash but stopped
+   there. How it moved: Sim keeps a contract (`WorldMode`: install order, `MadeFor`, a slot per mode for the save, the
+   casts text and the dragon's start, written where golf's calls were; events for a map laid, a chunk the dragon reset,
+   a spell striking or landing on a body; acts of an unknown kind), generic bodies (`Body`, `World.Bodies.cs`: golf's
+   flight and roll, line for line, with the course box, water and the cup as the mode's answers to the body's events),
+   a save kept until the first tick so a mode installed after `World.Load` reads its part, and `JoinSnapshot.Join(...,
+   modesOf)` so a joiner's world has its modes before the checksum check. `PlayModes` is a `WorldMode` too. The MCP's
+   rooms take an installer (`Workbench.Modes`; the server's `Program` installs golf alone, so its rooms still throw on
+   the Hold). The late-join harness is `LockstepKit` (`core/Chem.Lockstep.Kit`). Golf is `Runtime/Golf/`, the
+   `Chem.Play.Golf` assembly (its own, not `Chem.Play`, so a golf change and a Hold change don't run each other's
+   tests): `GolfMode` (was `GolfSystem`, its GUID kept), `Golf.cs` (the ball a `Body`), `WorldGolf` (`world.Golf()`,
+   `ApplyGolf`, `GolfWaiting`); `GolfParams` stays with the rules (`RuleModes.cs`). Installed by `ChemGrid.WithModes`,
+   `Desk.Fresh`, the MCP server and golf's tests. Tests moved, names kept unless said: `GolfTests` (Play to Golf),
+   `BallInCupTests` (Rules.Mcp.Tests to Golf), `LateJoinTests.AGolfTurnReplaysTheSame` and
+   `.JoinersAtAnyTickReplayTheHostsPast` to `GolfJoinTests`, `DragonTests.PlayAreasComeBackAsBuilt` and
+   `.ASaveMidFlightLoadsAndGoesOnTheSame` to `GolfDragonTests`; new:
+   `GolfJoinTests.AJoinerFromASnapshotOfARoundTakesItsModesBeforeTheCheck`. Proof: the sweep's 2336 results the same by name and outcome (one timing budget,
+   `DragonTests.AFullSweepStaysWithinTheTickBudget`, failed on both under load), every golden unchanged; 2021 sampled
+   lines identical on dev and the branch (golf on a strip, in rooms by acts, under the dragon and in the valley, and 8
+   Hold runs with two dragons each: CellHash, CastHash, RngState, the dragon's hash, golf's state, the log and the save's
+   FNV). Gates (the Mac, warm): a golf file 38-49 s, a Hold file 57 s, `Runtime/World.cs` 142 s.*
    *Hold: `HoldSystem`; a run's data in `Play/HoldRun.cs`. Proved bit-equal beyond the goldens: 24 seeded Hold runs
    on dev and on the commit, CellHash/CastHash/RngState/DragonHash every 20 s up to wave 10, 588 lines the same.
    Forwarders: HoldSite, Hold, HoldRunning, HoldLeft, SetHold, HoldWarning, HoldRespawn, HoldNextWaveIn, Flying,

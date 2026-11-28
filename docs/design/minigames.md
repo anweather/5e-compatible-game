@@ -21,7 +21,8 @@ name, no statics: the installed list is the world's own field.
 
 - **Installing.** `world.Install(mode)` once per mode, before the world ticks; a mode of the same type twice throws.
   `world.InstallModesOf(other)` gives a joiner's world the modes of the world it replaces, each by `MadeFor(world)`,
-  in the same order. `world.Mode<T>()` finds an installed one. `PlayModes` (the Hold, defense, course) is a
+  in the same order; a snapshot join does it before it checks the joined world against the host's checksum
+  (`JoinSnapshot.Join(..., modesOf)`), since a mode's slot is in the checksum. `world.Mode<T>()` finds an installed one. `PlayModes` (the Hold, defense, course) is a
   `WorldMode` too, and still the world's one `IWorldModes`, so the Hold's seam is unchanged.
 - **The slot (save, hash, text).** `SaveSlot(save)` writes the mode's keys into the world save, `SlotText()` its part
   of the casts checksum text (`CastText`), `SaveStart(start)` its part of the dragon's start, `KeepStart()` copies its
