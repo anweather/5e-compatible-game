@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The late-join harness (LockstepKit.cs in the Chemistry tests; Chem.Tests.props, D22): a library, not a test
+       project, so the lockstep tests and a mode's own tests (golf's joins) replay joiners the same way. -->
+  <Import Project="../Chem.Tests.props" />
+
+  <PropertyGroup>
+    <IsTestProject>false</IsTestProject>
+    <GenerateProgramFile>false</GenerateProgramFile>
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="@(ChemTestsLockstepKit)" Link="Tests/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- NUnit for Assert, without the test host that would make it a test program. -->
+    <PackageReference Remove="Microsoft.NET.Test.Sdk" />
+    <PackageReference Remove="NUnit3TestAdapter" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Chem.Shared.Tests/Chem.Shared.Tests.csproj" />
+  </ItemGroup>
+</Project>

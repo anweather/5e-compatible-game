@@ -52,6 +52,8 @@
     { "name": "tests-land-world", "props": "ChemTestsLandWorld", "projects": ["Chem.LandWorld.Tests"] },
     { "name": "tests-play", "props": "ChemTestsPlay", "projects": ["Chem.Play.Tests"] },
     { "name": "tests-lockstep", "props": "ChemTestsLockstep", "projects": ["Chem.Lockstep.Tests"] },
+    { "name": "tests-lockstep-kit", "props": "ChemTestsLockstepKit", "projects": ["Chem.Lockstep.Kit"],
+      "_": "The late-join harness (LockstepKit.cs, D22): a library; the lockstep tests and the modes' tests that reference it run." },
     { "name": "tests-sim", "props": "ChemTestsSim", "projects": ["Chem.Sim.Tests"] },
 
     { "name": "mcp", "projects": ["Game.Core"], "paths": ["unity/Assets/Prototype/Chemistry/Mcp/*.cs"] },
@@ -89,6 +91,7 @@
     { "name": "core-land-tests", "projects": ["Chem.Land.Tests"], "paths": ["core/Chem.Land.Tests/**"] },
     { "name": "core-land-world-tests", "projects": ["Chem.LandWorld.Tests"], "paths": ["core/Chem.LandWorld.Tests/**"] },
     { "name": "core-play-tests", "projects": ["Chem.Play.Tests"], "paths": ["core/Chem.Play.Tests/**"] },
+    { "name": "core-lockstep-kit", "projects": ["Chem.Lockstep.Kit"], "paths": ["core/Chem.Lockstep.Kit/**"] },
     { "name": "core-lockstep-tests", "projects": ["Chem.Lockstep.Tests"], "paths": ["core/Chem.Lockstep.Tests/**"] },
     { "name": "core-sim-tests", "projects": ["Chem.Sim.Tests"], "paths": ["core/Chem.Sim.Tests/**"] },
     { "name": "core-playtest-tests", "projects": ["Chem.Playtest.Tests"], "paths": ["core/Chem.Playtest.Tests/**"] },
