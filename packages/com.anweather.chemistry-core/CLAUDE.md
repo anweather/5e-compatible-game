@@ -20,13 +20,17 @@ section 2 walks through the files; `docs/WORLD_STREAMING.md` covers chunks.
   `MapBake` (a generated map's bake: it writes Play's rows), `GeneratedPlaces`, `MapCheck`,
   `MapStampsLaying`, `CellHeightfield`, `OpenWorld*`. `docs/design/chem-land-split.md` says why.
 - **`Runtime/Play/` is `Chem.Play`** (its own asmdef; `core/Chem.Play` in dotnet), above `Chemistry`, which never
-  references it: the defense field's, the Hold's and the course's systems (`DefenseSystem`, `HoldSystem`,
-  `CourseSystem`, `WayField`), `PlayModes` (what installs them on a world) and `WorldPlay` (`world.Play()` and the
-  mode-only reads). Their state stays the world's, with its text, hash and save (`World.Play.cs`), so a save or a
-  checksum doesn't depend on them; the world calls them through `IWorldModes`. A world that plays a mode is made
-  with `PlayModes.Install(world)` (a joiner's takes the modes of the world it replaces, `InstallModesOf`); one
-  without them throws where a mode would have run. Raiders and the dragon stay in `Chemistry` (spells, acts and the
-  change audit reach them). A test that plays one of the three goes in `Chem.Play.Tests` and installs them.
+  references it: the defense field's, the Hold's, its progress' and the course's systems (`DefenseSystem`, `HoldSystem`,
+  `ProgressSystem`, `CourseSystem`, `WayField`), their state (`HoldRun.cs`, `DefenseState.cs`, `CourseRun.cs`, each
+  system's fields), `PlayModes` (the `WorldMode` that owns them and installs them on a world) and `WorldPlay`
+  (`world.Play()` and the reads: `world.Hold()`, `HoldSite()`, `HoldRunning()`, `Defense()`, `PointsOf`...). Their
+  save, text and hash are PlayModes' (`SaveAt`, `TextAt`, at the places they had when the world kept them), so a change
+  to them is a Play change. The world calls them through `WorldMode` (`World.Play.cs`, the seam). A world that plays a
+  mode is made with `PlayModes.Install(world)` (a joiner's takes the modes of the world it replaces,
+  `InstallModesOf`); one without them has no Hold, defense field, course or points (the reads say so, a defense
+  start throws). The rules' and the map's rows they read stay in `Chemistry` (`Hold.cs`, `Defense.cs`, `Course.cs`:
+  the bake and the map check read them), as do the raiders and the dragon (spells, acts, the change audit and the
+  save reach them). A test that plays one of them goes in `Chem.Play.Tests` and installs them.
 - **`Runtime/Golf/` is `Chem.Play.Golf`** (its asmdef; `core/Chem.Play.Golf`), a mini-game on `Chemistry` alone (D22,
   `docs/design/minigames.md`): `GolfMode`, a `WorldMode` installed with `GolfMode.Install(world)`, its state in its
   own slot, its ball a `Body`; `world.Golf()` and `ApplyGolf` are its extensions. Its tests are the Chemistry tests'
@@ -37,11 +41,13 @@ section 2 walks through the files; `docs/WORLD_STREAMING.md` covers chunks.
 
 `WorldMode.cs` is the contract every mode derives from (`PlayModes` and `GolfMode` do): the world calls installed
 modes in install order for their slots (save, casts checksum text, the dragon's start, each at the one place the
-world calls them), the events (a map laid, a chunk the dragon reset, a spell striking or landing on a body, a body's
+world calls them; `PlayModes`' state also keeps the older places it had in the save and the text, `SaveAt`/`TextAt`),
+what the world asks of them as it runs (the Hold's: its tick, a moment, the commands, zones, stands, a run's locks
+and picks), the events (a map laid, a chunk the dragon reset, a spell striking or landing on a body, a body's
 steps) and acts of a kind the world doesn't know. `Body.cs` and `World.Bodies.cs` are the thrown or rolled bodies the
 world steps after the boulders. A save loads before its modes are installed: the world keeps it until the first
 tick and hands each mode its part as it's installed, so install modes before a world ticks. A mode uses only the
-core's public members (no `InternalsVisibleTo` for it).
+core's public members (no `InternalsVisibleTo` for it; `Chem.Play`, older, still has one).
 
 ## Hard constraints
 

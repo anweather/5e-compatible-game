@@ -30,6 +30,11 @@
     from any one game.
   - Hooks on a base class, called in install order, are deterministic. An event bus or registration by name would
     need order rules of its own.
+- **Since (modes-out, 2026-11-28):** the Hold's, its progress', the defense field's and the course's state moved onto
+  the contract too, owned by `PlayModes` with its save, text and hash, and `IWorldModes` is gone. Their bytes keep the
+  places they had in the save and the checksums (`SaveAt`, `TextAt`), and the hooks the world asks the Hold as it runs
+  (its tick, a moment, the commands, zones, stands, a run's locks and picks) are on `WorldMode`. The raiders and the
+  dragon stay in Sim (`docs/design/minigames.md`, "The Hold on it").
 - **Reopen if:** a mode needs to act inside a stage the hooks don't reach (add the hook to the contract, as its own
   change with its proof); a save-format change is wanted (Andrew's call); or two modes start needing each other's
   state.

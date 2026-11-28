@@ -84,22 +84,28 @@ keeps what stays in the game: `Mcp/` (the Chemistry.Mcp assembly) and `Tests/`.
   `world.ApplyEffect`: what a physics prop hands the chemistry, solo at once
   and online stamped into a tick batch like a cast.
 - **The game modes are systems** (D9, `docs/design/architecture-review.md` step 9), each a class over the world's
-  data. Three the world owns and runs itself, since the chemistry reaches them: `RaiderSystem` (the raiders, their
-  elements, hurts, shoves and upkeep), `GolfSystem` (spell golf, an act anyone places; `Golf.cs`) and `DragonSystem`
-  (the dragon's flight; what a pass puts back, the starting state, the audit and a chunk's reset stay in
-  `World.Dragon.cs`). Three are **`Chem.Play`**, their own assembly above the core (`Runtime/Play/`, its asmdef;
+  data. Two the world owns and runs itself, since the chemistry reaches them: `RaiderSystem` (the raiders, their
+  elements, hurts, shoves and upkeep) and `DragonSystem` (the dragon's flight; what a pass puts back, the starting
+  state, the audit and a chunk's reset stay in `World.Dragon.cs`). Spell golf is a mini-game, `GolfMode` in its own
+  assembly (`Chem.Play.Golf`, D22, `docs/design/minigames.md`). Four are **`Chem.Play`**, their own assembly above the core (`Runtime/Play/`, its asmdef;
   `core/Chem.Play`), which the core doesn't reference: `DefenseSystem` (the defense field's waves, on the cost field in
-  `WayField`, which the Hold's ways share), `HoldSystem` (the Hold's runs) and `CourseSystem` (the Gauntlet's runs).
-  The world keeps their state, its text, hash and save (`World.Play.cs`: `world.Hold`, `HoldSite`, `Defense`, the
-  spell zones and `ZoneAgainst`, the course and its runs; the data types in `Hold.cs`, `HoldRun.cs`, `Defense.cs`,
-  `Course.cs`), and calls the systems through `IWorldModes` where they always ran: the tick after the raiders (the
-  defense field, then the Hold), a combo's Moment, `world.ApplyDefense` and `world.ApplyCourse`. A world gets them
-  once from `PlayModes.Install(world)` (the view's `ChemGrid`, `Hold.Runner`, `Playtest.Text`, the tests that play a
-  mode), and a joiner's world takes them from the one it replaces (`world.InstallModesOf`, in `LockstepWorld.Load`
-  and `ChemGrid.LoadSnapshot`). A world without them is the chemistry alone, and throws where one would have run.
-  Outside the core, `world.Play()` is a world's `PlayModes` (`.Hold`, `.Defense`, `.Course`), and the mode-only reads
-  are extension methods there (`WorldPlay`: `HoldWarning()`, `HoldRespawn()`, `HoldNextWaveIn()`, `HoldNext`,
-  `PathCostAt`, `CourseRespawn`); the rest (`world.Hold`, `world.Raiders`, `world.CaughtByBreath`...) are the world's.
+  `WayField`, which the Hold's ways share), `HoldSystem` (the Hold's runs), `ProgressSystem` (the points between them)
+  and `CourseSystem` (the Gauntlet's runs).
+  Since modes-out (D22) their state is theirs too, as golf's is `GolfMode`'s: `PlayModes`, a `WorldMode`, owns the
+  systems (with `ProgressSystem`, each wizard's points between runs) and their state, its save, text and hash, written
+  at the places the world wrote them before (`SaveAt`, `TextAt`; the data types in `Play/HoldRun.cs`,
+  `DefenseState.cs`, `CourseRun.cs`). The world calls its modes (`World.Play.cs`, the seam) where it always ran them:
+  the tick after the raiders (the defense field, then the Hold), a combo's Moment, `world.ApplyDefense` and
+  `world.ApplyCourse`, a spell zone against a cast, the stands a mode reads, and what a run holds for a wizard's hands
+  (what's held back and open, points brought, the kit, an attuning barred, the upgrades picked). The rows they read
+  (`Hold.cs`, `Defense.cs`, `Course.cs`) stay in the core. A world gets them once from `PlayModes.Install(world)` (the
+  view's `ChemGrid`, `Hold.Runner`, `Playtest.Text`, the tests that play a mode), and a joiner's world takes them from
+  the one it replaces (`world.InstallModesOf`, in `LockstepWorld.Load` and `ChemGrid.LoadSnapshot`). A world without
+  them is the chemistry alone: no Hold, defense field, course or points. Outside the core, `world.Play()` is a world's
+  `PlayModes` (`.Hold`, `.Defense`, `.Course`, `.Progress`), and the reads are extension methods there (`WorldPlay`:
+  `Hold()`, `HoldSite()`, `HoldRunning()`, `Defense()`, `PointsOf`, `UnlocksOf`, `TowerOf`, `RunOf`, `HoldWarning()`,
+  `HoldNext`, `PathCostAt`, `CourseRespawn`...); the raiders' and the dragon's (`world.Raiders`, `world.Dragon`,
+  `world.CaughtByBreath`...) are the world's (`World.Raiders.cs`).
 - `Items.cs` reads `rules/items.json`, things to carry (glowing balls, a
   bullseye lantern, a spyglass, sending stones, a Dancing Lights mote): their
   light in SRD feet, their use, and when one breaks (`ItemDef.BreaksAt`).
@@ -331,7 +337,7 @@ why in an ADR first. A table lags the code, so the `.asmdef` and `.csproj` files
 | Project or folder | May reference | Never |
 |---|---|---|
 | `Chem.Land` (the package's `Runtime/Land/`, asmdef `Chem.Land`, `noEngineReferences`; hills, ChunkGen, world plans, themes, biomes, map files, `GeneratedMap`; `docs/design/chem-land-split.md`) | .NET, Newtonsoft.Json, `Prototype.Analyzers` | `Chemistry/` (no `World`, `Cell` or `Rules`), `UnityEngine`, `Scripts/`, anything under `core/` |
-| `Chemistry/` (the package's `Runtime/` but `Land/`, `Play/` and `Golf/`, asmdef `Chemistry`, `noEngineReferences`; sees `Chem.Land`'s internals) | `Chem.Land`, .NET, Newtonsoft.Json, `Prototype.Analyzers` | `Chem.Play`, `Chem.Play.Golf` (it calls the modes through `WorldMode` and `IWorldModes`), `UnityEngine`, `Scripts/`, `Chemistry/Mcp/`, anything under `core/` |
+| `Chemistry/` (the package's `Runtime/` but `Land/`, `Play/` and `Golf/`, asmdef `Chemistry`, `noEngineReferences`; sees `Chem.Land`'s internals) | `Chem.Land`, .NET, Newtonsoft.Json, `Prototype.Analyzers` | `Chem.Play`, `Chem.Play.Golf` (it calls the modes through `WorldMode`), `UnityEngine`, `Scripts/`, `Chemistry/Mcp/`, anything under `core/` |
 | `Chem.Play` (the package's `Runtime/Play/`, asmdef `Chem.Play`, `noEngineReferences`; the defense field, the Hold, the course; sees the core's and the land's internals) | `Chemistry/`, `Chem.Land`, .NET, Newtonsoft.Json, `Prototype.Analyzers` | `UnityEngine`, `Scripts/`, `Chemistry/Mcp/`, anything under `core/` |
 | `Chem.Play.Golf` (the package's `Runtime/Golf/`, asmdef `Chem.Play.Golf`, `noEngineReferences`; spell golf, a mini-game, D22; the core's public members only) | `Chemistry/`, `Chem.Land`, .NET, Newtonsoft.Json, `Prototype.Analyzers` | `Chem.Play`, `UnityEngine`, `Scripts/`, `Chemistry/Mcp/`, anything under `core/` |
 | `Chemistry/Mcp/` (`unity/Assets/Prototype/Chemistry/Mcp/`, asmdef `Chemistry.Mcp`, `noEngineReferences`; sees the core's and the land's internals) | `Chemistry/`, `Chem.Land`, .NET, Newtonsoft.Json | `UnityEngine`, `Scripts/`, anything under `core/` |
