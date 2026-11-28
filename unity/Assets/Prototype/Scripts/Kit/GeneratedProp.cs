@@ -24,9 +24,31 @@ public class GeneratedProp : MonoBehaviour
 
     Material unburnt;
 
-    void OnEnable() => Rebuild();
+    void OnEnable()
+    {
+        if (ReloadKeep.Take(this, 2) is { } kept)
+        {
+            shape = (GameObject)kept[0];
+            mesh = (Mesh)kept[1];
+            shape.GetComponent<MeshRenderer>().sharedMaterial = material;
+            return;
+        }
+        Rebuild();
+    }
 
     void OnDisable()
+    {
+        if (ReloadKeep.Keeping && shape != null && mesh != null && !Burnt)
+        {
+            ReloadKeep.Keep(this, shape, mesh);
+            shape = null;
+            mesh = null;
+            return;
+        }
+        DestroyMade();
+    }
+
+    void DestroyMade()
     {
         if (shape != null) DestroyNow(shape);
         if (mesh != null) DestroyNow(mesh);
@@ -34,7 +56,7 @@ public class GeneratedProp : MonoBehaviour
 
     public void Rebuild()
     {
-        OnDisable();
+        DestroyMade();
         mesh = Make(kind, seed, length, out _);
         mesh.hideFlags = HideFlags.DontSave;
         shape = new GameObject(kind.ToString()) { hideFlags = HideFlags.DontSave | HideFlags.NotEditable };
