@@ -214,3 +214,14 @@ IL post-processing (Unity's build graph), the package `[InitializeOnLoad]`s, and
 the view code gets; scoping them off the Editor's compile would lose it). Free for anyone: **close the Project Settings
 window** while editing scripts (its search service costs ~0.35 s a reload when it's open), and restart an Editor that's
 been open for hours.
+
+## The Sim cut (2026-11-28)
+
+Andrew's ruling: a Sim change runs `Chem.Sim.Tests` and `Chem.Lockstep.Tests` in full and the rest's `Unit` smoke, with
+CI's full run after every push to dev behind it (`docs/TESTING_LAYERS.md`, "The Sim cut"; the adapters onto the land and
+the modes keep their users' tests). On the Mac, warm, a load average of about 20 from other work:
+
+| Change | Before | After |
+|---|---|---|
+| A Sim file (`Runtime/World.cs`) | 142 s | **94 s** |
+| A modes-seam file (`Runtime/World.Play.cs`) | 142 s | 87 s |
