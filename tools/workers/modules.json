@@ -5,7 +5,7 @@
     "'projects' are code: those core projects run, and every project that references them (ProjectReferences, followed transitively; Chem.Tests.props's count for each project that imports it). A library (Game.Core, Rules.Mcp) runs its dependents.",
     "'reads' are data: those test projects read the files, and run alone (who references them doesn't matter).",
     "A module with neither runs no dotnet tests (docs, tools). A path in no module runs everything: the fail-safe.",
-    "Every Chem.* project but Chem.Land.Tests links the Runtime through Game.Core, so each Runtime area above the land runs everything but the land's own tests; 'after' says which project it narrows to once it's an assembly of its own. Chemistry/Mcp and Playtest/Logic compile into Game.Core too, so they run the same.",
+    "Every Chem.* project but Chem.Land.Tests links the Runtime through Game.Core, so each Runtime area in Game.Core runs everything but the land's own tests; 'after' says which project it narrows to once it's an assembly of its own. Chemistry/Mcp and Playtest/Logic compile into Game.Core too, so they run the same. The land (Chem.Land, below Game.Core) and the modes (Chem.Play, above it) are assemblies of their own.",
     "'stop' (step 5c): projects whose dependents aren't followed for that module's changes; what's past them gets the smoke. runtime-land stops at Game.Core (Andrew, 2026-11-26). check takes the same cut.",
     "core/ files in no module (Chem.Tests.props, Directory.Build.props, the solution, the runsettings, TestParallel.cs, TestFriends.cs) run everything, as any unmapped path does.",
     "modules.mjs check (run by gates.test.mjs) proves the map agrees with the csproj files: every file a project compiles must select that project."
@@ -30,16 +30,9 @@
       "packages/com.anweather.chemistry-core/Runtime/Fauna*",
       "packages/com.anweather.chemistry-core/Runtime/Downed*"
     ] },
-    { "name": "runtime-play", "after": ["Chem.Play.Tests"], "projects": ["Game.Core"], "paths": [
-      "packages/com.anweather.chemistry-core/Runtime/Play/**",
-      "packages/com.anweather.chemistry-core/Runtime/World.Play*",
-      "packages/com.anweather.chemistry-core/Runtime/Hold*",
-      "packages/com.anweather.chemistry-core/Runtime/Defense*",
-      "packages/com.anweather.chemistry-core/Runtime/Hands*",
-      "packages/com.anweather.chemistry-core/Runtime/WorldPuzzles*",
-      "packages/com.anweather.chemistry-core/Runtime/World.Dragon*",
-      "packages/com.anweather.chemistry-core/Runtime/World.Hands*"
-    ] },
+    { "name": "runtime-play", "projects": ["Chem.Play"], "paths": [
+      "packages/com.anweather.chemistry-core/Runtime/Play/**"
+    ], "_": "Chem.Play's own assembly (architecture-review.md step 9): the Hold's, the defense field's and the course's systems, above Game.Core. A Play change runs what references Chem.Play: Chem.Play.Tests, Hold.Runner (and its tests) and Playtest.Text, and the rest get the Unit smoke. No stop is needed: nothing heavy reaches Chem.Play, and nothing below it (Game.Core and what's on it) can, so the cut is the references themselves. The modes' state, its save and the seam (World.Play.cs, IWorldModes.cs, Hold.cs, Defense.cs, Course.cs, HoldRun.cs) and the raiders, the dragon and golf are Sim's: runtime-sim, everything." },
     { "name": "runtime-lockstep", "after": ["Chem.Lockstep.Tests"], "projects": ["Game.Core"], "paths": [
       "packages/com.anweather.chemistry-core/Runtime/Lockstep*",
       "packages/com.anweather.chemistry-core/Runtime/JoinSnapshot*",
@@ -76,6 +69,7 @@
       "_": "ChatRecordTests reads both." },
 
     { "name": "core-land", "projects": ["Chem.Land"], "paths": ["core/Chem.Land/**"] },
+    { "name": "core-play", "projects": ["Chem.Play"], "paths": ["core/Chem.Play/**"] },
     { "name": "core-game", "projects": ["Game.Core"], "paths": ["core/Game.Core/**"] },
     { "name": "core-plans", "projects": ["Prototype.Plans"], "paths": ["core/Prototype.Plans/**", "core/UnityMath/**"],
       "_": "The plans' project and the shim it links in place of UnityEngine." },
