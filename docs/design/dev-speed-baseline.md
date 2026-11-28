@@ -169,3 +169,48 @@ Rules.Mcp 38, Sim 31, Play 20), so the ~100 s each under the gates is contention
 in the 110-120 s the goal named, but this machine was never quiet enough to show it. A `GeneratedSourceTests` peer pair
 was tried and left: its two worlds step in turn with a checksum between, and a world packs only on the thread that
 made it.
+
+## Edit floor (2026-11-27)
+
+Where the 8-9 s of a body edit in a feature layer goes, and what came off it (branch `reload-floor`). The Mac, a fresh
+Editor on the yard, the load average under 12 (another worktree's dotnet tests had it at 30-60 earlier, which doubled
+every number: compare only quiet runs). Unity's own split, from `Library/Bee/fullprofile.json` and the Editor log's
+"Domain Reload Profiling" (the diagnostic switch `EnableDomainReloadTimings` names each `[InitializeOnLoad]` and each
+object woken after the reload):
+
+| Phase (a body edit of `HoldShow.cs`) | Time | Whose |
+|---|---|---|
+| Refresh, until the build starts | ~0.4 s | Unity |
+| Csc of the edited assembly (warm compiler server, analyzers included) | 0.4 s | Unity; the analyzers are ~half of a cold csc (Sonar 85% of theirs) |
+| IL post-processing: the edited assembly **and all 10 above it**, at once | 1.3-1.8 s (0.2 s for one alone) | Unity: Bee re-runs ILPP for every dependent of a changed DLL, though only the edited one is copied |
+| Domain reload: tear down the old domain (`CreateAndSetChildDomain`) | 0.53 s | Unity |
+| Load assemblies, type caches | 0.3 s | Unity |
+| `[InitializeOnLoad]`s and their methods | 0.7 s | packages: Burst 147 ms, Input System 115, Multiplayer Play Mode 92, the CLI's pipeline 78, Services Deployment 51; ours 1-2 ms in all |
+| Objects woken after the reload (`AwakeInstancesAfterBackupRestoration`) | 0.84 s | Editor windows (6 dock areas, an open **Project Settings window ~0.35 s**, Asset Store window 0.07 s), and the yard's `[ExecuteAlways]` views |
+| ...of which ours | ~0.45 s | `Ocean` 220 ms (map load 30-100, sea mask 130, mesh 100), `GeneratedProp` ×276 ~100 ms (palms), `VillageHouse` ×19 ~35 ms |
+| After the reload, the yard check (`YardAutoBuild`) | 65-120 ms | ours: read and parsed the 5 MB yard scene twice |
+| The rest (scene repaint, the CLI's readiness poll) | ~1 s | Unity |
+
+**Cut** (no change in what the game does or builds; EditMode and the probes as before):
+
+- `YardAutoBuild` skips its scene check after a reload when the scene, the network prefab list, the ground template
+  and its own code are as they were when it last passed this session.
+
+**Result** (measured with a second cut, since dropped: `GeneratedProp` and `VillageHouse` kept their meshes through an
+edit-mode reload, ~140 ms of the gain, but it was ~200 lines of stashing for a gain the loop can't see, so it was
+reverted; the yard check skip alone is 65-120 ms): the domain reload was ~150 ms shorter (2.95-3.15 s → 2.80-2.97 s, mean of 8 per file). Save to ready
+Editor, same Editor, same load, ROUNDS=2 (`unity-loop.sh` reports in 0.1 s but polls every 0.5-1 s, so the gain is
+under its resolution):
+
+| File | Body edit before → after | API edit before → after | Reload before → after |
+|---|---|---|---|
+| `Modes/HoldShow.cs` | 8.1 → 8.8 | 10.6 → 10.7 | 2.95 → 2.80 s |
+| `Shell/ControlsMenu.cs` | 8.6 → 8.6 | 9.4 → 8.9 | 3.02 → 2.89 s |
+| `World/ChemGrid.cs` | 9.8 → 9.8 | 13.6 → 12.4 | 3.15 → 2.97 s |
+
+**Not cut, and why:** the `Ocean` (220 ms) loads the map and its shore texture, which `MapLand` releases before every
+reload, so keeping it would mean keeping the map too. The rest of the floor is Unity's or a package's: the dependents'
+IL post-processing (Unity's build graph), the package `[InitializeOnLoad]`s, and the analyzers (they're the only check
+the view code gets; scoping them off the Editor's compile would lose it). Free for anyone: **close the Project Settings
+window** while editing scripts (its search service costs ~0.35 s a reload when it's open), and restart an Editor that's
+been open for hours.

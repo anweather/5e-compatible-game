@@ -23,7 +23,7 @@ public static class ChemYardBuilder
     const string NetWizardPath = "Assets/Prototype/Prefabs/NetWizard.prefab";
     const string SpellVisualsPath = "Assets/Prototype/Settings/SpellVisuals.asset";
     const string CastFeelPath = "Assets/Prototype/Settings/CastFeel.asset";
-    const string ThingPrefabsPath = "Assets/Prototype/Generated/ThingNetworkPrefabs.asset";
+    internal const string ThingPrefabsPath = "Assets/Prototype/Generated/ThingNetworkPrefabs.asset";
 
     internal const string Map =
         ",,T,,,,,,,,,,,,,,,,,,,,T,,\n" +

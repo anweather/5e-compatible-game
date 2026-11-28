@@ -14,6 +14,8 @@ using UnityEngine.SceneManagement;
 // It also rebuilds a yard whose network ids aren't the stable ones
 // (StableNetworkIds: one built before them), or other machines can't join it,
 // one built before the species were rows, whose villages name no folk, and one whose grass is the pack's heavy tufts.
+// After a script reload it skips the check (it reads the 5 MB scene twice) when the scene, the network prefab list, the
+// ground template and this code are all as they were when it last passed in this Editor session.
 [InitializeOnLoad]
 public static class YardAutoBuild
 {
@@ -35,7 +37,18 @@ public static class YardAutoBuild
     {
         if (EditorApplication.isCompiling || EditorApplication.isUpdating) return;
         EditorApplication.update -= FirstFreeUpdate;
+        if (SessionState.GetString(CheckedKey, "") == CheckedInputs()) return;
         BuildIfMissing();
+    }
+
+    const string CheckedKey = "YardAutoBuild.checked";
+
+    internal static string CheckedInputs()
+    {
+        static string Stamp(string path) =>
+            File.Exists(path) ? $"{new FileInfo(path).Length}@{File.GetLastWriteTimeUtc(path).Ticks}" : "none";
+        return string.Join("|", Stamp(ScenePath), Stamp(ChemYardBuilder.ThingPrefabsPath), Stamp(LightTufts.Template),
+            typeof(YardAutoBuild).Assembly.ManifestModule.ModuleVersionId.ToString());
     }
 
     public static void BuildIfMissing()
@@ -47,7 +60,11 @@ public static class YardAutoBuild
             var unstable = ChemYardBuilder.UnstableNetworkIds();
             bool assetFolk = File.ReadAllText(ScenePath).Contains("residents: {fileID", System.StringComparison.Ordinal);
             bool heavyGrass = LightTufts.GroundHasPackTufts() || LightTufts.GroundGrassCastsShadows();
-            if (unstable.Count == 0 && !assetFolk && !heavyGrass) return;
+            if (unstable.Count == 0 && !assetFolk && !heavyGrass)
+            {
+                SessionState.SetString(CheckedKey, CheckedInputs());
+                return;
+            }
             if (assetFolk) why = "The yard's villages name their folk by asset, from before rules/fauna.json";
             else if (heavyGrass) why = "The ground's grass is the terrain pack's own heavy tufts or casts shadows, from before LightTufts";
             else why = $"The yard's network ids aren't the same as other machines' ({string.Join(", ", unstable)})";

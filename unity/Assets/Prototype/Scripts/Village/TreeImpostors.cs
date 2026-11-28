@@ -72,7 +72,7 @@ public sealed class TreeImpostors : MonoBehaviour
     const double SpawnBudgetMs = 1.0;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-    static void Reset()
+    public static void Reset()
     {
         On = true;
         Near = DefaultNear;

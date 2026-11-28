@@ -49,6 +49,7 @@ public class TreeImpostorTests
     [Test]
     public void ImpostorsAreOnUnlessTurnedOff()
     {
+        TreeImpostors.Reset();
         Assert.That(TreeImpostors.On, Is.True);
         Assert.That(TreeImpostors.ShadowFar, Is.EqualTo(256f));
         Assert.That(MapTerrains.TreeDistance, Is.EqualTo(900f));
